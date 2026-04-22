@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <Button
+        android:id="@+id/button_start_watch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Start Watching" />
+
+    <Button
+        android:id="@+id/button_stop_watch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Stop Watching"
+        android:layout_marginTop="8dp" />
+
+    <Button
+        android:id="@+id/button_request_device"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Request Device"
+        android:layout_marginTop="8dp" />
+
+    <TextView
+        android:id="@+id/text_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Status"
+        android:textAppearance="@android:style/TextAppearance.Medium" />
+
+    <TextView
+        android:id="@+id/text_devices"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="16dp"
+        android:text="Devices will appear here"
+        android:textAppearance="@android:style/TextAppearance.Small"
+        android:scrollbars="vertical" />
+
+</LinearLayout>

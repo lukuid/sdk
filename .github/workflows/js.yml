@@ -1,0 +1,168 @@
+name: SDK JS
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "v*.*.*"
+    paths:
+      - "VERSION"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "lukuid.proto"
+      - "src/js/**"
+      - "tools/build-cdn.mjs"
+      - "scripts/version_sync.py"
+      - ".github/workflows/js.yml"
+  pull_request:
+    paths:
+      - "VERSION"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "lukuid.proto"
+      - "src/js/**"
+      - "tools/build-cdn.mjs"
+      - "scripts/version_sync.py"
+      - ".github/workflows/js.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: sdk-js-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      publish: ${{ steps.meta.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: meta
+        shell: bash
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            TAG_VERSION="${GITHUB_REF_NAME#v}"
+            [[ "$TAG_VERSION" == "$VERSION" ]]
+            git fetch origin main --depth=1
+            git branch -r --contains "$GITHUB_SHA" | grep -q "origin/main"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+      - run: python3 scripts/version_sync.py check
+
+  test:
+    runs-on: ubuntu-latest
+    needs: meta
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 8.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install Protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+      - run: python3 scripts/version_sync.py check
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r lint
+      - run: pnpm -r test
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [meta, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 8.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install Protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+      - run: python3 scripts/version_sync.py check
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - run: pnpm run build:cdn
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdk-js-dist
+          path: |
+            dist-cdn/**
+            src/js/*/dist/**
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [meta, build]
+    if: github.event_name != 'pull_request' && needs.meta.outputs.publish == 'true'
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 8.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+          registry-url: https://registry.npmjs.org
+      - name: Install Protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+      - run: python3 scripts/version_sync.py check
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - run: pnpm run build:cdn
+      - name: Publish Packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          for dir in \
+            src/js/core \
+            src/js/transport-webble \
+            src/js/transport-webusb \
+            src/js/transport-ble-node \
+            src/js/transport-serial-node \
+            src/js/sdk; do
+            pnpm --dir "$dir" publish --access public --provenance
+          done
+      - name: Upload Release Assets
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="v${{ needs.meta.outputs.version }}"
+          cp dist-cdn/lukuid-sdk.global.js "lukuid-sdk.global-${{ needs.meta.outputs.version }}.js"
+          sha256sum "lukuid-sdk.global-${{ needs.meta.outputs.version }}.js" > "lukuid-sdk.global-${{ needs.meta.outputs.version }}.js.sha256"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --notes "SDK release $TAG"
+          gh release upload "$TAG" \
+            "lukuid-sdk.global-${{ needs.meta.outputs.version }}.js" \
+            "lukuid-sdk.global-${{ needs.meta.outputs.version }}.js.sha256" \
+            --clobber

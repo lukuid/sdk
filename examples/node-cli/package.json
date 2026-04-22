@@ -1,0 +1,16 @@
+{
+  "name": "@lukuid/examples-node-cli",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "lukuid-cli": "./cli.js"
+  },
+  "scripts": {
+    "start": "node ./cli.js"
+  },
+  "dependencies": {
+    "@lukuid/sdk": "workspace:*"
+  }
+}

@@ -1,0 +1,80 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.code-workspace
+
+# Environment files
+.env
+.env.*
+!.env.example
+local.properties
+
+# General build artifacts
+dist/
+dist-cdn/
+build/
+out/
+target/
+bin/
+obj/
+artifacts/
+
+# Dependencies
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+Package.resolved
+.swiftpm/
+.gradle/
+vendor/
+.venv/
+venv/
+__pycache__/
+*.egg-info/
+
+# Language specific
+*.tsbuildinfo
+*.py[cod]
+*.bin
+*.elf
+*.map
+*.hex
+*.apk
+*.aab
+*.aar
+*.iml
+*.dSYM/
+DerivedData/
+Pods/
+
+# Test/Coverage
+coverage/
+*.lcov
+*.profraw
+*.profdata
+test-results/
+playwright-report/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+logs/
+*.log
+tmp_attestation_*.der
+
+# Swift Package Manager
+.build/
+.swiftpm/
+**/.build/
+**/.swiftpm/
+**/DerivedData/

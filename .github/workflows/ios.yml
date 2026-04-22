@@ -1,0 +1,118 @@
+name: SDK iOS
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "v*.*.*"
+    paths:
+      - "VERSION"
+      - "LukuIDSDK.podspec"
+      - "src/ios/**"
+      - "src/ios-spm-wrapper/**"
+      - "scripts/version_sync.py"
+      - ".github/workflows/ios.yml"
+  pull_request:
+    paths:
+      - "VERSION"
+      - "LukuIDSDK.podspec"
+      - "src/ios/**"
+      - "src/ios-spm-wrapper/**"
+      - "scripts/version_sync.py"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: sdk-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  meta:
+    runs-on: macos-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      publish: ${{ steps.meta.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: meta
+        shell: bash
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            TAG_VERSION="${GITHUB_REF_NAME#v}"
+            [[ "$TAG_VERSION" == "$VERSION" ]]
+            git fetch origin main --depth=1
+            git branch -r --contains "$GITHUB_SHA" | grep -q "origin/main"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+      - run: python3 scripts/version_sync.py check
+
+  test:
+    runs-on: macos-latest
+    needs: meta
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/version_sync.py check
+      - run: swift test --package-path src/ios/LukuIDSDK
+
+  build:
+    runs-on: macos-latest
+    needs: [meta, test]
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/version_sync.py check
+      - run: /usr/bin/swift build --configuration release --package-path src/ios/LukuIDSDK
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdk-ios-dist
+          path: src/ios/LukuIDSDK/.build/**
+
+  publish:
+    runs-on: macos-latest
+    needs: [meta, build]
+    if: github.event_name != 'pull_request' && needs.meta.outputs.publish == 'true'
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: python3 scripts/version_sync.py check
+      - run: /usr/bin/swift build --configuration release --package-path src/ios/LukuIDSDK
+      - name: Install CocoaPods
+        if: github.event.repository.private == false
+        shell: bash
+        run: |
+          set -euo pipefail
+          pod --version >/dev/null 2>&1 || gem install cocoapods
+      - name: Lint CocoaPods Spec
+        if: github.event.repository.private == false
+        run: pod spec lint LukuIDSDK.podspec --allow-warnings
+      - name: Publish CocoaPods Spec
+        if: github.event.repository.private == false
+        env:
+          COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
+        run: pod trunk push LukuIDSDK.podspec --allow-warnings
+      - name: Package SwiftPM Source Bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ios-artifacts
+          ditto -c -k --sequesterRsrc --keepParent src/ios/LukuIDSDK "ios-artifacts/LukuIDSDK-source-${{ needs.meta.outputs.version }}.zip"
+          shasum -a 256 "ios-artifacts/LukuIDSDK-source-${{ needs.meta.outputs.version }}.zip" > "ios-artifacts/LukuIDSDK-source-${{ needs.meta.outputs.version }}.zip.sha256"
+          cp LukuIDSDK.podspec "ios-artifacts/LukuIDSDK.podspec"
+      - name: Upload Release Assets
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="v${{ needs.meta.outputs.version }}"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --notes "SDK release $TAG"
+          gh release upload "$TAG" ios-artifacts/* --clobber

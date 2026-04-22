@@ -1,0 +1,48 @@
+{
+  "name": "@lukuid/core",
+  "version": "0.1.0",
+  "description": "Shared primitives for the Lukuid JS SDK.",
+  "private": false,
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "proto:gen": "node ../../../scripts/generate_js_proto.mjs",
+    "build": "node ../../../scripts/generate_js_proto.mjs && tsup src/index.ts --format esm,cjs --dts --sourcemap --outDir dist",
+    "lint": "tsc --noEmit",
+    "test": "node --import tsx --test test/*.test.ts"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "devDependencies": {
+    "protobufjs": "^7.3.0",
+    "protobufjs-cli": "^1.1.3",
+    "tsup": "^8.5.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lukuid/sdk.git"
+  },
+  "homepage": "https://github.com/lukuid/sdk",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2",
+    "node-forge": "^1.3.1"
+  }
+}

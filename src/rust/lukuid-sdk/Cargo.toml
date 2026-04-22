@@ -1,0 +1,42 @@
+[package]
+name = "lukuid-sdk"
+version = "0.1.0"
+edition = "2021"
+description = "LukuID SDK for Rust"
+license = "Apache-2.0"
+repository = "https://github.com/lukuid/sdk"
+homepage = "https://github.com/lukuid/sdk"
+readme = "README.md"
+
+[features]
+default = ["transport-ble", "transport-serial"]
+transport-ble = ["dep:btleplug"]
+transport-serial = ["dep:serialport"]
+
+[dependencies]
+tokio = { version = "1.36", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+uuid = { version = "1.7", features = ["v4", "serde"] }
+base64 = "0.22"
+ed25519-dalek = { version = "2.1", features = ["std"] }
+x509-parser = "0.16"
+ring = "0.17"
+log = "0.4"
+async-trait = "0.1"
+bytes = "1.5"
+btleplug = { version = "0.11", optional = true }
+serialport = { version = "4.2", optional = true }
+futures = "0.3"
+zip = "8.1.0"
+reqwest = { version = "0.12", features = ["json"] }
+sha2 = "0.10"
+
+[dev-dependencies]
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }
+rand = { version = "0.10.1", features = ["std_rng"] }
+serde_json = "1.0"
+tokio-test = "0.4"
+
+

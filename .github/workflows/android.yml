@@ -1,0 +1,139 @@
+name: SDK Android
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "v*.*.*"
+    paths:
+      - "VERSION"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - "gradle/**"
+      - "lukuid.proto"
+      - "src/android/**"
+      - "scripts/version_sync.py"
+      - ".github/workflows/android.yml"
+  pull_request:
+    paths:
+      - "VERSION"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - "gradle/**"
+      - "lukuid.proto"
+      - "src/android/**"
+      - "scripts/version_sync.py"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: sdk-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      publish: ${{ steps.meta.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: meta
+        shell: bash
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            TAG_VERSION="${GITHUB_REF_NAME#v}"
+            [[ "$TAG_VERSION" == "$VERSION" ]]
+            git fetch origin main --depth=1
+            git branch -r --contains "$GITHUB_SHA" | grep -q "origin/main"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+      - run: python3 scripts/version_sync.py check
+
+  test:
+    runs-on: ubuntu-latest
+    needs: meta
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - run: python3 scripts/version_sync.py check
+      - run: chmod +x gradlew
+      - run: ./gradlew :src:android:lukuid-sdk:testDebugUnitTest -PVERSION_NAME=${{ needs.meta.outputs.version }}
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [meta, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - run: python3 scripts/version_sync.py check
+      - run: chmod +x gradlew
+      - run: ./gradlew :src:android:lukuid-sdk:assembleRelease -PVERSION_NAME=${{ needs.meta.outputs.version }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdk-android-dist
+          path: src/android/lukuid-sdk/build/outputs/aar/*.aar
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [meta, build]
+    if: github.event_name != 'pull_request' && needs.meta.outputs.publish == 'true'
+    environment: release
+    permissions:
+      contents: write
+      packages: write
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+      MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+      SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+      SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - run: python3 scripts/version_sync.py check
+      - run: chmod +x gradlew
+      - run: ./gradlew :src:android:lukuid-sdk:publishReleasePublicationToGitHubPackagesRepository -PVERSION_NAME=${{ needs.meta.outputs.version }}
+      - name: Publish To Sonatype Central Staging API
+        if: vars.MAVEN_CENTRAL_NAMESPACE != ''
+        run: ./gradlew :src:android:lukuid-sdk:publishReleasePublicationToSonatypeCentralRepository -PVERSION_NAME=${{ needs.meta.outputs.version }}
+      - name: Transfer Staged Deployment To Maven Central
+        if: vars.MAVEN_CENTRAL_NAMESPACE != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH_HEADER="$(printf '%s:%s' "$MAVEN_CENTRAL_USERNAME" "$MAVEN_CENTRAL_PASSWORD" | base64 | tr -d '\n')"
+          curl --fail-with-body --request POST \
+            --header "Authorization: Bearer ${AUTH_HEADER}" \
+            "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/${{ vars.MAVEN_CENTRAL_NAMESPACE }}?publishing_type=automatic"
+      - name: Upload Release Assets
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="v${{ needs.meta.outputs.version }}"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --notes "SDK release $TAG"
+          gh release upload "$TAG" src/android/lukuid-sdk/build/outputs/aar/*.aar --clobber

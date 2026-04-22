@@ -1,0 +1,37 @@
+// swift-tools-version: 5.9
+import PackageDescription
+
+// Template constants that will be replaced by the CI bundle job before publishing.
+let version = "__VERSION__"
+let year = "__YEAR__"
+let month = "__MONTH__"
+
+/// Update `packageName` and `binaryTargetName` when creating the public wrapper repo.
+let packageName = "LukuIDSDKWrapper"
+let binaryTargetName = "LukuIDSDK"
+
+let package = Package(
+    name: packageName,
+    platforms: [
+        .iOS(.v15)
+    ],
+    products: [
+        .library(
+            name: packageName,
+            targets: [binaryTargetName]
+        )
+    ],
+    targets: [
+        .binaryTarget(
+            name: binaryTargetName,
+            url: "https://cdn.lukuid.com/sdk/\(year)/\(month)/ios/LukuIDSDK-\(version).zip",
+            checksum: "__ZIP_CHECKSUM__"
+        )
+        /// Convenience latest build (discouraged for production pinning)
+        // .binaryTarget(
+        //     name: "LukuIDSDKLatest",
+        //     url: "https://cdn.lukuid.com/sdk/latest/ios/LukuIDSDK-latest.zip",
+        //     checksum: "__LATEST_ZIP_CHECKSUM__"
+        // )
+    ]
+)

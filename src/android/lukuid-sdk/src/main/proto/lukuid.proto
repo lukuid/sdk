@@ -1,0 +1,503 @@
+syntax = "proto3";
+
+package lukuid;
+
+option java_package = "com.lukuid.sdk.proto";
+option java_outer_classname = "LukuIDProto";
+option swift_prefix = "LukuID";
+
+enum Status {
+  STATUS_UNKNOWN = 0;
+  STATUS_OK = 1;
+  STATUS_ERROR = 2;
+  STATUS_READY = 3;
+}
+
+enum FetchWindow {
+  FETCH_WINDOW_NONE = 0;
+  FETCH_WINDOW_HOURLY = 1;
+  FETCH_WINDOW_DAILY = 2;
+  FETCH_WINDOW_WEEKLY = 3;
+  FETCH_WINDOW_MONTHLY = 4;
+}
+
+message MetricStats {
+  float avg = 1;
+  float min = 2;
+  float max = 3;
+  float variance = 4;
+  uint32 count = 5;
+}
+
+message MetricValue {
+  oneof kind {
+    float value = 1;
+    MetricStats stats = 2;
+  }
+}
+
+message FetchRequest {
+  string query = 1;
+  uint32 offset = 2;
+  uint32 limit = 3;
+  bool fetch_full = 4;
+  int64 starts = 5;
+  int64 ends = 6;
+  FetchWindow window = 7;
+}
+
+message GetRecordRequest {
+  string record_id = 1;
+}
+
+message AttestRequest {
+  string parent_record_id = 1;
+  bytes signature = 2;
+  string checksum = 3;
+  reserved 4;
+  string mime = 5;
+  string type = 6;
+  string title = 7;
+  double lat = 8;
+  double lng = 9;
+  string content = 10;
+  string merkle_root = 11;
+  string custody_id = 12;
+  string event = 13;
+  string status = 14;
+  string context_ref = 15;
+}
+
+message ConfigRequest {
+  optional string name = 1;
+  optional string wifi_ssid = 2;
+  optional string wifi_password = 3;
+  optional string mqtt_broker_url = 4;
+  optional uint32 mqtt_port = 5;
+  optional string mqtt_topic = 6;
+  optional uint32 mqtt_broadcast_frequency_seconds = 7;
+  optional string mqtt_username = 8;
+  optional string mqtt_password = 9;
+  optional bytes mqtt_certificate_der = 10;
+  optional bytes mqtt_ca_der = 11;
+  optional bool mqtt_broadcast_enabled = 12;
+  optional string custom_heartbeat_url = 13;
+  optional bool telemetry_enabled = 14;
+}
+
+message OtaBeginRequest {
+  uint32 size = 1;
+  bytes public_key = 2;
+  bool binary_mode = 3;
+}
+
+message OtaDataRequest {
+  bytes data = 1;
+  uint32 offset = 2;
+}
+
+message OtaEndRequest {
+  bytes signature = 1;
+}
+
+message SetAttestationRequest {
+  bytes dac_der = 1;
+  bytes manufacturer_der = 2;
+  bytes signature = 3;
+  uint64 counter = 4;
+  string nonce = 5;
+  bytes intermediate_der = 6;
+}
+
+message SetHeartbeatRequest {
+  bytes slac_der = 1;
+  bytes heartbeat_der = 2;
+  bytes signature = 3;
+  int64 timestamp = 4;
+  bytes intermediate_der = 5;
+}
+
+message ScanEnableRequest {
+  bool enabled = 1;
+}
+
+message GenerateHeartbeatRequest {}
+
+message FetchTelemetryRequest {}
+
+message TelemetryValue {
+  oneof kind {
+    float fval = 1;
+    string sval = 2;
+    int64 ival = 3;
+    bool bval = 4;
+  }
+}
+
+message TelemetryRow {
+  repeated TelemetryValue values = 1;
+}
+
+message FetchTelemetryResponse {
+  repeated TelemetryRow rows = 1;
+}
+
+message CommandRequest {
+  string action = 1;
+  oneof payload {
+    FetchRequest fetch = 2;
+    GetRecordRequest get = 3;
+    AttestRequest attest = 4;
+    ConfigRequest config = 5;
+    OtaBeginRequest ota_begin = 6;
+    OtaDataRequest ota_data = 7;
+    OtaEndRequest ota_data_v2 = 8; // Restoring original if 8 was used differently, but let's stick to sequence
+    SetAttestationRequest set_attestation = 9;
+    SetHeartbeatRequest set_heartbeat = 10;
+    ScanEnableRequest scan_enable = 12;
+    GenerateHeartbeatRequest generate_heartbeat = 13;
+    FetchTelemetryRequest fetch_telemetry = 14;
+  }
+}
+
+message DeviceInfoResponse {
+  string handshake = 1;
+  int64 uptime_ms = 2;
+  bytes token = 3;
+
+  float battery = 4;
+  float voltage = 5;
+  bool vbus = 6;
+  double counter = 7;
+  bool sync_required = 8;
+  string name = 9;
+
+  string id = 10;
+  string product = 11;
+  string model = 12;
+  string firmware = 13;
+  string revision = 14;
+  bool pairing = 15;
+  string custom_heartbeat_url = 16;
+  bool telemetry = 17;
+  string managed_by = 18;
+  bytes attestation_dac_der = 19;
+  bytes attestation_manufacturer_der = 20;
+  bytes attestation_intermediate_der = 21;
+  string attestation_root_fingerprint = 22;
+  bytes heartbeat_slac_der = 23;
+  bytes heartbeat_der = 24;
+  bytes heartbeat_intermediate_der = 25;
+  string heartbeat_root_fingerprint = 26;
+  bytes signature = 27;
+  bytes key = 28;
+}
+
+message StatusResponse {
+  string id = 1;
+  string name = 2;
+  bytes public_key = 3;
+  float battery_health = 4;
+  int64 timestamp = 5;
+  bool has_attestation = 6;
+  bool has_heartbeat = 7;
+  bool needs_sync = 8;
+  string product = 9;
+  string model = 10;
+}
+
+message NetworkConfigResponse {
+  string wifi_ssid = 1;
+  bool wifi_password_set = 2;
+  string mqtt_broker_url = 3;
+  uint32 mqtt_port = 4;
+  string mqtt_topic = 5;
+  uint32 mqtt_broadcast_frequency_seconds = 6;
+  string mqtt_username = 7;
+  bool mqtt_password_set = 8;
+  bool mqtt_broadcast_enabled = 9;
+  bytes csr = 10;
+  bytes mqtt_certificate_der = 11;
+  bytes mqtt_ca_der = 12;
+}
+
+message RecordMeta {
+  int64 timestamp_utc = 1;
+  uint32 device_id = 2;
+  string record_id = 3;
+}
+
+message ScanRecordMin {
+  string version = 1;
+  string record_id = 2;
+  int64 timestamp_utc = 3;
+  string tag_id = 4;
+  uint32 score_bio = 5;
+  uint32 score_auth = 6;
+  uint32 score_env = 7;
+}
+
+message EnvironmentRecordMin {
+  string version = 1;
+  string record_id = 2;
+  int64 timestamp_utc = 3;
+  MetricValue lux = 4;
+  MetricValue temp_c = 5;
+  MetricValue humidity_pct = 6;
+  MetricValue voc_index = 7;
+  bool tamper = 8;
+  bool wake_event = 9;
+  bool vbus_present = 10;
+}
+
+message DataEntry {
+  oneof min_record {
+    ScanRecordMin scan_min = 1;
+    EnvironmentRecordMin environment_min = 2;
+  }
+}
+
+message FetchResponse {
+  repeated DataEntry data = 1;
+}
+
+message ScanPayload {
+  uint64 ctr = 1;
+  string id = 2;
+  int64 timestamp_utc = 3;
+  int64 uptime_us = 4;
+  float temperature_c = 5;
+  string nonce = 6;
+  string firmware = 7;
+  string genesis_hash = 31;
+
+  float tmp = 8;
+  uint32 hum = 9;
+  int32 rssi = 10;
+  uint32 jit = 11;
+  uint32 lat = 12;
+  uint32 dur = 13;
+  uint32 v_sag = 14;
+  uint32 v_avg = 15;
+  uint32 p_cnt = 16;
+
+  uint32 avg_dur = 17;
+  uint32 sc_sync = 18;
+  uint32 up_time_m = 19;
+  uint32 v_drop = 20;
+  float rssi_std = 21;
+
+  uint32 vbus = 22;
+  uint32 clk_var = 23;
+  int32 drift = 24;
+  string hdx_histo_csv = 25;
+
+  uint32 score_bio = 26;
+  uint32 score_auth = 27;
+  uint32 score_env = 28;
+
+  string metrics_keys = 29;
+  string scan_version = 30;
+}
+
+message DeviceInfo {
+  string device_id = 1;
+  bytes public_key = 2;
+}
+
+message ManufacturerInfo {
+  bytes signature = 1;
+  bytes public_key = 2;
+}
+
+message Identity {
+  uint64 identity_version = 1;
+  string dac_serial = 2;
+  string slac_serial = 3;
+  int64 last_sync_utc = 4;
+  bytes signature = 5;
+  bytes dac_der = 6;
+  bytes slac_der = 7;
+
+  bytes attestation_manufacturer_der = 8;
+  bytes attestation_intermediate_der = 9;
+  string attestation_root_fingerprint = 10;
+  bytes heartbeat_der = 11;
+  bytes heartbeat_intermediate_der = 12;
+  string heartbeat_root_fingerprint = 13;
+  string alg = 14;
+}
+
+message Attachment {
+  bytes signature = 1;
+  string checksum = 2;
+  int64 timestamp_utc = 3;
+  string mime = 4;
+  ExternalIdentity external_identity = 5;
+
+  string type = 6;
+  string title = 7;
+  
+  double lat = 8;
+  double lng = 9;
+  reserved 10;
+  string content = 11;
+  string merkle_root = 12;
+  string alg = 13;
+}
+
+message ExternalIdentity {
+  string endorser_id = 1;
+  string root_fingerprint = 2;
+  repeated bytes cert_chain_der = 3;
+  bytes signature = 4;
+}
+
+message AttachmentRecord {
+  string version = 1;
+  string attachment_id = 2;
+  string parent_record_id = 3;
+  bytes signature = 4;
+  bytes parent_signature = 5;
+  
+  string checksum = 6;
+  int64 timestamp_utc = 7;
+  string mime = 8;
+  
+  string type = 9;
+  string title = 10;
+  
+  double lat = 11;
+  double lng = 12;
+  reserved 13;
+  string content = 14;
+  string merkle_root = 15;
+  string alg = 16;
+  
+  ExternalIdentity external_identity = 17;
+  string custody_id = 18;
+  string event = 19;
+  string canonical_string = 20;
+  string status = 21;
+  string context_ref = 22;
+}
+
+message ScanRecord {
+  string version = 1;
+  string scan_id = 2;
+  bytes signature = 3;
+  bytes previous_signature = 4;
+  string canonical_string = 5;
+
+  ScanPayload payload = 6;
+  DeviceInfo device = 7;
+  ManufacturerInfo manufacturer = 8;
+  repeated Attachment attachments = 9;
+  Identity identity = 10;
+  string alg = 11;
+}
+
+message EnvironmentPayload {
+  uint64 ctr = 1;
+  int64 timestamp_utc = 2;
+  int64 uptime_us = 3;
+  string nonce = 4;
+  string firmware = 5;
+
+  float lux = 6;
+  float temp_c = 7;
+  float humidity_pct = 8;
+  float pressure_hpa = 9;
+  uint32 voc_index = 10;
+
+  message Accel {
+    float x = 1;
+    float y = 2;
+    float z = 3;
+  }
+  Accel accel_g = 11;
+  bool tamper = 12;
+  bool wake_event = 13;
+  bool vbus_present = 14;
+  string genesis_hash = 15;
+}
+
+message EnvironmentRecord {
+  string version = 1;
+  string event_id = 2;
+  bytes signature = 3;
+  bytes previous_signature = 4;
+  string canonical_string = 5;
+
+  EnvironmentPayload payload = 6;
+  DeviceInfo device = 7;
+  repeated Attachment attachments = 8;
+  Identity identity = 9;
+  string alg = 10;
+}
+
+message RecordBatch {
+  bytes attestation_dac_der = 1;
+  bytes attestation_manufacturer_der = 2;
+  bytes attestation_intermediate_der = 3;
+  bytes heartbeat_slac_der = 4;
+  bytes heartbeat_der = 5;
+  bytes heartbeat_intermediate_der = 6;
+  DeviceInfo device = 7;
+  repeated EnvironmentRecord environment_records = 8;
+  repeated ScanRecord scan_records = 9;
+  repeated AttachmentRecord attachment_records = 13;
+
+  string attestation_root_fingerprint = 10;
+  string heartbeat_root_fingerprint = 11;
+}
+
+message RecordBatches {
+  repeated RecordBatch batches = 1;
+}
+
+message FullRecordResponse {
+  string record_id = 1;
+
+  oneof full_record {
+    ScanRecord scan_full = 2;
+    EnvironmentRecord environment_full = 3;
+  }
+}
+
+message HeartbeatInitResponse {
+  string signature_b64 = 1;
+  string csr_pem = 2;
+  string attestation_b64 = 3;
+  uint64 counter = 4;
+  int64 last_sync_bucket = 5;
+  int64 latest_timestamp = 6;
+  int64 current_timestamp = 7;
+  string last_intermediate_serial = 8;
+  string last_slac_serial = 9;
+}
+
+message CommandResponse {
+  string action = 1;
+  Status status = 2;
+  bool success = 3;
+  string error_code = 4;
+  string message = 5;
+
+  oneof payload {
+    DeviceInfoResponse device_info = 6;
+    NetworkConfigResponse network_config = 7;
+    ScanRecord scan_record = 8;
+    EnvironmentRecord env_record = 9;
+    FetchResponse fetch_response = 10;
+    FullRecordResponse full_record_response = 11;
+    RecordBatches record_batches = 15;
+    HeartbeatInitResponse heartbeat_init = 14;
+    StatusResponse status_response = 16;
+    FetchTelemetryResponse fetch_telemetry = 17;
+  }
+
+  optional bytes signature = 12;
+  optional bytes key = 13;
+  optional bool has_more = 18;
+}

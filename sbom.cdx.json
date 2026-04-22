@@ -1,0 +1,46 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-03-17T12:00:00Z",
+    "component": {
+      "type": "library",
+      "name": "lukuid-sdk",
+      "version": "0.1.0",
+      "description": "LukuID Multi-platform SDKs"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "protobuf-kotlin-lite",
+      "group": "com.google.protobuf",
+      "version": "3.25.1",
+      "description": "Protocol Buffers for Kotlin (Android)",
+      "licenses": [{ "license": { "id": "BSD-3-Clause" } }]
+    },
+    {
+      "type": "library",
+      "name": "SwiftProtobuf",
+      "group": "apple",
+      "version": "1.25.0",
+      "description": "Swift Protocol Buffers",
+      "licenses": [{ "license": { "id": "Apache-2.0" } }]
+    },
+    {
+      "type": "library",
+      "name": "protobufjs",
+      "version": "7.3.0",
+      "description": "Protocol Buffers for JavaScript",
+      "licenses": [{ "license": { "id": "BSD-3-Clause" } }]
+    },
+    {
+      "type": "library",
+      "name": "lukuid-proto",
+      "version": "1.0.0",
+      "description": "LukuID Protobuf Definitions",
+      "licenses": [{ "license": { "id": "UNLICENSED" } }]
+    }
+  ]
+}

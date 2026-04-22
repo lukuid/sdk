@@ -1,0 +1,48 @@
+{
+  "name": "@lukuid/sdk",
+  "version": "0.1.0",
+  "description": "Lukuid JavaScript SDK facade aggregating all transports.",
+  "private": false,
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --sourcemap --outDir dist",
+    "lint": "pnpm --dir ../core build && pnpm --dir ../transport-webble build && pnpm --dir ../transport-webusb build && pnpm --dir ../transport-ble-node build && pnpm --dir ../transport-serial-node build && tsc --noEmit",
+    "test": "echo 'No tests yet'"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "dependencies": {
+    "@lukuid/core": "workspace:*",
+    "pdf-lib": "^1.17.1"
+  },
+  "optionalDependencies": {
+    "@lukuid/transport-webble": "workspace:*",
+    "@lukuid/transport-webusb": "workspace:*",
+    "@lukuid/transport-serial-node": "workspace:*",
+    "@lukuid/transport-ble-node": "workspace:*"
+  },
+  "sideEffects": false,
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lukuid/sdk.git"
+  },
+  "homepage": "https://github.com/lukuid/sdk",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  }
+}

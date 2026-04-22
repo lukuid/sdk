@@ -1,0 +1,44 @@
+{
+  "name": "@lukuid/transport-serial-node",
+  "version": "0.1.0",
+  "description": "Node.js serial transport for Lukuid devices.",
+  "private": false,
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --sourcemap --outDir dist",
+    "lint": "pnpm --dir ../core build && tsc --noEmit",
+    "test": "echo 'No tests yet'"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "dependencies": {
+    "@lukuid/core": "workspace:*"
+  },
+  "optionalDependencies": {
+    "serialport": "^12.0.0"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lukuid/sdk.git"
+  },
+  "homepage": "https://github.com/lukuid/sdk",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  }
+}
