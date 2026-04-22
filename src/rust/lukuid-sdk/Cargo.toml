@@ -1,6 +1,6 @@
 [package]
 name = "lukuid-sdk"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 description = "LukuID SDK for Rust"
 license = "Apache-2.0"

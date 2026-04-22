@@ -1,6 +1,6 @@
 {
   "name": "@lukuid/transport-webusb",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "WebUSB transport for Lukuid devices.",
   "private": false,
   "type": "module",
@@ -8,7 +8,9 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "sideEffects": false,
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --sourcemap --outDir dist",
     "lint": "pnpm --dir ../core build && tsc --noEmit",

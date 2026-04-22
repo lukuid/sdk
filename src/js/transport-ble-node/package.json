@@ -1,13 +1,15 @@
 {
   "name": "@lukuid/transport-ble-node",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Node.js BLE transport for Lukuid devices.",
   "private": false,
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "sideEffects": false,
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --sourcemap --outDir dist",

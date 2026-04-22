@@ -1,13 +1,15 @@
 {
   "name": "@lukuid/sdk",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Lukuid JavaScript SDK facade aggregating all transports.",
   "private": false,
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --sourcemap --outDir dist",
     "lint": "pnpm --dir ../core build && pnpm --dir ../transport-webble build && pnpm --dir ../transport-webusb build && pnpm --dir ../transport-ble-node build && pnpm --dir ../transport-serial-node build && tsc --noEmit",
