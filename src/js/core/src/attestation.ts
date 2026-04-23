@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import forge, { type pki } from 'node-forge';
+import forge from 'node-forge';
 
 export interface DeviceAttestationInputs {
   id: string;
@@ -173,9 +173,195 @@ function decodeBase64(value: string): Uint8Array | null {
   }
 }
 
-function parsePemChain(chainPem: string): pki.Certificate[] {
+interface ParsedCertificate {
+  subjectOrganizationalUnits: string[];
+  validFrom: number;
+  validTo: number;
+  spkiDer: Uint8Array;
+}
+
+interface DerElement {
+  tag: number;
+  start: number;
+  headerLength: number;
+  contentStart: number;
+  contentEnd: number;
+  end: number;
+}
+
+function readDerElement(bytes: Uint8Array, start: number): DerElement {
+  if (start >= bytes.length) {
+    throw new Error('Unexpected end of DER input');
+  }
+
+  const tag = bytes[start];
+  const lengthOctet = bytes[start + 1];
+  if (lengthOctet === undefined) {
+    throw new Error('Invalid DER length');
+  }
+
+  let length = 0;
+  let lengthBytes = 1;
+  if ((lengthOctet & 0x80) === 0) {
+    length = lengthOctet;
+  } else {
+    const count = lengthOctet & 0x7f;
+    if (count === 0 || count > 4) {
+      throw new Error('Unsupported DER length encoding');
+    }
+    lengthBytes += count;
+    if (start + 1 + count >= bytes.length) {
+      throw new Error('Truncated DER length');
+    }
+    for (let index = 0; index < count; index += 1) {
+      length = (length << 8) | bytes[start + 2 + index];
+    }
+  }
+
+  const headerLength = 1 + lengthBytes;
+  const contentStart = start + headerLength;
+  const contentEnd = contentStart + length;
+  if (contentEnd > bytes.length) {
+    throw new Error('Truncated DER element');
+  }
+
+  return {
+    tag,
+    start,
+    headerLength,
+    contentStart,
+    contentEnd,
+    end: contentEnd
+  };
+}
+
+function decodePemCertificate(pem: string): Uint8Array {
+  const body = pem
+    .replace(/-----BEGIN CERTIFICATE-----/g, '')
+    .replace(/-----END CERTIFICATE-----/g, '')
+    .replace(/\s+/g, '');
+  const der = decodeBase64(body);
+  if (!der) {
+    throw new Error('Invalid certificate PEM');
+  }
+  return der;
+}
+
+function decodeDerOid(bytes: Uint8Array): string {
+  if (bytes.length === 0) {
+    throw new Error('Invalid DER OID');
+  }
+
+  const values: number[] = [];
+  const first = bytes[0];
+  values.push(Math.floor(first / 40));
+  values.push(first % 40);
+
+  let value = 0;
+  for (let index = 1; index < bytes.length; index += 1) {
+    value = (value << 7) | (bytes[index] & 0x7f);
+    if ((bytes[index] & 0x80) === 0) {
+      values.push(value);
+      value = 0;
+    }
+  }
+
+  return values.join('.');
+}
+
+function decodeDerString(bytes: Uint8Array): string {
+  return new TextDecoder().decode(bytes);
+}
+
+function parseDerTime(bytes: Uint8Array, tag: number): number {
+  const value = decodeDerString(bytes);
+  if (tag === 0x17) {
+    const match = /^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})Z$/.exec(value);
+    if (!match) {
+      throw new Error(`Invalid UTCTime: ${value}`);
+    }
+    const year = Number(match[1]);
+    return Date.UTC(year >= 50 ? 1900 + year : 2000 + year, Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6])) / 1000;
+  }
+  if (tag === 0x18) {
+    const match = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})Z$/.exec(value);
+    if (!match) {
+      throw new Error(`Invalid GeneralizedTime: ${value}`);
+    }
+    return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6])) / 1000;
+  }
+  throw new Error(`Unsupported time tag 0x${tag.toString(16)}`);
+}
+
+function parseSubjectOrganizationalUnits(bytes: Uint8Array, nameElement: DerElement): string[] {
+  const organizationalUnits: string[] = [];
+  let cursor = nameElement.contentStart;
+
+  while (cursor < nameElement.contentEnd) {
+    const setElement = readDerElement(bytes, cursor);
+    let setCursor = setElement.contentStart;
+    while (setCursor < setElement.contentEnd) {
+      const attribute = readDerElement(bytes, setCursor);
+      let attrCursor = attribute.contentStart;
+      const oid = readDerElement(bytes, attrCursor);
+      attrCursor = oid.end;
+      const value = readDerElement(bytes, attrCursor);
+      if (decodeDerOid(bytes.slice(oid.contentStart, oid.contentEnd)) === '2.5.4.11') {
+        organizationalUnits.push(decodeDerString(bytes.slice(value.contentStart, value.contentEnd)));
+      }
+      setCursor = attribute.end;
+    }
+    cursor = setElement.end;
+  }
+
+  return organizationalUnits;
+}
+
+function parseDerCertificate(certDer: Uint8Array): ParsedCertificate {
+  const certificate = readDerElement(certDer, 0);
+  if (certificate.tag !== 0x30) {
+    throw new Error('Certificate is not a DER SEQUENCE');
+  }
+
+  const tbsCertificate = readDerElement(certDer, certificate.contentStart);
+  if (tbsCertificate.tag !== 0x30) {
+    throw new Error('TBSCertificate is not a DER SEQUENCE');
+  }
+
+  let cursor = tbsCertificate.contentStart;
+  let elementIndex = 0;
+
+  if (cursor < tbsCertificate.contentEnd) {
+    const maybeVersion = readDerElement(certDer, cursor);
+    if (maybeVersion.tag === 0xa0) {
+      cursor = maybeVersion.end;
+    }
+  }
+
+  while (cursor < tbsCertificate.contentEnd) {
+    const element = readDerElement(certDer, cursor);
+    if (elementIndex === 3) {
+      const notBefore = readDerElement(certDer, element.contentStart);
+      const notAfter = readDerElement(certDer, notBefore.end);
+      const subject = readDerElement(certDer, element.end);
+      const spki = readDerElement(certDer, subject.end);
+      return {
+        subjectOrganizationalUnits: parseSubjectOrganizationalUnits(certDer, subject),
+        validFrom: parseDerTime(certDer.slice(notBefore.contentStart, notBefore.contentEnd), notBefore.tag),
+        validTo: parseDerTime(certDer.slice(notAfter.contentStart, notAfter.contentEnd), notAfter.tag),
+        spkiDer: certDer.slice(spki.start, spki.end)
+      };
+    }
+    cursor = element.end;
+    elementIndex += 1;
+  }
+
+  throw new Error('Certificate metadata missing');
+}
+
+function parsePemChain(chainPem: string): ParsedCertificate[] {
   const matches = chainPem.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [];
-  return matches.map((pem) => forge.pki.certificateFromPem(pem));
+  return matches.map((pem) => parseDerCertificate(decodePemCertificate(pem)));
 }
 
 interface NodeLikeX509Certificate {
@@ -226,7 +412,6 @@ export async function verifyDeviceAttestation(inputs: DeviceAttestationInputs): 
   const payloadString = `${inputs.id}:${inputs.key}`;
   
   // 1. Walk and Verify the Chain (if provided)
-  let leafPublicKey: pki.PublicKey | null = null;
   let leafSpki: Uint8Array | null = null;
 
   if (inputs.certificateChain) {
@@ -289,18 +474,9 @@ export async function verifyDeviceAttestation(inputs: DeviceAttestationInputs): 
           return { ok: false, reason: 'Invalid certificate chain PEM' };
         }
 
-        leafPublicKey = certs[0].publicKey;
+        leafSpki = certs[0].spkiDer;
 
-        const hasValidProfile = certs.slice(1).some((cert) => {
-          const subject = cert as unknown as {
-            subject?: {
-              attributes?: Array<{ shortName?: string; value?: string }>;
-            };
-          };
-          return (subject.subject?.attributes ?? []).some(
-            (attribute) => attribute.shortName === 'OU' && attribute.value === requiredOu
-          );
-        });
+        const hasValidProfile = certs.slice(1).some((cert) => cert.subjectOrganizationalUnits.includes(requiredOu));
 
         if (!hasValidProfile) {
           return {
@@ -312,7 +488,7 @@ export async function verifyDeviceAttestation(inputs: DeviceAttestationInputs): 
         let verified = false;
         for (const rootPem of TRUSTED_ROOT_CERTS_PEM) {
           try {
-            forge.pki.certificateFromPem(rootPem);
+            decodePemCertificate(rootPem);
             verified = true;
             break;
           } catch {
@@ -326,8 +502,8 @@ export async function verifyDeviceAttestation(inputs: DeviceAttestationInputs): 
 
         if (inputs.created) {
           for (const cert of certs) {
-            const validFrom = cert.validity.notBefore.getTime() / 1000;
-            const validTo = cert.validity.notAfter.getTime() / 1000;
+            const validFrom = cert.validFrom;
+            const validTo = cert.validTo;
 
             if (inputs.created < validFrom || inputs.created > validTo) {
               return { ok: false, reason: `Temporal birth check failed: created (${inputs.created}) is outside cert window [${validFrom} - ${validTo}]` };
@@ -351,41 +527,6 @@ export async function verifyDeviceAttestation(inputs: DeviceAttestationInputs): 
       return verified
         ? { ok: true }
         : { ok: false, reason: 'Signature verification failed against leaf' };
-    } catch (error) {
-      return { ok: false, reason: `Leaf verification error: ${error instanceof Error ? error.message : String(error)}` };
-    }
-  } else if (leafPublicKey) {
-    try {
-      // payloadString = `${inputs.id}:${inputs.key}`
-      const signature = decodeBase64(inputs.attestationSig);
-      if (!signature) return { ok: false, reason: 'Invalid signature base64' };
-
-      const payload = toArrayBuffer(textEncoder.encode(payloadString));
-      const spki = toArrayBuffer(binaryStringToBytes(
-        forge.asn1.toDer(forge.pki.publicKeyToAsn1(leafPublicKey)).getBytes()
-      ));
-      const subtle = getSubtleCrypto();
-
-      // We determine algorithm from the forge public key
-      const isEd25519 = leafPublicKey.type === 'ed25519';
-      
-      const importedKey = await subtle.importKey(
-        'spki',
-        spki,
-        isEd25519 ? { name: 'Ed25519' } : { name: 'ECDSA', namedCurve: 'P-256' },
-        false,
-        ['verify']
-      );
-
-      const verified = await subtle.verify(
-        isEd25519 ? { name: 'Ed25519' } : { name: 'ECDSA', hash: 'SHA-256' },
-        importedKey,
-        toArrayBuffer(signature),
-        payload
-      );
-
-      if (verified) return { ok: true };
-      return { ok: false, reason: 'Signature verification failed against leaf' };
     } catch (error) {
       return { ok: false, reason: `Leaf verification error: ${error instanceof Error ? error.message : String(error)}` };
     }
