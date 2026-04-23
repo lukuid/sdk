@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use ed25519_dalek::{Signer, SigningKey};
-use lukuid_sdk::luku::{Criticality, LukuDeviceIdentity, LukuFile, LukuVerifyOptions};
+use lukuid_sdk::luku::{Criticality, LukuDeviceIdentity, LukuFile, LukuVerifyOptions, LukuExportOptions};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -28,6 +28,8 @@ fn test_options() -> LukuVerifyOptions {
         skip_certificate_temporal_checks: true,
         trusted_external_fingerprints: Vec::new(),
         trust_profile: "dev".to_string(), // tests probably use dev/test certs
+        policy: None,
+        require_continuity: false,
     }
 }
 
@@ -100,7 +102,7 @@ fn create_valid_export(temp_dir: &std::path::Path, device_id: &str) -> (LukuFile
     ];
 
     let luku_path = temp_dir.join(format!("{}.luku", device_id));
-    LukuFile::export_with_identity(records, &luku_path, identity, HashMap::new(), &signing_key)
+    LukuFile::export_with_identity(records, &luku_path, identity, HashMap::new(), &signing_key, LukuExportOptions::default())
         .unwrap();
 
     let luku = LukuFile::open(&luku_path).unwrap();
@@ -129,6 +131,90 @@ fn test_luku_verify_valid_file() {
         "Expected no critical issues, found: {:?}",
         critical_record_issues
     );
+}
+
+#[test]
+fn test_luku_manifest_preserves_temporal_continuity_metadata() {
+    let temp_dir = std::env::temp_dir().join("lukuid_tests_manifest_extra");
+    fs::create_dir_all(&temp_dir).unwrap();
+    let (signing_key, pub_b64) = generate_test_keypair();
+    let device = LukuDeviceIdentity {
+        device_id: "LUK-META".to_string(),
+        public_key: pub_b64,
+    };
+    let canonical = "manifest-extra-scan";
+    let signature = BASE64.encode(signing_key.sign(canonical.as_bytes()).to_bytes());
+
+    let block = LukuFile::build_block_from_records(
+        0,
+        1000,
+        None,
+        &device,
+        vec![json!({
+            "type": "scan",
+            "signature": signature,
+            "previous_signature": "genesis_fake",
+            "canonical_string": canonical,
+            "payload": {
+                "ctr": 1,
+                "timestamp_utc": 1000,
+                "genesis_hash": "genesis_fake"
+            }
+        })],
+        None,
+    );
+
+    let mut manifest_extra = HashMap::new();
+    manifest_extra.insert(
+        "lukuid_block_reasons".to_string(),
+        json!([{
+            "block_id": 0,
+            "code": "archive_start",
+            "label": "Block start",
+            "detail_code": serde_json::Value::Null,
+            "detail_label": serde_json::Value::Null
+        }]),
+    );
+
+    let path = temp_dir.join("manifest-extra.luku");
+    LukuFile::export_blocks_with_manifest(
+        &path,
+        vec![block],
+        HashMap::new(),
+        "Manifest extra parity".to_string(),
+        manifest_extra,
+        &signing_key,
+        LukuExportOptions {
+            policy: Some(lukuid_sdk::luku::LukuPolicy {
+                name: "test_policy".to_string(),
+                native_continuity_gap_seconds: Some(600),
+            }),
+        }
+    )
+    .unwrap();
+
+    let reopened = LukuFile::open(&path).unwrap();
+    assert_eq!(
+        reopened.manifest.native_continuity_gap_seconds,
+        Some(600)
+    );
+    let reasons = reopened
+        .manifest
+        .extra
+        .get("lukuid_block_reasons")
+        .and_then(|value| value.as_array())
+        .expect("lukuid_block_reasons should be preserved");
+    assert_eq!(reasons.len(), 1);
+    assert_eq!(
+        reasons[0].get("code").and_then(|value| value.as_str()),
+        Some("archive_start")
+    );
+    assert_eq!(
+        reasons[0].get("label").and_then(|value| value.as_str()),
+        Some("Block start")
+    );
+
+    let _ = fs::remove_file(path);
 }
 
 // ------------------------------------------------------------------
@@ -355,6 +441,7 @@ fn test_luku_verify_attested_attachment_does_not_advance_device_chain() {
         "Attested attachment export".to_string(),
         HashMap::new(),
         &signing_key,
+        LukuExportOptions::default(),
     )
     .unwrap();
 
@@ -452,6 +539,7 @@ fn test_luku_verify_attested_custody_does_not_advance_device_chain() {
         "Attested custody export".to_string(),
         HashMap::new(),
         &signing_key,
+        LukuExportOptions::default(),
     )
     .unwrap();
 
@@ -572,6 +660,8 @@ fn test_fixtures_valid_files() {
                     skip_certificate_temporal_checks: false,
                     trusted_external_fingerprints: Vec::new(),
                     trust_profile: "dev".to_string(),
+                    policy: None,
+                    require_continuity: false,
                 });
 
                 let criticals: Vec<_> = issues

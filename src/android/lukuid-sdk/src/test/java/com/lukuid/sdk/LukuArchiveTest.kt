@@ -129,6 +129,61 @@ class LukuArchiveTest {
     }
 
     @Test
+    fun preservesTemporalContinuityManifestMetadata() {
+        val signer = createTestSigner()
+        val identity = LukuDeviceIdentity("LUK-META", signer.publicKeyBase64)
+        val canonical = "manifest-extra-scan"
+
+        val block = LukuArchive.buildBlockFromRecords(
+            blockId = 0,
+            timestampUtc = 1000,
+            previousBlockHash = null,
+            defaultDevice = identity,
+            batch = listOf(
+                JSONObject()
+                    .put("type", "scan")
+                    .put("signature", signCanonical(signer.privateKey, canonical))
+                    .put("previous_signature", "genesis_fake")
+                    .put("canonical_string", canonical)
+                    .put(
+                        "payload",
+                        JSONObject()
+                            .put("ctr", 1)
+                            .put("timestamp_utc", 1000)
+                            .put("genesis_hash", "genesis_fake")
+                    )
+            ),
+            commonCerts = null
+        )
+
+        val exported = LukuArchive.exportBlocksWithManifest(
+            blocks = listOf(block),
+            attachments = emptyMap(),
+            description = "Manifest extra parity",
+            manifestExtra = linkedMapOf(
+                "native_continuity_gap_seconds" to 600,
+                "lukuid_block_reasons" to org.json.JSONArray().put(
+                    JSONObject()
+                        .put("block_id", 0)
+                        .put("code", "archive_start")
+                        .put("label", "Block start")
+                        .put("detail_code", JSONObject.NULL)
+                        .put("detail_label", JSONObject.NULL)
+                )
+            ),
+            signer = LukuSigner(signer.privateKey, signer.publicKeyBase64)
+        )
+
+        val reopened = LukuArchive.open(exported.saveToBytes())
+        assertEquals(600L, reopened.manifest.nativeContinuityGapSeconds)
+        val reasons = reopened.manifest.extra["lukuid_block_reasons"] as? org.json.JSONArray
+        assertEquals(1, reasons?.length())
+        val reason = reasons?.getJSONObject(0)
+        assertEquals("archive_start", reason?.optString("code"))
+        assertEquals("Block start", reason?.optString("label"))
+    }
+
+    @Test
     fun buildsBlockFallbackCertFields() {
         val block = LukuArchive.buildBlockFromRecords(
             blockId = 0,

@@ -29,6 +29,7 @@ public struct LukuManifest {
     public var createdAtUTC: UInt64
     public let description: String
     public var blocksHash: String
+    public var nativeContinuityGapSeconds: UInt64?
     public var extra: [String: Any]
 
     public init(type: String,
@@ -36,12 +37,14 @@ public struct LukuManifest {
                 createdAtUTC: UInt64,
                 description: String,
                 blocksHash: String,
+                nativeContinuityGapSeconds: UInt64? = nil,
                 extra: [String: Any] = [:]) {
         self.type = type
         self.version = version
         self.createdAtUTC = createdAtUTC
         self.description = description
         self.blocksHash = blocksHash
+        self.nativeContinuityGapSeconds = nativeContinuityGapSeconds
         self.extra = extra
     }
 
@@ -52,12 +55,14 @@ public struct LukuManifest {
         extra.removeValue(forKey: "created_at_utc")
         extra.removeValue(forKey: "description")
         extra.removeValue(forKey: "blocks_hash")
+        extra.removeValue(forKey: "native_continuity_gap_seconds")
         self.init(
             type: json["type"] as? String ?? "",
             version: json["version"] as? String ?? "",
-            createdAtUTC: json["created_at_utc"] as? UInt64 ?? json["created_at_utc"] as? NSNumber as? UInt64 ?? 0,
+            createdAtUTC: uint64(json["created_at_utc"]) ?? 0,
             description: json["description"] as? String ?? "",
             blocksHash: json["blocks_hash"] as? String ?? "",
+            nativeContinuityGapSeconds: uint64(json["native_continuity_gap_seconds"]),
             extra: extra
         )
     }
@@ -69,6 +74,9 @@ public struct LukuManifest {
         json["created_at_utc"] = createdAtUTC
         json["description"] = description
         json["blocks_hash"] = blocksHash
+        if let nativeContinuityGapSeconds {
+            json["native_continuity_gap_seconds"] = nativeContinuityGapSeconds
+        }
         return json
     }
 }
@@ -212,15 +220,39 @@ public struct LukuVerifyOptions: Sendable {
     public let skipCertificateTemporalChecks: Bool
     public let trustedExternalFingerprints: [String]
     public let trustProfile: String
+    public let policy: LukuPolicy?
+    public let requireContinuity: Bool
 
     public init(allowUntrustedRoots: Bool = false,
                 skipCertificateTemporalChecks: Bool = false,
                 trustedExternalFingerprints: [String] = [],
-                trustProfile: String = ProcessInfo.processInfo.environment["LUKUID_TRUST_PROFILE"] ?? "prod") {
+                trustProfile: String = ProcessInfo.processInfo.environment["LUKUID_TRUST_PROFILE"] ?? "prod",
+                policy: LukuPolicy? = nil,
+                requireContinuity: Bool = false) {
         self.allowUntrustedRoots = allowUntrustedRoots
         self.skipCertificateTemporalChecks = skipCertificateTemporalChecks
         self.trustedExternalFingerprints = trustedExternalFingerprints
         self.trustProfile = trustProfile
+        self.policy = policy
+        self.requireContinuity = requireContinuity
+    }
+}
+
+public struct LukuPolicy: Sendable {
+    public let name: String
+    public let nativeContinuityGapSeconds: UInt64?
+
+    public init(name: String, nativeContinuityGapSeconds: UInt64? = nil) {
+        self.name = name
+        self.nativeContinuityGapSeconds = nativeContinuityGapSeconds
+    }
+}
+
+public struct LukuExportOptions: Sendable {
+    public let policy: LukuPolicy?
+
+    public init(policy: LukuPolicy? = nil) {
+        self.policy = policy
     }
 }
 
@@ -370,7 +402,11 @@ public final class LukuArchive {
 
         var lastCounters: [String: UInt64] = [:]
         var lastTimes: [String: UInt64] = [:]
+        var lastContinuityTimes: [String: [String: UInt64]] = [:]
         var seenDevices = Set<String>()
+
+        let policy = options.policy ?? manifestPolicy(manifest)
+        let continuityTypes = Set(["environment"])
 
         for block in blocks {
             var lastSignatures: [String: String] = [:]
@@ -410,6 +446,20 @@ public final class LukuArchive {
                     }
                     if let lastTime = lastTimes[deviceID], let timestamp, timestamp < lastTime {
                         issues.append(issue("TIME_REGRESSION", "Time travel detected for device \(deviceID) (\(lastTime) -> \(timestamp)).", .critical))
+                    }
+                }
+
+                if options.requireContinuity, continuityTypes.contains(recordType), let threshold = policy?.nativeContinuityGapSeconds {
+                    var deviceContinuity = lastContinuityTimes[deviceID] ?? [:]
+                    if let lastEnvTime = deviceContinuity[recordType], let timestamp {
+                        let gap = timestamp - lastEnvTime
+                        if gap > threshold {
+                            issues.append(issue("CONTINUITY_GAP_EXCEEDED", "Continuity gap of \(gap)s exceeded for device \(deviceID) type \(recordType) (threshold \(threshold)s).", .critical))
+                        }
+                    }
+                    if let timestamp {
+                        deviceContinuity[recordType] = timestamp
+                        lastContinuityTimes[deviceID] = deviceContinuity
                     }
                 }
 
@@ -481,6 +531,37 @@ public final class LukuArchive {
                     let actualHash = sha256Hex(content)
                     if actualHash != checksum {
                         issues.append(issue("ATTACHMENT_CORRUPT", "Attachment with hash \(checksum) is corrupt (actual hash \(actualHash)).", .critical))
+                    }
+                }
+            }
+        }
+
+        if let expectedPolicy = options.policy {
+            let actualPolicy = manifestPolicy(manifest)
+            if actualPolicy == nil {
+                issues.append(issue("POLICY_MISSING", "Archive does not declare the expected continuity policy '\(expectedPolicy.name)'.", .warning))
+            } else {
+                if !expectedPolicy.name.isEmpty, let actualName = actualPolicy?.name, !actualName.isEmpty, actualName != expectedPolicy.name {
+                    issues.append(issue("POLICY_NAME_MISMATCH", "Archive policy name '\(actualName)' does not match expected policy '\(expectedPolicy.name)'.", .warning))
+                }
+                if actualPolicy?.nativeContinuityGapSeconds != expectedPolicy.nativeContinuityGapSeconds {
+                    issues.append(issue("POLICY_THRESHOLD_MISMATCH", "Archive continuity threshold \(actualPolicy?.nativeContinuityGapSeconds ?? 0) does not match expected threshold \(expectedPolicy.nativeContinuityGapSeconds ?? 0).", .warning))
+                }
+            }
+
+            if let threshold = expectedPolicy.nativeContinuityGapSeconds {
+                for (blockIndex, block) in blocks.enumerated() {
+                    var lastNativeTimestamp: UInt64?
+                    for record in block.batch {
+                        let recordType = record["type"] as? String ?? "unknown"
+                        if ["attachment", "location", "custody"].contains(recordType) {
+                            continue
+                        }
+                        guard let timestamp = recordTimestamp(from: record) else { continue }
+                        if let lastNativeTimestamp, timestamp > lastNativeTimestamp, (timestamp - lastNativeTimestamp) > threshold {
+                            issues.append(issue("POLICY_NATIVE_TIME_GAP_UNSPLIT", "Native time gap of \(timestamp - lastNativeTimestamp) seconds exceeds expected policy threshold \(threshold) within block \(blockIndex).", .warning))
+                        }
+                        lastNativeTimestamp = timestamp
                     }
                 }
             }
@@ -591,36 +672,81 @@ public enum LukuFile {
     public static func export(records: [[String: Any]],
                               device: LukuDeviceIdentity,
                               attachments: [String: Data],
-                              signer: LukuSigner) throws -> LukuArchive {
-        try exportWithIdentity(records: records, device: device, attachments: attachments, signer: signer)
+                              signer: LukuSigner,
+                              options: LukuExportOptions = LukuExportOptions()) throws -> LukuArchive {
+        try exportWithIdentity(records: records, device: device, attachments: attachments, signer: signer, options: options)
     }
 
     public static func exportWithIdentity(records: [[String: Any]],
                                           device: LukuDeviceIdentity,
                                           attachments: [String: Data],
-                                          signer: LukuSigner) throws -> LukuArchive {
+                                          signer: LukuSigner,
+                                          options: LukuExportOptions = LukuExportOptions()) throws -> LukuArchive {
         var blocks: [LukuBlock] = []
         var previousBlockHash: String?
-        for (index, chunk) in records.chunked(into: 1000).enumerated() {
-            let timestamp = chunk.lazy.compactMap { recordTimestamp(from: $0) }.first ?? 0
+        let nativeGapThreshold = options.policy?.nativeContinuityGapSeconds
+        var currentBatch: [[String: Any]] = []
+        var lastSignature: String?
+        var lastNativeTimestamp: UInt64?
+
+        func flushCurrentBatch() throws {
+            if currentBatch.isEmpty { return }
+            let timestamp = currentBatch.lazy.compactMap { recordTimestamp(from: $0) }.first ?? 0
             let block = try buildBlockFromRecords(
-                blockID: UInt32(index),
+                blockID: UInt32(blocks.count),
                 timestampUTC: timestamp,
                 previousBlockHash: previousBlockHash,
                 defaultDevice: device,
-                batch: chunk,
+                batch: currentBatch,
                 commonCerts: nil
             )
             previousBlockHash = block.blockHash
             blocks.append(block)
+            currentBatch = []
+            lastSignature = nil
+            lastNativeTimestamp = nil
         }
+
+        for record in records {
+            let recordType = record["type"] as? String ?? "unknown"
+            let isAux = ["attachment", "location", "custody"].contains(recordType)
+            let signature = record["signature"] as? String ?? ""
+            let previousSignature = record["previous_signature"] as? String ?? ""
+            let timestamp = recordTimestamp(from: record)
+
+            var shouldSplit = false
+            if !isAux {
+                if let lastSig = lastSignature, !lastSig.isEmpty, !previousSignature.isEmpty, previousSignature != lastSig {
+                    shouldSplit = true
+                }
+                if !shouldSplit, let threshold = nativeGapThreshold, let lastTimestamp = lastNativeTimestamp, let timestamp, timestamp > lastTimestamp, (timestamp - lastTimestamp) > threshold {
+                    shouldSplit = true
+                }
+            }
+
+            if shouldSplit {
+                try flushCurrentBatch()
+            }
+
+            currentBatch.append(record)
+            if !isAux {
+                if !signature.isEmpty {
+                    lastSignature = signature
+                }
+                if let timestamp {
+                    lastNativeTimestamp = timestamp
+                }
+            }
+        }
+        try flushCurrentBatch()
 
         return try exportBlocksWithManifest(
             blocks: blocks,
             attachments: attachments,
             description: "Exported \(records.count) records",
             manifestExtra: [:],
-            signer: signer
+            signer: signer,
+            options: options
         )
     }
 
@@ -628,7 +754,8 @@ public enum LukuFile {
                                                 attachments: [String: Data],
                                                 description: String,
                                                 manifestExtra: [String: Any],
-                                                signer: LukuSigner) throws -> LukuArchive {
+                                                signer: LukuSigner,
+                                                options: LukuExportOptions = LukuExportOptions()) throws -> LukuArchive {
         let timestamp = UInt64(Date().timeIntervalSince1970)
         var normalizedBlocks: [LukuBlock] = []
         var previousBlockHash: String?
@@ -652,12 +779,22 @@ public enum LukuFile {
         extra["exporter_public_key"] = extra["exporter_public_key"] ?? signer.publicKeyBase64
         extra["exporter_alg"] = extra["exporter_alg"] ?? "ED25519"
 
+        if let policy = options.policy {
+            var policyJson: [String: Any] = ["name": policy.name]
+            if let gap = policy.nativeContinuityGapSeconds {
+                policyJson["native_continuity_gap_seconds"] = gap
+                extra["native_continuity_gap_seconds"] = gap
+            }
+            extra["policy"] = policyJson
+        }
+
         let manifest = LukuManifest(
             type: "LukuArchive",
             version: "1.0",
             createdAtUTC: timestamp,
             description: description,
             blocksHash: sha256Hex(Data(blocksRaw.utf8)),
+            nativeContinuityGapSeconds: options.policy?.nativeContinuityGapSeconds,
             extra: extra
         )
         let manifestRaw = try serializeJSONObject(manifest.jsonObject(), pretty: true)
@@ -840,6 +977,25 @@ private func recordTimestamp(from record: [String: Any]) -> UInt64? {
         return timestamp
     }
     return uint64(record["timestamp_utc"])
+}
+
+private func manifestPolicy(_ manifest: LukuManifest) -> LukuPolicy? {
+    if let policyJson = manifest.extra["policy"] as? [String: Any] {
+        return LukuPolicy(
+            name: policyJson["name"] as? String ?? "",
+            nativeContinuityGapSeconds: uint64(policyJson["native_continuity_gap_seconds"])
+        )
+    }
+
+    if let manifestThreshold = manifest.nativeContinuityGapSeconds {
+        return LukuPolicy(name: "", nativeContinuityGapSeconds: manifestThreshold)
+    }
+
+    if let legacyThreshold = uint64(manifest.extra["native_continuity_gap_seconds"]) {
+        return LukuPolicy(name: "", nativeContinuityGapSeconds: legacyThreshold)
+    }
+
+    return nil
 }
 
 private func mutableCopy(_ value: [String: Any]) -> [String: Any] {

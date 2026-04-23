@@ -140,6 +140,55 @@ final class LukuArchiveTests: XCTestCase {
         XCTAssertEqual(reopened.blocks[0].batch.count, 1)
     }
 
+    func testPreservesTemporalContinuityManifestMetadata() throws {
+        let signer = createTestSigner()
+        let identity = LukuDeviceIdentity(deviceID: "LUK-META", publicKey: signer.publicKeyBase64)
+        let canonical = "manifest-extra-scan"
+
+        let block = try LukuFile.buildBlockFromRecords(
+            blockID: 0,
+            timestampUTC: 1000,
+            previousBlockHash: nil,
+            defaultDevice: identity,
+            batch: [[
+                "type": "scan",
+                "signature": try signCanonical(signer.privateKey, canonical: canonical),
+                "previous_signature": "genesis_fake",
+                "canonical_string": canonical,
+                "payload": [
+                    "ctr": 1,
+                    "timestamp_utc": 1000,
+                    "genesis_hash": "genesis_fake"
+                ]
+            ]],
+            commonCerts: nil
+        )
+
+        let exported = try LukuFile.exportBlocksWithManifest(
+            blocks: [block],
+            attachments: [:],
+            description: "Manifest extra parity",
+            manifestExtra: [
+                "native_continuity_gap_seconds": 600,
+                "lukuid_block_reasons": [[
+                    "block_id": 0,
+                    "code": "archive_start",
+                    "label": "Block start",
+                    "detail_code": NSNull(),
+                    "detail_label": NSNull()
+                ]]
+            ],
+            signer: LukuSigner(privateKey: signer.privateKey, publicKeyBase64: signer.publicKeyBase64)
+        )
+
+        let reopened = try LukuFile.open(data: exported.saveToData())
+        XCTAssertEqual(reopened.manifest.nativeContinuityGapSeconds, 600)
+        let reasons = reopened.manifest.extra["lukuid_block_reasons"] as? [[String: Any]]
+        XCTAssertEqual(reasons?.count, 1)
+        XCTAssertEqual(reasons?.first?["code"] as? String, "archive_start")
+        XCTAssertEqual(reasons?.first?["label"] as? String, "Block start")
+    }
+
     func testBuildsBlockFallbackCertFields() throws {
         let identity = LukuDeviceIdentity(deviceID: "LUK-TEST", publicKey: Data(repeating: 0, count: 32).base64EncodedString())
         let block = try LukuFile.buildBlockFromRecords(

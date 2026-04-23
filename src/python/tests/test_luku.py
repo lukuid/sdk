@@ -109,6 +109,54 @@ class LukuArchiveTests(unittest.TestCase):
         self.assertEqual(len(reopened.blocks), 1)
         self.assertEqual(len(reopened.blocks[0].batch), 1)
 
+    def test_preserves_temporal_continuity_manifest_metadata(self):
+        signer = self.create_test_signer()
+        identity = LukuDeviceIdentity(device_id="LUK-META", public_key=signer.public_key_base64)
+        canonical = "manifest-extra-scan"
+        block = LukuFile.build_block_from_records(
+            block_id=0,
+            timestamp_utc=1000,
+            previous_block_hash=None,
+            default_device=identity,
+            batch=[{
+                "type": "scan",
+                "signature": self.sign_canonical(signer, canonical),
+                "previous_signature": "genesis_fake",
+                "canonical_string": canonical,
+                "payload": {"ctr": 1, "timestamp_utc": 1000, "genesis_hash": "genesis_fake"},
+            }],
+            common_certs=None,
+        )
+
+        exported = LukuFile.export_blocks_with_manifest(
+            [block],
+            {},
+            "Manifest extra parity",
+            {
+                "native_continuity_gap_seconds": 600,
+                "lukuid_block_reasons": [{
+                    "block_id": 0,
+                    "code": "archive_start",
+                    "label": "Block start",
+                    "detail_code": None,
+                    "detail_label": None,
+                }],
+            },
+            signer,
+        )
+        reopened = LukuFile.open_bytes(exported.save_to_bytes())
+        self.assertEqual(reopened.manifest.extra.get("native_continuity_gap_seconds"), 600)
+        self.assertEqual(
+            reopened.manifest.extra.get("lukuid_block_reasons"),
+            [{
+                "block_id": 0,
+                "code": "archive_start",
+                "label": "Block start",
+                "detail_code": None,
+                "detail_label": None,
+            }],
+        )
+
     def test_builds_block_fallback_cert_fields(self):
         identity = LukuDeviceIdentity(device_id="LUK-TEST", public_key=bytes(32).hex())
         block = LukuFile.build_block_from_records(

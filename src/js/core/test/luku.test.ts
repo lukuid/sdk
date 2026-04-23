@@ -162,6 +162,64 @@ describe('LukuFile', () => {
     assert.equal(reopened.blocks[0].batch.length, 1);
   });
 
+  it('preserves temporal continuity manifest metadata', async () => {
+    const signer = await createTestSigner();
+    const identity: LukuDeviceIdentity = {
+      device_id: 'LUK-META',
+      public_key: signer.publicKeyBase64
+    };
+    const canonical = 'manifest-extra-scan';
+    const signature = await signCanonical(signer.signer.privateKey, canonical);
+
+    const block = await LukuFile.buildBlockFromRecords(
+      0,
+      1000,
+      null,
+      identity,
+      [
+        {
+          type: 'scan',
+          signature,
+          previous_signature: 'genesis_fake',
+          canonical_string: canonical,
+          payload: { ctr: 1, timestamp_utc: 1000, genesis_hash: 'genesis_fake' }
+        }
+      ],
+      null
+    );
+
+    const exported = await LukuFile.exportBlocksWithManifest(
+      [block],
+      {},
+      'Manifest extra parity',
+      {
+        native_continuity_gap_seconds: 600,
+        lukuid_block_reasons: [
+          {
+            block_id: 0,
+            code: 'archive_start',
+            label: 'Block start',
+            detail_code: null,
+            detail_label: null
+          }
+        ]
+      },
+      signer.signer
+    );
+
+    const reopened = await LukuFile.openBytes(await exported.saveToBytes());
+    assert.equal(reopened.manifest.native_continuity_gap_seconds, 600);
+    assert.deepEqual(reopened.manifest.lukuid_block_reasons, [
+      {
+        block_id: 0,
+        code: 'archive_start',
+        label: 'Block start',
+        detail_code: null,
+        detail_label: null
+      }
+    ]);
+  });
+
   it('builds block fallback cert fields', async () => {
     const identity: LukuDeviceIdentity = {
       device_id: 'LUK-TEST',

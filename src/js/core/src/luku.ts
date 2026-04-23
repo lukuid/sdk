@@ -16,6 +16,7 @@ export interface LukuManifest {
   created_at_utc: number;
   description: string;
   blocks_hash: string;
+  native_continuity_gap_seconds?: number;
   [key: string]: JsonValue;
 }
 
@@ -56,6 +57,17 @@ export interface LukuVerifyOptions {
   skipCertificateTemporalChecks?: boolean;
   trustedExternalFingerprints?: string[];
   trustProfile?: string;
+  policy?: LukuPolicy;
+  require_continuity?: boolean;
+}
+
+export interface LukuPolicy {
+  name: string;
+  native_continuity_gap_seconds?: number;
+}
+
+export interface LukuExportOptions {
+  policy?: LukuPolicy;
 }
 
 export interface LukuExporterSigner {
@@ -288,6 +300,56 @@ function issue(code: string, message: string, criticality: Criticality): Verific
   return { code, message, criticality };
 }
 
+function isAuxRecordType(recordType: string | undefined): boolean {
+  return recordType === 'attachment' || recordType === 'location' || recordType === 'custody';
+}
+
+function recordTimestampUtc(record: JsonObject): number | undefined {
+  return asNumber(asJsonObject(record.payload)?.timestamp_utc)
+    ?? asNumber(record.timestamp_utc)
+    ?? asNumber(record.timestamp);
+}
+
+function manifestPolicy(manifest: LukuManifest): LukuPolicy | undefined {
+  const policy = asJsonObject(manifest.policy);
+  if (policy) {
+    return {
+      name: asString(policy.name) ?? '',
+      native_continuity_gap_seconds: asNumber(policy.native_continuity_gap_seconds)
+    };
+  }
+
+  const legacyThreshold = asNumber(manifest.native_continuity_gap_seconds);
+  if (legacyThreshold !== undefined) {
+    return {
+      name: '',
+      native_continuity_gap_seconds: legacyThreshold
+    };
+  }
+
+  return undefined;
+}
+
+function applyExportOptionsToManifestExtra(
+  manifestExtra: Record<string, JsonValue>,
+  options?: LukuExportOptions
+): Record<string, JsonValue> {
+  const extra = { ...manifestExtra };
+  const policy = options?.policy;
+  if (policy) {
+    extra.policy = {
+      name: policy.name,
+      ...(policy.native_continuity_gap_seconds !== undefined
+        ? { native_continuity_gap_seconds: policy.native_continuity_gap_seconds }
+        : {})
+    };
+    if (policy.native_continuity_gap_seconds !== undefined) {
+      extra.native_continuity_gap_seconds = policy.native_continuity_gap_seconds;
+    }
+  }
+  return extra;
+}
+
 function hasCriticalIssues(issues: VerificationIssue[]): boolean {
   return issues.some((entry) => entry.criticality === 'critical');
 }
@@ -402,47 +464,96 @@ export class LukuFile {
     records: JsonObject[],
     device: LukuDeviceIdentity,
     attachments: Map<string, Uint8Array> | Record<string, Uint8Array>,
-    signer: LukuExporterSigner
+    signer: LukuExporterSigner,
+    options: LukuExportOptions = {}
   ): Promise<LukuFile> {
-    return LukuFile.exportWithIdentity(records, device, attachments, signer);
+    return LukuFile.exportWithIdentity(records, device, attachments, signer, options);
   }
 
   static async exportWithIdentity(
     records: JsonObject[],
     device: LukuDeviceIdentity,
     attachments: Map<string, Uint8Array> | Record<string, Uint8Array>,
-    signer: LukuExporterSigner
+    signer: LukuExporterSigner,
+    options: LukuExportOptions = {}
   ): Promise<LukuFile> {
+    const nativeGapThresholdSeconds = options.policy?.native_continuity_gap_seconds;
     const blocks: LukuBlock[] = [];
     let previousBlockHash: string | null = null;
+    let currentBatch: JsonObject[] = [];
+    let lastSignature: string | undefined;
+    let lastNativeTimestampUtc: number | undefined;
 
-    for (let index = 0; index < records.length; index += 1000) {
-      const chunk = records.slice(index, index + 1000);
-      const timestamp = chunk
-        .map((record) => {
-          const payloadTimestamp = asNumber(asJsonObject(record.payload)?.timestamp_utc);
-          return payloadTimestamp ?? asNumber(record.timestamp_utc) ?? 0;
-        })
+    const flushCurrentBatch = async (): Promise<void> => {
+      if (currentBatch.length === 0) {
+        return;
+      }
+      const timestamp = currentBatch
+        .map((record) => recordTimestampUtc(record) ?? 0)
         .find((value) => value > 0) ?? 0;
-
       const block = await LukuFile.buildBlockFromRecords(
         blocks.length,
         timestamp,
         previousBlockHash,
         device,
-        chunk,
+        currentBatch,
         undefined
       );
       previousBlockHash = block.block_hash;
       blocks.push(block);
+      currentBatch = [];
+      lastSignature = undefined;
+      lastNativeTimestampUtc = undefined;
+    };
+
+    for (const record of records) {
+      const recordType = asString(record.type) ?? 'unknown';
+      const isAuxRecord = isAuxRecordType(recordType);
+      const timestampUtc = recordTimestampUtc(record);
+      const previousSignature = asString(record.previous_signature);
+      const signature = asString(record.signature);
+
+      let shouldSplit = false;
+      if (!isAuxRecord) {
+        if (lastSignature && previousSignature && previousSignature.length > 0 && previousSignature !== lastSignature) {
+          shouldSplit = true;
+        }
+
+        if (!shouldSplit
+          && nativeGapThresholdSeconds !== undefined
+          && lastNativeTimestampUtc !== undefined
+          && timestampUtc !== undefined
+          && timestampUtc > lastNativeTimestampUtc
+          && (timestampUtc - lastNativeTimestampUtc) > nativeGapThresholdSeconds) {
+          shouldSplit = true;
+        }
+      }
+
+      if (shouldSplit) {
+        await flushCurrentBatch();
+      }
+
+      currentBatch.push(record);
+
+      if (!isAuxRecord) {
+        if (signature && signature.length > 0) {
+          lastSignature = signature;
+        }
+        if (timestampUtc !== undefined) {
+          lastNativeTimestampUtc = timestampUtc;
+        }
+      }
     }
+
+    await flushCurrentBatch();
 
     return LukuFile.exportBlocksWithManifest(
       blocks,
       attachments,
       `Exported ${records.length} records`,
       {},
-      signer
+      signer,
+      options
     );
   }
 
@@ -451,7 +562,8 @@ export class LukuFile {
     attachments: Map<string, Uint8Array> | Record<string, Uint8Array>,
     description: string,
     manifestExtra: Record<string, JsonValue>,
-    signer: LukuExporterSigner
+    signer: LukuExporterSigner,
+    options: LukuExportOptions = {}
   ): Promise<LukuFile> {
     const now = Math.floor(Date.now() / 1000);
     const normalizedBlocks: LukuBlock[] = [];
@@ -483,7 +595,7 @@ export class LukuFile {
       created_at_utc: now,
       description,
       blocks_hash: await sha256Hex(utf8(blocksRaw)),
-      ...manifestExtra
+      ...applyExportOptionsToManifestExtra(manifestExtra, options)
     };
 
     if (!manifest.exporter_public_key && exporterPublicKey) {
@@ -666,6 +778,7 @@ export class LukuFile {
     const allowUntrustedRoots = options.allowUntrustedRoots ?? false;
     const skipCertificateTemporalChecks = options.skipCertificateTemporalChecks ?? false;
     const trustProfile = options.trustProfile ?? 'prod';
+    const expectedPolicy = options.policy;
     const issues: VerificationIssue[] = [];
 
     if (this.manifestSig.trim().length === 0) {
@@ -725,7 +838,12 @@ export class LukuFile {
 
     const lastCounters = new Map<string, number>();
     const lastTimes = new Map<string, number>();
+    const lastContinuityTimes = new Map<string, Map<string, number>>();
     const seenDevices = new Set<string>();
+
+    const policy = options.policy || manifestPolicy(this.manifest);
+    const requireContinuity = options.require_continuity ?? false;
+    const continuityTypes = ['environment'];
 
     for (const block of this.blocks) {
       const lastSignatures = new Map<string, string>();
@@ -770,6 +888,24 @@ export class LukuFile {
           const lastTime = lastTimes.get(deviceId);
           if (lastTime !== undefined && timestamp !== undefined && timestamp < lastTime) {
             issues.push(issue('TIME_REGRESSION', `Time travel detected for device ${deviceId} (${lastTime} -> ${timestamp}).`, 'critical'));
+          }
+        }
+
+        if (requireContinuity && continuityTypes.includes(recordType) && policy?.native_continuity_gap_seconds !== undefined) {
+          let deviceContinuity = lastContinuityTimes.get(deviceId);
+          if (!deviceContinuity) {
+            deviceContinuity = new Map<string, number>();
+            lastContinuityTimes.set(deviceId, deviceContinuity);
+          }
+          const lastEnvTime = deviceContinuity.get(recordType);
+          if (lastEnvTime !== undefined && timestamp !== undefined) {
+            const gap = timestamp - lastEnvTime;
+            if (gap > policy.native_continuity_gap_seconds) {
+              issues.push(issue('CONTINUITY_GAP_EXCEEDED', `Continuity gap of ${gap}s exceeded for device ${deviceId} type ${recordType} (threshold ${policy.native_continuity_gap_seconds}s).`, 'critical'));
+            }
+          }
+          if (timestamp !== undefined) {
+            deviceContinuity.set(recordType, timestamp);
           }
         }
 
@@ -846,6 +982,56 @@ export class LukuFile {
                 issues.push(issue('ATTACHMENT_CORRUPT', `Attachment with hash ${checksum} is corrupt (actual hash ${actualHash}).`, 'critical'));
               }
             }
+          }
+        }
+      }
+    }
+
+    if (expectedPolicy) {
+      const actualPolicy = manifestPolicy(this.manifest);
+      if (!actualPolicy) {
+        issues.push(issue('POLICY_MISSING', `Archive does not declare the expected continuity policy '${expectedPolicy.name}'.`, 'warning'));
+      } else {
+        if (expectedPolicy.name.trim().length > 0
+          && actualPolicy.name.trim().length > 0
+          && actualPolicy.name !== expectedPolicy.name) {
+          issues.push(issue('POLICY_NAME_MISMATCH', `Archive policy name '${actualPolicy.name}' does not match expected policy '${expectedPolicy.name}'.`, 'warning'));
+        }
+        if (actualPolicy.native_continuity_gap_seconds !== expectedPolicy.native_continuity_gap_seconds) {
+          issues.push(issue(
+            'POLICY_THRESHOLD_MISMATCH',
+            `Archive continuity threshold ${String(actualPolicy.native_continuity_gap_seconds)} does not match expected threshold ${String(expectedPolicy.native_continuity_gap_seconds)}.`,
+            'warning'
+          ));
+        }
+      }
+
+      if (expectedPolicy.native_continuity_gap_seconds !== undefined) {
+        for (let blockIndex = 0; blockIndex < this.blocks.length; blockIndex += 1) {
+          const block = this.blocks[blockIndex];
+          let lastNativeTimestampUtc: number | undefined;
+          for (let recordIndex = 0; recordIndex < block.batch.length; recordIndex += 1) {
+            const record = block.batch[recordIndex];
+            const recordType = asString(record.type) ?? 'unknown';
+            if (isAuxRecordType(recordType)) {
+              continue;
+            }
+
+            const timestampUtc = recordTimestampUtc(record);
+            if (timestampUtc === undefined) {
+              continue;
+            }
+
+            if (lastNativeTimestampUtc !== undefined
+              && timestampUtc > lastNativeTimestampUtc
+              && (timestampUtc - lastNativeTimestampUtc) > expectedPolicy.native_continuity_gap_seconds) {
+              issues.push(issue(
+                'POLICY_NATIVE_TIME_GAP_UNSPLIT',
+                `Native time gap of ${timestampUtc - lastNativeTimestampUtc} seconds exceeds expected policy threshold ${expectedPolicy.native_continuity_gap_seconds} within block ${blockIndex}.`,
+                'warning'
+              ));
+            }
+            lastNativeTimestampUtc = timestampUtc;
           }
         }
       }

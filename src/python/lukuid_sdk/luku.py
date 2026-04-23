@@ -44,6 +44,18 @@ class LukuVerifyOptions:
     skip_certificate_temporal_checks: bool = False
     trusted_external_fingerprints: list[str] = field(default_factory=list)
     trust_profile: str = "prod"
+    policy: "LukuPolicy | None" = None
+
+
+@dataclass(slots=True)
+class LukuPolicy:
+    name: str
+    native_continuity_gap_seconds: int | None = None
+
+
+@dataclass(slots=True)
+class LukuExportOptions:
+    policy: LukuPolicy | None = None
 
 
 @dataclass(slots=True)
@@ -413,6 +425,31 @@ class LukuArchive:
                         elif _sha256_hex(content) != checksum:
                             issues.append(_issue("ATTACHMENT_CORRUPT", f"Attachment with hash {checksum} is corrupt (actual hash {_sha256_hex(content)}).", Criticality.CRITICAL))
 
+        if options.policy is not None:
+            actual_policy = _manifest_policy(self.manifest.extra)
+            if actual_policy is None:
+                issues.append(_issue("POLICY_MISSING", f"Archive does not declare the expected continuity policy '{options.policy.name}'.", Criticality.WARNING))
+            else:
+                if options.policy.name.strip() and actual_policy.name.strip() and actual_policy.name != options.policy.name:
+                    issues.append(_issue("POLICY_NAME_MISMATCH", f"Archive policy name '{actual_policy.name}' does not match expected policy '{options.policy.name}'.", Criticality.WARNING))
+                if actual_policy.native_continuity_gap_seconds != options.policy.native_continuity_gap_seconds:
+                    issues.append(_issue("POLICY_THRESHOLD_MISMATCH", f"Archive continuity threshold {actual_policy.native_continuity_gap_seconds} does not match expected threshold {options.policy.native_continuity_gap_seconds}.", Criticality.WARNING))
+
+            threshold = options.policy.native_continuity_gap_seconds
+            if threshold is not None:
+                for block_index, block in enumerate(self.blocks):
+                    last_native_timestamp: int | None = None
+                    for record in block.batch:
+                        record_type = str(record.get("type", "unknown"))
+                        if _is_aux_record_type(record_type):
+                            continue
+                        timestamp = _record_timestamp(record)
+                        if timestamp is None:
+                            continue
+                        if last_native_timestamp is not None and timestamp > last_native_timestamp and (timestamp - last_native_timestamp) > threshold:
+                            issues.append(_issue("POLICY_NATIVE_TIME_GAP_UNSPLIT", f"Native time gap of {timestamp - last_native_timestamp} seconds exceeds expected policy threshold {threshold} within block {block_index}.", Criticality.WARNING))
+                        last_native_timestamp = timestamp
+
         return issues
 
     def _refresh_manifest_signature(self, signer: LukuSigner) -> None:
@@ -503,8 +540,9 @@ class LukuFile:
         device: LukuDeviceIdentity,
         attachments: dict[str, bytes],
         signer: LukuSigner,
+        options: LukuExportOptions | None = None,
     ) -> LukuArchive:
-        return LukuFile.export_with_identity(records, device, attachments, signer)
+        return LukuFile.export_with_identity(records, device, attachments, signer, options)
 
     @staticmethod
     def export_with_identity(
@@ -512,28 +550,68 @@ class LukuFile:
         device: LukuDeviceIdentity,
         attachments: dict[str, bytes],
         signer: LukuSigner,
+        options: LukuExportOptions | None = None,
     ) -> LukuArchive:
         blocks: list[LukuBlock] = []
         previous_block_hash: str | None = None
-        for index in range(0, len(records), 1000):
-            chunk = records[index:index + 1000]
-            timestamp = next((_record_timestamp(record) for record in chunk if _record_timestamp(record) is not None), 0) or 0
+        native_gap_threshold = options.policy.native_continuity_gap_seconds if options and options.policy else None
+        current_batch: list[dict[str, Any]] = []
+        last_signature: str | None = None
+        last_native_timestamp: int | None = None
+
+        def flush_current_batch() -> None:
+            nonlocal current_batch, previous_block_hash, last_signature, last_native_timestamp
+            if not current_batch:
+                return
+            timestamp = next((_record_timestamp(record) for record in current_batch if _record_timestamp(record) is not None), 0) or 0
             block = LukuFile.build_block_from_records(
                 block_id=len(blocks),
                 timestamp_utc=timestamp,
                 previous_block_hash=previous_block_hash,
                 default_device=device,
-                batch=chunk,
+                batch=current_batch,
                 common_certs=None,
             )
             previous_block_hash = block.block_hash
             blocks.append(block)
+            current_batch = []
+            last_signature = None
+            last_native_timestamp = None
+
+        for record in records:
+            record_type = str(record.get("type", "unknown"))
+            is_aux = _is_aux_record_type(record_type)
+            signature = record.get("signature")
+            previous_signature = record.get("previous_signature")
+            timestamp = _record_timestamp(record)
+
+            should_split = False
+            if not is_aux:
+                if last_signature and isinstance(previous_signature, str) and previous_signature and previous_signature != last_signature:
+                    should_split = True
+                if not should_split and native_gap_threshold is not None and last_native_timestamp is not None and timestamp is not None and timestamp > last_native_timestamp and (timestamp - last_native_timestamp) > native_gap_threshold:
+                    should_split = True
+
+            if should_split:
+                flush_current_batch()
+
+            current_batch.append(record)
+
+            if not is_aux:
+                if isinstance(signature, str) and signature:
+                    last_signature = signature
+                if timestamp is not None:
+                    last_native_timestamp = timestamp
+
+        flush_current_batch()
+
         return LukuFile.export_blocks_with_manifest(
             blocks=blocks,
             attachments=attachments,
             description=f"Exported {len(records)} records",
             manifest_extra={},
             signer=signer,
+            options=options,
         )
 
     @staticmethod
@@ -543,6 +621,7 @@ class LukuFile:
         description: str,
         manifest_extra: dict[str, Any],
         signer: LukuSigner,
+        options: LukuExportOptions | None = None,
     ) -> LukuArchive:
         timestamp = int(time.time())
         normalized_blocks: list[LukuBlock] = []
@@ -561,7 +640,7 @@ class LukuFile:
             normalized_blocks.append(normalized)
 
         blocks_raw = "".join(f"{_serialize_json(block.json_object(), pretty=False)}\n" for block in normalized_blocks)
-        extra = dict(manifest_extra)
+        extra = _apply_export_options(manifest_extra, options)
         extra.setdefault("exporter_public_key", signer.public_key_base64)
         extra.setdefault("exporter_alg", "ED25519")
         manifest = LukuManifest(
@@ -682,4 +761,33 @@ def _uint64(value: Any) -> int | None:
 
 def _record_timestamp(record: dict[str, Any]) -> int | None:
     payload = record.get("payload") if isinstance(record.get("payload"), dict) else {}
-    return _uint64(payload.get("timestamp_utc")) or _uint64(record.get("timestamp_utc"))
+    return _uint64(payload.get("timestamp_utc")) or _uint64(record.get("timestamp_utc")) or _uint64(record.get("timestamp"))
+
+
+def _is_aux_record_type(record_type: str) -> bool:
+    return record_type in {"attachment", "location", "custody"}
+
+
+def _manifest_policy(extra: dict[str, Any]) -> LukuPolicy | None:
+    policy = extra.get("policy")
+    if isinstance(policy, dict):
+        return LukuPolicy(
+            name=str(policy.get("name", "")),
+            native_continuity_gap_seconds=_uint64(policy.get("native_continuity_gap_seconds")),
+        )
+
+    legacy_threshold = _uint64(extra.get("native_continuity_gap_seconds"))
+    if legacy_threshold is not None:
+        return LukuPolicy(name="", native_continuity_gap_seconds=legacy_threshold)
+    return None
+
+
+def _apply_export_options(manifest_extra: dict[str, Any], options: LukuExportOptions | None) -> dict[str, Any]:
+    extra = dict(manifest_extra)
+    if options and options.policy:
+        policy = {"name": options.policy.name}
+        if options.policy.native_continuity_gap_seconds is not None:
+            policy["native_continuity_gap_seconds"] = options.policy.native_continuity_gap_seconds
+            extra["native_continuity_gap_seconds"] = options.policy.native_continuity_gap_seconds
+        extra["policy"] = policy
+    return extra

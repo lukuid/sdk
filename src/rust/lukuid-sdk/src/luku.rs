@@ -21,6 +21,8 @@ pub struct LukuManifest {
     pub created_at_utc: u64,
     pub description: String,
     pub blocks_hash: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub native_continuity_gap_seconds: Option<u64>,
     #[serde(flatten, default)]
     pub extra: HashMap<String, Value>,
 }
@@ -78,12 +80,26 @@ pub enum Criticality {
     Critical,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub struct LukuPolicy {
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub native_continuity_gap_seconds: Option<u64>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct LukuExportOptions {
+    pub policy: Option<LukuPolicy>,
+}
+
 #[derive(Debug, Clone)]
 pub struct LukuVerifyOptions {
     pub allow_untrusted_roots: bool,
     pub skip_certificate_temporal_checks: bool,
     pub trusted_external_fingerprints: Vec<String>,
     pub trust_profile: String,
+    pub policy: Option<LukuPolicy>,
+    pub require_continuity: bool,
 }
 
 impl Default for LukuVerifyOptions {
@@ -92,8 +108,9 @@ impl Default for LukuVerifyOptions {
             allow_untrusted_roots: false,
             skip_certificate_temporal_checks: false,
             trusted_external_fingerprints: Vec::new(),
-            trust_profile: std::env::var("LUKUID_TRUST_PROFILE")
-                .unwrap_or_else(|_| "prod".to_string()),
+            trust_profile: std::env::var("LUKUID_TRUST_PROFILE").unwrap_or_else(|_| "prod".to_string()),
+            policy: None,
+            require_continuity: false,
         }
     }
 }
@@ -236,6 +253,163 @@ impl LukuFile {
         };
 
         public_key.verify(payload, &signature).is_ok()
+    }
+
+    fn is_aux_record_type(record_type: &str) -> bool {
+        matches!(record_type, "attachment" | "location" | "custody")
+    }
+
+    fn record_timestamp_utc(record: &Value) -> Option<u64> {
+        record
+            .get("payload")
+            .and_then(|value| value.get("timestamp_utc"))
+            .and_then(Value::as_u64)
+            .or_else(|| record.get("timestamp_utc").and_then(Value::as_u64))
+            .or_else(|| record.get("timestamp").and_then(Value::as_u64))
+    }
+
+    fn record_signature(record: &Value) -> Option<&str> {
+        record.get("signature").and_then(Value::as_str)
+    }
+
+    fn record_previous_signature(record: &Value) -> Option<&str> {
+        record.get("previous_signature").and_then(Value::as_str)
+    }
+
+    fn manifest_policy(manifest: &LukuManifest) -> Option<LukuPolicy> {
+        if let Some(policy) = manifest.extra.get("policy").and_then(Value::as_object) {
+            let name = policy
+                .get("name")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
+            let native_continuity_gap_seconds = policy
+                .get("native_continuity_gap_seconds")
+                .and_then(Value::as_u64);
+            return Some(LukuPolicy {
+                name,
+                native_continuity_gap_seconds,
+            });
+        }
+
+        if let Some(threshold) = manifest.native_continuity_gap_seconds {
+            return Some(LukuPolicy {
+                name: String::new(),
+                native_continuity_gap_seconds: Some(threshold),
+            });
+        }
+
+        None
+    }
+
+    fn apply_export_options(
+        manifest: &mut LukuManifest,
+        options: &LukuExportOptions,
+    ) -> Result<(), String> {
+        if let Some(policy) = &options.policy {
+            let policy_value = serde_json::to_value(policy).map_err(|e| e.to_string())?;
+            manifest.extra.insert("policy".to_string(), policy_value);
+            if let Some(threshold) = policy.native_continuity_gap_seconds {
+                manifest.native_continuity_gap_seconds = Some(threshold);
+                // DO NOT add to extra if it's already a top-level field in LukuManifest
+            }
+        }
+        Ok(())
+    }
+
+    fn first_record_timestamp_utc(records: &[Value]) -> u64 {
+        records
+            .iter()
+            .filter_map(Self::record_timestamp_utc)
+            .next()
+            .unwrap_or(0)
+    }
+
+    fn build_blocks_for_export(
+        records: Vec<Value>,
+        device: &LukuDeviceIdentity,
+        policy: Option<&LukuPolicy>,
+    ) -> Vec<LukuBlock> {
+        let native_gap_threshold_seconds = policy.and_then(|value| value.native_continuity_gap_seconds);
+        let mut blocks = Vec::new();
+        let mut previous_block_hash: Option<String> = None;
+        let mut current_batch: Vec<Value> = Vec::new();
+        let mut last_signature: Option<String> = None;
+        let mut last_native_timestamp_utc: Option<u64> = None;
+
+        for record in records {
+            let record_type = record.get("type").and_then(Value::as_str).unwrap_or("unknown");
+            let is_aux = Self::is_aux_record_type(record_type);
+            let timestamp_utc = Self::record_timestamp_utc(&record);
+
+            let mut should_split = false;
+            if !is_aux {
+                if let (Some(last_sig), Some(previous_signature)) =
+                    (last_signature.as_deref(), Self::record_previous_signature(&record))
+                {
+                    if !previous_signature.is_empty() && previous_signature != last_sig {
+                        should_split = true;
+                    }
+                }
+
+                if !should_split {
+                    if let (Some(threshold), Some(last_timestamp), Some(current_timestamp)) = (
+                        native_gap_threshold_seconds,
+                        last_native_timestamp_utc,
+                        timestamp_utc,
+                    ) {
+                        if current_timestamp > last_timestamp
+                            && current_timestamp - last_timestamp > threshold
+                        {
+                            should_split = true;
+                        }
+                    }
+                }
+            }
+
+            if should_split && !current_batch.is_empty() {
+                let block = Self::build_block_from_records(
+                    blocks.len() as u32,
+                    Self::first_record_timestamp_utc(&current_batch),
+                    previous_block_hash.clone(),
+                    device,
+                    current_batch,
+                    None,
+                );
+                previous_block_hash = Some(block.block_hash.clone());
+                blocks.push(block);
+                current_batch = Vec::new();
+                last_signature = None;
+                last_native_timestamp_utc = None;
+            }
+
+            current_batch.push(record);
+
+            if !is_aux {
+                if let Some(signature) = Self::record_signature(current_batch.last().unwrap()) {
+                    if !signature.is_empty() {
+                        last_signature = Some(signature.to_string());
+                    }
+                }
+                if let Some(current_timestamp) = timestamp_utc {
+                    last_native_timestamp_utc = Some(current_timestamp);
+                }
+            }
+        }
+
+        if !current_batch.is_empty() {
+            let block = Self::build_block_from_records(
+                blocks.len() as u32,
+                Self::first_record_timestamp_utc(&current_batch),
+                previous_block_hash,
+                device,
+                current_batch,
+                None,
+            );
+            blocks.push(block);
+        }
+
+        blocks
     }
 
     fn batch_hash(batch: &[Value]) -> String {
@@ -693,8 +867,12 @@ impl LukuFile {
         // 3. Verify record chain and signatures
         let mut last_ctrs: HashMap<String, u64> = HashMap::new();
         let mut last_times: HashMap<String, u64> = HashMap::new();
+        let mut last_continuity_times: HashMap<String, HashMap<String, u64>> = HashMap::new();
         let mut has_seen_device: HashMap<String, bool> = HashMap::new();
         let mut record_ids = HashSet::new();
+
+        let policy = options.policy.clone().or_else(|| Self::manifest_policy(&self.manifest));
+        let continuity_types: HashSet<&str> = ["environment"].iter().cloned().collect();
 
         for block in &self.blocks {
             for record in &block.batch {
@@ -884,6 +1062,27 @@ impl LukuFile {
                                             criticality: Criticality::Critical,
                                         },
                                     );
+                                }
+                            }
+                        }
+
+                        if options.require_continuity && continuity_types.contains(r#type) {
+                            if let Some(threshold) = policy.as_ref().and_then(|p| p.native_continuity_gap_seconds) {
+                                let device_continuity = last_continuity_times.entry(device_id.to_string()).or_insert_with(HashMap::new);
+                                if let Some(last_env_time) = device_continuity.get(r#type) {
+                                    if let Some(timestamp) = timestamp {
+                                        let gap = timestamp - last_env_time;
+                                        if gap > threshold {
+                                            Self::push_issue(&mut issues, debug_logging, Some(record_context.as_str()), VerificationIssue {
+                                                code: "CONTINUITY_GAP_EXCEEDED".to_string(),
+                                                message: format!("Continuity gap of {}s exceeded for device {} type {} (threshold {}s).", gap, device_id, r#type, threshold),
+                                                criticality: Criticality::Critical,
+                                            });
+                                        }
+                                    }
+                                }
+                                if let Some(timestamp) = timestamp {
+                                    device_continuity.insert(r#type.to_string(), timestamp);
                                 }
                             }
                         }
@@ -1372,6 +1571,110 @@ impl LukuFile {
             }
         }
 
+        if let Some(expected_policy) = options.policy.as_ref() {
+            let manifest_policy = Self::manifest_policy(&self.manifest);
+            match manifest_policy.as_ref() {
+                None => {
+                    Self::push_issue(
+                        &mut issues,
+                        debug_logging,
+                        Some("archive"),
+                        VerificationIssue {
+                            code: "POLICY_MISSING".to_string(),
+                            message: format!(
+                                "Archive does not declare the expected continuity policy '{}'.",
+                                expected_policy.name
+                            ),
+                            criticality: Criticality::Warning,
+                        },
+                    );
+                }
+                Some(actual_policy) => {
+                    if !expected_policy.name.trim().is_empty()
+                        && !actual_policy.name.trim().is_empty()
+                        && actual_policy.name != expected_policy.name
+                    {
+                        Self::push_issue(
+                            &mut issues,
+                            debug_logging,
+                            Some("archive"),
+                            VerificationIssue {
+                                code: "POLICY_NAME_MISMATCH".to_string(),
+                                message: format!(
+                                    "Archive policy name '{}' does not match expected policy '{}'.",
+                                    actual_policy.name, expected_policy.name
+                                ),
+                                criticality: Criticality::Warning,
+                            },
+                        );
+                    }
+
+                    if actual_policy.native_continuity_gap_seconds
+                        != expected_policy.native_continuity_gap_seconds
+                    {
+                        Self::push_issue(
+                            &mut issues,
+                            debug_logging,
+                            Some("archive"),
+                            VerificationIssue {
+                                code: "POLICY_THRESHOLD_MISMATCH".to_string(),
+                                message: format!(
+                                    "Archive continuity threshold {:?} does not match expected threshold {:?}.",
+                                    actual_policy.native_continuity_gap_seconds,
+                                    expected_policy.native_continuity_gap_seconds
+                                ),
+                                criticality: Criticality::Warning,
+                            },
+                        );
+                    }
+                }
+            }
+        }
+
+        if let Some(threshold) = policy.as_ref().and_then(|p| p.native_continuity_gap_seconds) {
+            for (block_index, block) in self.blocks.iter().enumerate() {
+                let mut last_native_timestamp_utc: Option<u64> = None;
+                for (record_index, record) in block.batch.iter().enumerate() {
+                    let record_type =
+                        record.get("type").and_then(Value::as_str).unwrap_or("unknown");
+                    if Self::is_aux_record_type(record_type) {
+                        continue;
+                    }
+
+                    if let Some(timestamp_utc) = Self::record_timestamp_utc(record) {
+                        if let Some(previous_timestamp_utc) = last_native_timestamp_utc {
+                            if timestamp_utc > previous_timestamp_utc
+                                && timestamp_utc - previous_timestamp_utc > threshold
+                            {
+                                let record_context = Self::debug_record_context(
+                                    block_index,
+                                    record_index,
+                                    record,
+                                    block,
+                                );
+                                Self::push_issue(
+                                    &mut issues,
+                                    debug_logging,
+                                    Some(record_context.as_str()),
+                                    VerificationIssue {
+                                        code: "POLICY_NATIVE_TIME_GAP_UNSPLIT".to_string(),
+                                        message: format!(
+                                            "Native time gap of {} seconds exceeds expected policy threshold {} within block {}.",
+                                            timestamp_utc - previous_timestamp_utc,
+                                            threshold,
+                                            block_index
+                                        ),
+                                        criticality: Criticality::Warning,
+                                    },
+                                );
+                            }
+                        }
+                        last_native_timestamp_utc = Some(timestamp_utc);
+                    }
+                }
+            }
+        }
+
         if debug_logging {
             let critical = issues
                 .iter()
@@ -1560,20 +1863,35 @@ impl LukuFile {
         mut blocks: Vec<LukuBlock>,
         attachments: HashMap<String, Vec<u8>>,
         description: String,
-        mut manifest_extra: HashMap<String, Value>,
+        manifest_extra: HashMap<String, Value>,
         exporter_key: &ed25519_dalek::SigningKey,
+        options: LukuExportOptions,
     ) -> Result<(), String> {
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
 
-        manifest_extra
+        let mut manifest = LukuManifest {
+            r#type: "LukuArchive".to_string(),
+            version: "1.0".to_string(),
+            created_at_utc: timestamp,
+            description,
+            blocks_hash: String::new(),
+            native_continuity_gap_seconds: None,
+            extra: manifest_extra,
+        };
+
+        Self::apply_export_options(&mut manifest, &options)?;
+
+        manifest
+            .extra
             .entry("exporter_public_key".to_string())
             .or_insert_with(|| {
                 Value::String(BASE64.encode(exporter_key.verifying_key().as_bytes()))
             });
-        manifest_extra
+        manifest
+            .extra
             .entry("exporter_alg".to_string())
             .or_insert_with(|| Value::String("ED25519".to_string()));
 
@@ -1601,16 +1919,7 @@ impl LukuFile {
 
         let mut hasher = Sha256::new();
         hasher.update(blocks_content.as_bytes());
-        let blocks_hash = format!("{:x}", hasher.finalize());
-
-        let manifest = LukuManifest {
-            r#type: "LukuArchive".to_string(),
-            version: "1.0".to_string(),
-            created_at_utc: timestamp,
-            description,
-            blocks_hash,
-            extra: manifest_extra,
-        };
+        manifest.blocks_hash = format!("{:x}", hasher.finalize());
 
         let manifest_json = serde_json::to_string_pretty(&manifest).unwrap();
         let manifest_sig = BASE64.encode(exporter_key.sign(manifest_json.as_bytes()).to_bytes());
@@ -1633,8 +1942,9 @@ impl LukuFile {
         device: LukuDeviceIdentity,
         attachments: HashMap<String, Vec<u8>>,
         exporter_key: &ed25519_dalek::SigningKey,
+        options: LukuExportOptions,
     ) -> Result<(), String> {
-        Self::export_with_identity(records, path, device, attachments, exporter_key)
+        Self::export_with_identity(records, path, device, attachments, exporter_key, options)
     }
 
     pub fn export_with_identity<P: AsRef<Path>>(
@@ -1643,41 +1953,19 @@ impl LukuFile {
         device: LukuDeviceIdentity,
         attachments: HashMap<String, Vec<u8>>,
         exporter_key: &ed25519_dalek::SigningKey,
+        options: LukuExportOptions,
     ) -> Result<(), String> {
-        let mut blocks = Vec::new();
-        let mut prev_block_hash: Option<String> = None;
-        for (i, chunk) in records.chunks(1000).enumerate() {
-            let timestamp = chunk
-                .iter()
-                .filter_map(|record| {
-                    record
-                        .get("payload")
-                        .and_then(|payload| payload.get("timestamp_utc"))
-                        .and_then(Value::as_u64)
-                        .or_else(|| record.get("timestamp_utc").and_then(Value::as_u64))
-                })
-                .next()
-                .unwrap_or(0);
-
-            let block = Self::build_block_from_records(
-                i as u32,
-                timestamp,
-                prev_block_hash.clone(),
-                &device,
-                chunk.to_vec(),
-                None,
-            );
-            prev_block_hash = Some(block.block_hash.clone());
-            blocks.push(block);
-        }
+        let record_count = records.len();
+        let blocks = Self::build_blocks_for_export(records, &device, options.policy.as_ref());
 
         Self::export_blocks_with_manifest(
             path,
             blocks,
             attachments,
-            format!("Exported {} records", records.len()),
+            format!("Exported {} records", record_count),
             HashMap::new(),
             exporter_key,
+            options,
         )
     }
 
@@ -1877,7 +2165,7 @@ mod tests {
 
         let signing_key = ed25519_dalek::SigningKey::from_bytes(&[7u8; 32]);
 
-        LukuFile::export(records, &luku_path, identity, HashMap::new(), &signing_key).unwrap();
+        LukuFile::export(records, &luku_path, identity, HashMap::new(), &signing_key, LukuExportOptions::default()).unwrap();
 
         let luku = LukuFile::open(&luku_path).unwrap();
         assert_eq!(luku.manifest.version, "1.0");
@@ -1889,6 +2177,8 @@ mod tests {
             skip_certificate_temporal_checks: true,
             trusted_external_fingerprints: Vec::new(),
             trust_profile: "dev".to_string(),
+            policy: None,
+            require_continuity: false,
         });
 
         assert!(

@@ -1,6 +1,6 @@
 {
   "name": "@lukuid/sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Lukuid JavaScript SDK facade aggregating all transports.",
   "private": false,
   "type": "module",

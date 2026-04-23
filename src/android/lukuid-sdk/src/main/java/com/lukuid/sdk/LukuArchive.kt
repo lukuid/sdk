@@ -30,6 +30,7 @@ data class LukuManifest(
     val createdAtUtc: Long,
     val description: String,
     var blocksHash: String,
+    val nativeContinuityGapSeconds: Long? = null,
     val extra: MutableMap<String, Any?> = linkedMapOf()
 ) {
     fun toJson(): JSONObject {
@@ -39,6 +40,9 @@ data class LukuManifest(
         json.put("created_at_utc", createdAtUtc)
         json.put("description", description)
         json.put("blocks_hash", blocksHash)
+        if (nativeContinuityGapSeconds != null) {
+            json.put("native_continuity_gap_seconds", nativeContinuityGapSeconds)
+        }
         for ((key, value) in extra) {
             json.put(key, value ?: JSONObject.NULL)
         }
@@ -51,7 +55,7 @@ data class LukuManifest(
             val keys = json.keys()
             while (keys.hasNext()) {
                 val key = keys.next()
-                if (key !in setOf("type", "version", "created_at_utc", "description", "blocks_hash")) {
+                if (key !in setOf("type", "version", "created_at_utc", "description", "blocks_hash", "native_continuity_gap_seconds")) {
                     extra[key] = json.opt(key).takeUnless { it == JSONObject.NULL }
                 }
             }
@@ -61,6 +65,7 @@ data class LukuManifest(
                 createdAtUtc = json.optLong("created_at_utc"),
                 description = json.optString("description"),
                 blocksHash = json.optString("blocks_hash"),
+                nativeContinuityGapSeconds = if (json.has("native_continuity_gap_seconds")) json.optLong("native_continuity_gap_seconds") else null,
                 extra = extra
             )
         }
@@ -169,7 +174,18 @@ data class LukuVerifyOptions(
     val allowUntrustedRoots: Boolean = false,
     val skipCertificateTemporalChecks: Boolean = false,
     val trustedExternalFingerprints: List<String> = emptyList(),
-    val trustProfile: String = System.getenv("LUKUID_TRUST_PROFILE") ?: "prod"
+    val trustProfile: String = System.getenv("LUKUID_TRUST_PROFILE") ?: "prod",
+    val policy: LukuPolicy? = null,
+    val requireContinuity: Boolean = false
+)
+
+data class LukuPolicy(
+    val name: String,
+    val nativeContinuityGapSeconds: Long? = null
+)
+
+data class LukuExportOptions(
+    val policy: LukuPolicy? = null
 )
 
 data class LukuSigner(
@@ -271,7 +287,11 @@ class LukuArchive private constructor(
 
         val lastCounters = mutableMapOf<String, Long>()
         val lastTimes = mutableMapOf<String, Long>()
+        val lastContinuityTimes = mutableMapOf<String, MutableMap<String, Long>>()
         val seenDevices = mutableSetOf<String>()
+
+        val policy = options.policy ?: manifestPolicy(manifest)
+        val continuityTypes = setOf("environment")
 
         for (block in blocks) {
             val lastSignatures = mutableMapOf<String, String>()
@@ -314,6 +334,20 @@ class LukuArchive private constructor(
                         if (timestamp != null && timestamp < lastTime) {
                             issues += VerificationIssue("TIME_REGRESSION", "Time travel detected for device $deviceId ($lastTime -> $timestamp).", Criticality.CRITICAL)
                         }
+                    }
+                }
+
+                if (options.requireContinuity && recordType in continuityTypes && policy?.nativeContinuityGapSeconds != null) {
+                    val deviceContinuity = lastContinuityTimes.getOrPut(deviceId) { mutableMapOf() }
+                    val lastEnvTime = deviceContinuity[recordType]
+                    if (lastEnvTime != null && timestamp != null) {
+                        val gap = timestamp - lastEnvTime
+                        if (gap > policy.nativeContinuityGapSeconds) {
+                            issues += VerificationIssue("CONTINUITY_GAP_EXCEEDED", "Continuity gap of ${gap}s exceeded for device $deviceId type $recordType (threshold ${policy.nativeContinuityGapSeconds}s).", Criticality.CRITICAL)
+                        }
+                    }
+                    if (timestamp != null) {
+                        deviceContinuity[recordType] = timestamp
                     }
                 }
 
@@ -382,6 +416,37 @@ class LukuArchive private constructor(
                 }
             }
         }
+
+        options.policy?.let { expectedPolicy ->
+            val actualPolicy = manifestPolicy(manifest)
+            if (actualPolicy == null) {
+                issues += VerificationIssue("POLICY_MISSING", "Archive does not declare the expected continuity policy '${expectedPolicy.name}'.", Criticality.WARNING)
+            } else {
+                if (expectedPolicy.name.isNotBlank() && actualPolicy.name.isNotBlank() && actualPolicy.name != expectedPolicy.name) {
+                    issues += VerificationIssue("POLICY_NAME_MISMATCH", "Archive policy name '${actualPolicy.name}' does not match expected policy '${expectedPolicy.name}'.", Criticality.WARNING)
+                }
+                if (actualPolicy.nativeContinuityGapSeconds != expectedPolicy.nativeContinuityGapSeconds) {
+                    issues += VerificationIssue("POLICY_THRESHOLD_MISMATCH", "Archive continuity threshold ${actualPolicy.nativeContinuityGapSeconds} does not match expected threshold ${expectedPolicy.nativeContinuityGapSeconds}.", Criticality.WARNING)
+                }
+            }
+
+            expectedPolicy.nativeContinuityGapSeconds?.let { threshold ->
+                for ((blockIndex, block) in blocks.withIndex()) {
+                    var lastNativeTimestamp: Long? = null
+                    for (record in block.batch) {
+                        val recordType = record.optString("type", "unknown")
+                        if (isAuxRecordType(recordType)) {
+                            continue
+                        }
+                        val timestamp = recordTimestamp(record) ?: continue
+                        if (lastNativeTimestamp != null && timestamp > lastNativeTimestamp && (timestamp - lastNativeTimestamp) > threshold) {
+                            issues += VerificationIssue("POLICY_NATIVE_TIME_GAP_UNSPLIT", "Native time gap of ${timestamp - lastNativeTimestamp} seconds exceeds expected policy threshold $threshold within block $blockIndex.", Criticality.WARNING)
+                        }
+                        lastNativeTimestamp = timestamp
+                    }
+                }
+            }
+        }
         return issues
     }
 
@@ -437,24 +502,71 @@ class LukuArchive private constructor(
             records: List<JSONObject>,
             device: LukuDeviceIdentity,
             attachments: Map<String, ByteArray>,
-            signer: LukuSigner
-        ): LukuArchive = exportWithIdentity(records, device, attachments, signer)
+            signer: LukuSigner,
+            options: LukuExportOptions = LukuExportOptions()
+        ): LukuArchive = exportWithIdentity(records, device, attachments, signer, options)
 
         fun exportWithIdentity(
             records: List<JSONObject>,
             device: LukuDeviceIdentity,
             attachments: Map<String, ByteArray>,
-            signer: LukuSigner
+            signer: LukuSigner,
+            options: LukuExportOptions = LukuExportOptions()
         ): LukuArchive {
             val blocks = mutableListOf<LukuBlock>()
             var previousBlockHash: String? = null
-            records.chunked(1000).forEachIndexed { index, chunk ->
-                val timestamp = chunk.firstNotNullOfOrNull { recordTimestamp(it) } ?: 0L
-                val block = buildBlockFromRecords(index, timestamp, previousBlockHash, device, chunk, null)
+            val nativeGapThreshold = options.policy?.nativeContinuityGapSeconds
+            var currentBatch = mutableListOf<JSONObject>()
+            var lastSignature: String? = null
+            var lastNativeTimestamp: Long? = null
+
+            fun flushCurrentBatch() {
+                if (currentBatch.isEmpty()) {
+                    return
+                }
+                val timestamp = currentBatch.firstNotNullOfOrNull { recordTimestamp(it) } ?: 0L
+                val block = buildBlockFromRecords(blocks.size, timestamp, previousBlockHash, device, currentBatch, null)
                 previousBlockHash = block.blockHash
                 blocks += block
+                currentBatch = mutableListOf()
+                lastSignature = null
+                lastNativeTimestamp = null
             }
-            return exportBlocksWithManifest(blocks, attachments, "Exported ${records.size} records", linkedMapOf(), signer)
+
+            records.forEach { record ->
+                val recordType = record.optString("type", "unknown")
+                val isAux = isAuxRecordType(recordType)
+                val signature = record.optString("signature")
+                val previousSignature = record.optString("previous_signature")
+                val timestamp = recordTimestamp(record)
+
+                var shouldSplit = false
+                if (!isAux) {
+                    if (!lastSignature.isNullOrBlank() && previousSignature.isNotBlank() && previousSignature != lastSignature) {
+                        shouldSplit = true
+                    }
+                    if (!shouldSplit && nativeGapThreshold != null && lastNativeTimestamp != null && timestamp != null && timestamp > lastNativeTimestamp!! && (timestamp - lastNativeTimestamp!!) > nativeGapThreshold) {
+                        shouldSplit = true
+                    }
+                }
+
+                if (shouldSplit) {
+                    flushCurrentBatch()
+                }
+
+                currentBatch += JSONObject(record.toString())
+                if (!isAux) {
+                    if (signature.isNotBlank()) {
+                        lastSignature = signature
+                    }
+                    if (timestamp != null) {
+                        lastNativeTimestamp = timestamp
+                    }
+                }
+            }
+            flushCurrentBatch()
+
+            return exportBlocksWithManifest(blocks, attachments, "Exported ${records.size} records", linkedMapOf(), signer, options)
         }
 
         fun exportBlocksWithManifest(
@@ -462,7 +574,8 @@ class LukuArchive private constructor(
             attachments: Map<String, ByteArray>,
             description: String,
             manifestExtra: MutableMap<String, Any?>,
-            signer: LukuSigner
+            signer: LukuSigner,
+            options: LukuExportOptions = LukuExportOptions()
         ): LukuArchive {
             val now = Instant.now().epochSecond
             val normalizedBlocks = mutableListOf<LukuBlock>()
@@ -483,6 +596,7 @@ class LukuArchive private constructor(
             }
 
             val blocksRaw = normalizedBlocks.joinToString("\n") { it.toJson().toString() } + "\n"
+            applyExportOptions(manifestExtra, options)
             manifestExtra.putIfAbsent("exporter_public_key", signer.publicKeyBase64)
             manifestExtra.putIfAbsent("exporter_alg", "ED25519")
 
@@ -550,6 +664,44 @@ class LukuArchive private constructor(
         private fun recordTimestamp(record: JSONObject): Long? {
             return record.optJSONObject("payload")?.takeIf { it.has("timestamp_utc") }?.optLong("timestamp_utc")
                 ?: record.takeIf { it.has("timestamp_utc") }?.optLong("timestamp_utc")
+                ?: record.takeIf { it.has("timestamp") }?.optLong("timestamp")
+        }
+
+        private fun isAuxRecordType(recordType: String): Boolean {
+            return recordType in setOf("attachment", "location", "custody")
+        }
+
+        private fun manifestPolicy(manifest: LukuManifest): LukuPolicy? {
+            val policy = manifest.extra["policy"] as? JSONObject
+            if (policy != null) {
+                val threshold = if (policy.has("native_continuity_gap_seconds")) policy.optLong("native_continuity_gap_seconds") else null
+                return LukuPolicy(
+                    name = policy.optString("name"),
+                    nativeContinuityGapSeconds = threshold
+                )
+            }
+
+            if (manifest.nativeContinuityGapSeconds != null) {
+                return LukuPolicy(name = "", nativeContinuityGapSeconds = manifest.nativeContinuityGapSeconds)
+            }
+
+            val legacyThreshold = when (val value = manifest.extra["native_continuity_gap_seconds"]) {
+                is Number -> value.toLong()
+                else -> null
+            }
+            return legacyThreshold?.let { LukuPolicy(name = "", nativeContinuityGapSeconds = it) }
+        }
+
+        private fun applyExportOptions(manifestExtra: MutableMap<String, Any?>, options: LukuExportOptions) {
+            options.policy?.let { policy ->
+                val policyJson = JSONObject()
+                    .put("name", policy.name)
+                if (policy.nativeContinuityGapSeconds != null) {
+                    policyJson.put("native_continuity_gap_seconds", policy.nativeContinuityGapSeconds)
+                    manifestExtra["native_continuity_gap_seconds"] = policy.nativeContinuityGapSeconds
+                }
+                manifestExtra["policy"] = policyJson
+            }
         }
 
         private fun recomputeBlockFields(block: LukuBlock): Triple<String, String, String> {
