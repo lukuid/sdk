@@ -722,7 +722,7 @@ fn test_samples_directory_files() {
         );
     }
 
-    // 4. Trust Profile Logic (Valid dev file rejected by prod profile)
+    // 4. Trust Profile Logic (Valid dev file rejected by test/prod profiles)
     if passable_path.exists() {
         let luku = LukuFile::open(&passable_path).unwrap();
         
@@ -734,6 +734,16 @@ fn test_samples_directory_files() {
         assert!(
             !dev_issues.iter().any(|i| i.code == "ATTESTATION_FAILED" && i.message.contains("Certificate chain does not match the requested trust profile")),
             "Expected passable sample to pass trust profile check under 'dev' profile"
+        );
+
+        // Ensure it fails with "test"
+        let mut test_options = options.clone();
+        test_options.allow_untrusted_roots = false; // enforce checking
+        test_options.trust_profile = "test".to_string();
+        let test_issues = luku.verify(test_options);
+        assert!(
+            test_issues.iter().any(|i| i.code == "ATTESTATION_FAILED" && i.message.contains("Certificate chain does not match the requested trust profile")),
+            "Expected passable sample (dev) to fail trust profile check under 'test' profile"
         );
 
         // Ensure it fails with "prod"

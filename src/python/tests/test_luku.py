@@ -271,6 +271,9 @@ class LukuArchiveTests(unittest.TestCase):
         dev_issues = passable.verify(LukuVerifyOptions(allow_untrusted_roots=False, skip_certificate_temporal_checks=True, trust_profile="dev"))
         self.assertFalse(any(issue.code == "ATTESTATION_FAILED" and "trust profile" in issue.message for issue in dev_issues))
 
+        test_issues = passable.verify(LukuVerifyOptions(allow_untrusted_roots=False, skip_certificate_temporal_checks=True, trust_profile="test"))
+        self.assertTrue(any(issue.code == "ATTESTATION_FAILED" and "trust profile" in issue.message for issue in test_issues))
+
         prod_issues = passable.verify(LukuVerifyOptions(allow_untrusted_roots=False, skip_certificate_temporal_checks=True, trust_profile="prod"))
         self.assertTrue(any(issue.code == "ATTESTATION_FAILED" and "trust profile" in issue.message for issue in prod_issues))
 

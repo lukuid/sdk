@@ -461,6 +461,14 @@ final class LukuArchiveTests: XCTestCase {
         ))
         XCTAssertFalse(devIssues.contains { $0.code == "ATTESTATION_FAILED" && $0.message.contains("Certificate chain does not match the requested trust profile") })
 
+        let testIssues = passable.verify(options: LukuVerifyOptions(
+            allowUntrustedRoots: false,
+            skipCertificateTemporalChecks: true,
+            trustedExternalFingerprints: [],
+            trustProfile: "test"
+        ))
+        XCTAssertTrue(testIssues.contains { $0.code == "ATTESTATION_FAILED" && $0.message.contains("Certificate chain does not match the requested trust profile") })
+
         let prodIssues = passable.verify(options: LukuVerifyOptions(
             allowUntrustedRoots: false,
             skipCertificateTemporalChecks: true,

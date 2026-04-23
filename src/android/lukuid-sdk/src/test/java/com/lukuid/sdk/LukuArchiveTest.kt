@@ -404,6 +404,15 @@ class LukuArchiveTest {
         )
         assertFalse(devIssues.any { it.code == "ATTESTATION_FAILED" && it.message.contains("trust profile") })
 
+        val testIssues = passable.verify(
+            LukuVerifyOptions(
+                allowUntrustedRoots = false,
+                skipCertificateTemporalChecks = true,
+                trustProfile = "test"
+            )
+        )
+        assertTrue(testIssues.any { it.code == "ATTESTATION_FAILED" && it.message.contains("trust profile") })
+
         val prodIssues = passable.verify(
             LukuVerifyOptions(
                 allowUntrustedRoots = false,

@@ -484,6 +484,20 @@ describe('LukuFile', () => {
       false
     );
 
+    const testIssues = await passableArchive.verify({
+      ...testOptions(),
+      allowUntrustedRoots: false,
+      trustProfile: 'test'
+    });
+    assert.equal(
+      testIssues.some(
+        (entry) =>
+          entry.code === 'ATTESTATION_FAILED'
+          && entry.message.includes('Certificate chain does not match the requested trust profile')
+      ),
+      true
+    );
+
     const prodIssues = await passableArchive.verify({
       ...testOptions(),
       allowUntrustedRoots: false,
