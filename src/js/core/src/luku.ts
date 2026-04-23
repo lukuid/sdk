@@ -17,7 +17,7 @@ export interface LukuManifest {
   description: string;
   blocks_hash: string;
   native_continuity_gap_seconds?: number;
-  [key: string]: JsonValue;
+  [key: string]: JsonValue | undefined;
 }
 
 export interface LukuDeviceIdentity {
