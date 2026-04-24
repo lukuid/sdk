@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
-import { verifyDeviceAttestation } from './attestation.js';
+import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js';
+import { verifyDeviceAttestation, verifyExternalIdentity } from './attestation.js';
+import type { SelfTestResult } from './types.js';
 
 export const LUKU_MIMETYPE = 'application/vnd.lukuid.package+zip';
 
@@ -17,7 +19,7 @@ export interface LukuManifest {
   description: string;
   blocks_hash: string;
   native_continuity_gap_seconds?: number;
-  [key: string]: JsonValue;
+  [key: string]: JsonValue | undefined;
 }
 
 export interface LukuDeviceIdentity {
@@ -84,6 +86,8 @@ interface StoredArchive {
   attachments: Record<string, Uint8Array>;
 }
 
+const SUPPORTED_ARCHIVE_VERSIONS = new Set(['1.0.0', '1.0']);
+
 function ensureJsonObject(value: unknown, label: string): JsonObject {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(`${label} must be a JSON object`);
@@ -112,6 +116,32 @@ function asNumber(value: JsonValue | undefined): number | undefined {
 
 function asBoolean(value: JsonValue | undefined): boolean | undefined {
   return typeof value === 'boolean' ? value : undefined;
+}
+
+function isSafeZipEntryName(name: string): boolean {
+  if (!name || name.startsWith('/') || name.startsWith('\\') || name.includes('\\')) {
+    return false;
+  }
+  const parts = name.split('/');
+  return parts.every((part) => part.length > 0 && part !== '.' && part !== '..');
+}
+
+function validateManifestShape(manifest: JsonObject): void {
+  if (asString(manifest.type) !== 'LukuArchive') {
+    throw new Error('manifest.json field type must be "LukuArchive"');
+  }
+  if (!asString(manifest.version)) {
+    throw new Error('manifest.json field version must be a non-empty string');
+  }
+  if (asNumber(manifest.created_at_utc) === undefined) {
+    throw new Error('manifest.json field created_at_utc must be a finite number');
+  }
+  if (asString(manifest.description) === undefined) {
+    throw new Error('manifest.json field description must be a string');
+  }
+  if (!asString(manifest.blocks_hash)) {
+    throw new Error('manifest.json field blocks_hash must be a non-empty string');
+  }
 }
 
 function getSubtleCrypto(): SubtleCrypto {
@@ -190,9 +220,14 @@ async function verifyDetachedSignature(
   payload: string,
   signatureBase64: string
 ): Promise<boolean> {
+  const normalizedPublicKey = publicKeyBase64.replace(/\s+/g, '');
+  const normalizedSignature = signatureBase64.replace(/\s+/g, '');
   const publicKeyBytes = decodeBase64(publicKeyBase64);
   const signatureBytes = decodeBase64(signatureBase64);
   if (!publicKeyBytes || !signatureBytes || publicKeyBytes.length < 32) {
+    return false;
+  }
+  if (encodeBase64(publicKeyBytes) !== normalizedPublicKey || encodeBase64(signatureBytes) !== normalizedSignature) {
     return false;
   }
   try {
@@ -330,6 +365,27 @@ function manifestPolicy(manifest: LukuManifest): LukuPolicy | undefined {
   return undefined;
 }
 
+function expectedExternalIdentityPayload(record: JsonObject, recordType: string): string | null {
+  const externalIdentity = asJsonObject(record.external_identity);
+  const endorserId = asString(externalIdentity?.endorser_id);
+  if (!endorserId) {
+    return null;
+  }
+
+  switch (recordType) {
+    case 'attachment':
+      return `${asString(record.checksum) ?? ''}:${asString(record.merkle_root) ?? ''}:${endorserId}`;
+    case 'location':
+      return `${asNumber(record.lat) ?? 0}:${asNumber(record.lng) ?? 0}:${endorserId}`;
+    case 'custody': {
+      const payload = asJsonObject(record.payload);
+      return `${asString(payload?.event) ?? ''}:${asString(payload?.status) ?? ''}:${asString(payload?.context_ref) ?? ''}:${endorserId}`;
+    }
+    default:
+      return null;
+  }
+}
+
 function applyExportOptionsToManifestExtra(
   manifestExtra: Record<string, JsonValue>,
   options?: LukuExportOptions
@@ -405,7 +461,9 @@ export class LukuFile {
 
     let manifest: LukuManifest;
     try {
-      manifest = ensureJsonObject(JSON.parse(stored.manifestRaw), 'manifest.json') as unknown as LukuManifest;
+      const manifestJson = ensureJsonObject(JSON.parse(stored.manifestRaw), 'manifest.json');
+      validateManifestShape(manifestJson);
+      manifest = manifestJson as unknown as LukuManifest;
     } catch (error) {
       throw new Error(`Failed to parse manifest.json: ${String(error)}`);
     }
@@ -433,6 +491,11 @@ export class LukuFile {
   }
 
   private static readStoredArchive(entries: Record<string, Uint8Array>): StoredArchive {
+    for (const name of Object.keys(entries)) {
+      if (!isSafeZipEntryName(name)) {
+        throw new Error(`Archive contains unsafe ZIP entry path: ${name}`);
+      }
+    }
     const mimetypeBytes = entries.mimetype;
     if (!mimetypeBytes) {
       throw new Error('mimetype file missing');
@@ -591,7 +654,7 @@ export class LukuFile {
 
     const manifest: LukuManifest = {
       type: 'LukuArchive',
-      version: '1.0',
+      version: '1.0.0',
       created_at_utc: now,
       description,
       blocks_hash: await sha256Hex(utf8(blocksRaw)),
@@ -799,6 +862,9 @@ export class LukuFile {
     if (blocksHash !== this.manifest.blocks_hash) {
       issues.push(issue('BLOCKS_HASH_MISMATCH', 'The blocks.jsonl file hash does not match the manifest.', 'critical'));
     }
+    if (!SUPPORTED_ARCHIVE_VERSIONS.has(this.manifest.version)) {
+      issues.push(issue('MANIFEST_VERSION_UNSUPPORTED', `Archive manifest version ${this.manifest.version} is not supported.`, 'critical'));
+    }
 
     let previousBlockHash: string | null = null;
     for (let index = 0; index < this.blocks.length; index += 1) {
@@ -925,6 +991,7 @@ export class LukuFile {
             }
           }
           const attestationSignature = asString(identity?.signature) ?? '';
+
           if (attestationChain.length === 0) {
             issues.push(issue('ATTESTATION_CHAIN_MISSING', `Missing DAC attestation chain for device ${deviceId}.`, 'warning'));
           } else if (!isAuxRecord || attestationSignature.length > 0) {
@@ -984,6 +1051,43 @@ export class LukuFile {
             }
           }
         }
+
+        const externalIdentity = asJsonObject(record.external_identity);
+        if (externalIdentity && !isAuxRecord) {
+          issues.push(issue(
+            'EXTERNAL_IDENTITY_UNSUPPORTED_RECORD_TYPE',
+            `Record type ${recordType} must not carry external_identity.`,
+            'critical'
+          ));
+        }
+
+        if (isAuxRecord) {
+          const expectedPayload = expectedExternalIdentityPayload(record, recordType);
+          const endorserId = asString(externalIdentity?.endorser_id);
+          const rootFingerprint = asString(externalIdentity?.root_fingerprint);
+          const signature = asString(externalIdentity?.signature);
+          const certChainDer = asJsonArray(externalIdentity?.cert_chain_der)
+            ?.map((value) => asString(value))
+            .filter((value): value is string => Boolean(value));
+
+          if (externalIdentity && expectedPayload && endorserId && rootFingerprint && signature && certChainDer?.length) {
+            const result = await verifyExternalIdentity({
+              endorserId,
+              rootFingerprint,
+              certChainDer,
+              signature,
+              expectedPayload,
+              trustedFingerprints: options.trustedExternalFingerprints ?? []
+            });
+            if (!result.ok) {
+              issues.push(issue(
+                'EXTERNAL_IDENTITY_VERIFICATION_FAILED',
+                `External identity verification failed: ${result.reason ?? 'unknown error'}`,
+                'critical'
+              ));
+            }
+          }
+        }
       }
     }
 
@@ -1038,9 +1142,129 @@ export class LukuFile {
     }
 
     return issues;
-  }
-}
+    }
 
+  static async selfTest(): Promise<SelfTestResult[]> {
+    const results: SelfTestResult[] = [];
+
+    // 1. Ed25519 (Sign and Verify)
+    try {
+      const pair = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign', 'verify']);
+      const msg = new TextEncoder().encode('abc');
+      let signPassed = false;
+      let sig: ArrayBuffer | undefined;
+      try {
+        sig = await crypto.subtle.sign('Ed25519', (pair as any).privateKey, msg);
+        signPassed = true;
+      } catch (e) {}
+      results.push({ alg: 'Ed25519', operation: 'SIGN', passed: signPassed, id: 'LUKUID-KAT-ED25519-SIGN-01' });
+      
+      let verifyPassed = false;
+      if (sig) {
+        try {
+            verifyPassed = await crypto.subtle.verify('Ed25519', (pair as any).publicKey, sig, msg);
+        } catch (e) {}
+      }
+      results.push({ alg: 'Ed25519', operation: 'VERIFY', passed: verifyPassed, id: 'LUKUID-KAT-ED25519-VERIFY-01' });
+    } catch (e) {
+      results.push({ alg: 'Ed25519', operation: 'SIGN', passed: false, id: 'LUKUID-KAT-ED25519-SIGN-01' });
+      results.push({ alg: 'Ed25519', operation: 'VERIFY', passed: false, id: 'LUKUID-KAT-ED25519-VERIFY-01' });
+    }
+
+    // 2. P-256 (Sign, Verify, Reject)
+    try {
+      const pair = await crypto.subtle.generateKey(
+        { name: 'ECDSA', namedCurve: 'P-256' },
+        true,
+        ['sign', 'verify']
+      );
+      const msg = new TextEncoder().encode('abc');
+      const badMsg = new TextEncoder().encode('abd');
+      
+      let signPassed = false;
+      let sig: ArrayBuffer | undefined;
+      try {
+        sig = await crypto.subtle.sign(
+          { name: 'ECDSA', hash: { name: 'SHA-256' } },
+          pair.privateKey,
+          msg
+        );
+        signPassed = true;
+      } catch (e) {}
+      results.push({ alg: 'P256', operation: 'SIGN', passed: signPassed, id: 'NIST-KAT-P256-SIGN-01' });
+
+      let verifyPassed = false;
+      let rejectPassed = false;
+      if (sig) {
+        try {
+          verifyPassed = await crypto.subtle.verify(
+            { name: 'ECDSA', hash: { name: 'SHA-256' } },
+            pair.publicKey,
+            sig,
+            msg
+          );
+          
+          const rejected = await crypto.subtle.verify(
+            { name: 'ECDSA', hash: { name: 'SHA-256' } },
+            pair.publicKey,
+            sig,
+            badMsg
+          );
+          rejectPassed = !rejected;
+        } catch (e) {}
+      }
+      results.push({ alg: 'P256', operation: 'VERIFY', passed: verifyPassed, id: 'NIST-KAT-P256-VERIFY-01' });
+      results.push({ alg: 'P256', operation: 'REJECT', passed: rejectPassed, id: 'NIST-KAT-P256-REJECT-01' });
+    } catch (e) {
+      results.push({ alg: 'P256', operation: 'SIGN', passed: false, id: 'NIST-KAT-P256-SIGN-01' });
+      results.push({ alg: 'P256', operation: 'VERIFY', passed: false, id: 'NIST-KAT-P256-VERIFY-01' });
+      results.push({ alg: 'P256', operation: 'REJECT', passed: false, id: 'NIST-KAT-P256-REJECT-01' });
+    }
+
+    // 3. SHA-256 (FIPS 180-4 "abc")
+    try {
+      const msg = new TextEncoder().encode('abc');
+      const hash = await crypto.subtle.digest('SHA-256', msg);
+      const hex_str = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+      const passed = hex_str === 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad';
+      results.push({ alg: 'SHA-256', operation: 'HASH', passed, id: 'NIST-KAT-SHA256-01' });
+    } catch {
+      results.push({ alg: 'SHA-256', operation: 'HASH', passed: false, id: 'NIST-KAT-SHA256-01' });
+    }
+
+    // 4. ML-DSA-65 (Sign, Verify, Reject)
+    try {
+      const pair = ml_dsa65.keygen();
+      const msg = new TextEncoder().encode('abc');
+      const badMsg = new TextEncoder().encode('abd');
+      
+      let signPassed = false;
+      let sig: Uint8Array | undefined;
+      try {
+        sig = ml_dsa65.sign(msg, pair.secretKey);
+        signPassed = true;
+      } catch (e) {}
+      results.push({ alg: 'ML-DSA-65', operation: 'SIGN', passed: signPassed, id: 'NIST-KAT-MLDSA-SIGN-01' });
+
+      let verifyPassed = false;
+      let rejectPassed = false;
+      if (sig) {
+        try {
+          verifyPassed = ml_dsa65.verify(sig, msg, pair.publicKey);
+          rejectPassed = !ml_dsa65.verify(sig, badMsg, pair.publicKey);
+        } catch (e) {}
+      }
+      results.push({ alg: 'ML-DSA-65', operation: 'VERIFY', passed: verifyPassed, id: 'NIST-KAT-MLDSA-VERIFY-01' });
+      results.push({ alg: 'ML-DSA-65', operation: 'REJECT', passed: rejectPassed, id: 'NIST-KAT-MLDSA-REJECT-01' });
+    } catch (e) {
+      results.push({ alg: 'ML-DSA-65', operation: 'SIGN', passed: false, id: 'NIST-KAT-MLDSA-SIGN-01' });
+      results.push({ alg: 'ML-DSA-65', operation: 'VERIFY', passed: false, id: 'NIST-KAT-MLDSA-VERIFY-01' });
+      results.push({ alg: 'ML-DSA-65', operation: 'REJECT', passed: false, id: 'NIST-KAT-MLDSA-REJECT-01' });
+    }
+
+    return results;
+  }
+    }
 export interface LukuItemResult {
   type: string;
   verified: boolean;
@@ -1076,10 +1300,9 @@ export async function parseLukuFile(data: Uint8Array): Promise<LukuParseResult> 
       });
     }
   }
-
-  return {
-    verified: !hasCriticalIssues(issues),
-    items,
-    issues
-  };
+return {
+  verified: !hasCriticalIssues(issues),
+  items,
+  issues
+};
 }

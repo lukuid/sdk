@@ -4,7 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "LukuIDSDK",
-platforms: [
+    platforms: [
         .iOS(.v15),
         .macOS(.v12)
     ],
@@ -20,8 +20,19 @@ platforms: [
     ],
     targets: [
         .target(
+            name: "MLDSANative",
+            path: "Sources/MLDSANative",
+            exclude: ["src"],
+            cSettings: [
+                .headerSearchPath("include"),
+                .headerSearchPath("src"),
+                .headerSearchPath("src/fips202")
+            ]
+        ),
+        .target(
             name: "LukuIDSDK",
             dependencies: [
+                "MLDSANative",
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
                 .product(name: "SwiftProtobuf", package: "swift-protobuf")
             ],

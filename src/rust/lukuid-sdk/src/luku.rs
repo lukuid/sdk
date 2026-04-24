@@ -13,6 +13,7 @@ use zip::write::FileOptions;
 use zip::{ZipArchive, ZipWriter};
 
 pub const LUKU_MIMETYPE: &str = "application/vnd.lukuid.package+zip";
+const SUPPORTED_ARCHIVE_VERSIONS: &[&str] = &["1.0.0", "1.0"];
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LukuManifest {
@@ -123,6 +124,9 @@ pub struct LukuFile {
     pub attachments: HashMap<String, Vec<u8>>,
     pub path: Option<PathBuf>,
     manifest_raw: Option<String>,
+    blocks_raw: Option<String>,
+    mimetype_is_first: bool,
+    mimetype_is_stored: bool,
 }
 
 impl LukuFile {
@@ -134,6 +138,12 @@ impl LukuFile {
         path: Option<PathBuf>,
     ) -> Self {
         let manifest_raw = serde_json::to_string_pretty(&manifest).ok();
+        let blocks_raw: String = blocks
+            .iter()
+            .map(|b| serde_json::to_string(b).unwrap())
+            .collect::<Vec<_>>()
+            .join("\n")
+            + "\n";
         Self {
             manifest,
             manifest_sig,
@@ -141,6 +151,9 @@ impl LukuFile {
             attachments,
             path,
             manifest_raw,
+            blocks_raw: Some(blocks_raw),
+            mimetype_is_first: true,
+            mimetype_is_stored: true,
         }
     }
 
@@ -158,6 +171,26 @@ impl LukuFile {
         path: Option<PathBuf>,
     ) -> Result<Self, String> {
         let mut archive = ZipArchive::new(reader).map_err(|e| e.to_string())?;
+
+        let mut seen_names = HashSet::new();
+        for i in 0..archive.len() {
+            let file = archive.by_index(i).map_err(|e| e.to_string())?;
+            let name = file.name().to_string();
+            if !is_safe_zip_entry_name(&name) {
+                return Err(format!("Archive contains unsafe ZIP entry path: {}", name));
+            }
+            if !seen_names.insert(name.clone()) {
+                return Err(format!("Archive contains duplicate ZIP entry: {}", name));
+            }
+        }
+
+        let (mimetype_is_first, mimetype_is_stored) = match archive.by_index(0) {
+            Ok(file0) => (
+                file0.name() == "mimetype",
+                file0.compression() == zip::CompressionMethod::Stored,
+            ),
+            Err(_) => (false, false),
+        };
 
         let mut mimetype_file = archive
             .by_name("mimetype")
@@ -221,6 +254,9 @@ impl LukuFile {
             attachments,
             path,
             manifest_raw: Some(manifest_content),
+            blocks_raw: Some(blocks_content),
+            mimetype_is_first,
+            mimetype_is_stored,
         })
     }
 
@@ -582,6 +618,19 @@ impl LukuFile {
     pub fn verify(&self, options: LukuVerifyOptions) -> Vec<VerificationIssue> {
         let debug_logging = Self::debug_logging_enabled();
         let mut issues = Vec::new();
+
+        if !SUPPORTED_ARCHIVE_VERSIONS.contains(&self.manifest.version.as_str()) {
+            Self::push_issue(
+                &mut issues,
+                debug_logging,
+                Some("archive"),
+                VerificationIssue {
+                    code: "MANIFEST_VERSION_UNSUPPORTED".to_string(),
+                    message: format!("Archive manifest version {} is not supported.", self.manifest.version),
+                    criticality: Criticality::Critical,
+                },
+            );
+        }
         if debug_logging {
             let archive_path = self
                 .path
@@ -643,85 +692,65 @@ impl LukuFile {
             });
         }
 
-        // 1. Check blocks_hash
-        if let Some(path) = &self.path {
-            if let Ok(file) = File::open(path) {
-                if let Ok(mut archive) = ZipArchive::new(file) {
-                    let first_entry_issue = match archive.by_index(0) {
-                        Ok(file0) => {
-                            if file0.name() != "mimetype" {
-                                Some(VerificationIssue {
-                                    code: "MIMETYPE_NOT_FIRST".to_string(),
-                                    message: "The mimetype entry is not the first ZIP entry."
-                                        .to_string(),
-                                    criticality: Criticality::Critical,
-                                })
-                            } else if file0.compression() != zip::CompressionMethod::Stored {
-                                Some(VerificationIssue {
-                                    code: "MIMETYPE_COMPRESSED".to_string(),
-                                    message: "The mimetype entry must be stored uncompressed."
-                                        .to_string(),
-                                    criticality: Criticality::Critical,
-                                })
-                            } else {
-                                None
-                            }
-                        }
-                        Err(_) => Some(VerificationIssue {
-                            code: "MIMETYPE_NOT_FIRST".to_string(),
-                            message: "Unable to inspect the first ZIP entry.".to_string(),
-                            criticality: Criticality::Critical,
-                        }),
-                    };
-                    if let Some(issue) = first_entry_issue {
-                        Self::push_issue(&mut issues, debug_logging, Some("archive"), issue);
-                    }
+        // 1. Check blocks_hash and archive structure
+        if !self.mimetype_is_first {
+            Self::push_issue(
+                &mut issues,
+                debug_logging,
+                Some("archive"),
+                VerificationIssue {
+                    code: "MIMETYPE_NOT_FIRST".to_string(),
+                    message: "The mimetype entry is not the first ZIP entry.".to_string(),
+                    criticality: Criticality::Critical,
+                },
+            );
+        } else if !self.mimetype_is_stored {
+            Self::push_issue(
+                &mut issues,
+                debug_logging,
+                Some("archive"),
+                VerificationIssue {
+                    code: "MIMETYPE_COMPRESSED".to_string(),
+                    message: "The mimetype entry must be stored uncompressed.".to_string(),
+                    criticality: Criticality::Critical,
+                },
+            );
+        }
 
-                    if let Ok(mut blocks_file) = archive.by_name("blocks.jsonl") {
-                        let mut hasher = Sha256::new();
-                        let mut buffer = [0u8; 8192];
-                        while let Ok(n) = blocks_file.read(&mut buffer) {
-                            if n == 0 {
-                                break;
-                            }
-                            hasher.update(&buffer[..n]);
-                        }
-                        let hash = format!("{:x}", hasher.finalize());
-                        if hash != self.manifest.blocks_hash {
-                            if debug_logging {
-                                Self::debug_log(format!(
-                                    "archive blocks_hash expected={} actual={}",
-                                    self.manifest.blocks_hash, hash
-                                ));
-                            }
-                            Self::push_issue(
-                                &mut issues,
-                                debug_logging,
-                                Some("archive"),
-                                VerificationIssue {
-                                    code: "BLOCKS_HASH_MISMATCH".to_string(),
-                                    message:
-                                        "The blocks.jsonl file hash does not match the manifest."
-                                            .to_string(),
-                                    criticality: Criticality::Critical,
-                                },
-                            );
-                        }
-                    } else {
-                        Self::push_issue(
-                            &mut issues,
-                            debug_logging,
-                            Some("archive"),
-                            VerificationIssue {
-                                code: "BLOCKS_FILE_MISSING".to_string(),
-                                message: "The blocks.jsonl file is missing from the archive."
-                                    .to_string(),
-                                criticality: Criticality::Critical,
-                            },
-                        );
-                    }
+        if let Some(blocks_raw) = &self.blocks_raw {
+            let mut hasher = Sha256::new();
+            hasher.update(blocks_raw.as_bytes());
+            let hash = format!("{:x}", hasher.finalize());
+            if hash != self.manifest.blocks_hash {
+                if debug_logging {
+                    Self::debug_log(format!(
+                        "archive blocks_hash expected={} actual={}",
+                        self.manifest.blocks_hash, hash
+                    ));
                 }
+                Self::push_issue(
+                    &mut issues,
+                    debug_logging,
+                    Some("archive"),
+                    VerificationIssue {
+                        code: "BLOCKS_HASH_MISMATCH".to_string(),
+                        message: "The blocks.jsonl file hash does not match the manifest."
+                            .to_string(),
+                        criticality: Criticality::Critical,
+                    },
+                );
             }
+        } else {
+            Self::push_issue(
+                &mut issues,
+                debug_logging,
+                Some("archive"),
+                VerificationIssue {
+                    code: "BLOCKS_FILE_MISSING".to_string(),
+                    message: "The blocks.jsonl file is missing or not loaded.".to_string(),
+                    criticality: Criticality::Critical,
+                },
+            );
         }
 
         // 2. Verify block chain and hashes
@@ -1203,6 +1232,19 @@ impl LukuFile {
                         issues: &mut Vec<VerificationIssue>,
                     ) {
                         if let Some(ext_id) = record_or_attachment.get("external_identity") {
+                            if !matches!(r#type, "attachment" | "location" | "custody") {
+                                LukuFile::push_issue(
+                                    issues,
+                                    debug_logging,
+                                    Some(context),
+                                    VerificationIssue {
+                                        code: "EXTERNAL_IDENTITY_UNSUPPORTED_RECORD_TYPE".to_string(),
+                                        message: format!("Record type {} must not carry external_identity.", r#type),
+                                        criticality: Criticality::Critical,
+                                    },
+                                );
+                                return;
+                            }
                             use crate::attestation::{
                                 verify_external_identity, ExternalIdentityInputs,
                             };
@@ -1874,7 +1916,7 @@ impl LukuFile {
 
         let mut manifest = LukuManifest {
             r#type: "LukuArchive".to_string(),
-            version: "1.0".to_string(),
+            version: "1.0.0".to_string(),
             created_at_utc: timestamp,
             description,
             blocks_hash: String::new(),
@@ -1931,6 +1973,9 @@ impl LukuFile {
             attachments,
             path: None,
             manifest_raw: Some(manifest_json),
+            blocks_raw: Some(blocks_content),
+            mimetype_is_first: true,
+            mimetype_is_stored: true,
         };
 
         luku.save_to(path)
@@ -2012,6 +2057,7 @@ impl LukuFile {
         let manifest_sig_bytes = exporter_key.sign(manifest_json.as_bytes()).to_bytes();
         self.manifest_sig = BASE64.encode(manifest_sig_bytes);
         self.manifest_raw = Some(manifest_json);
+        self.blocks_raw = Some(blocks_content);
 
         if let Some(path) = &self.path {
             self.save_to(path)?;
@@ -2063,6 +2109,7 @@ impl LukuFile {
         let manifest_sig_bytes = exporter_key.sign(manifest_json.as_bytes()).to_bytes();
         self.manifest_sig = BASE64.encode(manifest_sig_bytes);
         self.manifest_raw = Some(manifest_json);
+        self.blocks_raw = Some(blocks_content);
 
         if let Some(path) = &self.path {
             self.save_to(path)?;
@@ -2083,13 +2130,14 @@ impl LukuFile {
         zip.write_all(LUKU_MIMETYPE.as_bytes())
             .map_err(|e| e.to_string())?;
 
-        let blocks_content: String = self
-            .blocks
-            .iter()
-            .map(|b| serde_json::to_string(b).unwrap())
-            .collect::<Vec<_>>()
-            .join("\n")
-            + "\n";
+        let blocks_content = self.blocks_raw.clone().unwrap_or_else(|| {
+            self.blocks
+                .iter()
+                .map(|b| serde_json::to_string(b).unwrap())
+                .collect::<Vec<_>>()
+                .join("\n")
+                + "\n"
+        });
 
         zip.start_file(
             "blocks.jsonl",
@@ -2136,6 +2184,14 @@ impl LukuFile {
     }
 }
 
+fn is_safe_zip_entry_name(name: &str) -> bool {
+    if name.is_empty() || name.starts_with('/') || name.starts_with('\\') || name.contains('\\') {
+        return false;
+    }
+    name.split('/')
+        .all(|part| !part.is_empty() && part != "." && part != "..")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2168,7 +2224,7 @@ mod tests {
         LukuFile::export(records, &luku_path, identity, HashMap::new(), &signing_key, LukuExportOptions::default()).unwrap();
 
         let luku = LukuFile::open(&luku_path).unwrap();
-        assert_eq!(luku.manifest.version, "1.0");
+        assert_eq!(luku.manifest.version, "1.0.0");
         assert_eq!(luku.blocks.len(), 1);
         assert_eq!(luku.blocks[0].batch.len(), 1);
 

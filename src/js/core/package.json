@@ -1,6 +1,6 @@
 {
   "name": "@lukuid/core",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Shared primitives for the Lukuid JS SDK.",
   "private": false,
   "type": "module",
@@ -42,6 +42,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
+    "@noble/post-quantum": "^0.6.1",
     "fflate": "^0.8.2",
     "node-forge": "^1.3.1"
   }

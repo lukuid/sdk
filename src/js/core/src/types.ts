@@ -149,6 +149,13 @@ export interface ResponseFrameErr {
   [key: string]: unknown;
 }
 
+export interface SelfTestResult {
+  alg: string;
+  operation: string;
+  passed: boolean;
+  id: string;
+}
+
 export type ResponseFrame = ResponseFrameOk | ResponseFrameErr;
 
 export interface EventFrame {

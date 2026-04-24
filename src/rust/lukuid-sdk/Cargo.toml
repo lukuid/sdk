@@ -1,6 +1,6 @@
 [package]
 name = "lukuid-sdk"
-version = "1.0.1"
+version = "1.0.2"
 edition = "2021"
 description = "LukuID SDK for Rust"
 license = "Apache-2.0"
@@ -32,10 +32,13 @@ futures = "0.3"
 zip = "8.1.0"
 reqwest = { version = "0.12", features = ["json"] }
 sha2 = "0.10"
+ml-dsa = "0.1.0-rc.8"
+hex = "0.4"
 
 [dev-dependencies]
 ed25519-dalek = { version = "2.1", features = ["rand_core"] }
 rand = { version = "0.10.1", features = ["std_rng"] }
+rand_core = { version = "0.6", features = ["getrandom"] }
 serde_json = "1.0"
 tokio-test = "0.4"
 

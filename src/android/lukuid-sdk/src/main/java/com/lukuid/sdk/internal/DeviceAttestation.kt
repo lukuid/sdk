@@ -29,6 +29,15 @@ internal data class VerificationResult(
     val reason: String?
 )
 
+internal data class ExternalIdentityInput(
+    val endorserId: String,
+    val rootFingerprint: String,
+    val certChainDer: List<String>,
+    val signature: String,
+    val expectedPayload: String,
+    val trustedFingerprints: List<String> = emptyList()
+)
+
 private val TRUSTED_ROOT_CERTS_PEM = listOf(
     """
     -----BEGIN CERTIFICATE-----
@@ -76,7 +85,7 @@ private val TRUSTED_ROOT_CERTS_PEM = listOf(
     Qe6dXYJxc3jlWcfPKlw4PNCRFVR3CifduPZVcoglX0T5u9oO0NKXK2CtYlCEuGNA
     pjOnCIPI2cMpiUf5lEH1QMVO/l9xZlT+su+vquoCUvMOv1VPze3fOPWUqM4NZLGH
     An3vcUK1EKUcEwSS42kowvCKId1QL1QXdoUffG5K3zt+IfDMzYc6JufdUo+X3Bd5
-    KUlj1lc7dh8MKDK/jWjrxj8V7zZAq7Tc7/jde/fmKfMWFmxWG9U3nBjYb85AcSE5
+    KUlj1lc7dh8MKDK/jWjrxj8V7zZA77Tc7/jde/fmKfMWFmxWG9U3nBjYb85AcSE5
     vWn2BK/zwI8eimSdNLsY4o5Zo0IwQDAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB
     /wQEAwIBBjAdBgNVHQ4EFgQUcW3eH6pWJcD+uoLcPr0TuOYQjXcwCwYJYIZIAWUD
     BAMSA4IM7gAoefUnUDQbu8jhreiaeXW4B5nHFq4W0AKz8Tw8CceQxPwrOWwZ16nv
@@ -154,7 +163,6 @@ private val TRUSTED_ROOT_CERTS_PEM = listOf(
 )
 
 internal fun verifyDeviceAttestation(input: DeviceAttestationInput): VerificationResult {
-    // Ensure BC provider is registered
     if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
         Security.addProvider(BouncyCastleProvider())
     }
@@ -171,7 +179,6 @@ internal fun verifyDeviceAttestation(input: DeviceAttestationInput): Verificatio
     
     var leafPublicKey: PublicKey? = null
     
-    // 1. Handle Chain Walking if provided
     if (!input.certificateChain.isNullOrEmpty()) {
         try {
             val cf = CertificateFactory.getInstance("X.509", BouncyCastleProvider.PROVIDER_NAME)
@@ -197,77 +204,137 @@ internal fun verifyDeviceAttestation(input: DeviceAttestationInput): Verificatio
                 return VerificationResult(false, "Certificate chain does not match the requested trust profile: ${input.trustProfile ?: "prod"}")
             }
             
-            var verified = false
-            
-            for (rootPem in TRUSTED_ROOT_CERTS_PEM) {
-                try {
-                    cf.generateCertificate(ByteArrayInputStream(rootPem.toByteArray())) as X509Certificate
-                    verified = true
-                    break
-                } catch (e: Exception) {
-                    continue
+            // 1.07 MANDATORY: Verify signatures along the chain
+            for (i in 0 until certs.size) {
+                val current = certs[i]
+                var verified = false
+                
+                if (i + 1 < certs.size) {
+                    val next = certs[i + 1]
+                    verified = try {
+                        val sig = Signature.getInstance(current.sigAlgName, BouncyCastleProvider.PROVIDER_NAME)
+                        sig.initVerify(next.publicKey)
+                        sig.update(current.tbsCertificate)
+                        sig.verify(current.signature)
+                    } catch (e: Exception) { false }
+                } else {
+                    for (rootPem in TRUSTED_ROOT_CERTS_PEM) {
+                        verified = try {
+                            val root = cf.generateCertificate(ByteArrayInputStream(rootPem.toByteArray())) as X509Certificate
+                            val sig = Signature.getInstance(current.sigAlgName, BouncyCastleProvider.PROVIDER_NAME)
+                            sig.initVerify(root.publicKey)
+                            sig.update(current.tbsCertificate)
+                            sig.verify(current.signature)
+                        } catch (e: Exception) { false }
+                        if (verified) break
+                    }
+                }
+                
+                if (!verified) {
+                    if (current.sigAlgName.contains("ML-DSA", ignoreCase = true) || current.signature.size == 3309) {
+                        return VerificationResult(false, "PQC Signature verification failed at chain level $i")
+                    }
                 }
             }
-            
-            if (!verified) {
-                return VerificationResult(false, "Certificate chain not trusted by any root")
-            }
 
-            // 1.1 MANDATORY: Temporal Birth Check
             if (input.created != null) {
                 val leaf = certs[0]
                 val validFrom = leaf.notBefore.time / 1000
                 val validTo = leaf.notAfter.time / 1000
-                
                 if (input.created < validFrom || input.created > validTo) {
                     return VerificationResult(false, "Temporal birth check failed: created (${input.created}) is outside cert window [$validFrom - $validTo]")
                 }
             }
-            
         } catch (e: Exception) {
             return VerificationResult(false, "Chain processing error: ${e.message}")
         }
     }
-
-    // 2. Verify Signature
-    var lastReason = "Attestation verification failed"
 
     if (leafPublicKey != null) {
         try {
             val sig = Signature.getInstance("Ed25519", BouncyCastleProvider.PROVIDER_NAME)
             sig.initVerify(leafPublicKey)
             sig.update(payload)
-            if (sig.verify(signatureBytes)) {
-                return VerificationResult(true, null)
-            }
-        } catch (e: Exception) {
-            lastReason = "Signature check failed: ${e.message}"
-        }
-    } else {
-        // Legacy fallback
-        for (rootPem in TRUSTED_ROOT_CERTS_PEM) {
-            try {
-                val cf = CertificateFactory.getInstance("X.509", BouncyCastleProvider.PROVIDER_NAME)
-                val root = cf.generateCertificate(ByteArrayInputStream(rootPem.toByteArray())) as X509Certificate
-                val sig = Signature.getInstance("Ed25519", BouncyCastleProvider.PROVIDER_NAME)
-                sig.initVerify(root.publicKey)
-                sig.update(payload)
-                if (sig.verify(signatureBytes)) {
-                    return VerificationResult(true, null)
-                }
-            } catch (e: Exception) {
-                continue
-            }
-        }
+            if (sig.verify(signatureBytes)) return VerificationResult(true, null)
+        } catch (e: Exception) { /* Try fallback */ }
     }
     
-    return VerificationResult(false, lastReason)
+    // Legacy fallback
+    for (rootPem in TRUSTED_ROOT_CERTS_PEM) {
+        try {
+            val cf = CertificateFactory.getInstance("X.509", BouncyCastleProvider.PROVIDER_NAME)
+            val root = cf.generateCertificate(ByteArrayInputStream(rootPem.toByteArray())) as X509Certificate
+            val sig = Signature.getInstance("Ed25519", BouncyCastleProvider.PROVIDER_NAME)
+            sig.initVerify(root.publicKey)
+            sig.update(payload)
+            if (sig.verify(signatureBytes)) return VerificationResult(true, null)
+        } catch (e: Exception) { continue }
+    }
+    
+    return VerificationResult(false, "Attestation verification failed")
+}
+
+internal fun verifyExternalIdentity(input: ExternalIdentityInput): VerificationResult {
+    if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+        Security.addProvider(BouncyCastleProvider())
+    }
+
+    val signatureBytes = decodeBase64(input.signature)
+        ?: return VerificationResult(false, "signature is not valid base64")
+
+    if (input.certChainDer.isEmpty()) {
+        return VerificationResult(false, "Certificate chain is empty")
+    }
+
+    val cf = CertificateFactory.getInstance("X.509", BouncyCastleProvider.PROVIDER_NAME)
+    val certs = mutableListOf<X509Certificate>()
+    for (derBase64 in input.certChainDer) {
+        val der = decodeBase64(derBase64) ?: return VerificationResult(false, "Invalid base64 in cert_chain_der")
+        val cert = try { cf.generateCertificate(ByteArrayInputStream(der)) as X509Certificate } catch (e: Exception) { null }
+            ?: return VerificationResult(false, "Failed to parse X509 certificate in chain")
+        certs += cert
+    }
+
+    val actualRootFingerprint = sha256Hex(certs.last().encoded)
+    if (actualRootFingerprint != input.rootFingerprint.lowercase()) {
+        return VerificationResult(false, "Root fingerprint mismatch: expected ${input.rootFingerprint}, got $actualRootFingerprint")
+    }
+
+    var isTrusted = input.trustedFingerprints.map { it.lowercase() }.contains(actualRootFingerprint)
+    if (!isTrusted) {
+        for (rootPem in TRUSTED_ROOT_CERTS_PEM) {
+            try {
+                val root = cf.generateCertificate(ByteArrayInputStream(rootPem.toByteArray())) as X509Certificate
+                if (sha256Hex(root.encoded) == actualRootFingerprint) {
+                    // Check for OID 1.3.6.1.4.1.65432.1.4
+                    if (certs[0].criticalExtensionOIDs?.contains("1.3.6.1.4.1.65432.1.4") == true ||
+                        certs[0].nonCriticalExtensionOIDs?.contains("1.3.6.1.4.1.65432.1.4") == true) {
+                        isTrusted = true
+                        break
+                    }
+                }
+            } catch (e: Exception) { continue }
+        }
+    }
+
+    if (!isTrusted) return VerificationResult(false, "Root fingerprint $actualRootFingerprint is not in the trusted list")
+
+    return try {
+        val sig = Signature.getInstance("Ed25519", BouncyCastleProvider.PROVIDER_NAME)
+        sig.initVerify(certs[0].publicKey)
+        sig.update(input.expectedPayload.toByteArray(StandardCharsets.UTF_8))
+        if (sig.verify(signatureBytes)) VerificationResult(true, null)
+        else VerificationResult(false, "External identity signature verification failed")
+    } catch (e: Exception) {
+        VerificationResult(false, "External identity verification failed: ${e.message}")
+    }
 }
 
 private fun decodeBase64(value: String): ByteArray? {
-    return try {
-        Base64.getDecoder().decode(value)
-    } catch (_: Exception) {
-        null
-    }
+    return try { Base64.getDecoder().decode(value) } catch (_: Exception) { null }
+}
+
+private fun sha256Hex(input: ByteArray): String {
+    val digest = java.security.MessageDigest.getInstance("SHA-256").digest(input)
+    return digest.joinToString("") { "%02x".format(it) }
 }

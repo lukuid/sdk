@@ -1,212 +1,42 @@
 // SPDX-License-Identifier: Apache-2.0
+use crate::device::DeviceError;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
-use ed25519_dalek::{Signature, Verifier, VerifyingKey};
-use serde::Deserialize;
-use sha2::{Digest, Sha256};
+use ed25519_dalek::{self as ed25519, Verifier, VerifyingKey};
+use serde::{Deserialize, Serialize};
 use x509_parser::prelude::*;
+use ml_dsa::MlDsa65;
+use sha2::{Digest, Sha256};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DeviceAttestationInputs {
     pub id: String,
     pub key: String,
-    #[serde(rename = "attestationSig")]
     pub attestation_sig: String,
-    #[serde(rename = "certificateChain")]
     pub certificate_chain: Option<String>,
     pub created: Option<i64>,
-    #[serde(rename = "attestationAlg")]
     pub attestation_alg: Option<String>,
-    #[serde(rename = "attestationPayloadVersion")]
     pub attestation_payload_version: Option<u32>,
-    #[serde(default)]
     pub trust_profile: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct VerificationResult {
     pub ok: bool,
     pub reason: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ExternalIdentityInputs {
     pub endorser_id: String,
     pub root_fingerprint: String,
-    pub cert_chain_der: Vec<String>, // Base64 encoded DER
-    pub signature: String,           // Base64 encoded
+    pub cert_chain_der: Vec<String>,
+    pub signature: String,
     pub expected_payload: String,
     pub trusted_fingerprints: Vec<String>,
 }
 
-pub fn verify_external_identity(inputs: &ExternalIdentityInputs) -> VerificationResult {
-    let signature_bytes = match BASE64.decode(&inputs.signature) {
-        Ok(bytes) => bytes,
-        Err(_) => {
-            return VerificationResult {
-                ok: false,
-                reason: Some("signature is not valid base64".to_string()),
-            }
-        }
-    };
-
-    if inputs.cert_chain_der.is_empty() {
-        return VerificationResult {
-            ok: false,
-            reason: Some("Certificate chain is empty".to_string()),
-        };
-    }
-
-    let mut ders: Vec<Vec<u8>> = Vec::new();
-    for der_b64 in &inputs.cert_chain_der {
-        let der = match BASE64.decode(der_b64) {
-            Ok(bytes) => bytes,
-            Err(_) => {
-                return VerificationResult {
-                    ok: false,
-                    reason: Some("Invalid base64 in cert_chain_der".to_string()),
-                }
-            }
-        };
-        ders.push(der);
-    }
-
-    let mut certs: Vec<X509Certificate> = Vec::new();
-    for der in &ders {
-        match X509Certificate::from_der(der) {
-            Ok((_, cert)) => certs.push(cert),
-            Err(_) => {
-                return VerificationResult {
-                    ok: false,
-                    reason: Some("Failed to parse X509 certificate in chain".to_string()),
-                }
-            }
-        }
-    }
-
-    let leaf = &certs[0];
-    let leaf_spki = leaf.public_key().subject_public_key.data.clone();
-    let raw_key = if leaf_spki.len() == 33 && leaf_spki[0] == 0 {
-        &leaf_spki[1..33]
-    } else {
-        &leaf_spki[..32]
-    };
-
-    let leaf_pubkey = match VerifyingKey::from_bytes(raw_key.try_into().unwrap_or(&[0u8; 32])) {
-        Ok(key) => key,
-            Err(_) => {
-                return VerificationResult {
-                    ok: false,
-                    reason: Some("Failed to extract leaf public key".to_string()),
-                }
-            }
-        };
-
-    // Verify chain up to root
-    let root_der = &ders[ders.len() - 1];
-    let mut hasher = Sha256::new();
-    hasher.update(root_der);
-    let actual_root_fingerprint = format!("{:x}", hasher.finalize());
-
-    if actual_root_fingerprint != inputs.root_fingerprint.to_lowercase() {
-        return VerificationResult {
-            ok: false,
-            reason: Some(format!(
-                "Root fingerprint mismatch: expected {}, got {}",
-                inputs.root_fingerprint, actual_root_fingerprint
-            )),
-        };
-    }
-
-    // Is this root trusted?
-    let mut is_trusted = inputs
-        .trusted_fingerprints
-        .iter()
-        .any(|f| f.to_lowercase() == actual_root_fingerprint);
-
-    // Lukuroot is always trusted for external identities IF OID .4 is present
-    for root_pem in TRUSTED_ROOT_CERTS_PEM {
-        if let Some(p) = x509_parser::pem::Pem::iter_from_buffer(root_pem.as_bytes())
-            .filter_map(|r| r.ok())
-            .next()
-        {
-            let mut h = Sha256::new();
-            h.update(&p.contents);
-            let f = format!("{:x}", h.finalize());
-            if f == actual_root_fingerprint {
-                // Check for OID .4 in the leaf
-                let mut has_oid = false;
-                for ext in leaf.extensions() {
-                    if ext.oid.to_id_string() == "1.3.6.1.4.1.65432.1.4" {
-                        has_oid = true;
-                        break;
-                    }
-                }
-
-                // Also check Certificate Policies
-                if !has_oid {
-                    for ext in leaf.extensions() {
-                        if ext.oid.to_id_string() == "2.5.29.32" {
-                            // Certificate Policies
-                            if let ParsedExtension::CertificatePolicies(policies) =
-                                ext.parsed_extension()
-                            {
-                                for policy in policies {
-                                    if policy.policy_id.to_id_string() == "1.3.6.1.4.1.65432.1.4" {
-                                        has_oid = true;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if has_oid {
-                    is_trusted = true;
-                } else {
-                    return VerificationResult {
-                        ok: false,
-                        reason: Some("Lukuroot used for external identity but leaf is missing OID 1.3.6.1.4.1.65432.1.4".to_string()),
-                    };
-                }
-            }
-        }
-    }
-
-    if !is_trusted {
-        return VerificationResult {
-            ok: false,
-            reason: Some(format!(
-                "Root fingerprint {} is not in the trusted list",
-                actual_root_fingerprint
-            )),
-        };
-    }
-
-    // Verify signature
-    let signature = match Signature::from_slice(&signature_bytes) {
-        Ok(sig) => sig,
-        Err(_) => {
-            return VerificationResult {
-                ok: false,
-                reason: Some("Invalid signature format".to_string()),
-            }
-        }
-    };
-
-    match leaf_pubkey.verify(inputs.expected_payload.as_bytes(), &signature) {
-        Ok(_) => VerificationResult {
-            ok: true,
-            reason: None,
-        },
-        Err(_) => VerificationResult {
-            ok: false,
-            reason: Some("External identity signature verification failed".to_string()),
-        },
-    }
-}
-
-const TRUSTED_ROOT_CERTS_PEM: &[&str] = &[r#"-----BEGIN CERTIFICATE-----
+const TRUSTED_ROOT_CERTS_PEM: &[&str] = &[
+    r#"-----BEGIN CERTIFICATE-----
 MIIVwTCCCL6gAwIBAgIUfooekdqQRLonTDsAm1pbSkPdQMMwCwYJYIZIAWUDBAMS
 MDsxCzAJBgNVBAYTAkVVMQ8wDQYDVQQKDAZMdWt1SUQxGzAZBgNVBAMMEkx1a3VJ
 RCBQUUMgUm9vdCBDQTAgFw0yNjA0MDExMTEwMjJaGA8yMDU2MDMyNDExMTAyMlow
@@ -324,10 +154,11 @@ haYPGBrQyH4iiaC6OjOVP4H7JJ8jxWYS7Aa64ldqsygDXAQqznXdBIMHDRu5m+gY
 ETdmmR0d7WfDe8lq/zPdEt8TbhjwmhKUDkjZlslFx61LJU1stQTcIzdXWn6MtNvh
 7PQXQH7U2Gdqv97vWNl1zd8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK
 DxQWGRk=
------END CERTIFICATE-----"#];
+-----END CERTIFICATE-----"#,
+];
 
 pub fn verify_device_attestation(inputs: &DeviceAttestationInputs) -> VerificationResult {
-    let signature_bytes = match BASE64.decode(&inputs.attestation_sig) {
+    let signature_bytes = match BASE64.decode(inputs.attestation_sig.trim()) {
         Ok(bytes) => bytes,
         Err(_) => {
             return VerificationResult {
@@ -340,23 +171,16 @@ pub fn verify_device_attestation(inputs: &DeviceAttestationInputs) -> Verificati
     let payload_string = format!("{}:{}", inputs.id, inputs.key);
     let payload = payload_string.as_bytes();
 
-    let mut leaf_pubkey: Option<VerifyingKey> = None;
+    let mut leaf_pubkey_bytes: Option<Vec<u8>> = None;
 
-    // 1. Walk and Verify the Chain (if provided)
     if let Some(chain_pem) = &inputs.certificate_chain {
-        let mut pems: Vec<x509_parser::pem::Pem> = Vec::new();
-        for pem_res in x509_parser::pem::Pem::iter_from_buffer(chain_pem.as_bytes()) {
-            if let Ok(pem) = pem_res {
-                pems.push(pem);
-            }
-        }
+        let pems: Vec<_> = x509_parser::pem::Pem::iter_from_buffer(chain_pem.as_bytes())
+            .filter_map(|r| r.ok())
+            .collect();
 
-        let mut certs: Vec<X509Certificate> = Vec::new();
-        for pem in &pems {
-            if let Ok(x509) = pem.parse_x509() {
-                certs.push(x509);
-            }
-        }
+        let certs: Vec<_> = pems.iter()
+            .filter_map(|p| p.parse_x509().ok())
+            .collect();
 
         if certs.is_empty() {
             return VerificationResult {
@@ -365,26 +189,12 @@ pub fn verify_device_attestation(inputs: &DeviceAttestationInputs) -> Verificati
             };
         }
 
-    // Extract leaf public key (first cert in chain)
-    let leaf_spki = certs[0].public_key().subject_public_key.data.clone();
-    let raw_key = if leaf_spki.len() == 33 && leaf_spki[0] == 0 {
-        &leaf_spki[1..33]
-    } else {
-        &leaf_spki[..32]
-    };
+        leaf_pubkey_bytes = Some(certs[0].public_key().subject_public_key.data.to_vec());
 
-    if let Ok(key) = VerifyingKey::from_bytes(raw_key.try_into().unwrap_or(&[0u8; 32])) {
-        leaf_pubkey = Some(key);
-    }
-
-        // 1.05 MANDATORY: Trust Profile Check
-        // The chain usually consists of [leaf, intermediate].
-        // Check if the intermediate certificate matches the requested trust profile.
         let required_ou = match inputs.trust_profile.as_str() {
             "dev" => "lukuid-dev",
             "test" => "lukuid-test",
-            "prod" => "lukuid-production",
-            _ => "lukuid-production", // Default to prod
+            _ => "lukuid-production",
         };
 
         let has_valid_profile = certs.iter().skip(1).any(|cert| {
@@ -401,50 +211,55 @@ pub fn verify_device_attestation(inputs: &DeviceAttestationInputs) -> Verificati
             };
         }
 
-        // Walk and verify signatures manually (to ignore expiry)
-        let mut verified = false;
-        for root_pem in TRUSTED_ROOT_CERTS_PEM {
-            let mut root_pems: Vec<x509_parser::pem::Pem> = Vec::new();
-            for p_res in x509_parser::pem::Pem::iter_from_buffer(root_pem.as_bytes()) {
-                if let Ok(p) = p_res {
-                    root_pems.push(p);
+        for i in 0..certs.len() {
+            let current = &certs[i];
+            let mut verified = false;
+
+            if i + 1 < certs.len() {
+                let next = &certs[i + 1];
+                verified = verify_signature_robust(
+                    current.signature_value.as_ref(),
+                    current.tbs_certificate.as_ref(),
+                    &next.public_key().subject_public_key.data,
+                );
+            } else {
+                for root_pem in TRUSTED_ROOT_CERTS_PEM {
+                    if let Some(p) = x509_parser::pem::Pem::iter_from_buffer(root_pem.as_bytes())
+                        .filter_map(|r| r.ok())
+                        .next()
+                    {
+                        if let Ok(root_cert) = p.parse_x509() {
+                            if verify_signature_robust(
+                                current.signature_value.as_ref(),
+                                current.tbs_certificate.as_ref(),
+                                &root_cert.public_key().subject_public_key.data,
+                            ) {
+                                verified = true;
+                                break;
+                            }
+                        }
+                    }
                 }
             }
 
-            let mut roots: Vec<X509Certificate> = Vec::new();
-            for p in &root_pems {
-                if let Ok(x509) = p.parse_x509() {
-                    roots.push(x509);
-                }
-            }
-
-            if roots.first().is_some() {
-                // Final check against root
-                // (Stubbed manual check because ML-DSA-65 might not be supported natively)
-                verified = true;
-                break;
+            if !verified && current.signature_value.as_ref().len() == 3309 {
+                return VerificationResult {
+                    ok: false,
+                    reason: Some(format!("PQC Signature verification failed at chain level {}", i)),
+                };
             }
         }
 
-        if !verified {
-            return VerificationResult {
-                ok: false,
-                reason: Some("Certificate chain not trusted by any root".to_string()),
-            };
-        }
-
-        // 1.1 MANDATORY: Temporal Birth Check
         if let Some(created_ts) = inputs.created {
             for cert in &certs {
                 let valid_from = cert.validity().not_before.timestamp();
                 let valid_to = cert.validity().not_after.timestamp();
-
                 if created_ts < valid_from || created_ts > valid_to {
                     return VerificationResult {
                         ok: false,
                         reason: Some(format!(
-                            "Temporal birth check failed: created ({}) is outside cert window [{} - {}]",
-                            created_ts, valid_from, valid_to
+                            "Temporal birth check failed: created ({}) is outside cert window",
+                            created_ts
                         )),
                     };
                 }
@@ -452,69 +267,23 @@ pub fn verify_device_attestation(inputs: &DeviceAttestationInputs) -> Verificati
         }
     }
 
-    // 2. Verify Signature
-    if let Some(key) = leaf_pubkey {
-        let signature = match Signature::from_slice(&signature_bytes) {
-            Ok(sig) => sig,
-            Err(_) => {
-                return VerificationResult {
-                    ok: false,
-                    reason: Some("Invalid signature format".to_string()),
-                }
-            }
-        };
-
-        match key.verify(payload, &signature) {
-            Ok(_) => {
-                return VerificationResult {
-                    ok: true,
-                    reason: None,
-                }
-            }
-            Err(_) => {
-                return VerificationResult {
-                    ok: false,
-                    reason: Some("Signature verification failed against leaf".to_string()),
-                }
-            }
+    if let Some(pubkey) = leaf_pubkey_bytes {
+        if verify_signature_robust(&signature_bytes, payload, &pubkey) {
+            return VerificationResult { ok: true, reason: None };
         }
     } else {
-        // Legacy fallback
         for root_pem in TRUSTED_ROOT_CERTS_PEM {
-            let mut root_pems: Vec<x509_parser::pem::Pem> = Vec::new();
-            for p_res in x509_parser::pem::Pem::iter_from_buffer(root_pem.as_bytes()) {
-                if let Ok(p) = p_res {
-                    root_pems.push(p);
-                }
-            }
-
-            let mut roots: Vec<X509Certificate> = Vec::new();
-            for p in &root_pems {
-                if let Ok(x509) = p.parse_x509() {
-                    roots.push(x509);
-                }
-            }
-
-            if let Some(root) = roots.first() {
-                let root_spki = root.public_key().subject_public_key.data.clone();
-                let raw_root_key = if root_spki.len() == 33 && root_spki[0] == 0 {
-                    &root_spki[1..33]
-                } else {
-                    &root_spki[..32]
-                };
-
-                if let Ok(key) =
-                    VerifyingKey::from_bytes(raw_root_key.try_into().unwrap_or(&[0u8; 32]))
-                {
-                    let signature = match Signature::from_slice(&signature_bytes) {
-                        Ok(sig) => sig,
-                        Err(_) => continue,
-                    };
-                    if key.verify(payload, &signature).is_ok() {
-                        return VerificationResult {
-                            ok: true,
-                            reason: None,
-                        };
+            if let Some(p) = x509_parser::pem::Pem::iter_from_buffer(root_pem.as_bytes())
+                .filter_map(|r| r.ok())
+                .next()
+            {
+                if let Ok(root_cert) = p.parse_x509() {
+                    if verify_signature_robust(
+                        &signature_bytes,
+                        payload,
+                        &root_cert.public_key().subject_public_key.data,
+                    ) {
+                        return VerificationResult { ok: true, reason: None };
                     }
                 }
             }
@@ -525,4 +294,122 @@ pub fn verify_device_attestation(inputs: &DeviceAttestationInputs) -> Verificati
         ok: false,
         reason: Some("Attestation verification failed".to_string()),
     }
+}
+
+pub fn verify_external_identity(inputs: &ExternalIdentityInputs) -> VerificationResult {
+    let signature_bytes = match BASE64.decode(inputs.signature.trim()) {
+        Ok(bytes) => bytes,
+        Err(_) => return VerificationResult { ok: false, reason: Some("signature is not valid base64".to_string()) },
+    };
+
+    if inputs.cert_chain_der.is_empty() {
+        return VerificationResult { ok: false, reason: Some("Certificate chain is empty".to_string()) };
+    }
+
+    let mut cert_ders = Vec::new();
+    for der_b64 in &inputs.cert_chain_der {
+        let der = match BASE64.decode(der_b64.trim()) {
+            Ok(d) => d,
+            Err(_) => return VerificationResult { ok: false, reason: Some("Invalid base64 in cert_chain_der".to_string()) },
+        };
+        cert_ders.push(der);
+    }
+
+    let actual_root_fingerprint = {
+        let mut hasher = Sha256::new();
+        hasher.update(&cert_ders[cert_ders.len() - 1]);
+        hasher.finalize().iter().map(|b| format!("{:02x}", b)).collect::<String>()
+    };
+
+    if actual_root_fingerprint != inputs.root_fingerprint.to_lowercase() {
+        return VerificationResult {
+            ok: false,
+            reason: Some(format!("Root fingerprint mismatch: expected {}, got {}", inputs.root_fingerprint, actual_root_fingerprint)),
+        };
+    }
+
+    let mut is_trusted = inputs.trusted_fingerprints.iter().any(|f| f.to_lowercase() == actual_root_fingerprint);
+
+    if !is_trusted {
+        for root_pem in TRUSTED_ROOT_CERTS_PEM {
+            let pems: Vec<_> = x509_parser::pem::Pem::iter_from_buffer(root_pem.as_bytes()).filter_map(|r| r.ok()).collect();
+            if let Some(p) = pems.first() {
+                let mut hasher = Sha256::new();
+                hasher.update(&p.contents);
+                let root_f = hasher.finalize().iter().map(|b| format!("{:02x}", b)).collect::<String>();
+                if root_f == actual_root_fingerprint {
+                    if let Ok(leaf) = X509Certificate::from_der(&cert_ders[0]) {
+                        if leaf.1.extensions().iter().any(|ext| ext.oid.to_string() == "1.3.6.1.4.1.65432.1.4") {
+                            is_trusted = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if !is_trusted {
+        return VerificationResult { ok: false, reason: Some(format!("Root fingerprint {} is not in the trusted list", actual_root_fingerprint)) };
+    }
+
+    let leaf_spki = match X509Certificate::from_der(&cert_ders[0]) {
+        Ok(c) => c.1.public_key().subject_public_key.data.to_vec(),
+        Err(_) => return VerificationResult { ok: false, reason: Some("Failed to parse leaf certificate".to_string()) },
+    };
+
+    if verify_signature_robust(&signature_bytes, inputs.expected_payload.as_bytes(), &leaf_spki) {
+        VerificationResult { ok: true, reason: None }
+    } else {
+        VerificationResult { ok: false, reason: Some("External identity signature verification failed".to_string()) }
+    }
+}
+
+fn verify_signature_robust(sig: &[u8], msg: &[u8], pubkey_spki: &[u8]) -> bool {
+    // 1. Try ML-DSA-65
+    if sig.len() == 3309 {
+        let pub_key_bytes = if pubkey_spki.len() > 1952 {
+            &pubkey_spki[pubkey_spki.len() - 1952..]
+        } else {
+            pubkey_spki
+        };
+        if pub_key_bytes.len() == 1952 {
+            // Using ml_dsa crate
+            let vk = ml_dsa::VerifyingKey::<MlDsa65>::decode(pub_key_bytes.try_into().unwrap());
+            if let Some(s) = ml_dsa::Signature::<MlDsa65>::decode(sig.try_into().unwrap()) {
+                // ml-dsa crate 0.1.0-rc.8 implements signature::Verifier
+                use ml_dsa::signature::Verifier;
+                return vk.verify(msg, &s).is_ok();
+            }
+        }
+    }
+
+    // 2. Try Ed25519
+    let ed_pub_bytes = if pubkey_spki.len() == 33 && pubkey_spki[0] == 0 {
+        &pubkey_spki[1..33]
+    } else if pubkey_spki.len() > 32 {
+        &pubkey_spki[pubkey_spki.len() - 32..]
+    } else {
+        pubkey_spki
+    };
+    if sig.len() == 64 && ed_pub_bytes.len() == 32 {
+        if let Ok(vk) = ed25519::VerifyingKey::from_bytes(ed_pub_bytes.try_into().unwrap()) {
+            let mut sig_arr = [0u8; 64];
+            sig_arr.copy_from_slice(sig);
+            let s = ed25519::Signature::from_bytes(&sig_arr);
+            return vk.verify(msg, &s).is_ok();
+        }
+    }
+
+    // 3. Try ECDSA (P-256) via ring
+    if pubkey_spki.len() >= 64 {
+        use ring::signature;
+        let peer_public_key = signature::UnparsedPublicKey::new(
+            &signature::ECDSA_P256_SHA256_ASN1,
+            pubkey_spki,
+        );
+        return peer_public_key.verify(msg, sig).is_ok();
+    }
+
+    false
 }

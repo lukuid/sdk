@@ -10,6 +10,7 @@ import org.junit.Test
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.file.Path
+import java.nio.file.Files
 import java.nio.charset.StandardCharsets
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
@@ -77,6 +78,26 @@ class LukuArchiveTest {
         throw java.io.FileNotFoundException("Missing sample archive $name under ${start.normalize()}")
     }
 
+    private fun externalIdentityFixture(): JSONObject {
+        val start = Path.of(System.getProperty("user.dir")).toAbsolutePath()
+        val searchRoots = buildList {
+            var current: Path? = start
+            while (current != null) {
+                add(current)
+                current = current.parent
+            }
+        }
+
+        for (root in searchRoots) {
+            val candidate = root.resolve("samples/external_identity/dev/self_signed_ed25519.json")
+            if (candidate.toFile().exists()) {
+                return JSONObject(String(Files.readAllBytes(candidate), StandardCharsets.UTF_8))
+            }
+        }
+
+        throw java.io.FileNotFoundException("Missing external identity fixture under ${start.normalize()}")
+    }
+
     private fun createValidExport(deviceId: String): Pair<LukuArchive, TestSigner> {
         val signer = createTestSigner()
         val identity = LukuDeviceIdentity(deviceId, signer.publicKeyBase64)
@@ -123,7 +144,7 @@ class LukuArchiveTest {
             signer = LukuSigner(signer.privateKey, signer.publicKeyBase64)
         )
         val reopened = LukuArchive.open(exported.saveToBytes())
-        assertEquals("1.0", reopened.manifest.version)
+        assertEquals("1.0.0", reopened.manifest.version)
         assertEquals(1, reopened.blocks.size)
         assertEquals(1, reopened.blocks[0].batch.size)
     }
@@ -206,6 +227,66 @@ class LukuArchiveTest {
     fun verifiesAValidArchive() {
         val (archive, _) = createValidExport("LUK-VALID")
         assertTrue(archive.verify(testOptions()).none { it.criticality == Criticality.CRITICAL })
+    }
+
+    @Test
+    fun enforcesRequestedNativeContinuityChecks() {
+        val signer = createTestSigner()
+        val archive = LukuArchive.exportWithIdentity(
+            records = listOf(
+                JSONObject().put("type", "environment").put("signature", signCanonical(signer.privateKey, "env-1")).put("previous_signature", "genesis_fake").put("canonical_string", "env-1").put(
+                    "payload",
+                    JSONObject().put("ctr", 1).put("timestamp_utc", 1000).put("genesis_hash", "genesis_fake")
+                ),
+                JSONObject().put("type", "environment").put("signature", signCanonical(signer.privateKey, "env-2")).put("previous_signature", signCanonical(signer.privateKey, "env-1")).put("canonical_string", "env-2").put(
+                    "payload",
+                    JSONObject().put("ctr", 2).put("timestamp_utc", 2000).put("genesis_hash", "genesis_fake")
+                )
+            ),
+            device = LukuDeviceIdentity("LUK-CONT", signer.publicKeyBase64),
+            attachments = emptyMap(),
+            signer = LukuSigner(signer.privateKey, signer.publicKeyBase64),
+            options = LukuExportOptions(policy = LukuPolicy(name = "guardcard", nativeContinuityGapSeconds = 600))
+        )
+        val issues = archive.verify(testOptions().copy(requireContinuity = true))
+        assertTrue(hasIssue(issues, "CONTINUITY_GAP_EXCEEDED"))
+    }
+
+    @Test
+    fun rejectsUntrustedExternalIdentityEndorsements() {
+        val fixture = externalIdentityFixture()
+        val signer = createTestSigner()
+        val checksum = fixture.getString("checksum")
+        val archive = LukuArchive.exportWithIdentity(
+            records = listOf(
+                JSONObject()
+                    .put("type", "attachment")
+                    .put("attachment_id", "ATT-EXT-1")
+                    .put("signature", signCanonical(signer.privateKey, "attachment-ext"))
+                    .put("previous_signature", "")
+                    .put("canonical_string", "attachment-ext")
+                    .put("checksum", checksum)
+                    .put(
+                        "external_identity",
+                        JSONObject()
+                            .put("endorser_id", fixture.getString("endorser_id"))
+                            .put("root_fingerprint", fixture.getString("root_fingerprint"))
+                            .put("cert_chain_der", fixture.getJSONArray("cert_chain_der"))
+                            .put("signature", fixture.getString("signature"))
+                    )
+            ),
+            device = LukuDeviceIdentity("LUK-EXT", signer.publicKeyBase64),
+            attachments = mapOf(checksum to fixture.getString("attachment_utf8").toByteArray(StandardCharsets.UTF_8)),
+            signer = LukuSigner(signer.privateKey, signer.publicKeyBase64)
+        )
+
+        val trusted = archive.verify(testOptions().copy(
+            trustedExternalFingerprints = listOf(fixture.getString("root_fingerprint"))
+        ))
+        assertFalse(hasIssue(trusted, "EXTERNAL_IDENTITY_VERIFICATION_FAILED"))
+
+        val untrusted = archive.verify(testOptions())
+        assertTrue(hasIssue(untrusted, "EXTERNAL_IDENTITY_VERIFICATION_FAILED"))
     }
 
     @Test
@@ -482,5 +563,14 @@ class LukuArchiveTest {
         val crc = CRC32()
         crc.update(bytes)
         return crc.value
+    }
+    @Test
+    fun testSelfTest() {
+        val results = LukuSdk.selfTest()
+        assertTrue(results.size >= 4)
+        for (result in results) {
+            println("${result.alg} ${result.operation}\t${if (result.passed) "PASS" else "FAIL"}\t${result.id}")
+            assertTrue("Self-test failed for ${result.alg} ${result.operation}", result.passed)
+        }
     }
 }

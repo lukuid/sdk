@@ -17,6 +17,15 @@ export interface DeviceAttestationResult {
   reason?: string;
 }
 
+export interface ExternalIdentityInputs {
+  endorserId: string;
+  rootFingerprint: string;
+  certChainDer: string[];
+  signature: string;
+  expectedPayload: string;
+  trustedFingerprints: string[];
+}
+
 // Trusted Root Certificates (PEM)
 const TRUSTED_ROOT_CERTS_PEM = [
   `-----BEGIN CERTIFICATE-----
@@ -447,16 +456,35 @@ export async function verifyDeviceAttestation(inputs: DeviceAttestationInputs): 
           };
         }
 
-        const verified = TRUSTED_ROOT_CERTS_PEM.some((pem) => {
-          try {
-            new nodeX509Certificate(pem);
-            return true;
-          } catch {
-            return false;
+        // Verify signatures along the chain
+        const forgeCerts = certPems.map((pem) => forge.pki.certificateFromPem(pem));
+        const forgeTrustedRoots = TRUSTED_ROOT_CERTS_PEM.map((pem) => forge.pki.certificateFromPem(pem));
+
+        for (let i = 0; i < forgeCerts.length; i++) {
+          const current = forgeCerts[i];
+          let verified = false;
+
+          if (i + 1 < forgeCerts.length) {
+            const next = forgeCerts[i + 1];
+            try {
+              verified = next.verify(current);
+            } catch {
+              verified = false;
+            }
+          } else {
+            for (const root of forgeTrustedRoots) {
+              try {
+                verified = root.verify(current) || root.fingerprint === current.fingerprint;
+              } catch {
+                continue;
+              }
+              if (verified) break;
+            }
           }
-        });
-        if (!verified) {
-          return { ok: false, reason: 'Certificate chain not trusted by any root' };
+
+          if (!verified) {
+            return { ok: false, reason: `Certificate chain verification failed at level ${i}` };
+          }
         }
 
         if (inputs.created) {
@@ -560,4 +588,113 @@ export async function verifyDeviceAttestation(inputs: DeviceAttestationInputs): 
   }
 
   return { ok: false, reason: 'Attestation verification failed' };
+}
+
+export async function verifyExternalIdentity(inputs: ExternalIdentityInputs): Promise<DeviceAttestationResult> {
+  const signatureBytes = decodeBase64(inputs.signature);
+  if (!signatureBytes) {
+    return { ok: false, reason: 'Invalid signature base64' };
+  }
+
+  if (inputs.certChainDer.length === 0) {
+    return { ok: false, reason: 'Certificate chain is empty' };
+  }
+
+  let leafSpki: Uint8Array | null = null;
+  let lastCertDer: Uint8Array | null = null;
+
+  try {
+    const nodeX509Certificate = await getNodeX509CertificateConstructor();
+    if (nodeX509Certificate) {
+      const certs = inputs.certChainDer.map((der) => {
+        const bytes = decodeBase64(der);
+        if (!bytes) throw new Error('Invalid base64 in cert_chain_der');
+        return new nodeX509Certificate(bytes);
+      });
+
+      const exportedSpki = certs[0].publicKey.export({ format: 'der', type: 'spki' });
+      leafSpki = exportedSpki instanceof Uint8Array ? exportedSpki : new Uint8Array(exportedSpki);
+      
+      const lastCertBytes = decodeBase64(inputs.certChainDer[inputs.certChainDer.length - 1]);
+      if (lastCertBytes) {
+        lastCertDer = lastCertBytes;
+      }
+    } else {
+      const certs = inputs.certChainDer.map((der) => {
+        const bytes = decodeBase64(der);
+        if (!bytes) throw new Error('Invalid base64 in cert_chain_der');
+        return parseDerCertificate(bytes);
+      });
+
+      leafSpki = certs[0].spkiDer;
+      lastCertDer = decodeBase64(inputs.certChainDer[inputs.certChainDer.length - 1]);
+    }
+  } catch (error) {
+    return { ok: false, reason: `Certificate processing error: ${error instanceof Error ? error.message : String(error)}` };
+  }
+
+  if (!lastCertDer) {
+    return { ok: false, reason: 'Failed to process root certificate' };
+  }
+
+  const actualRootFingerprint = await sha256Hex(lastCertDer);
+  if (actualRootFingerprint.toLowerCase() !== inputs.rootFingerprint.toLowerCase()) {
+    return { ok: false, reason: `Root fingerprint mismatch: expected ${inputs.rootFingerprint}, got ${actualRootFingerprint}` };
+  }
+
+  let isTrusted = inputs.trustedFingerprints.map((f) => f.toLowerCase()).includes(actualRootFingerprint.toLowerCase());
+
+  if (!isTrusted) {
+    for (const rootPem of TRUSTED_ROOT_CERTS_PEM) {
+      try {
+        const rootDer = decodePemCertificate(rootPem);
+        const rootFingerprint = await sha256Hex(rootDer);
+        if (rootFingerprint === actualRootFingerprint.toLowerCase()) {
+          // Check for OID 1.3.6.1.4.1.65432.1.4 in the leaf certificate
+          const leafBytes = decodeBase64(inputs.certChainDer[0]);
+          if (leafBytes) {
+            const cert = forge.pki.certificateFromAsn1(forge.asn1.fromDer(forge.util.createBuffer(leafBytes)));
+            const ext = cert.getExtension('1.3.6.1.4.1.65432.1.4');
+            if (ext) {
+              isTrusted = true;
+              break;
+            }
+          }
+        }
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  if (!isTrusted) {
+    return { ok: false, reason: `Root fingerprint ${actualRootFingerprint} is not in the trusted list` };
+  }
+
+  try {
+    const subtle = getSubtleCrypto();
+    const importedKey = await subtle.importKey('spki', toArrayBuffer(leafSpki!), { name: 'Ed25519' }, false, ['verify']);
+    const verified = await subtle.verify('Ed25519', importedKey, toArrayBuffer(signatureBytes), toArrayBuffer(textEncoder.encode(inputs.expectedPayload)));
+    return verified
+      ? { ok: true }
+      : { ok: false, reason: 'External identity signature verification failed' };
+  } catch (error) {
+    return { ok: false, reason: `External identity verification error: ${error instanceof Error ? error.message : String(error)}` };
+  }
+}
+
+async function sha256Hex(data: Uint8Array): Promise<string> {
+  const digest = await getSubtleCrypto().digest('SHA-256', toArrayBuffer(data));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function encodeBase64(bytes: Uint8Array): string {
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(bytes).toString('base64');
+  }
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }

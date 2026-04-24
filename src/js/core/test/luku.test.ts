@@ -45,6 +45,25 @@ function resolveSamplesDir(): string {
 
 const samplesDir = resolveSamplesDir();
 
+function resolveExternalIdentityFixture(): string {
+  let current = __dirname;
+
+  while (true) {
+    const candidate = path.join(current, 'samples', 'external_identity', 'dev', 'self_signed_ed25519.json');
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+
+    const parent = path.dirname(current);
+    if (parent === current) {
+      break;
+    }
+    current = parent;
+  }
+
+  return path.join(__dirname, 'samples', 'external_identity', 'dev', 'self_signed_ed25519.json');
+}
+
 interface TestSigner {
   signer: { privateKey: CryptoKey; publicKey: CryptoKey };
   publicKeyBase64: string;
@@ -157,7 +176,7 @@ describe('LukuFile', () => {
     );
 
     const reopened = await LukuFile.openBytes(await exported.saveToBytes());
-    assert.equal(reopened.manifest.version, '1.0');
+    assert.equal(reopened.manifest.version, '1.0.0');
     assert.equal(reopened.blocks.length, 1);
     assert.equal(reopened.blocks[0].batch.length, 1);
   });
@@ -256,6 +275,95 @@ describe('LukuFile', () => {
       issues.filter((entry) => entry.criticality === 'critical').length,
       0
     );
+  });
+
+  it('enforces requested native continuity checks', async () => {
+    const signer = await createTestSigner();
+    const identity: LukuDeviceIdentity = {
+      device_id: 'LUK-CONT',
+      public_key: signer.publicKeyBase64
+    };
+
+    const archive = await LukuFile.exportWithIdentity(
+      [
+        {
+          type: 'environment',
+          signature: await signCanonical(signer.signer.privateKey, 'env-1'),
+          previous_signature: 'genesis_fake',
+          canonical_string: 'env-1',
+          payload: { ctr: 1, timestamp_utc: 1000, genesis_hash: 'genesis_fake' }
+        },
+        {
+          type: 'environment',
+          signature: await signCanonical(signer.signer.privateKey, 'env-2'),
+          previous_signature: await signCanonical(signer.signer.privateKey, 'env-1'),
+          canonical_string: 'env-2',
+          payload: { ctr: 2, timestamp_utc: 2000, genesis_hash: 'genesis_fake' }
+        }
+      ],
+      identity,
+      {},
+      signer.signer,
+      {
+        policy: { name: 'guardcard', native_continuity_gap_seconds: 600 }
+      }
+    );
+
+    const issues = await archive.verify({
+      ...testOptions(),
+      require_continuity: true
+    });
+    assert.equal(hasIssue(issues, 'CONTINUITY_GAP_EXCEEDED'), true);
+  });
+
+  it('rejects untrusted external identity endorsements', async () => {
+    const fixture = JSON.parse(await readFile(resolveExternalIdentityFixture(), 'utf8')) as {
+      attachment_utf8: string;
+      cert_chain_der: string[];
+      checksum: string;
+      endorser_id: string;
+      root_fingerprint: string;
+      signature: string;
+    };
+    const signer = await createTestSigner();
+    const identity: LukuDeviceIdentity = {
+      device_id: 'LUK-EXT',
+      public_key: signer.publicKeyBase64
+    };
+
+    const archive = await LukuFile.exportWithIdentity(
+      [{
+        type: 'attachment',
+        attachment_id: 'ATT-EXT-1',
+        signature: await signCanonical(signer.signer.privateKey, 'attachment-ext'),
+        previous_signature: '',
+        canonical_string: 'attachment-ext',
+        checksum: fixture.checksum,
+        external_identity: {
+          endorser_id: fixture.endorser_id,
+          root_fingerprint: fixture.root_fingerprint,
+          cert_chain_der: fixture.cert_chain_der,
+          signature: fixture.signature
+        }
+      }],
+      identity,
+      {
+        [fixture.checksum]: new TextEncoder().encode(fixture.attachment_utf8)
+      },
+      signer.signer
+    );
+
+    const trusted = await archive.verify({
+      ...testOptions(),
+      trustedExternalFingerprints: [fixture.root_fingerprint]
+    });
+    assert.equal(hasIssue(trusted, 'EXTERNAL_IDENTITY_VERIFICATION_FAILED'), false);
+
+    const untrusted = await archive.verify({
+      ...testOptions(),
+      trustedExternalFingerprints: []
+    });
+    assert.equal(hasIssue(untrusted, 'EXTERNAL_IDENTITY_VERIFICATION_FAILED'), true);
   });
 
   it('detects record deletion', async () => {

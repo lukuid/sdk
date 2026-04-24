@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
 import unittest
 import zipfile
 from pathlib import Path
@@ -15,6 +16,7 @@ from lukuid_sdk import (
     LukuSigner,
     LukuVerifyOptions,
 )
+from lukuid_sdk.luku import LukuExportOptions, LukuPolicy
 
 
 class LukuArchiveTests(unittest.TestCase):
@@ -46,6 +48,15 @@ class LukuArchiveTests(unittest.TestCase):
                 if candidate.exists():
                     return candidate
         raise FileNotFoundError(f"Missing sample archive {name} while searching ancestors of {start}")
+
+    @staticmethod
+    def external_identity_fixture() -> dict[str, object]:
+        start = Path(__file__).resolve()
+        for root in start.parents:
+            candidate = root / "samples" / "external_identity" / "dev" / "self_signed_ed25519.json"
+            if candidate.exists():
+                return json.loads(candidate.read_text(encoding="utf-8"))
+        raise FileNotFoundError(f"Missing external identity fixture while searching ancestors of {start}")
 
     def create_valid_export(self, device_id: str):
         signer = self.create_test_signer()
@@ -105,7 +116,7 @@ class LukuArchiveTests(unittest.TestCase):
             signer,
         )
         reopened = LukuFile.open_bytes(exported.save_to_bytes())
-        self.assertEqual(reopened.manifest.version, "1.0")
+        self.assertEqual(reopened.manifest.version, "1.0.0")
         self.assertEqual(len(reopened.blocks), 1)
         self.assertEqual(len(reopened.blocks[0].batch), 1)
 
@@ -174,6 +185,86 @@ class LukuArchiveTests(unittest.TestCase):
         archive, _ = self.create_valid_export("LUK-VALID")
         issues = archive.verify(self.build_test_options())
         self.assertFalse(any(issue.criticality == Criticality.CRITICAL for issue in issues))
+
+    def test_requires_native_continuity_when_requested(self):
+        signer = self.create_test_signer()
+        identity = LukuDeviceIdentity(device_id="LUK-CONT", public_key=signer.public_key_base64)
+        archive = LukuFile.export_with_identity(
+            [
+                {
+                    "type": "environment",
+                    "signature": self.sign_canonical(signer, "env-1"),
+                    "previous_signature": "genesis_fake",
+                    "canonical_string": "env-1",
+                    "payload": {"ctr": 1, "timestamp_utc": 1000, "genesis_hash": "genesis_fake"},
+                },
+                {
+                    "type": "environment",
+                    "signature": self.sign_canonical(signer, "env-2"),
+                    "previous_signature": self.sign_canonical(signer, "env-1"),
+                    "canonical_string": "env-2",
+                    "payload": {"ctr": 2, "timestamp_utc": 2000, "genesis_hash": "genesis_fake"},
+                },
+            ],
+            identity,
+            {},
+            signer,
+            LukuExportOptions(policy=LukuPolicy(name="guardcard", native_continuity_gap_seconds=600)),
+        )
+        issues = archive.verify(
+            LukuVerifyOptions(
+                allow_untrusted_roots=True,
+                skip_certificate_temporal_checks=True,
+                trust_profile="dev",
+                require_continuity=True,
+            )
+        )
+        self.assertTrue(self.has_issue(issues, "CONTINUITY_GAP_EXCEEDED"))
+
+    def test_rejects_untrusted_external_identity_endorsements(self):
+        fixture = self.external_identity_fixture()
+        signer = self.create_test_signer()
+        identity = LukuDeviceIdentity(device_id="LUK-EXT", public_key=signer.public_key_base64)
+        canonical = "attachment-ext"
+        archive = LukuFile.export_with_identity(
+            [{
+                "type": "attachment",
+                "attachment_id": "ATT-EXT-1",
+                "signature": self.sign_canonical(signer, canonical),
+                "previous_signature": "",
+                "canonical_string": canonical,
+                "checksum": fixture["checksum"],
+                "external_identity": {
+                    "endorser_id": fixture["endorser_id"],
+                    "root_fingerprint": fixture["root_fingerprint"],
+                    "cert_chain_der": fixture["cert_chain_der"],
+                    "signature": fixture["signature"],
+                },
+            }],
+            identity,
+            {str(fixture["checksum"]): str(fixture["attachment_utf8"]).encode("utf-8")},
+            signer,
+        )
+
+        trusted = archive.verify(
+            LukuVerifyOptions(
+                allow_untrusted_roots=True,
+                skip_certificate_temporal_checks=True,
+                trust_profile="dev",
+                trusted_external_fingerprints=[str(fixture["root_fingerprint"])],
+            )
+        )
+        self.assertFalse(self.has_issue(trusted, "EXTERNAL_IDENTITY_VERIFICATION_FAILED"))
+
+        untrusted = archive.verify(
+            LukuVerifyOptions(
+                allow_untrusted_roots=True,
+                skip_certificate_temporal_checks=True,
+                trust_profile="dev",
+                trusted_external_fingerprints=[],
+            )
+        )
+        self.assertTrue(self.has_issue(untrusted, "EXTERNAL_IDENTITY_VERIFICATION_FAILED"))
 
     def test_detects_record_deletion(self):
         archive, _ = self.create_valid_export("LUK-DEL")

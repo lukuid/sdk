@@ -2,7 +2,9 @@
 package com.lukuid.sdk
 
 import com.lukuid.sdk.internal.DeviceAttestationInput
+import com.lukuid.sdk.internal.ExternalIdentityInput
 import com.lukuid.sdk.internal.verifyDeviceAttestation
+import com.lukuid.sdk.internal.verifyExternalIdentity
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
@@ -23,6 +25,7 @@ import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
 const val LUKU_MIMETYPE: String = "application/vnd.lukuid.package+zip"
+private val SUPPORTED_ARCHIVE_VERSIONS = setOf("1.0.0", "1.0")
 
 data class LukuManifest(
     val type: String,
@@ -252,6 +255,9 @@ class LukuArchive private constructor(
         if (sha256Hex(blocksRaw.toByteArray(StandardCharsets.UTF_8)) != manifest.blocksHash) {
             issues += VerificationIssue("BLOCKS_HASH_MISMATCH", "The blocks.jsonl file hash does not match the manifest.", Criticality.CRITICAL)
         }
+        if (manifest.version !in SUPPORTED_ARCHIVE_VERSIONS) {
+            issues += VerificationIssue("MANIFEST_VERSION_UNSUPPORTED", "Archive manifest version ${manifest.version} is not supported.", Criticality.CRITICAL)
+        }
 
         var previousBlockHash: String? = null
         for ((index, block) in blocks.withIndex()) {
@@ -414,6 +420,49 @@ class LukuArchive private constructor(
                         }
                     }
                 }
+
+                val externalIdentity = record.optJSONObject("external_identity")
+                if (externalIdentity != null && !isAux) {
+                    issues += VerificationIssue("EXTERNAL_IDENTITY_UNSUPPORTED_RECORD_TYPE", "Record type $recordType must not carry external_identity.", Criticality.CRITICAL)
+                }
+
+                if (isAux) {
+                    val expectedPayload = expectedExternalIdentityPayload(record, recordType)
+                    val endorserId = externalIdentity?.optString("endorser_id").orEmpty()
+                    val rootFingerprint = externalIdentity?.optString("root_fingerprint").orEmpty()
+                    val externalSignature = externalIdentity?.optString("signature").orEmpty()
+                    val certChainDer = mutableListOf<String>()
+                    val certChain = externalIdentity?.optJSONArray("cert_chain_der")
+                    if (certChain != null) {
+                        for (index in 0 until certChain.length()) {
+                            certChain.optString(index).takeIf { it.isNotBlank() }?.let(certChainDer::add)
+                        }
+                    }
+                    if (externalIdentity != null
+                        && expectedPayload != null
+                        && endorserId.isNotBlank()
+                        && rootFingerprint.isNotBlank()
+                        && externalSignature.isNotBlank()
+                        && certChainDer.isNotEmpty()) {
+                        val result = verifyExternalIdentity(
+                            ExternalIdentityInput(
+                                endorserId = endorserId,
+                                rootFingerprint = rootFingerprint,
+                                certChainDer = certChainDer,
+                                signature = externalSignature,
+                                expectedPayload = expectedPayload,
+                                trustedFingerprints = options.trustedExternalFingerprints
+                            )
+                        )
+                        if (!result.ok) {
+                            issues += VerificationIssue(
+                                "EXTERNAL_IDENTITY_VERIFICATION_FAILED",
+                                "External identity verification failed: ${result.reason ?: "unknown"}",
+                                Criticality.CRITICAL
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -455,9 +504,12 @@ class LukuArchive private constructor(
 
         fun open(data: ByteArray): LukuArchive {
             val files = linkedMapOf<String, ByteArray>()
+            val seenNames = linkedSetOf<String>()
             ZipInputStream(ByteArrayInputStream(data)).use { zip ->
                 var entry = zip.nextEntry
                 while (entry != null) {
+                    validateZipEntryName(entry.name)
+                    check(seenNames.add(entry.name)) { "Archive contains duplicate ZIP entry: ${entry.name}" }
                     files[entry.name] = zip.readBytes()
                     zip.closeEntry()
                     entry = zip.nextEntry
@@ -474,7 +526,9 @@ class LukuArchive private constructor(
             val blocksRaw = files["blocks.jsonl"]?.toString(StandardCharsets.UTF_8)
                 ?: error("blocks.jsonl missing")
 
-            val manifest = LukuManifest.fromJson(JSONObject(manifestRaw))
+            val manifestJson = JSONObject(manifestRaw)
+            validateManifestJson(manifestJson)
+            val manifest = LukuManifest.fromJson(manifestJson)
             val blocks = blocksRaw
                 .lineSequence()
                 .filter { it.isNotBlank() }
@@ -602,7 +656,7 @@ class LukuArchive private constructor(
 
             val manifest = LukuManifest(
                 type = "LukuArchive",
-                version = "1.0",
+                version = "1.0.0",
                 createdAtUtc = now,
                 description = description,
                 blocksHash = sha256Hex(blocksRaw.toByteArray(StandardCharsets.UTF_8)),
@@ -671,6 +725,35 @@ class LukuArchive private constructor(
             return recordType in setOf("attachment", "location", "custody")
         }
 
+        private fun expectedExternalIdentityPayload(record: JSONObject, recordType: String): String? {
+            val externalIdentity = record.optJSONObject("external_identity") ?: return null
+            val endorserId = externalIdentity.optString("endorser_id")
+            if (endorserId.isBlank()) {
+                return null
+            }
+
+            return when (recordType) {
+                "attachment" -> {
+                    val checksum = record.optString("checksum")
+                    val merkleRoot = record.optString("merkle_root")
+                    "$checksum:$merkleRoot:$endorserId"
+                }
+                "location" -> {
+                    val lat = if (record.has("lat")) record.optDouble("lat") else 0.0
+                    val lng = if (record.has("lng")) record.optDouble("lng") else 0.0
+                    "$lat:$lng:$endorserId"
+                }
+                "custody" -> {
+                    val payload = record.optJSONObject("payload")
+                    val event = payload?.optString("event").orEmpty()
+                    val status = payload?.optString("status").orEmpty()
+                    val contextRef = payload?.optString("context_ref").orEmpty()
+                    "$event:$status:$contextRef:$endorserId"
+                }
+                else -> null
+            }
+        }
+
         private fun manifestPolicy(manifest: LukuManifest): LukuPolicy? {
             val policy = manifest.extra["policy"] as? JSONObject
             if (policy != null) {
@@ -701,6 +784,34 @@ class LukuArchive private constructor(
                     manifestExtra["native_continuity_gap_seconds"] = policy.nativeContinuityGapSeconds
                 }
                 manifestExtra["policy"] = policyJson
+            }
+        }
+
+        private fun validateZipEntryName(name: String) {
+            require(name.isNotBlank() && !name.startsWith("/") && !name.startsWith("\\") && !name.contains("\\")) {
+                "Archive contains unsafe ZIP entry path: $name"
+            }
+            val parts = name.split('/')
+            require(parts.all { it.isNotBlank() && it != "." && it != ".." }) {
+                "Archive contains unsafe ZIP entry path: $name"
+            }
+        }
+
+        private fun validateManifestJson(json: JSONObject) {
+            require(json.optString("type") == "LukuArchive") {
+                "manifest.json field type must be \"LukuArchive\""
+            }
+            require(json.has("version") && json.opt("version") is String && json.optString("version").isNotBlank()) {
+                "manifest.json field version must be a non-empty string"
+            }
+            require(json.has("created_at_utc") && json.opt("created_at_utc") is Number) {
+                "manifest.json field created_at_utc must be a number"
+            }
+            require(json.has("description") && json.opt("description") is String) {
+                "manifest.json field description must be a string"
+            }
+            require(json.has("blocks_hash") && json.opt("blocks_hash") is String && json.optString("blocks_hash").isNotBlank()) {
+                "manifest.json field blocks_hash must be a non-empty string"
             }
         }
 

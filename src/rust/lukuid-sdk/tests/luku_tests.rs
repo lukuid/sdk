@@ -47,6 +47,20 @@ fn samples_dir() -> PathBuf {
     repo_root.join("samples").join("dotluku").join("dev").join("1.0.0")
 }
 
+fn external_identity_fixture() -> serde_json::Value {
+    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../..")
+        .canonicalize()
+        .expect("SDK repo root should exist");
+    let fixture_path = repo_root
+        .join("samples")
+        .join("external_identity")
+        .join("dev")
+        .join("self_signed_ed25519.json");
+    let bytes = fs::read(fixture_path).expect("external identity fixture should exist");
+    serde_json::from_slice(&bytes).expect("fixture JSON should parse")
+}
+
 /// Helper to create a base valid export for testing mutations
 fn create_valid_export(temp_dir: &std::path::Path, device_id: &str) -> (LukuFile, SigningKey) {
     let (signing_key, pub_b64) = generate_test_keypair();
@@ -215,6 +229,149 @@ fn test_luku_manifest_preserves_temporal_continuity_metadata() {
     );
 
     let _ = fs::remove_file(path);
+}
+
+#[test]
+fn test_luku_export_emits_current_manifest_version() {
+    let temp_dir = std::env::temp_dir().join("lukuid_tests_version");
+    fs::create_dir_all(&temp_dir).unwrap();
+    let (luku, _) = create_valid_export(&temp_dir, "LUK-VERSION");
+    assert_eq!(luku.manifest.version, "1.0.0");
+}
+
+#[test]
+fn test_luku_verify_enforces_native_continuity_when_requested() {
+    let temp_dir = std::env::temp_dir().join("lukuid_tests_continuity");
+    fs::create_dir_all(&temp_dir).unwrap();
+    let (signing_key, pub_b64) = generate_test_keypair();
+    let identity = LukuDeviceIdentity {
+        device_id: "LUK-CONT".to_string(),
+        public_key: pub_b64,
+    };
+
+    let env1 = "env-1";
+    let env1_sig = BASE64.encode(signing_key.sign(env1.as_bytes()).to_bytes());
+    let env2 = "env-2";
+    let env2_sig = BASE64.encode(signing_key.sign(env2.as_bytes()).to_bytes());
+
+    let path = temp_dir.join("continuity.luku");
+    LukuFile::export_with_identity(
+        vec![
+            json!({
+                "type": "environment",
+                "signature": env1_sig,
+                "previous_signature": "genesis_fake",
+                "canonical_string": env1,
+                "payload": {
+                    "ctr": 1,
+                    "timestamp_utc": 1000,
+                    "genesis_hash": "genesis_fake"
+                }
+            }),
+            json!({
+                "type": "environment",
+                "signature": env2_sig,
+                "previous_signature": BASE64.encode(signing_key.sign(env1.as_bytes()).to_bytes()),
+                "canonical_string": env2,
+                "payload": {
+                    "ctr": 2,
+                    "timestamp_utc": 2000,
+                    "genesis_hash": "genesis_fake"
+                }
+            }),
+        ],
+        &path,
+        identity,
+        HashMap::new(),
+        &signing_key,
+        LukuExportOptions {
+            policy: Some(lukuid_sdk::luku::LukuPolicy {
+                name: "guardcard".to_string(),
+                native_continuity_gap_seconds: Some(600),
+            }),
+        },
+    )
+    .unwrap();
+
+    let luku = LukuFile::open(&path).unwrap();
+    let issues = luku.verify(LukuVerifyOptions {
+        allow_untrusted_roots: true,
+        skip_certificate_temporal_checks: true,
+        trusted_external_fingerprints: Vec::new(),
+        trust_profile: "dev".to_string(),
+        policy: None,
+        require_continuity: true,
+    });
+    assert!(issues.iter().any(|issue| issue.code == "CONTINUITY_GAP_EXCEEDED"));
+}
+
+#[test]
+fn test_luku_verify_rejects_untrusted_external_identity_endorsements() {
+    let temp_dir = std::env::temp_dir().join("lukuid_tests_external_identity");
+    fs::create_dir_all(&temp_dir).unwrap();
+    let fixture = external_identity_fixture();
+    let (signing_key, pub_b64) = generate_test_keypair();
+    let identity = LukuDeviceIdentity {
+        device_id: "LUK-EXT".to_string(),
+        public_key: pub_b64,
+    };
+
+    let canonical = "attachment-ext";
+    let device_sig = BASE64.encode(signing_key.sign(canonical.as_bytes()).to_bytes());
+    let checksum = fixture.get("checksum").and_then(|value| value.as_str()).unwrap();
+    let attachment_bytes = fixture
+        .get("attachment_utf8")
+        .and_then(|value| value.as_str())
+        .unwrap()
+        .as_bytes()
+        .to_vec();
+
+    let path = temp_dir.join("external-identity.luku");
+    let mut attachments = HashMap::new();
+    attachments.insert(checksum.to_string(), attachment_bytes);
+
+    LukuFile::export_with_identity(
+        vec![json!({
+            "type": "attachment",
+            "attachment_id": "ATT-EXT-1",
+            "signature": device_sig,
+            "previous_signature": "",
+            "canonical_string": canonical,
+            "checksum": checksum,
+            "external_identity": {
+                "endorser_id": fixture.get("endorser_id").and_then(|value| value.as_str()).unwrap(),
+                "root_fingerprint": fixture.get("root_fingerprint").and_then(|value| value.as_str()).unwrap(),
+                "cert_chain_der": fixture.get("cert_chain_der").cloned().unwrap(),
+                "signature": fixture.get("signature").and_then(|value| value.as_str()).unwrap()
+            }
+        })],
+        &path,
+        identity,
+        attachments,
+        &signing_key,
+        LukuExportOptions::default(),
+    )
+    .unwrap();
+
+    let luku = LukuFile::open(&path).unwrap();
+    let trusted = luku.verify(LukuVerifyOptions {
+        allow_untrusted_roots: true,
+        skip_certificate_temporal_checks: true,
+        trusted_external_fingerprints: vec![
+            fixture
+                .get("root_fingerprint")
+                .and_then(|value| value.as_str())
+                .unwrap()
+                .to_string(),
+        ],
+        trust_profile: "dev".to_string(),
+        policy: None,
+        require_continuity: false,
+    });
+    assert!(!trusted.iter().any(|issue| issue.code == "EXTERNAL_IDENTITY_VERIFICATION_FAILED"));
+
+    let untrusted = luku.verify(test_options());
+    assert!(untrusted.iter().any(|issue| issue.code == "EXTERNAL_IDENTITY_VERIFICATION_FAILED"));
 }
 
 // ------------------------------------------------------------------
@@ -783,7 +940,9 @@ fn test_samples_directory_files() {
     let passable_path = samples_dir.join("first-passable-verification-sample.luku");
     if passable_path.exists() {
         let luku = LukuFile::open(&passable_path).unwrap();
-        let issues = luku.verify(options.clone());
+        let mut strict_options = options.clone();
+        strict_options.allow_untrusted_roots = false;
+        let issues = luku.verify(strict_options);
         let criticals: Vec<_> = issues.iter().filter(|i| i.criticality == Criticality::Critical).collect();
         assert!(criticals.is_empty(), "Expected passable sample to be valid, found: {:?}", criticals);
     }
@@ -845,5 +1004,15 @@ fn test_samples_directory_files() {
             prod_issues.iter().any(|i| i.code == "ATTESTATION_FAILED" && i.message.contains("Certificate chain does not match the requested trust profile")),
             "Expected passable sample (dev) to fail trust profile check under 'prod' profile"
         );
+    }
+}
+
+#[test]
+fn test_lukuid_sdk_self_test() {
+    let results = lukuid_sdk::LukuidSdk::self_test();
+    assert!(!results.is_empty());
+    for result in results {
+        println!("{} {} {} : {}", result.alg, result.operation, result.id, result.passed);
+        assert!(result.passed, "Self-test failed for {} {}", result.alg, result.operation);
     }
 }

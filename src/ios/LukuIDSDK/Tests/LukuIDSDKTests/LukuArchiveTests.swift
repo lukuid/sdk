@@ -113,6 +113,27 @@ final class LukuArchiveTests: XCTestCase {
         return start.deletingLastPathComponent().appendingPathComponent("samples/dotluku/dev/1.0.0/\(name)")
     }
 
+    private func externalIdentityFixture() throws -> [String: Any] {
+        let start = URL(fileURLWithPath: #filePath)
+        var current = start.deletingLastPathComponent()
+
+        while true {
+            let candidate = current.appendingPathComponent("samples/external_identity/dev/self_signed_ed25519.json")
+            if FileManager.default.fileExists(atPath: candidate.path) {
+                let data = try Data(contentsOf: candidate)
+                return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+            }
+
+            let parent = current.deletingLastPathComponent()
+            if parent.path == current.path {
+                break
+            }
+            current = parent
+        }
+
+        throw NSError(domain: "lukuid-tests", code: -1, userInfo: [NSLocalizedDescriptionKey: "Missing external identity fixture"])
+    }
+
     func testExportsAndReopensArchives() throws {
         let signer = createTestSigner()
         let identity = LukuDeviceIdentity(deviceID: "LUK-TEST", publicKey: signer.publicKeyBase64)
@@ -135,7 +156,7 @@ final class LukuArchiveTests: XCTestCase {
         )
 
         let reopened = try LukuFile.open(data: exported.saveToData())
-        XCTAssertEqual(reopened.manifest.version, "1.0")
+        XCTAssertEqual(reopened.manifest.version, "1.0.0")
         XCTAssertEqual(reopened.blocks.count, 1)
         XCTAssertEqual(reopened.blocks[0].batch.count, 1)
     }
@@ -218,6 +239,86 @@ final class LukuArchiveTests: XCTestCase {
     func testVerifiesAValidArchive() throws {
         let archive = try createValidExport(deviceID: "LUK-VALID").archive
         XCTAssertTrue(criticalIssues(archive.verify(options: testOptions())).isEmpty)
+    }
+
+    func testEnforcesRequestedNativeContinuityChecks() throws {
+        let signer = createTestSigner()
+        let archive = try LukuFile.exportWithIdentity(
+            records: [
+                [
+                    "type": "environment",
+                    "signature": try signCanonical(signer.privateKey, canonical: "env-1"),
+                    "previous_signature": "genesis_fake",
+                    "canonical_string": "env-1",
+                    "payload": [
+                        "ctr": 1,
+                        "timestamp_utc": 1000,
+                        "genesis_hash": "genesis_fake"
+                    ]
+                ],
+                [
+                    "type": "environment",
+                    "signature": try signCanonical(signer.privateKey, canonical: "env-2"),
+                    "previous_signature": try signCanonical(signer.privateKey, canonical: "env-1"),
+                    "canonical_string": "env-2",
+                    "payload": [
+                        "ctr": 2,
+                        "timestamp_utc": 2000,
+                        "genesis_hash": "genesis_fake"
+                    ]
+                ]
+            ],
+            device: LukuDeviceIdentity(deviceID: "LUK-CONT", publicKey: signer.publicKeyBase64),
+            attachments: [:],
+            signer: LukuSigner(privateKey: signer.privateKey, publicKeyBase64: signer.publicKeyBase64),
+            options: LukuExportOptions(policy: LukuPolicy(name: "guardcard", nativeContinuityGapSeconds: 600))
+        )
+
+        let issues = archive.verify(options: LukuVerifyOptions(
+            allowUntrustedRoots: true,
+            skipCertificateTemporalChecks: true,
+            trustedExternalFingerprints: [],
+            trustProfile: "dev",
+            policy: nil,
+            requireContinuity: true
+        ))
+        XCTAssertTrue(hasIssue(issues, "CONTINUITY_GAP_EXCEEDED"))
+    }
+
+    func testRejectsUntrustedExternalIdentityEndorsements() throws {
+        let fixture = try externalIdentityFixture()
+        let signer = createTestSigner()
+        let checksum = try XCTUnwrap(fixture["checksum"] as? String)
+        let archive = try LukuFile.exportWithIdentity(
+            records: [[
+                "type": "attachment",
+                "attachment_id": "ATT-EXT-1",
+                "signature": try signCanonical(signer.privateKey, canonical: "attachment-ext"),
+                "previous_signature": "",
+                "canonical_string": "attachment-ext",
+                "checksum": checksum,
+                "external_identity": [
+                    "endorser_id": fixture["endorser_id"] as? String ?? "",
+                    "root_fingerprint": fixture["root_fingerprint"] as? String ?? "",
+                    "cert_chain_der": fixture["cert_chain_der"] as? [String] ?? [],
+                    "signature": fixture["signature"] as? String ?? ""
+                ]
+            ]],
+            device: LukuDeviceIdentity(deviceID: "LUK-EXT", publicKey: signer.publicKeyBase64),
+            attachments: [checksum: Data((fixture["attachment_utf8"] as? String ?? "").utf8)],
+            signer: LukuSigner(privateKey: signer.privateKey, publicKeyBase64: signer.publicKeyBase64)
+        )
+
+        let trusted = archive.verify(options: LukuVerifyOptions(
+            allowUntrustedRoots: true,
+            skipCertificateTemporalChecks: true,
+            trustedExternalFingerprints: [fixture["root_fingerprint"] as? String ?? ""],
+            trustProfile: "dev"
+        ))
+        XCTAssertFalse(hasIssue(trusted, "EXTERNAL_IDENTITY_VERIFICATION_FAILED"))
+
+        let untrusted = archive.verify(options: testOptions())
+        XCTAssertTrue(hasIssue(untrusted, "EXTERNAL_IDENTITY_VERIFICATION_FAILED"))
     }
 
     func testDetectsRecordDeletion() throws {
@@ -547,5 +648,13 @@ final class LukuArchiveTests: XCTestCase {
             throw NSError(domain: "lukuid-tests", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to serialize archive"])
         }
         return data
+    }
+    func testSelfTest() throws {
+        let results = LukuIDClient.selfTest()
+        XCTAssertTrue(results.count >= 4)
+        for result in results {
+            print("\(result.alg) \(result.operation)\t\(result.passed ? "PASS" : "FAIL")\t\(result.id)")
+            XCTAssertTrue(result.passed, "Self-test failed for \(result.alg) \(result.operation)")
+        }
     }
 }

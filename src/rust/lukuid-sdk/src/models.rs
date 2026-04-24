@@ -128,6 +128,14 @@ pub struct HeartbeatSyncResult {
     pub apply_response: serde_json::Value,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SelfTestResult {
+    pub alg: String,
+    pub operation: String,
+    pub passed: bool,
+    pub id: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct DiscoveredDevice {
     pub id: String,

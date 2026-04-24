@@ -4,6 +4,7 @@ import Foundation
 import ZIPFoundation
 
 public let LUKUMimetype = "application/vnd.lukuid.package+zip"
+private let supportedArchiveVersions: Set<String> = ["1.0.0", "1.0"]
 
 public struct LukuParseResult: Sendable {
     public let verified: Bool
@@ -364,6 +365,9 @@ public final class LukuArchive {
         if sha256Hex(Data(blocksRaw.utf8)) != manifest.blocksHash {
             issues.append(issue("BLOCKS_HASH_MISMATCH", "The blocks.jsonl file hash does not match the manifest.", .critical))
         }
+        if !supportedArchiveVersions.contains(manifest.version) {
+            issues.append(issue("MANIFEST_VERSION_UNSUPPORTED", "Archive manifest version \(manifest.version) is not supported.", .critical))
+        }
 
         var previousBlockHash: String?
         for (index, block) in blocks.enumerated() {
@@ -533,6 +537,37 @@ public final class LukuArchive {
                         issues.append(issue("ATTACHMENT_CORRUPT", "Attachment with hash \(checksum) is corrupt (actual hash \(actualHash)).", .critical))
                     }
                 }
+
+                let externalIdentity = record["external_identity"] as? [String: Any]
+                if externalIdentity != nil && !isAuxRecord {
+                    issues.append(issue("EXTERNAL_IDENTITY_UNSUPPORTED_RECORD_TYPE", "Record type \(recordType) must not carry external_identity.", .critical))
+                }
+
+                if isAuxRecord,
+                   let externalIdentity,
+                   let expectedPayload = expectedExternalIdentityPayload(record: record, recordType: recordType),
+                   let endorserID = externalIdentity["endorser_id"] as? String,
+                   !endorserID.isEmpty,
+                   let rootFingerprint = externalIdentity["root_fingerprint"] as? String,
+                   !rootFingerprint.isEmpty,
+                   let externalSignature = externalIdentity["signature"] as? String,
+                   !externalSignature.isEmpty,
+                   let certChainDer = externalIdentity["cert_chain_der"] as? [String],
+                   !certChainDer.isEmpty {
+                    let result = verifyExternalIdentity(
+                        ExternalIdentityInputs(
+                            endorserID: endorserID,
+                            rootFingerprint: rootFingerprint,
+                            certChainDer: certChainDer,
+                            signature: externalSignature,
+                            expectedPayload: expectedPayload,
+                            trustedFingerprints: options.trustedExternalFingerprints
+                        )
+                    )
+                    if case .failure(let error) = result {
+                        issues.append(issue("EXTERNAL_IDENTITY_VERIFICATION_FAILED", "External identity verification failed: \(error.reason)", .critical))
+                    }
+                }
             }
         }
 
@@ -599,6 +634,16 @@ public enum LukuFile {
             throw NSError(domain: "lukuid", code: -50, userInfo: [NSLocalizedDescriptionKey: "Failed to open .luku archive: \(error.localizedDescription)"])
         }
 
+        var seenNames = Set<String>()
+        for entry in archive {
+            guard isSafeZipEntryName(entry.path) else {
+                throw NSError(domain: "lukuid", code: -50, userInfo: [NSLocalizedDescriptionKey: "Archive contains unsafe ZIP entry path: \(entry.path)"])
+            }
+            guard seenNames.insert(entry.path).inserted else {
+                throw NSError(domain: "lukuid", code: -50, userInfo: [NSLocalizedDescriptionKey: "Archive contains duplicate ZIP entry: \(entry.path)"])
+            }
+        }
+
         guard let mimetypeEntry = archive["mimetype"] else {
             throw NSError(domain: "lukuid", code: -50, userInfo: [NSLocalizedDescriptionKey: "mimetype file missing"])
         }
@@ -612,6 +657,7 @@ public enum LukuFile {
         }
         let manifestRaw = try extractString(manifestEntry, from: archive)
         let manifestJSON = try jsonObject(from: Data(manifestRaw.utf8))
+        try validateManifestJSON(manifestJSON)
         let manifest = LukuManifest(json: manifestJSON)
 
         guard let blocksEntry = archive["blocks.jsonl"] else {
@@ -790,7 +836,7 @@ public enum LukuFile {
 
         let manifest = LukuManifest(
             type: "LukuArchive",
-            version: "1.0",
+            version: "1.0.0",
             createdAtUTC: timestamp,
             description: description,
             blocksHash: sha256Hex(Data(blocksRaw.utf8)),
@@ -852,6 +898,31 @@ public enum LukuFile {
         block.blockCanonicalString = fields.blockCanonicalString
         block.blockHash = fields.blockHash
         return block
+    }
+}
+
+private func isSafeZipEntryName(_ name: String) -> Bool {
+    guard !name.isEmpty, !name.hasPrefix("/"), !name.hasPrefix("\\"), !name.contains("\\") else {
+        return false
+    }
+    return name.split(separator: "/").allSatisfy { !$0.isEmpty && $0 != "." && $0 != ".." }
+}
+
+private func validateManifestJSON(_ json: [String: Any]) throws {
+    guard json["type"] as? String == "LukuArchive" else {
+        throw NSError(domain: "lukuid", code: -51, userInfo: [NSLocalizedDescriptionKey: "manifest.json field type must be \"LukuArchive\""])
+    }
+    guard let version = json["version"] as? String, !version.isEmpty else {
+        throw NSError(domain: "lukuid", code: -51, userInfo: [NSLocalizedDescriptionKey: "manifest.json field version must be a non-empty string"])
+    }
+    guard uint64(json["created_at_utc"]) != nil else {
+        throw NSError(domain: "lukuid", code: -51, userInfo: [NSLocalizedDescriptionKey: "manifest.json field created_at_utc must be a number"])
+    }
+    guard json["description"] is String else {
+        throw NSError(domain: "lukuid", code: -51, userInfo: [NSLocalizedDescriptionKey: "manifest.json field description must be a string"])
+    }
+    guard let blocksHash = json["blocks_hash"] as? String, !blocksHash.isEmpty else {
+        throw NSError(domain: "lukuid", code: -51, userInfo: [NSLocalizedDescriptionKey: "manifest.json field blocks_hash must be a non-empty string"])
     }
 }
 
@@ -996,6 +1067,33 @@ private func manifestPolicy(_ manifest: LukuManifest) -> LukuPolicy? {
     }
 
     return nil
+}
+
+private func expectedExternalIdentityPayload(record: [String: Any], recordType: String) -> String? {
+    guard let externalIdentity = record["external_identity"] as? [String: Any],
+          let endorserID = externalIdentity["endorser_id"] as? String,
+          !endorserID.isEmpty else {
+        return nil
+    }
+
+    switch recordType {
+    case "attachment":
+        let checksum = record["checksum"] as? String ?? ""
+        let merkleRoot = record["merkle_root"] as? String ?? ""
+        return "\(checksum):\(merkleRoot):\(endorserID)"
+    case "location":
+        let lat = (record["lat"] as? NSNumber)?.doubleValue ?? 0
+        let lng = (record["lng"] as? NSNumber)?.doubleValue ?? 0
+        return "\(lat):\(lng):\(endorserID)"
+    case "custody":
+        let payload = record["payload"] as? [String: Any]
+        let event = payload?["event"] as? String ?? ""
+        let status = payload?["status"] as? String ?? ""
+        let contextRef = payload?["context_ref"] as? String ?? ""
+        return "\(event):\(status):\(contextRef):\(endorserID)"
+    default:
+        return nil
+    }
 }
 
 private func mutableCopy(_ value: [String: Any]) -> [String: Any] {
