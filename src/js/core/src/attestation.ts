@@ -383,7 +383,7 @@ interface NodeLikeX509Certificate {
 }
 
 async function getNodeX509CertificateConstructor(): Promise<
-  ((new (input: string) => NodeLikeX509Certificate) & { prototype: NodeLikeX509Certificate }) | null
+  ((new (input: string | Uint8Array) => NodeLikeX509Certificate) & { prototype: NodeLikeX509Certificate }) | null
 > {
   const processObject = (globalThis as Record<string, unknown>).process as
     | { versions?: { node?: string } }
@@ -395,7 +395,7 @@ async function getNodeX509CertificateConstructor(): Promise<
   try {
     const dynamicImport = Function('return import("node:crypto")') as () => Promise<unknown>;
     const cryptoModule = (await dynamicImport()) as {
-      X509Certificate?: (new (input: string) => NodeLikeX509Certificate) & {
+      X509Certificate?: (new (input: string | Uint8Array) => NodeLikeX509Certificate) & {
         prototype: NodeLikeX509Certificate;
       };
     };
@@ -474,7 +474,7 @@ export async function verifyDeviceAttestation(inputs: DeviceAttestationInputs): 
           } else {
             for (const root of forgeTrustedRoots) {
               try {
-                verified = root.verify(current) || root.fingerprint === current.fingerprint;
+                verified = root.verify(current) || (root as any).fingerprint === (current as any).fingerprint;
               } catch {
                 continue;
               }
@@ -653,7 +653,8 @@ export async function verifyExternalIdentity(inputs: ExternalIdentityInputs): Pr
           // Check for OID 1.3.6.1.4.1.65432.1.4 in the leaf certificate
           const leafBytes = decodeBase64(inputs.certChainDer[0]);
           if (leafBytes) {
-            const cert = forge.pki.certificateFromAsn1(forge.asn1.fromDer(forge.util.createBuffer(leafBytes)));
+            const f = forge as any;
+            const cert = f.pki.certificateFromAsn1(f.asn1.fromDer(f.util.createBuffer(leafBytes)));
             const ext = cert.getExtension('1.3.6.1.4.1.65432.1.4');
             if (ext) {
               isTrusted = true;
@@ -689,8 +690,8 @@ async function sha256Hex(data: Uint8Array): Promise<string> {
 }
 
 function encodeBase64(bytes: Uint8Array): string {
-  if (typeof Buffer !== 'undefined') {
-    return Buffer.from(bytes).toString('base64');
+  if (typeof globalThis !== 'undefined' && 'Buffer' in globalThis) {
+    return (globalThis as any).Buffer.from(bytes).toString('base64');
   }
   let binary = '';
   for (let i = 0; i < bytes.byteLength; i++) {
