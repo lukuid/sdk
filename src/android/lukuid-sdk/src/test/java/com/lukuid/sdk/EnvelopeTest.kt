@@ -65,8 +65,7 @@ class EnvelopeTest {
             skipCertificateTemporalChecks = true,
             trustProfile = "dev"
         ))
-        val unexpectedIssues = issues.filterNot { it.code == "ATTESTATION_FAILED" && it.message.contains("PQC Signature verification failed") }
-        assertTrue("Expected no unexpected issues, got ${unexpectedIssues.joinToString { it.code + ":" + it.message }}", unexpectedIssues.isEmpty())
+        assertTrue("Expected no issues, got ${issues.joinToString { it.code + ":" + it.message }}", issues.isEmpty())
     }
 
     @Test
@@ -125,5 +124,76 @@ class EnvelopeTest {
             trustProfile = "dev"
         ))
         assertTrue(issues.any { it.code == "RECORD_SIGNATURE_INVALID" })
+    }
+
+    @Test
+    fun testVerifyEnvelopeTamperedMldsaSignature() {
+        val json = JSONObject(getValidEnvelopeStr())
+        val derBase64 = json.getString("attestation_intermediate_der")
+        val der = Base64.getDecoder().decode(derBase64)
+        // Tamper with the last byte of the signature (which is at the end of the DER)
+        der[der.size - 1] = (der[der.size - 1].toInt() xor 0xFF).toByte()
+        json.put("attestation_intermediate_der", Base64.getEncoder().encodeToString(der))
+        val map = JsonUtils.fromJson(json)
+
+        val issues = LukuFile.verifyEnvelope(map, LukuVerifyOptions(
+            allowUntrustedRoots = false,
+            skipCertificateTemporalChecks = true,
+            trustProfile = "dev"
+        ))
+        assertTrue("Expected ATTESTATION_FAILED due to tampered signature", issues.any { it.code == "ATTESTATION_FAILED" })
+    }
+
+    @Test
+    fun testVerifyEnvelopeWrongRoot() {
+        val json = JSONObject(getValidEnvelopeStr())
+        // Remove the intermediate so it tries to verify DAC against roots directly (and fails because it's signed by intermediate)
+        json.remove("attestation_intermediate_der")
+        val map = JsonUtils.fromJson(json)
+
+        val issues = LukuFile.verifyEnvelope(map, LukuVerifyOptions(
+            allowUntrustedRoots = false,
+            skipCertificateTemporalChecks = true,
+            trustProfile = "dev"
+        ))
+        assertTrue("Expected ATTESTATION_FAILED due to missing/wrong root chain", issues.any { it.code == "ATTESTATION_FAILED" })
+    }
+
+    @Test
+    fun testVerifyEnvelopeMalformedSpki() {
+        val json = JSONObject(getValidEnvelopeStr())
+        val derBase64 = json.getString("attestation_intermediate_der")
+        val der = Base64.getDecoder().decode(derBase64)
+        // Search for a sequence that looks like ML-DSA-65 OID or similar and mess it up
+        // Or just mess up the middle of the cert where SPKI usually is
+        for (i in 100..200) { der[i] = 0x00 }
+        json.put("attestation_intermediate_der", Base64.getEncoder().encodeToString(der))
+        val map = JsonUtils.fromJson(json)
+
+        val issues = LukuFile.verifyEnvelope(map, LukuVerifyOptions(
+            allowUntrustedRoots = false,
+            skipCertificateTemporalChecks = true,
+            trustProfile = "dev"
+        ))
+        assertTrue("Expected ATTESTATION_FAILED or similar due to malformed SPKI", issues.any { it.code == "ATTESTATION_FAILED" })
+    }
+
+    @Test
+    fun testVerifyEnvelopeMalformedTbs() {
+        val json = JSONObject(getValidEnvelopeStr())
+        val derBase64 = json.getString("attestation_intermediate_der")
+        val der = Base64.getDecoder().decode(derBase64)
+        // Mess up the start of the TBS SEQUENCE
+        der[4] = 0xFF.toByte()
+        der[5] = 0xFF.toByte()
+        json.put("attestation_intermediate_der", Base64.getEncoder().encodeToString(der))
+        val map = JsonUtils.fromJson(json)
+
+        val issues = LukuFile.verifyEnvelope(map, LukuVerifyOptions(
+            allowUntrustedRoots = false,
+            skipCertificateTemporalChecks = true,
+            trustProfile = "dev"
+        ))
+        assertTrue("Expected ATTESTATION_FAILED due to malformed TBS", issues.any { it.code == "ATTESTATION_FAILED" })
     }
 }

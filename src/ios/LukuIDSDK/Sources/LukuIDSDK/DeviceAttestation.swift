@@ -90,7 +90,7 @@ private let TRUSTED_ROOT_CERTS_PEM = [
     Qe6dXYJxc3jlWcfPKlw4PNCRFVR3CifduPZVcoglX0T5u9oO0NKXK2CtYlCEuGNA
     pjOnCIPI2cMpiUf5lEH1QMVO/l9xZlT+su+vquoCUvMOv1VPze3fOPWUqM4NZLGH
     An3vcUK1EKUcEwSS42kowvCKId1QL1QXdoUffG5K3zt+IfDMzYc6JufdUo+X3Bd5
-    KUlj1lc7dh8MKDK/jWjrxj8V7zZA77Tc7/jde/fmKfMWFmxWG9U3nBjYb85AcSE5
+    KUlj1lc7dh8MKDK/jWjrxj8V7zZAq7Tc7/jde/fmKfMWFmxWG9U3nBjYb85AcSE5
     vWn2BK/zwI8eimSdNLsY4o5Zo0IwQDAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB
     /wQEAwIBBjAdBgNVHQ4EFgQUcW3eH6pWJcD+uoLcPr0TuOYQjXcwCwYJYIZIAWUD
     BAMSA4IM7gAoefUnUDQbu8jhreiaeXW4B5nHFq4W0AKz8Tw8CceQxPwrOWwZ16nv
@@ -215,20 +215,28 @@ func verifyDeviceAttestation(_ inputs: DeviceAttestationInputs) -> Result<Void, 
         // 1.07 MANDATORY: Verify signatures along the chain
         for i in 0..<certs.count {
             let current = certs[i]
-            let signature = extractSignature(from: current)
-            let tbs = extractTBS(from: current)
+            guard let certData = SecCertificateCopyData(current) as Data? else {
+                return .failure(DeviceTrustError(id: inputs.id, reason: "Failed to read certificate data at level \(i)", attemptedKeyIds: []))
+            }
+            
+            let fields: (tbs: Data, algorithm: Data, signature: Data)
+            do {
+                fields = try ASN1Parser.extractCertificateFields(certData)
+            } catch {
+                return .failure(DeviceTrustError(id: inputs.id, reason: "Failed to parse certificate fields at level \(i): \(error)", attemptedKeyIds: []))
+            }
             
             var verified = false
             if i + 1 < certs.count {
                 let next = certs[i+1]
                 if let nextPub = extractRawPublicKey(from: next) {
-                    verified = verifySignatureRobust(signature: signature, tbs: tbs, publicKey: nextPub)
+                    verified = verifySignatureRobust(signature: fields.signature, tbs: fields.tbs, publicKey: nextPub)
                 }
             } else {
-                for rootPEM in TRUSTED_ROOT_CERTS_PEM {
+                for (rootIdx, rootPEM) in TRUSTED_ROOT_CERTS_PEM.enumerated() {
                     let rootCerts = parsePEMChain(rootPEM)
                     if let root = rootCerts.first, let rootPub = extractRawPublicKey(from: root) {
-                        if verifySignatureRobust(signature: signature, tbs: tbs, publicKey: rootPub) {
+                        if verifySignatureRobust(signature: fields.signature, tbs: fields.tbs, publicKey: rootPub) {
                             verified = true
                             break
                         }
@@ -237,10 +245,7 @@ func verifyDeviceAttestation(_ inputs: DeviceAttestationInputs) -> Result<Void, 
             }
             
             if !verified {
-                // Enforce strictly only for PQC (ML-DSA-65) for now to match legacy compatibility
-                if signature.count == 3309 {
-                    return .failure(DeviceTrustError(id: inputs.id, reason: "PQC Signature verification failed at chain level \(i)", attemptedKeyIds: []))
-                }
+                return .failure(DeviceTrustError(id: inputs.id, reason: "Signature verification failed at chain level \(i)", attemptedKeyIds: []))
             }
         }
 
@@ -344,22 +349,14 @@ func verifyExternalIdentity(_ inputs: ExternalIdentityInputs) -> Result<Void, De
 
 // MARK: - Robust Signature Verification
 
+private let mldsaVerifier: MLDSAVerifier = MLDSANativeVerifier()
+
 private func verifySignatureRobust(signature: Data, tbs: Data, publicKey: Data) -> Bool {
     // 1. Try ML-DSA-65
-    if signature.count == 3309 && publicKey.count >= 1952 {
-        let pubKeyRaw = publicKey.suffix(1952)
-        var sigBytes = [uint8](signature)
-        var msgBytes = [uint8](tbs)
-        var pubBytes = [uint8](pubKeyRaw)
-        
-        let result = sigBytes.withUnsafeBufferPointer { sigPtr in
-            msgBytes.withUnsafeBufferPointer { msgPtr in
-                pubBytes.withUnsafeBufferPointer { pubPtr in
-                    PQCP_MLDSA_NATIVE_MLDSA65_verify(sigPtr.baseAddress, signature.count, msgPtr.baseAddress, tbs.count, nil, 0, pubPtr.baseAddress)
-                }
-            }
+    if signature.count == 3309 {
+        if mldsaVerifier.verify(signature: signature, message: tbs, publicKey: publicKey) {
+            return true
         }
-        if result == 0 { return true }
     }
 
     // 2. Try Ed25519
@@ -371,8 +368,6 @@ private func verifySignatureRobust(signature: Data, tbs: Data, publicKey: Data) 
     }
 
     // 3. Try ECDSA P-256
-    // Security framework handles P-256 keys. We need to import the key from SPKI.
-    // (Simplified here, in real app we'd use SecKeyCreateWithData)
     if let secKey = importPublicKey(publicKey) {
         var error: Unmanaged<CFError>?
         let alg: SecKeyAlgorithm = .ecdsaSignatureMessageX962SHA256
@@ -422,37 +417,7 @@ private func extractRawPublicKey(from cert: SecCertificate) -> Data? {
     }
     // Fallback: extract SPKI manually if SecKey fails (e.g. for ML-DSA which Security doesn't know)
     guard let certData = SecCertificateCopyData(cert) as Data? else { return nil }
-    // Very crude SPKI extraction: find the SPKI block in DER
-    // This is a placeholder for better ASN.1 parsing
-    return certData
-}
-
-// Better extract logic
-private func extractSignature(from cert: SecCertificate) -> Data {
-    guard let data = SecCertificateCopyData(cert) as Data? else { return Data() }
-    // X.509 is SEQUENCE { tbs, alg, sig }
-    // ML-DSA-65 signatures are 3309 bytes.
-    // Ed25519 signatures are 64 bytes.
-    if data.count > 3309 {
-        return data.suffix(3309)
-    } else if data.count > 64 {
-        return data.suffix(64)
-    }
-    return Data()
-}
-
-private func extractTBS(from cert: SecCertificate) -> Data {
-    guard let data = SecCertificateCopyData(cert) as Data? else { return Data() }
-    // X.509 is SEQUENCE { tbs, alg, sig }
-    // The signatureValue is a BIT STRING, so it has 1 extra byte for unused bits.
-    // Plus the signature itself.
-    // Plus the algorithm identifier (roughly 10-20 bytes).
-    if data.count > 3309 + 20 {
-        return data.prefix(data.count - 3309 - 20)
-    } else if data.count > 64 + 15 {
-        return data.prefix(data.count - 64 - 15)
-    }
-    return data
+    return try? ASN1Parser.extractPublicKey(certData)
 }
 
 private func certificateHasOID(_ cert: SecCertificate, oid: String) -> Bool {

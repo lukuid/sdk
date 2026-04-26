@@ -197,11 +197,7 @@ def verify_device_attestation(inputs: DeviceAttestationInputs) -> VerificationRe
                         continue
             
             if not verified:
-                # Check if it's a PQC signature (by length)
-                meta = _certificate_metadata(cert_pem)
-                sig_len = meta.get("sig_len", 0)
-                if sig_len == 3309:
-                    return VerificationResult(False, f"PQC Signature verification failed at chain level {i}")
+                return VerificationResult(False, f"Signature verification failed at chain level {i}")
 
         if inputs.created is not None:
             try:
@@ -401,9 +397,9 @@ def _verify_cert_signature(cert_pem: str, issuer_pub_pem: str) -> bool:
         # but we can try to use pkeyutl or verify if it's a standard algorithm.
         meta = _certificate_metadata(cert_pem)
         if meta.get("sig_len") == 3309:
-            # For PQC, we might need a specialized tool or just trust it if we can't verify yet in Python
-            # but for now let's at least try standard openssl verify for others.
-            return True # Assume valid for now if we can't verify ML-DSA with standard OpenSSL
+            # We don't have python-mldsa integrated yet for chain cert verification,
+            # but returning True blindly is a security risk. Fail the verification if we can't verify.
+            return False
 
         result = subprocess.run(
             [

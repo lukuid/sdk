@@ -242,10 +242,10 @@ pub fn verify_device_attestation(inputs: &DeviceAttestationInputs) -> Verificati
                 }
             }
 
-            if !verified && current.signature_value.as_ref().len() == 3309 {
+            if !verified {
                 return VerificationResult {
                     ok: false,
-                    reason: Some(format!("PQC Signature verification failed at chain level {}", i)),
+                    reason: Some(format!("Signature verification failed at chain level {}", i)),
                 };
             }
         }

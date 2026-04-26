@@ -29,8 +29,7 @@ final class EnvelopeTests: XCTestCase {
     func testVerifyEnvelopeValid() throws {
         let envelope = getValidEnvelope()
         let issues = LukuFile.verifyEnvelope(envelope: envelope, options: LukuVerifyOptions(allowUntrustedRoots: false, skipCertificateTemporalChecks: true, trustProfile: "dev"))
-        let unexpectedIssues = issues.filter { !($0.code == "ATTESTATION_FAILED" && $0.message.contains("PQC Signature verification failed")) }
-        XCTAssertTrue(unexpectedIssues.isEmpty, "Expected no unexpected issues, got \(unexpectedIssues)")
+        XCTAssertTrue(issues.isEmpty, "Expected no issues, got \(issues)")
     }
 
     func testVerifyEnvelopeKeyMismatch() throws {
@@ -82,5 +81,60 @@ final class EnvelopeTests: XCTestCase {
         envelope["canonical_string"] = "tampered:canonical:string"
         let issues = LukuFile.verifyEnvelope(envelope: envelope, options: LukuVerifyOptions(allowUntrustedRoots: false, skipCertificateTemporalChecks: true, trustProfile: "dev"))
         XCTAssertTrue(issues.contains { $0.code == "RECORD_SIGNATURE_INVALID" })
+    }
+
+    func testVerifyEnvelopeTamperedMldsaSignature() throws {
+        var envelope = getValidEnvelope()
+        guard let derBase64 = envelope["attestation_intermediate_der"] as? String,
+              var der = Data(base64Encoded: derBase64) else {
+            XCTFail("Missing attestation_intermediate_der")
+            return
+        }
+        // Tamper with the last byte of the signature
+        der[der.count - 1] = der[der.count - 1] ^ 0xFF
+        envelope["attestation_intermediate_der"] = der.base64EncodedString()
+        
+        let issues = LukuFile.verifyEnvelope(envelope: envelope, options: LukuVerifyOptions(allowUntrustedRoots: false, skipCertificateTemporalChecks: true, trustProfile: "dev"))
+        XCTAssertTrue(issues.contains { $0.code == "ATTESTATION_FAILED" }, "Expected ATTESTATION_FAILED due to tampered signature")
+    }
+
+    func testVerifyEnvelopeWrongRoot() throws {
+        var envelope = getValidEnvelope()
+        // Remove the intermediate so it tries to verify DAC against roots directly
+        envelope.removeValue(forKey: "attestation_intermediate_der")
+        
+        let issues = LukuFile.verifyEnvelope(envelope: envelope, options: LukuVerifyOptions(allowUntrustedRoots: false, skipCertificateTemporalChecks: true, trustProfile: "dev"))
+        XCTAssertTrue(issues.contains { $0.code == "ATTESTATION_FAILED" }, "Expected ATTESTATION_FAILED due to missing/wrong root chain")
+    }
+
+    func testVerifyEnvelopeMalformedSpki() throws {
+        var envelope = getValidEnvelope()
+        guard let derBase64 = envelope["attestation_intermediate_der"] as? String,
+              var der = Data(base64Encoded: derBase64) else {
+            XCTFail("Missing attestation_intermediate_der")
+            return
+        }
+        // Mess up the middle of the cert where SPKI usually is
+        for i in 100..<200 { der[i] = 0x00 }
+        envelope["attestation_intermediate_der"] = der.base64EncodedString()
+        
+        let issues = LukuFile.verifyEnvelope(envelope: envelope, options: LukuVerifyOptions(allowUntrustedRoots: false, skipCertificateTemporalChecks: true, trustProfile: "dev"))
+        XCTAssertTrue(issues.contains { $0.code == "ATTESTATION_FAILED" }, "Expected ATTESTATION_FAILED due to malformed SPKI")
+    }
+
+    func testVerifyEnvelopeMalformedTbs() throws {
+        var envelope = getValidEnvelope()
+        guard let derBase64 = envelope["attestation_intermediate_der"] as? String,
+              var der = Data(base64Encoded: derBase64) else {
+            XCTFail("Missing attestation_intermediate_der")
+            return
+        }
+        // Mess up the start of the TBS SEQUENCE
+        der[4] = 0xFF
+        der[5] = 0xFF
+        envelope["attestation_intermediate_der"] = der.base64EncodedString()
+        
+        let issues = LukuFile.verifyEnvelope(envelope: envelope, options: LukuVerifyOptions(allowUntrustedRoots: false, skipCertificateTemporalChecks: true, trustProfile: "dev"))
+        XCTAssertTrue(issues.contains { $0.code == "ATTESTATION_FAILED" }, "Expected ATTESTATION_FAILED due to malformed TBS")
     }
 }

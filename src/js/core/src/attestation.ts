@@ -467,14 +467,14 @@ export async function verifyDeviceAttestation(inputs: DeviceAttestationInputs): 
           if (i + 1 < forgeCerts.length) {
             const next = forgeCerts[i + 1];
             try {
-              verified = next.verify(current);
+              verified = current.verify(next);
             } catch {
               verified = false;
             }
           } else {
             for (const root of forgeTrustedRoots) {
               try {
-                verified = root.verify(current) || (root as any).fingerprint === (current as any).fingerprint;
+                verified = current.verify(root) || (root as any).fingerprint === (current as any).fingerprint;
               } catch {
                 continue;
               }
@@ -513,19 +513,35 @@ export async function verifyDeviceAttestation(inputs: DeviceAttestationInputs): 
           };
         }
 
-        let verified = false;
-        for (const rootPem of TRUSTED_ROOT_CERTS_PEM) {
-          try {
-            decodePemCertificate(rootPem);
-            verified = true;
-            break;
-          } catch {
-            continue;
-          }
-        }
+        const certPems = inputs.certificateChain.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [];
+        const forgeCerts = certPems.map((pem) => forge.pki.certificateFromPem(pem));
+        const forgeTrustedRoots = TRUSTED_ROOT_CERTS_PEM.map((pem) => forge.pki.certificateFromPem(pem));
 
-        if (!verified) {
-          return { ok: false, reason: 'Certificate chain not trusted by any root' };
+        for (let i = 0; i < forgeCerts.length; i++) {
+          const current = forgeCerts[i];
+          let stepVerified = false;
+
+          if (i + 1 < forgeCerts.length) {
+            const next = forgeCerts[i + 1];
+            try {
+              stepVerified = current.verify(next);
+            } catch {
+              stepVerified = false;
+            }
+          } else {
+            for (const root of forgeTrustedRoots) {
+              try {
+                stepVerified = current.verify(root) || (root as any).fingerprint === (current as any).fingerprint;
+              } catch {
+                continue;
+              }
+              if (stepVerified) break;
+            }
+          }
+
+          if (!stepVerified) {
+            return { ok: false, reason: `Certificate chain verification failed at level ${i}` };
+          }
         }
 
         if (inputs.created) {
