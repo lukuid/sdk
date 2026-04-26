@@ -400,35 +400,36 @@ class LukuArchive:
                     if timestamp is not None:
                         device_continuity[record_type] = timestamp
 
-                if not options.allow_untrusted_roots:
-                    identity = record.get("identity") if isinstance(record.get("identity"), dict) else {}
-                    attestation_chain = block_dac_chain
-                    if identity.get("dac_der"):
-                        attestation_chain = "".join(
-                            entry
-                            for entry in [
-                                pem_from_der_string(identity.get("dac_der")),
-                                pem_from_der_string(identity.get("attestation_manufacturer_der")),
-                                pem_from_der_string(identity.get("attestation_intermediate_der")),
-                            ]
-                            if entry
-                        )
-                    attestation_sig = str(identity.get("signature", ""))
-                    if not attestation_chain:
+                identity = record.get("identity") if isinstance(record.get("identity"), dict) else {}
+                attestation_chain = block_dac_chain
+                if identity.get("dac_der"):
+                    attestation_chain = "".join(
+                        entry
+                        for entry in [
+                            pem_from_der_string(identity.get("dac_der")),
+                            pem_from_der_string(identity.get("attestation_manufacturer_der")),
+                            pem_from_der_string(identity.get("attestation_intermediate_der")),
+                        ]
+                        if entry
+                    )
+                attestation_sig = str(identity.get("signature", ""))
+                if not attestation_chain:
+                    if not options.allow_untrusted_roots:
                         issues.append(_issue("ATTESTATION_CHAIN_MISSING", f"Missing DAC attestation chain for device {device_id}.", Criticality.WARNING))
-                    elif not is_aux or attestation_sig:
-                        result = verify_device_attestation(
-                            DeviceAttestationInputs(
-                                id=device_id,
-                                key=public_key,
-                                attestation_sig=attestation_sig,
-                                certificate_chain=attestation_chain,
-                                created=None if options.skip_certificate_temporal_checks else timestamp,
-                                trust_profile=options.trust_profile,
-                            )
+                elif not is_aux or attestation_sig:
+                    result = verify_device_attestation(
+                        DeviceAttestationInputs(
+                            id=device_id,
+                            key=public_key,
+                            attestation_sig=attestation_sig,
+                            certificate_chain=attestation_chain,
+                            created=None if options.skip_certificate_temporal_checks else timestamp,
+                            trust_profile=options.trust_profile,
+                            allow_untrusted_roots=options.allow_untrusted_roots,
                         )
-                        if not result.ok:
-                            issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id} failed DAC attestation: {result.reason}", Criticality.CRITICAL))
+                    )
+                    if not result.ok:
+                        issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id} failed DAC attestation: {result.reason}", Criticality.CRITICAL))
 
                 if not canonical_string:
                     issues.append(_issue("RECORD_CANONICAL_MISSING", f"Record type {record_type} on device {device_id} does not include a canonical_string.", Criticality.WARNING if is_compat_attachment else Criticality.CRITICAL))
@@ -561,42 +562,43 @@ class LukuFile:
         if not is_aux and counter == 0 and genesis_hash and previous_signature and previous_signature != genesis_hash:
             issues.append(_issue("GENESIS_HASH_MISMATCH", f"Genesis record (ctr=0) for device {device_id or 'unknown'} has previous_signature that does not match genesis_hash.", Criticality.CRITICAL))
 
-        if not options.allow_untrusted_roots:
-            identity = envelope.get("identity") if isinstance(envelope.get("identity"), dict) else {}
+        identity = envelope.get("identity") if isinstance(envelope.get("identity"), dict) else {}
+        
+        dac = str(envelope.get("attestation_dac_der") or identity.get("dac_der") or identity.get("attestation_dac_der") or "")
+        man = str(envelope.get("attestation_manufacturer_der") or identity.get("attestation_manufacturer_der") or "")
+        int_cert = str(envelope.get("attestation_intermediate_der") or identity.get("attestation_intermediate_der") or "")
+        
+        attestation_chain = ""
+        if dac:
+            attestation_chain = "".join(
+                entry
+                for entry in [
+                    pem_from_der_string(dac),
+                    pem_from_der_string(man),
+                    pem_from_der_string(int_cert),
+                ]
+                if entry
+            )
             
-            dac = str(envelope.get("attestation_dac_der") or identity.get("dac_der") or identity.get("attestation_dac_der") or "")
-            man = str(envelope.get("attestation_manufacturer_der") or identity.get("attestation_manufacturer_der") or "")
-            int_cert = str(envelope.get("attestation_intermediate_der") or identity.get("attestation_intermediate_der") or "")
-            
-            attestation_chain = ""
-            if dac:
-                attestation_chain = "".join(
-                    entry
-                    for entry in [
-                        pem_from_der_string(dac),
-                        pem_from_der_string(man),
-                        pem_from_der_string(int_cert),
-                    ]
-                    if entry
-                )
-                
-            attestation_sig = str(envelope.get("attestation_signature") or identity.get("signature") or "")
+        attestation_sig = str(envelope.get("attestation_signature") or identity.get("signature") or "")
 
-            if not attestation_chain:
+        if not attestation_chain:
+            if not options.allow_untrusted_roots:
                 issues.append(_issue("ATTESTATION_CHAIN_MISSING", f"Missing DAC attestation chain for device {device_id or 'unknown'}.", Criticality.WARNING))
-            elif not is_aux or attestation_sig:
-                result = verify_device_attestation(
-                    DeviceAttestationInputs(
-                        id=device_id or "unknown",
-                        key=public_key,
-                        attestation_sig=attestation_sig,
-                        certificate_chain=attestation_chain,
-                        created=None if options.skip_certificate_temporal_checks else timestamp,
-                        trust_profile=options.trust_profile,
-                    )
+        elif not is_aux or attestation_sig:
+            result = verify_device_attestation(
+                DeviceAttestationInputs(
+                    id=device_id or "unknown",
+                    key=public_key,
+                    attestation_sig=attestation_sig,
+                    certificate_chain=attestation_chain,
+                    created=None if options.skip_certificate_temporal_checks else timestamp,
+                    trust_profile=options.trust_profile,
+                    allow_untrusted_roots=options.allow_untrusted_roots,
                 )
-                if not result.ok:
-                    issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed DAC attestation: {result.reason}", Criticality.CRITICAL))
+            )
+            if not result.ok:
+                issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed DAC attestation: {result.reason}", Criticality.CRITICAL))
 
         if not canonical_string:
             issues.append(_issue("RECORD_CANONICAL_MISSING", f"Record type {record_type} does not include a canonical_string.", Criticality.CRITICAL))

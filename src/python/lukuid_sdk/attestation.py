@@ -22,6 +22,7 @@ class DeviceAttestationInputs:
     attestation_alg: str | None = None
     attestation_payload_version: int | None = None
     trust_profile: str = os.environ.get("LUKUID_TRUST_PROFILE", "prod")
+    allow_untrusted_roots: bool = False
 
 
 @dataclass(slots=True)
@@ -196,6 +197,11 @@ def verify_device_attestation(inputs: DeviceAttestationInputs) -> VerificationRe
                     except Exception:
                         continue
             
+            if not verified:
+                if i + 1 == len(certs) and inputs.allow_untrusted_roots:
+                    # Only bypass if we are at the top of the chain (the root anchor)
+                    verified = True
+
             if not verified:
                 return VerificationResult(False, f"Signature verification failed at chain level {i}")
 
