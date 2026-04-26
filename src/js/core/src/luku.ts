@@ -1332,15 +1332,22 @@ export class LukuFile {
       results.push({ alg: 'Ed25519', operation: 'SIGN', passed: signPassed, id: 'LUKUID-KAT-ED25519-SIGN-01' });
       
       let verifyPassed = false;
+      let rejectPassed = false;
       if (sig) {
         try {
             verifyPassed = await crypto.subtle.verify('Ed25519', (pair as any).publicKey, sig, msg);
+            
+            const badMsg = new TextEncoder().encode('abd');
+            const rejected = await crypto.subtle.verify('Ed25519', (pair as any).publicKey, sig, badMsg);
+            rejectPassed = !rejected;
         } catch (e) {}
       }
       results.push({ alg: 'Ed25519', operation: 'VERIFY', passed: verifyPassed, id: 'LUKUID-KAT-ED25519-VERIFY-01' });
+      results.push({ alg: 'Ed25519', operation: 'REJECT', passed: rejectPassed, id: 'LUKUID-KAT-ED25519-REJECT-01' });
     } catch (e) {
       results.push({ alg: 'Ed25519', operation: 'SIGN', passed: false, id: 'LUKUID-KAT-ED25519-SIGN-01' });
       results.push({ alg: 'Ed25519', operation: 'VERIFY', passed: false, id: 'LUKUID-KAT-ED25519-VERIFY-01' });
+      results.push({ alg: 'Ed25519', operation: 'REJECT', passed: false, id: 'LUKUID-KAT-ED25519-REJECT-01' });
     }
 
     // 2. P-256 (Sign, Verify, Reject)

@@ -2,6 +2,7 @@
 import Foundation
 import CommonCrypto
 import CryptoKit
+import MLDSANative
 @preconcurrency import CoreBluetooth
 
 @objc(LukuIDSelfTestResult)
@@ -62,11 +63,12 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
     public static func selfTest() -> [SelfTestResult] {
         var results: [SelfTestResult] = []
 
-        // 1. Ed25519 (Sign and Verify)
+        // 1. Ed25519 (Sign, Verify, Reject)
         if #available(iOS 13.0, macOS 10.15, *) {
             let privateKey = Curve25519.Signing.PrivateKey()
             let publicKey = privateKey.publicKey
             let msg = "abc".data(using: .utf8)!
+            let badMsg = "abd".data(using: .utf8)!
             var sig: Data?
             var signPassed = false
             do {
@@ -76,20 +78,44 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
             results.append(SelfTestResult(alg: "Ed25519", operation: "SIGN", passed: signPassed, id: "LUKUID-KAT-ED25519-SIGN-01"))
             
             var verifyPassed = false
+            var rejectPassed = false
             if let signature = sig {
                 verifyPassed = publicKey.isValidSignature(signature, for: msg)
+                rejectPassed = !publicKey.isValidSignature(signature, for: badMsg)
             }
             results.append(SelfTestResult(alg: "Ed25519", operation: "VERIFY", passed: verifyPassed, id: "LUKUID-KAT-ED25519-VERIFY-01"))
+            results.append(SelfTestResult(alg: "Ed25519", operation: "REJECT", passed: rejectPassed, id: "LUKUID-KAT-ED25519-REJECT-01"))
         } else {
             results.append(SelfTestResult(alg: "Ed25519", operation: "SIGN", passed: false, id: "LUKUID-KAT-ED25519-SIGN-01"))
             results.append(SelfTestResult(alg: "Ed25519", operation: "VERIFY", passed: false, id: "LUKUID-KAT-ED25519-VERIFY-01"))
+            results.append(SelfTestResult(alg: "Ed25519", operation: "REJECT", passed: false, id: "LUKUID-KAT-ED25519-REJECT-01"))
         }
 
-        // 2. P-256 (Check if available)
+        // 2. P-256 (Sign, Verify, Reject)
         if #available(iOS 13.0, macOS 10.15, *) {
-            results.append(SelfTestResult(alg: "P256", operation: "INIT", passed: true, id: "NIST-KAT-P256-01"))
+            do {
+                let privateKey = P256.Signing.PrivateKey()
+                let publicKey = privateKey.publicKey
+                let msg = "abc".data(using: .utf8)!
+                let badMsg = "abd".data(using: .utf8)!
+                
+                let sig = try privateKey.signature(for: msg)
+                results.append(SelfTestResult(alg: "P256", operation: "SIGN", passed: true, id: "NIST-KAT-P256-SIGN-01"))
+                
+                let verifyPassed = publicKey.isValidSignature(sig, for: msg)
+                let rejectPassed = !publicKey.isValidSignature(sig, for: badMsg)
+                
+                results.append(SelfTestResult(alg: "P256", operation: "VERIFY", passed: verifyPassed, id: "NIST-KAT-P256-VERIFY-01"))
+                results.append(SelfTestResult(alg: "P256", operation: "REJECT", passed: rejectPassed, id: "NIST-KAT-P256-REJECT-01"))
+            } catch {
+                results.append(SelfTestResult(alg: "P256", operation: "SIGN", passed: false, id: "NIST-KAT-P256-SIGN-01"))
+                results.append(SelfTestResult(alg: "P256", operation: "VERIFY", passed: false, id: "NIST-KAT-P256-VERIFY-01"))
+                results.append(SelfTestResult(alg: "P256", operation: "REJECT", passed: false, id: "NIST-KAT-P256-REJECT-01"))
+            }
         } else {
-            results.append(SelfTestResult(alg: "P256", operation: "INIT", passed: false, id: "NIST-KAT-P256-01"))
+            results.append(SelfTestResult(alg: "P256", operation: "SIGN", passed: false, id: "NIST-KAT-P256-SIGN-01"))
+            results.append(SelfTestResult(alg: "P256", operation: "VERIFY", passed: false, id: "NIST-KAT-P256-VERIFY-01"))
+            results.append(SelfTestResult(alg: "P256", operation: "REJECT", passed: false, id: "NIST-KAT-P256-REJECT-01"))
         }
 
         // 3. SHA-256 (FIPS 180-4 "abc")
@@ -102,8 +128,32 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
         let passed = hex == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
         results.append(SelfTestResult(alg: "SHA-256", operation: "HASH", passed: passed, id: "NIST-KAT-SHA256-01"))
 
-        // 4. ML-DSA-65 (Check if linked)
-        results.append(SelfTestResult(alg: "ML-DSA-65", operation: "INIT", passed: true, id: "NIST-KAT-MLDSA-01"))
+        // 4. ML-DSA-65 (Sign, Verify, Reject)
+        var pk = [UInt8](repeating: 0, count: Int(MLDSA65_PUBLICKEYBYTES))
+        var sk = [UInt8](repeating: 0, count: Int(MLDSA65_SECRETKEYBYTES))
+        var seed = [UInt8](repeating: 0, count: Int(MLDSA_SEEDBYTES))
+        seed[0] = 1 // Fixed seed for KAT
+        
+        let keyGenResult = PQCP_MLDSA_NATIVE_MLDSA65_keypair_internal(&pk, &sk, &seed)
+        if keyGenResult == 0 {
+            let msg = [UInt8]("abc".utf8)
+            let badMsg = [UInt8]("abd".utf8)
+            var sig = [UInt8](repeating: 0, count: Int(MLDSA65_BYTES))
+            var sigLen: Int = 0
+            
+            let signResult = PQCP_MLDSA_NATIVE_MLDSA65_signature(&sig, &sigLen, msg, msg.count, nil, 0, &sk)
+            results.append(SelfTestResult(alg: "ML-DSA-65", operation: "SIGN", passed: signResult == 0, id: "NIST-KAT-MLDSA-SIGN-01"))
+            
+            let verifyResult = PQCP_MLDSA_NATIVE_MLDSA65_verify(&sig, sig.count, msg, msg.count, nil, 0, &pk)
+            results.append(SelfTestResult(alg: "ML-DSA-65", operation: "VERIFY", passed: verifyResult == 0, id: "NIST-KAT-MLDSA-VERIFY-01"))
+            
+            let rejectResult = PQCP_MLDSA_NATIVE_MLDSA65_verify(&sig, sig.count, badMsg, badMsg.count, nil, 0, &pk)
+            results.append(SelfTestResult(alg: "ML-DSA-65", operation: "REJECT", passed: rejectResult != 0, id: "NIST-KAT-MLDSA-REJECT-01"))
+        } else {
+            results.append(SelfTestResult(alg: "ML-DSA-65", operation: "SIGN", passed: false, id: "NIST-KAT-MLDSA-SIGN-01"))
+            results.append(SelfTestResult(alg: "ML-DSA-65", operation: "VERIFY", passed: false, id: "NIST-KAT-MLDSA-VERIFY-01"))
+            results.append(SelfTestResult(alg: "ML-DSA-65", operation: "REJECT", passed: false, id: "NIST-KAT-MLDSA-REJECT-01"))
+        }
 
         return results
     }

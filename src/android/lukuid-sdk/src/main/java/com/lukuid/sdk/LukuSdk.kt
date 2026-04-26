@@ -353,19 +353,27 @@ class LukuSdk(
                 results.add(SelfTestResult("Ed25519", "SIGN", signPassed, "LUKUID-KAT-ED25519-SIGN-01"))
 
                 var verifyPassed = false
+                var rejectPassed = false
                 if (sig != null) {
                     try {
                         val verifier = java.security.Signature.getInstance("Ed25519")
                         verifier.initVerify(keyPair.public)
                         verifier.update(msg)
                         verifyPassed = verifier.verify(sig)
+
+                        val rejectVerifier = java.security.Signature.getInstance("Ed25519")
+                        rejectVerifier.initVerify(keyPair.public)
+                        rejectVerifier.update("abd".toByteArray(Charsets.UTF_8))
+                        rejectPassed = !rejectVerifier.verify(sig)
                     } catch (e: Exception) {
                     }
                 }
                 results.add(SelfTestResult("Ed25519", "VERIFY", verifyPassed, "LUKUID-KAT-ED25519-VERIFY-01"))
+                results.add(SelfTestResult("Ed25519", "REJECT", rejectPassed, "LUKUID-KAT-ED25519-REJECT-01"))
             } catch (e: Exception) {
                 results.add(SelfTestResult("Ed25519", "SIGN", false, "LUKUID-KAT-ED25519-SIGN-01"))
                 results.add(SelfTestResult("Ed25519", "VERIFY", false, "LUKUID-KAT-ED25519-VERIFY-01"))
+                results.add(SelfTestResult("Ed25519", "REJECT", false, "LUKUID-KAT-ED25519-REJECT-01"))
             }
 
             // 2. P-256 (Sign, Verify, Reject)
@@ -422,8 +430,50 @@ class LukuSdk(
                 results.add(SelfTestResult("SHA-256", "HASH", false, "NIST-KAT-SHA256-01"))
             }
 
-            // 4. ML-DSA-65 (Check if library linked)
-            results.add(SelfTestResult("ML-DSA-65", "INIT", true, "NIST-KAT-MLDSA-01"))
+            // 4. ML-DSA-65 (Sign, Verify, Reject)
+            try {
+                // Use Bouncy Castle for ML-DSA
+                val kpg = java.security.KeyPairGenerator.getInstance("ML-DSA", "BC")
+                kpg.initialize(org.bouncycastle.pqc.jcajce.spec.MLDSAParameterSpec.mldsa65)
+                val pair = kpg.generateKeyPair()
+                val msg = "abc".toByteArray(Charsets.UTF_8)
+                val badMsg = "abd".toByteArray(Charsets.UTF_8)
+
+                var signPassed = false
+                var sig: ByteArray? = null
+                try {
+                    val signer = java.security.Signature.getInstance("ML-DSA", "BC")
+                    signer.initSign(pair.private)
+                    signer.update(msg)
+                    sig = signer.sign()
+                    signPassed = true
+                } catch (e: Exception) {
+                }
+                results.add(SelfTestResult("ML-DSA-65", "SIGN", signPassed, "NIST-KAT-MLDSA-SIGN-01"))
+
+                var verifyPassed = false
+                var rejectPassed = false
+                if (sig != null) {
+                    try {
+                        val verifier = java.security.Signature.getInstance("ML-DSA", "BC")
+                        verifier.initVerify(pair.public)
+                        verifier.update(msg)
+                        verifyPassed = verifier.verify(sig)
+
+                        val rejectVerifier = java.security.Signature.getInstance("ML-DSA", "BC")
+                        rejectVerifier.initVerify(pair.public)
+                        rejectVerifier.update(badMsg)
+                        rejectPassed = !rejectVerifier.verify(sig)
+                    } catch (e: Exception) {
+                    }
+                }
+                results.add(SelfTestResult("ML-DSA-65", "VERIFY", verifyPassed, "NIST-KAT-MLDSA-VERIFY-01"))
+                results.add(SelfTestResult("ML-DSA-65", "REJECT", rejectPassed, "NIST-KAT-MLDSA-REJECT-01"))
+            } catch (e: Exception) {
+                results.add(SelfTestResult("ML-DSA-65", "SIGN", false, "NIST-KAT-MLDSA-SIGN-01"))
+                results.add(SelfTestResult("ML-DSA-65", "VERIFY", false, "NIST-KAT-MLDSA-VERIFY-01"))
+                results.add(SelfTestResult("ML-DSA-65", "REJECT", false, "NIST-KAT-MLDSA-REJECT-01"))
+            }
 
             return results
         }

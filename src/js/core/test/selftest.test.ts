@@ -12,7 +12,7 @@ if (!globalThis.crypto) {
 describe('SDK Self-Test', () => {
   it('runs cryptographic self-tests and returns results', async () => {
     const results = await LukuFile.selfTest();
-    assert.strictEqual(results.length, 9);
+    assert.strictEqual(results.length, 10);
     
     for (const result of results) {
       console.log(`${result.alg} ${result.operation}\t${result.passed ? 'PASS' : 'FAIL'}\t${result.id}`);
