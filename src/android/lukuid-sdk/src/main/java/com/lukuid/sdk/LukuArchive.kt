@@ -179,7 +179,8 @@ data class LukuVerifyOptions(
     val trustedExternalFingerprints: List<String> = emptyList(),
     val trustProfile: String = System.getenv("LUKUID_TRUST_PROFILE") ?: "prod",
     val policy: LukuPolicy? = null,
-    val requireContinuity: Boolean = false
+    val requireContinuity: Boolean = false,
+    val attachments: Map<String, ByteArray>? = null
 )
 
 data class LukuPolicy(
@@ -239,6 +240,10 @@ class LukuArchive private constructor(
             }
         }
         return out.toByteArray()
+    }
+
+    fun verifyFile(options: LukuVerifyOptions = LukuVerifyOptions()): List<VerificationIssue> {
+        return verify(options)
     }
 
     fun verify(options: LukuVerifyOptions = LukuVerifyOptions()): List<VerificationIssue> {
@@ -838,7 +843,7 @@ class LukuArchive private constructor(
             return Base64.getEncoder().encodeToString(signature.sign())
         }
 
-        private fun verifyDetachedSignature(publicKeyBase64: String, payload: ByteArray, signatureBase64: String): Boolean {
+        fun verifyDetachedSignature(publicKeyBase64: String, payload: ByteArray, signatureBase64: String): Boolean {
             val publicKey = rawEd25519PublicKey(publicKeyBase64) ?: return false
             val signatureBytes = runCatching { Base64.getDecoder().decode(signatureBase64) }.getOrNull() ?: return false
             return runCatching {

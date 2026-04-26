@@ -286,6 +286,21 @@ class LukuSdk(
      */
     fun parse(file: java.io.File): LukuParseResult = LukuFile.parse(file)
 
+    /**
+     * Verifies a single JSON envelope (record) without archive-level continuity checks.
+     */
+    fun verifyEnvelope(envelopeMap: Map<String, Any?>, options: LukuVerifyOptions = LukuVerifyOptions()): List<VerificationIssue> {
+        return LukuFile.verifyEnvelope(envelopeMap, options)
+    }
+
+    /**
+     * Verifies a .luku file and returns a detailed result.
+     * Alias for parse().
+     */
+    fun verifyFile(file: java.io.File): LukuParseResult = parse(file)
+
+    fun verifyFile(data: ByteArray): LukuParseResult = parse(data)
+
     override fun close() {
         stopWatching()
         lifecycleSubscription.close()

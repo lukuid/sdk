@@ -198,6 +198,18 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
         return try LukuFile.parse(url: url)
     }
 
+    public func verifyEnvelope(envelope: [String: Any], options: LukuVerifyOptions = LukuVerifyOptions()) -> [VerificationIssue] {
+        return LukuFile.verifyEnvelope(envelope: envelope, options: options)
+    }
+
+    public func verifyFile(data: Data) throws -> LukuParseResult {
+        return try parse(data: data)
+    }
+
+    public func verifyFile(url: URL) throws -> LukuParseResult {
+        return try parse(url: url)
+    }
+
     /**
      * Performs an optional Level 2 Cloud Attestation check.
      */

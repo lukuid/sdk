@@ -223,19 +223,22 @@ public struct LukuVerifyOptions: Sendable {
     public let trustProfile: String
     public let policy: LukuPolicy?
     public let requireContinuity: Bool
+    public let attachments: [String: Data]?
 
     public init(allowUntrustedRoots: Bool = false,
                 skipCertificateTemporalChecks: Bool = false,
                 trustedExternalFingerprints: [String] = [],
                 trustProfile: String = ProcessInfo.processInfo.environment["LUKUID_TRUST_PROFILE"] ?? "prod",
                 policy: LukuPolicy? = nil,
-                requireContinuity: Bool = false) {
+                requireContinuity: Bool = false,
+                attachments: [String: Data]? = nil) {
         self.allowUntrustedRoots = allowUntrustedRoots
         self.skipCertificateTemporalChecks = skipCertificateTemporalChecks
         self.trustedExternalFingerprints = trustedExternalFingerprints
         self.trustProfile = trustProfile
         self.policy = policy
         self.requireContinuity = requireContinuity
+        self.attachments = attachments
     }
 }
 
@@ -348,6 +351,10 @@ public final class LukuArchive {
             attachments[hash] = content
         }
         try refreshManifestSignature(signer: signer)
+    }
+
+    public func verifyFile(options: LukuVerifyOptions = LukuVerifyOptions()) -> [VerificationIssue] {
+        return verify(options: options)
     }
 
     public func verify(options: LukuVerifyOptions = LukuVerifyOptions()) -> [VerificationIssue] {
@@ -692,6 +699,173 @@ public enum LukuFile {
             manifestRaw: manifestRaw,
             blocksRaw: blocksRaw
         )
+    }
+
+    public static func verifyFile(url: URL, options: LukuVerifyOptions = LukuVerifyOptions()) throws -> [VerificationIssue] {
+        return try open(url: url).verify(options: options)
+    }
+
+    public static func verifyFile(data: Data, options: LukuVerifyOptions = LukuVerifyOptions()) throws -> [VerificationIssue] {
+        return try open(data: data).verify(options: options)
+    }
+
+    public static func verifyEnvelope(envelope: [String: Any], options: LukuVerifyOptions = LukuVerifyOptions()) -> [VerificationIssue] {
+        var issues: [VerificationIssue] = []
+
+        let recordType = envelope["type"] as? String ?? "unknown"
+        let isAuxRecord = recordType == "attachment" || recordType == "location" || recordType == "custody"
+        let payload = envelope["payload"] as? [String: Any] ?? [:]
+        
+        let device = envelope["device"] as? [String: Any]
+        let deviceId = (envelope["device_id"] as? String) ?? (device?["device_id"] as? String) ?? ""
+        let publicKey = (envelope["public_key"] as? String) ?? (device?["public_key"] as? String) ?? ""
+        
+        let signature = envelope["signature"] as? String ?? ""
+        let canonicalStringValue = envelope["canonical_string"] as? String ?? ""
+        
+        let timestamp = (payload["timestamp_utc"] as? NSNumber)?.uint64Value 
+            ?? (envelope["timestamp_utc"] as? NSNumber)?.uint64Value
+        let counter = (payload["ctr"] as? NSNumber)?.uint64Value
+        let genesisHash = payload["genesis_hash"] as? String ?? ""
+        let previousSignature = envelope["previous_signature"] as? String ?? ""
+
+        if deviceId.isEmpty || publicKey.isEmpty {
+            issues.append(VerificationIssue(code: "DEVICE_IDENTITY_MISSING", message: "Envelope is missing device_id or public_key.", criticality: .critical))
+        }
+
+        if !isAuxRecord {
+            if let ctr = counter, ctr == 0, !genesisHash.isEmpty, !previousSignature.isEmpty, previousSignature != genesisHash {
+                issues.append(VerificationIssue(code: "GENESIS_HASH_MISMATCH", message: "Genesis record (ctr=0) for device \(deviceId) has previous_signature that does not match genesis_hash.", criticality: .critical))
+            }
+        }
+
+        if !options.allowUntrustedRoots {
+            let identity = envelope["identity"] as? [String: Any]
+            
+            let dacDer = (envelope["attestation_dac_der"] as? String)
+                ?? (identity?["dac_der"] as? String)
+                ?? (identity?["attestation_dac_der"] as? String)
+            let manDer = (envelope["attestation_manufacturer_der"] as? String)
+                ?? (identity?["attestation_manufacturer_der"] as? String)
+            let intDer = (envelope["attestation_intermediate_der"] as? String)
+                ?? (identity?["attestation_intermediate_der"] as? String)
+                
+            let attestationChain = [
+                pemFromDerString(dacDer),
+                pemFromDerString(manDer),
+                pemFromDerString(intDer)
+            ].compactMap { $0 }.joined()
+            
+            let attestationSig = (envelope["attestation_signature"] as? String) ?? (identity?["signature"] as? String) ?? ""
+
+            if attestationChain.isEmpty {
+                issues.append(VerificationIssue(code: "ATTESTATION_CHAIN_MISSING", message: "Missing DAC attestation chain for device \(deviceId).", criticality: .warning))
+            } else if !isAuxRecord || !attestationSig.isEmpty {
+                let inputs = DeviceAttestationInputs(
+                    id: deviceId,
+                    key: publicKey,
+                    attestationSig: attestationSig,
+                    certificateChain: attestationChain,
+                    created: options.skipCertificateTemporalChecks ? nil : timestamp.map(Int64.init),
+                    attestationAlg: nil,
+                    attestationPayloadVersion: nil,
+                    trustProfile: options.trustProfile
+                )
+                if case .failure(let error) = verifyDeviceAttestation(inputs) {
+                    issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed DAC attestation: \(error.reason)", criticality: .critical))
+                }
+            }
+
+            // Check Heartbeat (SLAC)
+            let slac = (envelope["heartbeat_slac_der"] as? String)
+                ?? (identity?["hb_slac_der"] as? String)
+                ?? (identity?["heartbeat_slac_der"] as? String)
+            let hbMan = (envelope["heartbeat_der"] as? String)
+                ?? (identity?["hb_der"] as? String)
+                ?? (identity?["heartbeat_der"] as? String)
+            let hbInt = (envelope["heartbeat_intermediate_der"] as? String)
+                ?? (identity?["hb_intermediate_der"] as? String)
+                ?? (identity?["heartbeat_intermediate_der"] as? String)
+
+            if slac != nil && !slac!.isEmpty {
+                let slacChain = [
+                    pemFromDerString(slac),
+                    pemFromDerString(hbMan),
+                    pemFromDerString(hbInt)
+                ].compactMap { $0 }.joined()
+
+                if !slacChain.isEmpty {
+                    let slacSignature = (envelope["heartbeat_signature"] as? String) ?? (identity?["heartbeat_signature"] as? String) ?? attestationSig
+                    let slacInputs = DeviceAttestationInputs(
+                        id: deviceId,
+                        key: publicKey,
+                        attestationSig: slacSignature,
+                        certificateChain: slacChain,
+                        created: options.skipCertificateTemporalChecks ? nil : timestamp.map(Int64.init),
+                        attestationAlg: nil,
+                        attestationPayloadVersion: nil,
+                        trustProfile: options.trustProfile
+                    )
+                    if case .failure(let error) = verifyDeviceAttestation(slacInputs) {
+                        issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed SLAC (heartbeat) attestation: \(error.reason)", criticality: .critical))
+                    }
+                }
+            }
+        }
+
+        if canonicalStringValue.isEmpty {
+            issues.append(VerificationIssue(code: "RECORD_CANONICAL_MISSING", message: "Record type \(recordType) does not include a canonical_string.", criticality: .critical))
+        } else if signature.isEmpty {
+            issues.append(VerificationIssue(code: "RECORD_SIGNATURE_MISSING", message: "Record type \(recordType) is missing a signature.", criticality: .critical))
+        } else if !publicKey.isEmpty {
+            if let data = canonicalStringValue.data(using: .utf8) {
+                let isSigValid = verifyDetachedSignature(publicKeyBase64: publicKey, payload: data, signatureBase64: signature)
+                if !isSigValid {
+                    issues.append(VerificationIssue(code: "RECORD_SIGNATURE_INVALID", message: "Invalid signature for record type \(recordType).", criticality: .critical))
+                }
+            } else {
+                issues.append(VerificationIssue(code: "RECORD_SIGNATURE_INVALID", message: "Invalid signature for record type \(recordType).", criticality: .critical))
+            }
+        }
+
+        if recordType == "attachment" {
+            if let checksum = envelope["checksum"] as? String, !checksum.isEmpty {
+                if let attachments = options.attachments {
+                    if let content = attachments[checksum] {
+                        let actualHash = sha256Hex(content)
+                        if actualHash != checksum {
+                            issues.append(VerificationIssue(code: "ATTACHMENT_CORRUPT", message: "Attachment with hash \(checksum) is corrupt (actual hash \(actualHash)).", criticality: .critical))
+                        }
+                    } else {
+                        issues.append(VerificationIssue(code: "ATTACHMENT_MISSING", message: "Attachment with hash \(checksum) is missing from provided attachments.", criticality: .critical))
+                    }
+                }
+            }
+        }
+
+        if let externalIdentity = envelope["external_identity"] as? [String: Any], isAuxRecord {
+            let expectedPayload = expectedExternalIdentityPayload(record: envelope, recordType: recordType)
+            let endorserId = externalIdentity["endorser_id"] as? String
+            let rootFingerprint = externalIdentity["root_fingerprint"] as? String
+            let extSignature = externalIdentity["signature"] as? String
+            let certChainDer = externalIdentity["cert_chain_der"] as? [String]
+
+            if let expected = expectedPayload, let endorser = endorserId, let rootFp = rootFingerprint, let sig = extSignature, let chain = certChainDer, !chain.isEmpty {
+                let inputs = ExternalIdentityInputs(
+                    endorserID: endorser,
+                    rootFingerprint: rootFp,
+                    certChainDer: chain,
+                    signature: sig,
+                    expectedPayload: expected,
+                    trustedFingerprints: options.trustedExternalFingerprints
+                )
+                if case .failure(let error) = verifyExternalIdentity(inputs) {
+                    issues.append(VerificationIssue(code: "EXTERNAL_IDENTITY_VERIFICATION_FAILED", message: "External identity verification failed: \(error.reason)", criticality: .critical))
+                }
+            }
+        }
+
+        return issues
     }
 
     public static func parse(url: URL) throws -> LukuParseResult {

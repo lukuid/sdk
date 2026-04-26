@@ -61,6 +61,7 @@ export interface LukuVerifyOptions {
   trustProfile?: string;
   policy?: LukuPolicy;
   require_continuity?: boolean;
+  attachments?: Map<string, Uint8Array>;
 }
 
 export interface LukuPolicy {
@@ -490,6 +491,170 @@ export class LukuFile {
     });
   }
 
+  /**
+   * Verifies a .luku archive from bytes.
+   */
+  static async verifyFile(data: Uint8Array, options: LukuVerifyOptions = {}): Promise<VerificationIssue[]> {
+    const luku = await LukuFile.openBytes(data);
+    return luku.verify(options);
+  }
+
+  /**
+   * Verifies a single JSON envelope (record) without archive-level continuity checks.
+   */
+  static async verifyEnvelope(envelope: JsonObject, options: LukuVerifyOptions = {}): Promise<VerificationIssue[]> {
+    const issues: VerificationIssue[] = [];
+    const allowUntrustedRoots = options.allowUntrustedRoots ?? false;
+    const skipCertificateTemporalChecks = options.skipCertificateTemporalChecks ?? false;
+    const trustProfile = options.trustProfile ?? 'prod';
+
+    const recordType = asString(envelope.type) ?? 'unknown';
+    const isAuxRecord = isAuxRecordType(recordType);
+    const payload = asJsonObject(envelope.payload) ?? {};
+    
+    const device = asJsonObject(envelope.device);
+    const deviceId = asString(envelope.device_id) ?? asString(device?.device_id);
+    const publicKey = asString(envelope.public_key) ?? asString(device?.public_key);
+    const signature = asString(envelope.signature) ?? '';
+    const canonicalStringValue = asString(envelope.canonical_string) ?? '';
+    const timestamp = recordTimestampUtc(envelope);
+    const counter = asNumber(payload.ctr);
+    const genesisHash = asString(payload.genesis_hash) ?? '';
+    const previousSignature = asString(envelope.previous_signature) ?? '';
+
+    if (!deviceId || !publicKey) {
+      issues.push(issue('DEVICE_IDENTITY_MISSING', 'Envelope is missing device_id or public_key.', 'critical'));
+    }
+
+    if (!isAuxRecord && counter === 0 && genesisHash.length > 0 && previousSignature.length > 0 && previousSignature !== genesisHash) {
+      issues.push(issue('GENESIS_HASH_MISMATCH', `Genesis record (ctr=0) for device ${deviceId ?? 'unknown'} has previous_signature that does not match genesis_hash.`, 'critical'));
+    }
+
+    if (!allowUntrustedRoots) {
+      const identity = asJsonObject(envelope.identity);
+      let attestationChain = '';
+      
+      const dac = asString(envelope.attestation_dac_der) ?? asString(identity?.dac_der) ?? asString(identity?.attestation_dac_der);
+      const man = asString(envelope.attestation_manufacturer_der) ?? asString(identity?.attestation_manufacturer_der);
+      const int = asString(envelope.attestation_intermediate_der) ?? asString(identity?.attestation_intermediate_der);
+
+      if (dac) {
+        attestationChain = [
+          pemFromDerBase64(dac),
+          pemFromDerBase64(man),
+          pemFromDerBase64(int)
+        ]
+          .filter((value): value is string => Boolean(value))
+          .join('');
+      }
+
+      const attestationSignature = asString(envelope.attestation_signature) ?? asString(identity?.signature) ?? '';
+
+      if (attestationChain.length === 0) {
+        issues.push(issue('ATTESTATION_CHAIN_MISSING', `Missing DAC attestation chain for device ${deviceId ?? 'unknown'}.`, 'warning'));
+      } else if (!isAuxRecord || attestationSignature.length > 0) {
+        const result = await verifyDeviceAttestation({
+          id: deviceId ?? 'unknown',
+          key: publicKey ?? '',
+          attestationSig: attestationSignature,
+          certificateChain: attestationChain,
+          created: skipCertificateTemporalChecks ? undefined : timestamp,
+          trustProfile
+        });
+        if (!result.ok) {
+          issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed DAC attestation: ${result.reason ?? 'unknown error'}`, 'critical'));
+        }
+      }
+
+      // Check Heartbeat (SLAC)
+      const slac = asString(envelope.heartbeat_slac_der) ?? asString(identity?.hb_slac_der) ?? asString(identity?.heartbeat_slac_der);
+      const hbMan = asString(envelope.heartbeat_der) ?? asString(identity?.hb_der) ?? asString(identity?.heartbeat_der);
+      const hbInt = asString(envelope.heartbeat_intermediate_der) ?? asString(identity?.hb_intermediate_der) ?? asString(identity?.heartbeat_intermediate_der);
+
+      if (slac) {
+        const slacChain = [
+          pemFromDerBase64(slac),
+          pemFromDerBase64(hbMan),
+          pemFromDerBase64(hbInt)
+        ]
+          .filter((value): value is string => Boolean(value))
+          .join('');
+
+        if (slacChain.length > 0) {
+          const slacSignature = asString(envelope.heartbeat_signature) ?? asString(identity?.heartbeat_signature) ?? attestationSignature;
+          const slacResult = await verifyDeviceAttestation({
+            id: deviceId ?? 'unknown',
+            key: publicKey ?? '',
+            attestationSig: slacSignature,
+            certificateChain: slacChain,
+            created: skipCertificateTemporalChecks ? undefined : timestamp,
+            trustProfile
+          });
+          if (!slacResult.ok) {
+            issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed SLAC (heartbeat) attestation: ${slacResult.reason ?? 'unknown error'}`, 'critical'));
+          }
+        }
+      }
+    }
+
+    if (canonicalStringValue.length === 0) {
+      issues.push(issue('RECORD_CANONICAL_MISSING', `Record type ${recordType} does not include a canonical_string.`, 'critical'));
+    } else if (signature.length === 0) {
+      issues.push(issue('RECORD_SIGNATURE_MISSING', `Record type ${recordType} is missing a signature.`, 'critical'));
+    } else if (publicKey) {
+      const verified = await verifyRecordSignature(publicKey, signature, canonicalStringValue);
+      if (!verified) {
+        issues.push(issue('RECORD_SIGNATURE_INVALID', `Invalid signature for record type ${recordType}.`, 'critical'));
+      }
+    }
+
+    if (recordType === 'attachment') {
+      const checksum = asString(envelope.checksum) ?? '';
+      if (checksum.length > 0 && options.attachments) {
+        const content = options.attachments.get(checksum);
+        if (!content) {
+          issues.push(issue('ATTACHMENT_MISSING', `Attachment with hash ${checksum} is missing from provided attachments.`, 'critical'));
+        } else {
+          const actualHash = await sha256Hex(content);
+          if (actualHash !== checksum) {
+            issues.push(issue('ATTACHMENT_CORRUPT', `Attachment with hash ${checksum} is corrupt (actual hash ${actualHash}).`, 'critical'));
+          }
+        }
+      }
+    }
+
+    const externalIdentity = asJsonObject(envelope.external_identity);
+    if (externalIdentity && isAuxRecord) {
+        const expectedPayload = expectedExternalIdentityPayload(envelope, recordType);
+        const endorserId = asString(externalIdentity?.endorser_id);
+        const rootFingerprint = asString(externalIdentity?.root_fingerprint);
+        const extSignature = asString(externalIdentity?.signature);
+        const certChainDer = asJsonArray(externalIdentity?.cert_chain_der)
+          ?.map((value) => asString(value))
+          .filter((value): value is string => Boolean(value));
+
+        if (expectedPayload && endorserId && rootFingerprint && extSignature && certChainDer?.length) {
+          const result = await verifyExternalIdentity({
+            endorserId,
+            rootFingerprint,
+            certChainDer,
+            signature: extSignature,
+            expectedPayload,
+            trustedFingerprints: options.trustedExternalFingerprints ?? []
+          });
+          if (!result.ok) {
+            issues.push(issue(
+              'EXTERNAL_IDENTITY_VERIFICATION_FAILED',
+              `External identity verification failed: ${result.reason ?? 'unknown error'}`,
+              'critical'
+            ));
+          }
+        }
+    }
+
+    return issues;
+  }
+
   private static readStoredArchive(entries: Record<string, Uint8Array>): StoredArchive {
     for (const name of Object.keys(entries)) {
       if (!isSafeZipEntryName(name)) {
@@ -835,6 +1000,13 @@ export class LukuFile {
     }
 
     return zipSync(files);
+  }
+
+  /**
+   * Verifies the entire archive and returns any issues found.
+   */
+  async verifyFile(options: LukuVerifyOptions = {}): Promise<VerificationIssue[]> {
+    return this.verify(options);
   }
 
   async verify(options: LukuVerifyOptions = {}): Promise<VerificationIssue[]> {
@@ -1277,6 +1449,8 @@ export interface LukuParseResult {
   items: LukuItemResult[];
   issues: VerificationIssue[];
 }
+
+export const verifyLukuFile = parseLukuFile;
 
 export async function parseLukuFile(data: Uint8Array): Promise<LukuParseResult> {
   const luku = await LukuFile.openBytes(data);

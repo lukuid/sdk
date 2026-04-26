@@ -443,6 +443,22 @@ export class LukuidSdk {
   }
 
   /**
+   * Verifies a single JSON envelope (record) without archive-level continuity checks.
+   */
+  async verifyEnvelope(envelope: any, options?: import('@lukuid/core').LukuVerifyOptions): Promise<import('@lukuid/core').VerificationIssue[]> {
+    const { LukuFile } = await import('@lukuid/core');
+    return LukuFile.verifyEnvelope(envelope, options);
+  }
+
+  /**
+   * Verifies a .luku file and returns a detailed result.
+   * Alias for parse().
+   */
+  async verifyFile(input: Uint8Array | string): Promise<import('@lukuid/core').LukuParseResult> {
+    return this.parse(input);
+  }
+
+  /**
    * Parses a .luku file.
    * Accepts binary data (Uint8Array) or a filename (string, Node.js only).
    */

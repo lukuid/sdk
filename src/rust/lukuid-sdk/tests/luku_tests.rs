@@ -30,6 +30,7 @@ fn test_options() -> LukuVerifyOptions {
         trust_profile: "dev".to_string(), // tests probably use dev/test certs
         policy: None,
         require_continuity: false,
+        attachments: None,
     }
 }
 
@@ -301,7 +302,8 @@ fn test_luku_verify_enforces_native_continuity_when_requested() {
         trust_profile: "dev".to_string(),
         policy: None,
         require_continuity: true,
-    });
+        attachments: None,
+        });
     assert!(issues.iter().any(|issue| issue.code == "CONTINUITY_GAP_EXCEEDED"));
 }
 
@@ -367,6 +369,7 @@ fn test_luku_verify_rejects_untrusted_external_identity_endorsements() {
         trust_profile: "dev".to_string(),
         policy: None,
         require_continuity: false,
+        attachments: None,
     });
     assert!(!trusted.iter().any(|issue| issue.code == "EXTERNAL_IDENTITY_VERIFICATION_FAILED"));
 
@@ -819,6 +822,7 @@ fn test_fixtures_valid_files() {
                     trust_profile: "dev".to_string(),
                     policy: None,
                     require_continuity: false,
+                    attachments: None,
                 });
 
                 let criticals: Vec<_> = issues
