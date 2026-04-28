@@ -72,7 +72,9 @@ export interface HeartbeatRequest {
   counter: number;
   previousState: Record<string, unknown>;
   source: Record<string, unknown>;
-  telemetry: unknown[];
+  telemetry?: unknown[];
+  telemetry_signature?: string;
+  telemetry_canonical_string?: string;
 }
 
 export interface HeartbeatResponse {
@@ -359,13 +361,47 @@ export class LukuidSdk {
         counter: request.counter,
         previous_state: request.previousState,
         source: request.source,
-        telemetry: request.telemetry
+        telemetry: request.telemetry,
+        telemetry_signature: request.telemetry_signature,
+        telemetry_canonical_string: request.telemetry_canonical_string
       })
     });
-
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
       throw new Error(error.message || `Heartbeat failed with status ${response.status}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Pushes telemetry data to the LukuID API.
+   */
+  async telemetry(request: {
+    deviceId: string;
+    data: unknown[];
+    signature?: string;
+    canonicalString?: string;
+    customUrl?: string;
+  }): Promise<Record<string, unknown>> {
+    const defaultApiUrl = this.options.apiUrl || 'https://api.lukuid.com';
+    const apiUrl = request.customUrl || defaultApiUrl;
+
+    const response = await fetch(`${apiUrl.replace(/\/$/, '')}/telemetry`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        device_id: request.deviceId,
+        data: request.data,
+        signature: request.signature,
+        canonical: request.canonicalString
+      })
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || `Telemetry failed with status ${response.status}`);
     }
 
     return await response.json();
@@ -440,6 +476,22 @@ export class LukuidSdk {
     const result = await this.parse(input);
     const { showReportViewer } = await import('./ui/ReportViewer.js');
     return showReportViewer(result);
+  }
+
+  /**
+   * Verifies a single JSON envelope (record) without archive-level continuity checks.
+   */
+  async verifyEnvelope(envelope: any, options?: import('@lukuid/core').LukuVerifyOptions): Promise<import('@lukuid/core').VerificationIssue[]> {
+    const { LukuFile } = await import('@lukuid/core');
+    return LukuFile.verifyEnvelope(envelope, options);
+  }
+
+  /**
+   * Verifies a .luku file and returns a detailed result.
+   * Alias for parse().
+   */
+  async verifyFile(input: Uint8Array | string): Promise<import('@lukuid/core').LukuParseResult> {
+    return this.parse(input);
   }
 
   /**

@@ -1,3 +1,4 @@
+import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js';
 // SPDX-License-Identifier: Apache-2.0
 import forge from 'node-forge';
 
@@ -183,6 +184,10 @@ function decodeBase64(value: string): Uint8Array | null {
 }
 
 interface ParsedCertificate {
+  certDer: Uint8Array;
+  tbsDer: Uint8Array;
+  signatureAlgorithmOid: string;
+  signatureBits: Uint8Array;
   subjectOrganizationalUnits: string[];
   validFrom: number;
   validTo: number;
@@ -337,6 +342,12 @@ function parseDerCertificate(certDer: Uint8Array): ParsedCertificate {
     throw new Error('TBSCertificate is not a DER SEQUENCE');
   }
 
+  const signatureAlgorithm = readDerElement(certDer, tbsCertificate.end);
+  const signatureValue = readDerElement(certDer, signatureAlgorithm.end);
+  const algOidElement = readDerElement(certDer, signatureAlgorithm.contentStart);
+  const signatureAlgorithmOid = decodeDerOid(certDer.slice(algOidElement.contentStart, algOidElement.contentEnd));
+  const signatureBits = certDer.slice(signatureValue.contentStart + 1, signatureValue.contentEnd);
+
   let cursor = tbsCertificate.contentStart;
   let elementIndex = 0;
 
@@ -355,6 +366,10 @@ function parseDerCertificate(certDer: Uint8Array): ParsedCertificate {
       const subject = readDerElement(certDer, element.end);
       const spki = readDerElement(certDer, subject.end);
       return {
+        certDer,
+        tbsDer: certDer.slice(tbsCertificate.start, tbsCertificate.end),
+        signatureAlgorithmOid,
+        signatureBits,
         subjectOrganizationalUnits: parseSubjectOrganizationalUnits(certDer, subject),
         validFrom: parseDerTime(certDer.slice(notBefore.contentStart, notBefore.contentEnd), notBefore.tag),
         validTo: parseDerTime(certDer.slice(notAfter.contentStart, notAfter.contentEnd), notAfter.tag),
@@ -377,13 +392,15 @@ interface NodeLikeX509Certificate {
   subject: string;
   validFrom: string;
   validTo: string;
+  fingerprint: string;
+  verify(publicKey: unknown): boolean;
   publicKey: {
     export(options: { format: 'der'; type: 'spki' }): Uint8Array | ArrayBuffer;
   };
 }
 
 async function getNodeX509CertificateConstructor(): Promise<
-  ((new (input: string) => NodeLikeX509Certificate) & { prototype: NodeLikeX509Certificate }) | null
+  ((new (input: string | Uint8Array) => NodeLikeX509Certificate) & { prototype: NodeLikeX509Certificate }) | null
 > {
   const processObject = (globalThis as Record<string, unknown>).process as
     | { versions?: { node?: string } }
@@ -395,7 +412,7 @@ async function getNodeX509CertificateConstructor(): Promise<
   try {
     const dynamicImport = Function('return import("node:crypto")') as () => Promise<unknown>;
     const cryptoModule = (await dynamicImport()) as {
-      X509Certificate?: (new (input: string) => NodeLikeX509Certificate) & {
+      X509Certificate?: (new (input: string | Uint8Array) => NodeLikeX509Certificate) & {
         prototype: NodeLikeX509Certificate;
       };
     };
@@ -457,32 +474,31 @@ export async function verifyDeviceAttestation(inputs: DeviceAttestationInputs): 
         }
 
         // Verify signatures along the chain
-        const forgeCerts = certPems.map((pem) => forge.pki.certificateFromPem(pem));
-        const forgeTrustedRoots = TRUSTED_ROOT_CERTS_PEM.map((pem) => forge.pki.certificateFromPem(pem));
+        const roots = TRUSTED_ROOT_CERTS_PEM.map((pem) => new nodeX509Certificate(pem));
 
-        for (let i = 0; i < forgeCerts.length; i++) {
-          const current = forgeCerts[i];
-          let verified = false;
+        for (let i = 0; i < certs.length; i++) {
+          const current = certs[i];
+          let stepVerified = false;
 
-          if (i + 1 < forgeCerts.length) {
-            const next = forgeCerts[i + 1];
+          if (i + 1 < certs.length) {
+            const next = certs[i + 1];
             try {
-              verified = next.verify(current);
+              stepVerified = current.verify(next.publicKey);
             } catch {
-              verified = false;
+              stepVerified = false;
             }
           } else {
-            for (const root of forgeTrustedRoots) {
+            for (const root of roots) {
               try {
-                verified = root.verify(current) || root.fingerprint === current.fingerprint;
+                stepVerified = current.verify(root.publicKey) || root.fingerprint === current.fingerprint;
               } catch {
                 continue;
               }
-              if (verified) break;
+              if (stepVerified) break;
             }
           }
 
-          if (!verified) {
+          if (!stepVerified) {
             return { ok: false, reason: `Certificate chain verification failed at level ${i}` };
           }
         }
@@ -513,19 +529,40 @@ export async function verifyDeviceAttestation(inputs: DeviceAttestationInputs): 
           };
         }
 
-        let verified = false;
-        for (const rootPem of TRUSTED_ROOT_CERTS_PEM) {
-          try {
-            decodePemCertificate(rootPem);
-            verified = true;
-            break;
-          } catch {
-            continue;
-          }
-        }
+        const roots = TRUSTED_ROOT_CERTS_PEM.map((pem) => parseDerCertificate(decodePemCertificate(pem)));
 
-        if (!verified) {
-          return { ok: false, reason: 'Certificate chain not trusted by any root' };
+        for (let i = 0; i < certs.length; i++) {
+          const current = certs[i];
+          let stepVerified = false;
+
+          if (i + 1 < certs.length) {
+            const next = certs[i + 1];
+            stepVerified = await verifySignatureFallback(
+              current.tbsDer,
+              current.signatureBits,
+              current.signatureAlgorithmOid,
+              next.spkiDer
+            );
+          } else {
+            for (const root of roots) {
+              const matchesFingerprint = root.certDer.length === current.certDer.length && root.certDer.every((val, index) => val === current.certDer[index]);
+              if (matchesFingerprint) {
+                stepVerified = true;
+                break;
+              }
+              stepVerified = await verifySignatureFallback(
+                current.tbsDer,
+                current.signatureBits,
+                current.signatureAlgorithmOid,
+                root.spkiDer
+              );
+              if (stepVerified) break;
+            }
+          }
+
+          if (!stepVerified) {
+            return { ok: false, reason: `Certificate chain verification failed at level ${i}` };
+          }
         }
 
         if (inputs.created) {
@@ -653,7 +690,8 @@ export async function verifyExternalIdentity(inputs: ExternalIdentityInputs): Pr
           // Check for OID 1.3.6.1.4.1.65432.1.4 in the leaf certificate
           const leafBytes = decodeBase64(inputs.certChainDer[0]);
           if (leafBytes) {
-            const cert = forge.pki.certificateFromAsn1(forge.asn1.fromDer(forge.util.createBuffer(leafBytes)));
+            const f = forge as any;
+            const cert = f.pki.certificateFromAsn1(f.asn1.fromDer(f.util.createBuffer(leafBytes)));
             const ext = cert.getExtension('1.3.6.1.4.1.65432.1.4');
             if (ext) {
               isTrusted = true;
@@ -689,12 +727,84 @@ async function sha256Hex(data: Uint8Array): Promise<string> {
 }
 
 function encodeBase64(bytes: Uint8Array): string {
-  if (typeof Buffer !== 'undefined') {
-    return Buffer.from(bytes).toString('base64');
+  if (typeof globalThis !== 'undefined' && 'Buffer' in globalThis) {
+    return (globalThis as any).Buffer.from(bytes).toString('base64');
   }
   let binary = '';
   for (let i = 0; i < bytes.byteLength; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
   return btoa(binary);
+}
+
+
+function derToRawEcSignature(der: Uint8Array, curveBytes: number): Uint8Array {
+  const seq = readDerElement(der, 0);
+  if (seq.tag !== 0x30) throw new Error('Invalid signature format');
+  let cursor = seq.contentStart;
+  const rElement = readDerElement(der, cursor);
+  cursor = rElement.end;
+  const sElement = readDerElement(der, cursor);
+  
+  const raw = new Uint8Array(curveBytes * 2);
+  
+  let r = der.slice(rElement.contentStart, rElement.contentEnd);
+  if (r.length > curveBytes && r[0] === 0x00) r = r.slice(1);
+  raw.set(r.length < curveBytes ? r : r.slice(0, curveBytes), curveBytes - Math.min(r.length, curveBytes));
+  
+  let s = der.slice(sElement.contentStart, sElement.contentEnd);
+  if (s.length > curveBytes && s[0] === 0x00) s = s.slice(1);
+  raw.set(s.length < curveBytes ? s : s.slice(0, curveBytes), curveBytes * 2 - Math.min(s.length, curveBytes));
+  
+  return raw;
+}
+
+async function verifySignatureFallback(
+  tbsDer: Uint8Array,
+  signatureBits: Uint8Array,
+  signatureAlgorithmOid: string,
+  issuerSpkiDer: Uint8Array
+): Promise<boolean> {
+  if (signatureAlgorithmOid === '2.16.840.1.101.3.4.3.18') {
+    try {
+      const spkiSeq = readDerElement(issuerSpkiDer, 0);
+      const algSeq = readDerElement(issuerSpkiDer, spkiSeq.contentStart);
+      const pubKeyBitString = readDerElement(issuerSpkiDer, algSeq.end);
+      const pubKeyBytes = issuerSpkiDer.slice(pubKeyBitString.contentStart + 1, pubKeyBitString.contentEnd);
+      return ml_dsa65.verify(signatureBits, tbsDer, pubKeyBytes);
+    } catch {
+      return false;
+    }
+  }
+
+  const subtle = getSubtleCrypto();
+  let importParams: AlgorithmIdentifier | RsaHashedImportParams | EcKeyImportParams;
+  let verifyParams: AlgorithmIdentifier | RsaHashedImportParams | EcdsaParams;
+
+  if (signatureAlgorithmOid === '1.2.840.10045.4.3.2') {
+    importParams = { name: 'ECDSA', namedCurve: 'P-256' };
+    verifyParams = { name: 'ECDSA', hash: 'SHA-256' };
+  } else if (signatureAlgorithmOid === '1.3.101.112') {
+    importParams = { name: 'Ed25519' };
+    verifyParams = { name: 'Ed25519' };
+  } else {
+    throw new Error(`Unsupported signature algorithm OID: ${signatureAlgorithmOid}`);
+  }
+
+  try {
+    const importedKey = await subtle.importKey(
+      'spki',
+      toArrayBuffer(issuerSpkiDer),
+      importParams,
+      false,
+      ['verify']
+    );
+    let verifySignatureBytes = signatureBits;
+    if (signatureAlgorithmOid === '1.2.840.10045.4.3.2') {
+      verifySignatureBytes = derToRawEcSignature(signatureBits, 32); // P-256 is 32 bytes
+    }
+    return await subtle.verify(verifyParams, importedKey, toArrayBuffer(verifySignatureBytes), toArrayBuffer(tbsDer));
+  } catch {
+    return false;
+  }
 }

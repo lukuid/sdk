@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-use crate::device::DeviceError;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
-use ed25519_dalek::{self as ed25519, Verifier, VerifyingKey};
+use ed25519_dalek::{self as ed25519, Verifier};
 use serde::{Deserialize, Serialize};
 use x509_parser::prelude::*;
 use ml_dsa::MlDsa65;
@@ -242,10 +241,10 @@ pub fn verify_device_attestation(inputs: &DeviceAttestationInputs) -> Verificati
                 }
             }
 
-            if !verified && current.signature_value.as_ref().len() == 3309 {
+            if !verified {
                 return VerificationResult {
                     ok: false,
-                    reason: Some(format!("PQC Signature verification failed at chain level {}", i)),
+                    reason: Some(format!("Signature verification failed at chain level {}", i)),
                 };
             }
         }

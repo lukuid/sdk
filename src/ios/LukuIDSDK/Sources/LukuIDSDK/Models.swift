@@ -26,6 +26,7 @@ public struct DeviceInfo: @unchecked Sendable {
     public let heartbeatIntermediateDer: String?
     public let heartbeatRootFingerprint: String?
     public let verified: Bool
+    public let telemetry: Bool
     public let lastSync: UInt64?
     public let counter: UInt64
     public let syncRequired: Bool
@@ -50,6 +51,7 @@ public struct DeviceInfo: @unchecked Sendable {
                     heartbeatIntermediateDer: String? = nil,
                     heartbeatRootFingerprint: String? = nil,
                     verified: Bool,
+                    telemetry: Bool = false,
                     lastSync: UInt64? = nil,
                     counter: UInt64 = 0,
                     syncRequired: Bool = false) {
@@ -73,6 +75,7 @@ public struct DeviceInfo: @unchecked Sendable {
             self.heartbeatIntermediateDer = heartbeatIntermediateDer
             self.heartbeatRootFingerprint = heartbeatRootFingerprint
             self.verified = verified
+            self.telemetry = telemetry
             self.lastSync = lastSync
             self.counter = counter
             self.syncRequired = syncRequired

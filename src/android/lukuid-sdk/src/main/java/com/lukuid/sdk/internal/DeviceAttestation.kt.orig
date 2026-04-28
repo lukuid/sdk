@@ -85,7 +85,7 @@ private val TRUSTED_ROOT_CERTS_PEM = listOf(
     Qe6dXYJxc3jlWcfPKlw4PNCRFVR3CifduPZVcoglX0T5u9oO0NKXK2CtYlCEuGNA
     pjOnCIPI2cMpiUf5lEH1QMVO/l9xZlT+su+vquoCUvMOv1VPze3fOPWUqM4NZLGH
     An3vcUK1EKUcEwSS42kowvCKId1QL1QXdoUffG5K3zt+IfDMzYc6JufdUo+X3Bd5
-    KUlj1lc7dh8MKDK/jWjrxj8V7zZAq7Tc7/jde/fmKfMWFmxWG9U3nBjYb85AcSE5
+    KUlj1lc7dh8MKDK/jWjrxj8V7zZA77Tc7/jde/fmKfMWFmxWG9U3nBjYb85AcSE5
     vWn2BK/zwI8eimSdNLsY4o5Zo0IwQDAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB
     /wQEAwIBBjAdBgNVHQ4EFgQUcW3eH6pWJcD+uoLcPr0TuOYQjXcwCwYJYIZIAWUD
     BAMSA4IM7gAoefUnUDQbu8jhreiaeXW4B5nHFq4W0AKz8Tw8CceQxPwrOWwZ16nv
@@ -164,7 +164,7 @@ private val TRUSTED_ROOT_CERTS_PEM = listOf(
 
 internal fun verifyDeviceAttestation(input: DeviceAttestationInput): VerificationResult {
     if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
-        Security.insertProviderAt(BouncyCastleProvider(), 1)
+        Security.addProvider(BouncyCastleProvider())
     }
 
     if (input.attestationSig.isEmpty()) {
@@ -184,8 +184,6 @@ internal fun verifyDeviceAttestation(input: DeviceAttestationInput): Verificatio
             val cf = CertificateFactory.getInstance("X.509", BouncyCastleProvider.PROVIDER_NAME)
             val certs = cf.generateCertificates(ByteArrayInputStream(input.certificateChain.toByteArray()))
                 .filterIsInstance<X509Certificate>()
-            
-            println("DEBUG CERTS: size=${certs.size}")
             
             if (certs.isEmpty()) {
                 return VerificationResult(false, "Invalid certificate chain")
@@ -214,45 +212,28 @@ internal fun verifyDeviceAttestation(input: DeviceAttestationInput): Verificatio
                 if (i + 1 < certs.size) {
                     val next = certs[i + 1]
                     verified = try {
-                        val alg = when {
-                            current.sigAlgName.contains("ECDSA", ignoreCase = true) -> "SHA256withECDSA"
-                            current.sigAlgName == "1.2.840.10045.4.3.2" -> "SHA256withECDSA"
-                            current.sigAlgName == "2.16.840.1.101.3.4.3.18" -> "ML-DSA"
-                            current.sigAlgName == "1.3.101.112" -> "Ed25519"
-                            else -> current.sigAlgName
-                        }
-                        val sig = Signature.getInstance(alg, BouncyCastleProvider.PROVIDER_NAME)
+                        val sig = Signature.getInstance(current.sigAlgName, BouncyCastleProvider.PROVIDER_NAME)
                         sig.initVerify(next.publicKey)
                         sig.update(current.tbsCertificate)
                         sig.verify(current.signature)
-                    } catch (e: Exception) { 
-                        e.printStackTrace()
-                        false 
-                    }
+                    } catch (e: Exception) { false }
                 } else {
                     for (rootPem in TRUSTED_ROOT_CERTS_PEM) {
                         verified = try {
-                            val root = cf.generateCertificate(ByteArrayInputStream(rootPem.trimIndent().trim().toByteArray())) as X509Certificate
-                            val alg = when {
-                                current.sigAlgName.contains("ECDSA", ignoreCase = true) -> "SHA256withECDSA"
-                                current.sigAlgName == "1.2.840.10045.4.3.2" -> "SHA256withECDSA"
-                                current.sigAlgName == "2.16.840.1.101.3.4.3.18" -> "ML-DSA"
-                                current.sigAlgName == "1.3.101.112" -> "Ed25519"
-                                else -> current.sigAlgName
-                            }
-                            val sig = Signature.getInstance(alg, BouncyCastleProvider.PROVIDER_NAME)
+                            val root = cf.generateCertificate(ByteArrayInputStream(rootPem.toByteArray())) as X509Certificate
+                            val sig = Signature.getInstance(current.sigAlgName, BouncyCastleProvider.PROVIDER_NAME)
                             sig.initVerify(root.publicKey)
                             sig.update(current.tbsCertificate)
                             sig.verify(current.signature)
-                            } catch (e: Exception) { 
-                            e.printStackTrace()
-                            false 
-                            }
+                        } catch (e: Exception) { false }
                         if (verified) break
                     }
                 }
                 
                 if (!verified) {
+                    if (current.sigAlgName.contains("ML-DSA", ignoreCase = true) && !current.sigAlgName.contains("ML-DSA-65", ignoreCase = true)) {
+                        return VerificationResult(false, "Unsupported PQC algorithm: ${current.sigAlgName}")
+                    }
                     return VerificationResult(false, "Signature verification failed at chain level $i")
                 }
             }
@@ -296,7 +277,7 @@ internal fun verifyDeviceAttestation(input: DeviceAttestationInput): Verificatio
 
 internal fun verifyExternalIdentity(input: ExternalIdentityInput): VerificationResult {
     if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
-        Security.insertProviderAt(BouncyCastleProvider(), 1)
+        Security.addProvider(BouncyCastleProvider())
     }
 
     val signatureBytes = decodeBase64(input.signature)

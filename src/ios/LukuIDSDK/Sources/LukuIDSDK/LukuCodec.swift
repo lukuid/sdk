@@ -257,7 +257,7 @@ final class LukuCodec {
         case "ota_end":
             var ota = LukuIDOtaEndRequest()
             if let v = asData("signature") { ota.signature = v }
-            request.otaEnd = ota
+            request.otaDataV2 = ota
         case "set_attestation":
             var sa = LukuIDSetAttestationRequest()
             if let v = asData("dac_der") { sa.dacDer = v }
@@ -379,6 +379,12 @@ final class LukuCodec {
         case .fetchTelemetry(let telemetry):
             dict["data"] = telemetry.rows.map { row in
                 row.values.map { mapTelemetryValue($0) }
+            }
+            if telemetry.hasSignature {
+                dict["signature"] = telemetry.signature.base64EncodedString()
+            }
+            if telemetry.hasCanonicalString {
+                dict["canonical_string"] = telemetry.canonicalString
             }
         case .statusResponse(let status):
             dict["id"] = status.id
@@ -612,15 +618,23 @@ final class LukuCodec {
             "timestamp_utc": attachment.timestampUtc,
             "mime": attachment.mime
         ]
-        if attachment.hasIdentity {
-            dict["identity"] = mapIdentity(attachment.identity)
+        if attachment.hasExternalIdentity {
+            dict["external_identity"] = mapExternalIdentity(attachment.externalIdentity)
         }
         return dict
     }
 
+    private func mapExternalIdentity(_ identity: LukuIDExternalIdentity) -> [String: Any] {
+        return [
+            "endorser_id": identity.endorserID,
+            "root_fingerprint": identity.rootFingerprint,
+            "cert_chain_der": identity.certChainDer,
+            "signature": identity.signature
+        ]
+    }
+
     private func mapIdentity(_ identity: LukuIDIdentity) -> [String: Any] {
         return [
-            "crt": identity.crt,
             "dac_serial": identity.dacSerial,
             "slac_serial": identity.slacSerial,
             "last_sync_utc": identity.lastSyncUtc,

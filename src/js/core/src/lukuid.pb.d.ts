@@ -1884,6 +1884,12 @@ export namespace lukuid {
 
         /** FetchTelemetryResponse rows */
         rows?: (lukuid.ITelemetryRow[]|null);
+
+        /** FetchTelemetryResponse signature */
+        signature?: (Uint8Array|null);
+
+        /** FetchTelemetryResponse canonicalString */
+        canonicalString?: (string|null);
     }
 
     /** Represents a FetchTelemetryResponse. */
@@ -1897,6 +1903,12 @@ export namespace lukuid {
 
         /** FetchTelemetryResponse rows. */
         public rows: lukuid.ITelemetryRow[];
+
+        /** FetchTelemetryResponse signature. */
+        public signature?: (Uint8Array|null);
+
+        /** FetchTelemetryResponse canonicalString. */
+        public canonicalString?: (string|null);
 
         /**
          * Creates a new FetchTelemetryResponse instance using the specified properties.

@@ -201,7 +201,9 @@ class LukuSdk(
         counter: Long,
         previousState: JSONObject,
         source: JSONObject,
-        telemetry: JSONArray,
+        telemetry: JSONArray? = null,
+        telemetrySignature: String? = null,
+        telemetryCanonicalString: String? = null,
         customUrl: String? = null
     ): JSONObject = withContext(Dispatchers.IO) {
         val apiUrl = (customUrl ?: options.apiUrl).trimEnd('/')
@@ -223,7 +225,16 @@ class LukuSdk(
         payload.put("counter", counter)
         payload.put("previous_state", previousState)
         payload.put("source", source)
-        payload.put("telemetry", telemetry)
+        
+        if (telemetry != null) {
+            payload.put("telemetry", telemetry)
+        }
+        if (!telemetrySignature.isNullOrBlank()) {
+            payload.put("telemetry_signature", telemetrySignature)
+        }
+        if (!telemetryCanonicalString.isNullOrBlank()) {
+            payload.put("telemetry_canonical_string", telemetryCanonicalString)
+        }
 
         conn.outputStream.use { os ->
             os.write(payload.toString().toByteArray(Charsets.UTF_8))
@@ -232,6 +243,46 @@ class LukuSdk(
         if (conn.responseCode !in 200..299) {
             val errorBody = conn.errorStream?.bufferedReader()?.use { it.readText() }
             throw Exception("API Heartbeat failed with status ${conn.responseCode}: $errorBody")
+        }
+
+        val responseBody = conn.inputStream.bufferedReader().use { it.readText() }
+        JSONObject(responseBody)
+    }
+
+    /**
+     * Pushes telemetry data to the LukuID API.
+     */
+    suspend fun telemetry(
+        deviceId: String,
+        data: JSONArray,
+        signature: String? = null,
+        canonicalString: String? = null,
+        customUrl: String? = null
+    ): JSONObject = withContext(Dispatchers.IO) {
+        val apiUrl = (customUrl ?: options.apiUrl).trimEnd('/')
+        val url = URL("$apiUrl/telemetry")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.doOutput = true
+        conn.setRequestProperty("Content-Type", "application/json")
+
+        val payload = JSONObject()
+        payload.put("device_id", deviceId)
+        payload.put("data", data)
+        if (!signature.isNullOrBlank()) {
+            payload.put("signature", signature)
+        }
+        if (!canonicalString.isNullOrBlank()) {
+            payload.put("canonical", canonicalString)
+        }
+
+        conn.outputStream.use { os ->
+            os.write(payload.toString().toByteArray(Charsets.UTF_8))
+        }
+
+        if (conn.responseCode !in 200..299) {
+            val errorBody = conn.errorStream?.bufferedReader()?.use { it.readText() }
+            throw Exception("API Telemetry failed with status ${conn.responseCode}: $errorBody")
         }
 
         val responseBody = conn.inputStream.bufferedReader().use { it.readText() }
@@ -286,6 +337,21 @@ class LukuSdk(
      */
     fun parse(file: java.io.File): LukuParseResult = LukuFile.parse(file)
 
+    /**
+     * Verifies a single JSON envelope (record) without archive-level continuity checks.
+     */
+    fun verifyEnvelope(envelopeMap: Map<String, Any?>, options: LukuVerifyOptions = LukuVerifyOptions()): List<VerificationIssue> {
+        return LukuFile.verifyEnvelope(envelopeMap, options)
+    }
+
+    /**
+     * Verifies a .luku file and returns a detailed result.
+     * Alias for parse().
+     */
+    fun verifyFile(file: java.io.File): LukuParseResult = parse(file)
+
+    fun verifyFile(data: ByteArray): LukuParseResult = parse(data)
+
     override fun close() {
         stopWatching()
         lifecycleSubscription.close()
@@ -338,19 +404,27 @@ class LukuSdk(
                 results.add(SelfTestResult("Ed25519", "SIGN", signPassed, "LUKUID-KAT-ED25519-SIGN-01"))
 
                 var verifyPassed = false
+                var rejectPassed = false
                 if (sig != null) {
                     try {
                         val verifier = java.security.Signature.getInstance("Ed25519")
                         verifier.initVerify(keyPair.public)
                         verifier.update(msg)
                         verifyPassed = verifier.verify(sig)
+
+                        val rejectVerifier = java.security.Signature.getInstance("Ed25519")
+                        rejectVerifier.initVerify(keyPair.public)
+                        rejectVerifier.update("abd".toByteArray(Charsets.UTF_8))
+                        rejectPassed = !rejectVerifier.verify(sig)
                     } catch (e: Exception) {
                     }
                 }
                 results.add(SelfTestResult("Ed25519", "VERIFY", verifyPassed, "LUKUID-KAT-ED25519-VERIFY-01"))
+                results.add(SelfTestResult("Ed25519", "REJECT", rejectPassed, "LUKUID-KAT-ED25519-REJECT-01"))
             } catch (e: Exception) {
                 results.add(SelfTestResult("Ed25519", "SIGN", false, "LUKUID-KAT-ED25519-SIGN-01"))
                 results.add(SelfTestResult("Ed25519", "VERIFY", false, "LUKUID-KAT-ED25519-VERIFY-01"))
+                results.add(SelfTestResult("Ed25519", "REJECT", false, "LUKUID-KAT-ED25519-REJECT-01"))
             }
 
             // 2. P-256 (Sign, Verify, Reject)
@@ -407,8 +481,50 @@ class LukuSdk(
                 results.add(SelfTestResult("SHA-256", "HASH", false, "NIST-KAT-SHA256-01"))
             }
 
-            // 4. ML-DSA-65 (Check if library linked)
-            results.add(SelfTestResult("ML-DSA-65", "INIT", true, "NIST-KAT-MLDSA-01"))
+            // 4. ML-DSA-65 (Sign, Verify, Reject)
+            try {
+                // Use Bouncy Castle for ML-DSA
+                val kpg = java.security.KeyPairGenerator.getInstance("ML-DSA", "BC")
+                kpg.initialize(org.bouncycastle.jcajce.spec.MLDSAParameterSpec.ml_dsa_65)
+                val pair = kpg.generateKeyPair()
+                val msg = "abc".toByteArray(Charsets.UTF_8)
+                val badMsg = "abd".toByteArray(Charsets.UTF_8)
+
+                var signPassed = false
+                var sig: ByteArray? = null
+                try {
+                    val signer = java.security.Signature.getInstance("ML-DSA", "BC")
+                    signer.initSign(pair.private)
+                    signer.update(msg)
+                    sig = signer.sign()
+                    signPassed = true
+                } catch (e: Exception) {
+                }
+                results.add(SelfTestResult("ML-DSA-65", "SIGN", signPassed, "NIST-KAT-MLDSA-SIGN-01"))
+
+                var verifyPassed = false
+                var rejectPassed = false
+                if (sig != null) {
+                    try {
+                        val verifier = java.security.Signature.getInstance("ML-DSA", "BC")
+                        verifier.initVerify(pair.public)
+                        verifier.update(msg)
+                        verifyPassed = verifier.verify(sig)
+
+                        val rejectVerifier = java.security.Signature.getInstance("ML-DSA", "BC")
+                        rejectVerifier.initVerify(pair.public)
+                        rejectVerifier.update(badMsg)
+                        rejectPassed = !rejectVerifier.verify(sig)
+                    } catch (e: Exception) {
+                    }
+                }
+                results.add(SelfTestResult("ML-DSA-65", "VERIFY", verifyPassed, "NIST-KAT-MLDSA-VERIFY-01"))
+                results.add(SelfTestResult("ML-DSA-65", "REJECT", rejectPassed, "NIST-KAT-MLDSA-REJECT-01"))
+            } catch (e: Exception) {
+                results.add(SelfTestResult("ML-DSA-65", "SIGN", false, "NIST-KAT-MLDSA-SIGN-01"))
+                results.add(SelfTestResult("ML-DSA-65", "VERIFY", false, "NIST-KAT-MLDSA-VERIFY-01"))
+                results.add(SelfTestResult("ML-DSA-65", "REJECT", false, "NIST-KAT-MLDSA-REJECT-01"))
+            }
 
             return results
         }

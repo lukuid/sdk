@@ -31,6 +31,7 @@ data class DeviceInfo(
     val heartbeatIntermediateDer: String? = null,
     val heartbeatRootFingerprint: String? = null,
     val verified: Boolean,
+    val telemetry: Boolean = false,
     val lastSync: Long? = null,
     val counter: Long = 0,
     val syncRequired: Boolean = false

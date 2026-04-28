@@ -51,6 +51,20 @@ function decodeBase64(value: string): Uint8Array | undefined {
   return undefined;
 }
 
+export function encodeBase64(value: Uint8Array): string {
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(value).toString('base64');
+  }
+  if (typeof btoa === 'function') {
+    let binary = '';
+    for (let i = 0; i < value.length; i++) {
+      binary += String.fromCharCode(value[i]);
+    }
+    return btoa(binary);
+  }
+  return '';
+}
+
 export function encodeFrame(frame: DeviceFrame): Uint8Array {
   const payload = encodeCommandRequest(frame);
   const out = new Uint8Array(MAGIC.length + 4 + payload.length + MAGIC.length);
@@ -369,6 +383,13 @@ function decodeCommandResponse(payload: Uint8Array): JsonRecord | null {
         const message = readLengthDelimited(payload, cursor, wireType);
         if (message === null) return null;
         Object.assign(out, decodeHeartbeatInitResponse(message));
+        break;
+      }
+      case 17: {
+        const message = readLengthDelimited(payload, cursor, wireType);
+        if (message === null) return null;
+        const telemetry = decodeFetchTelemetryResponse(message);
+        Object.assign(out, telemetry);
         break;
       }
       default:
@@ -1407,4 +1428,84 @@ function decodeHeartbeatInitResponse(payload: Uint8Array): JsonRecord {
     }
   }
   return out;
+}
+
+function decodeFetchTelemetryResponse(payload: Uint8Array): JsonRecord {
+  const cursor = { value: 0 };
+  const out: JsonRecord = { data: [] };
+  while (cursor.value < payload.length) {
+    const key = readVarint(payload, cursor);
+    if (key === null) break;
+    const field = key >>> 3;
+    const wireType = key & 0x07;
+    switch (field) {
+      case 1: {
+        const message = readLengthDelimited(payload, cursor, wireType);
+        if (message) (out.data as unknown[]).push(decodeTelemetryRow(message));
+        break;
+      }
+      case 2:
+        assignBytes(payload, cursor, wireType, out, 'signature');
+        break;
+      case 3:
+        assignString(payload, cursor, wireType, out, 'canonical_string');
+        break;
+      default:
+        skipField(payload, cursor, wireType);
+        break;
+    }
+  }
+  return out;
+}
+
+function decodeTelemetryRow(payload: Uint8Array): unknown[] {
+  const cursor = { value: 0 };
+  const values: unknown[] = [];
+  while (cursor.value < payload.length) {
+    const key = readVarint(payload, cursor);
+    if (key === null) break;
+    const field = key >>> 3;
+    const wireType = key & 0x07;
+    if (field === 1) {
+      const message = readLengthDelimited(payload, cursor, wireType);
+      if (message) values.push(decodeTelemetryValue(message));
+    } else {
+      skipField(payload, cursor, wireType);
+    }
+  }
+  return values;
+}
+
+function decodeTelemetryValue(payload: Uint8Array): unknown {
+  const cursor = { value: 0 };
+  let val: unknown = null;
+  while (cursor.value < payload.length) {
+    const key = readVarint(payload, cursor);
+    if (key === null) break;
+    const field = key >>> 3;
+    const wireType = key & 0x07;
+    const out: JsonRecord = {};
+    switch (field) {
+      case 1:
+        assignFloat32(payload, cursor, wireType, out, 'v');
+        val = out.v;
+        break;
+      case 2:
+        assignString(payload, cursor, wireType, out, 'v');
+        val = out.v;
+        break;
+      case 3:
+        assignInt64(payload, cursor, wireType, out, 'v');
+        val = out.v;
+        break;
+      case 4:
+        assignBool(payload, cursor, wireType, out, 'v');
+        val = out.v;
+        break;
+      default:
+        skipField(payload, cursor, wireType);
+        break;
+    }
+  }
+  return val;
 }

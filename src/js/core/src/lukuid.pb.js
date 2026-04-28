@@ -4933,6 +4933,8 @@ export const lukuid = $root.lukuid = (() => {
          * @memberof lukuid
          * @interface IFetchTelemetryResponse
          * @property {Array.<lukuid.ITelemetryRow>|null} [rows] FetchTelemetryResponse rows
+         * @property {Uint8Array|null} [signature] FetchTelemetryResponse signature
+         * @property {string|null} [canonicalString] FetchTelemetryResponse canonicalString
          */
 
         /**
@@ -4958,6 +4960,37 @@ export const lukuid = $root.lukuid = (() => {
          * @instance
          */
         FetchTelemetryResponse.prototype.rows = $util.emptyArray;
+
+        /**
+         * FetchTelemetryResponse signature.
+         * @member {Uint8Array|null|undefined} signature
+         * @memberof lukuid.FetchTelemetryResponse
+         * @instance
+         */
+        FetchTelemetryResponse.prototype.signature = null;
+
+        /**
+         * FetchTelemetryResponse canonicalString.
+         * @member {string|null|undefined} canonicalString
+         * @memberof lukuid.FetchTelemetryResponse
+         * @instance
+         */
+        FetchTelemetryResponse.prototype.canonicalString = null;
+
+        // OneOf field names bound to virtual getters and setters
+        let $oneOfFields;
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(FetchTelemetryResponse.prototype, "_signature", {
+            get: $util.oneOfGetter($oneOfFields = ["signature"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(FetchTelemetryResponse.prototype, "_canonicalString", {
+            get: $util.oneOfGetter($oneOfFields = ["canonicalString"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
 
         /**
          * Creates a new FetchTelemetryResponse instance using the specified properties.
@@ -4986,6 +5019,10 @@ export const lukuid = $root.lukuid = (() => {
             if (message.rows != null && message.rows.length)
                 for (let i = 0; i < message.rows.length; ++i)
                     $root.lukuid.TelemetryRow.encode(message.rows[i], writer.uint32(/* id 1, wireType 2 =*/10).fork()).ldelim();
+            if (message.signature != null && Object.hasOwnProperty.call(message, "signature"))
+                writer.uint32(/* id 2, wireType 2 =*/18).bytes(message.signature);
+            if (message.canonicalString != null && Object.hasOwnProperty.call(message, "canonicalString"))
+                writer.uint32(/* id 3, wireType 2 =*/26).string(message.canonicalString);
             return writer;
         };
 
@@ -5028,6 +5065,14 @@ export const lukuid = $root.lukuid = (() => {
                         message.rows.push($root.lukuid.TelemetryRow.decode(reader, reader.uint32()));
                         break;
                     }
+                case 2: {
+                        message.signature = reader.bytes();
+                        break;
+                    }
+                case 3: {
+                        message.canonicalString = reader.string();
+                        break;
+                    }
                 default:
                     reader.skipType(tag & 7);
                     break;
@@ -5063,6 +5108,7 @@ export const lukuid = $root.lukuid = (() => {
         FetchTelemetryResponse.verify = function verify(message) {
             if (typeof message !== "object" || message === null)
                 return "object expected";
+            let properties = {};
             if (message.rows != null && message.hasOwnProperty("rows")) {
                 if (!Array.isArray(message.rows))
                     return "rows: array expected";
@@ -5071,6 +5117,16 @@ export const lukuid = $root.lukuid = (() => {
                     if (error)
                         return "rows." + error;
                 }
+            }
+            if (message.signature != null && message.hasOwnProperty("signature")) {
+                properties._signature = 1;
+                if (!(message.signature && typeof message.signature.length === "number" || $util.isString(message.signature)))
+                    return "signature: buffer expected";
+            }
+            if (message.canonicalString != null && message.hasOwnProperty("canonicalString")) {
+                properties._canonicalString = 1;
+                if (!$util.isString(message.canonicalString))
+                    return "canonicalString: string expected";
             }
             return null;
         };
@@ -5097,6 +5153,13 @@ export const lukuid = $root.lukuid = (() => {
                     message.rows[i] = $root.lukuid.TelemetryRow.fromObject(object.rows[i]);
                 }
             }
+            if (object.signature != null)
+                if (typeof object.signature === "string")
+                    $util.base64.decode(object.signature, message.signature = $util.newBuffer($util.base64.length(object.signature)), 0);
+                else if (object.signature.length >= 0)
+                    message.signature = object.signature;
+            if (object.canonicalString != null)
+                message.canonicalString = String(object.canonicalString);
             return message;
         };
 
@@ -5119,6 +5182,16 @@ export const lukuid = $root.lukuid = (() => {
                 object.rows = [];
                 for (let j = 0; j < message.rows.length; ++j)
                     object.rows[j] = $root.lukuid.TelemetryRow.toObject(message.rows[j], options);
+            }
+            if (message.signature != null && message.hasOwnProperty("signature")) {
+                object.signature = options.bytes === String ? $util.base64.encode(message.signature, 0, message.signature.length) : options.bytes === Array ? Array.prototype.slice.call(message.signature) : message.signature;
+                if (options.oneofs)
+                    object._signature = "signature";
+            }
+            if (message.canonicalString != null && message.hasOwnProperty("canonicalString")) {
+                object.canonicalString = message.canonicalString;
+                if (options.oneofs)
+                    object._canonicalString = "canonicalString";
             }
             return object;
         };

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { encodeFrame, LukuDecoder } from './codec.js';
+import { encodeFrame, LukuDecoder, encodeBase64 } from './codec.js';
 import { TinyEventEmitter } from './events.js';
 import type { DeviceAttestationInputs } from './attestation.js';
 import { verifyDeviceAttestation } from './attestation.js';
@@ -311,14 +311,43 @@ class LukuidDevice implements Device {
     if (info.verified) {
         const now = Math.floor(Date.now() / 1000);
         const lastSync = info.lastSync ?? 0;
-        if (now - lastSync > 24 * 3600) {
+        if (now - lastSync > 24 * 3600 || info.sync_required) {
             try {
-                // 1. Fetch Telemetry before heartbeat (only if reporting enabled)
-                const telemetry = info.bio_reporting !== false 
-                    ? await this.call('fetch_telemetry', {}).catch(() => [])
-                    : [];
+                // 1. Fetch Telemetry if needed (either for public API or custom heartbeat)
+                let telemetry: unknown[] = [];
+                let telemetrySignature: any;
+                let telemetryCanonical: string | undefined;
 
-                // 2. Generate Heartbeat CSR
+                if (info.telemetry || info.custom_heartbeat_url) {
+                    const telemetryResult = await this.call('fetch_telemetry', {}) as any;
+                    telemetry = telemetryResult?.data || [];
+                    telemetrySignature = telemetryResult?.signature;
+                    telemetryCanonical = telemetryResult?.canonical_string;
+                }
+
+                const defaultApiUrl = (this.context as any).options?.apiUrl || 'https://api.lukuid.com';
+
+                // 2. Push Telemetry to public API if enabled
+                if (info.telemetry && telemetry.length > 0) {
+                    try {
+                        await fetch(`${defaultApiUrl.replace(/\/$/, '')}/telemetry`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                device_id: info.id,
+                                data: telemetry,
+                                signature: telemetrySignature instanceof Uint8Array 
+                                    ? encodeBase64(telemetrySignature) 
+                                    : telemetrySignature,
+                                canonical: telemetryCanonical
+                            })
+                        });
+                    } catch (e) {
+                        // Ignore public telemetry failure
+                    }
+                }
+
+                // 3. Generate Heartbeat CSR
                 const hbInit = await this.call('generate_heartbeat', {}) as any;
                 const signature = hbInit?.signature;
                 const csr = hbInit?.csr;
@@ -326,8 +355,8 @@ class LukuidDevice implements Device {
                 const counter = hbInit?.counter;
 
                 if (signature) {
-                    const defaultApiUrl = (this.context as any).options?.apiUrl || 'https://api.lukuid.com';
                     const apiUrl = info.custom_heartbeat_url || defaultApiUrl;
+                    const hasCustomUrl = !!info.custom_heartbeat_url;
                     
                     const hbResponse = await fetch(`${apiUrl.replace(/\/$/, '')}/heartbeat`, {
                         method: 'POST',
@@ -353,7 +382,12 @@ class LukuidDevice implements Device {
                                 last_intermediate_serial: hbInit?.last_intermediate_serial,
                                 last_slac_serial: hbInit?.last_slac_serial
                             },
-                            telemetry: telemetry
+                            // Only include telemetry in heartbeat if it's a custom URL
+                            telemetry: hasCustomUrl ? telemetry : undefined,
+                            telemetry_signature: hasCustomUrl ? (telemetrySignature instanceof Uint8Array 
+                                ? encodeBase64(telemetrySignature) 
+                                : telemetrySignature) : undefined,
+                            telemetry_canonical_string: hasCustomUrl ? telemetryCanonical : undefined
                         })
                     });
                     if (hbResponse.ok) {

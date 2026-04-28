@@ -70,10 +70,13 @@ impl LukuidSdk {
         counter: u64,
         previous_state: serde_json::Value,
         source: serde_json::Value,
-        telemetry: serde_json::Value,
+        telemetry: Option<serde_json::Value>,
+        telemetry_signature: Option<&str>,
+        telemetry_canonical_string: Option<&str>,
     ) -> Result<serde_json::Value, reqwest::Error> {
+        let api_url = self.options.api_url.clone();
         self.heartbeat_with_api_url(
-            &self.options.api_url,
+            &api_url,
             device_id,
             public_key,
             signature,
@@ -84,6 +87,8 @@ impl LukuidSdk {
             previous_state,
             source,
             telemetry,
+            telemetry_signature,
+            telemetry_canonical_string,
         )
         .await
     }
@@ -105,7 +110,9 @@ impl LukuidSdk {
         counter: u64,
         previous_state: serde_json::Value,
         source: serde_json::Value,
-        telemetry: serde_json::Value,
+        telemetry: Option<serde_json::Value>,
+        telemetry_signature: Option<&str>,
+        telemetry_canonical_string: Option<&str>,
     ) -> Result<serde_json::Value, reqwest::Error> {
         let url = format!("{}/heartbeat", api_url.trim_end_matches('/'));
         let mut payload = serde_json::json!({
@@ -117,8 +124,12 @@ impl LukuidSdk {
             "counter": counter,
             "previous_state": previous_state,
             "source": source,
-            "telemetry": telemetry,
         });
+
+        if let Some(telemetry) = telemetry {
+            payload["telemetry"] = telemetry;
+        }
+
         if let Some(root_fingerprint) = attestation_root_fingerprint
             .map(str::trim)
             .filter(|value| !value.is_empty())
@@ -126,6 +137,17 @@ impl LukuidSdk {
             payload["attestation_root_fingerprint"] =
                 serde_json::Value::String(root_fingerprint.to_string());
         }
+
+        if let Some(telemetry_signature) = telemetry_signature {
+            payload["telemetry_signature"] =
+                serde_json::Value::String(telemetry_signature.to_string());
+        }
+
+        if let Some(telemetry_canonical_string) = telemetry_canonical_string {
+            payload["telemetry_canonical_string"] =
+                serde_json::Value::String(telemetry_canonical_string.to_string());
+        }
+
 
         if self.options.debug_logging {
             eprintln!(
@@ -141,6 +163,60 @@ impl LukuidSdk {
         if self.options.debug_logging {
             eprintln!(
                 "[lukuid-sdk] Heartbeat HTTP response from {} body={}",
+                url, response_body
+            );
+        }
+
+        Ok(response_body)
+    }
+
+    /**
+     * Pushes telemetry data to the LukuID API.
+     */
+    pub async fn telemetry(
+        &self,
+        api_url: Option<&str>,
+        device_id: &str,
+        data: serde_json::Value,
+        signature: Option<&str>,
+        canonical_string: Option<&str>,
+    ) -> Result<serde_json::Value, reqwest::Error> {
+        let base_url = api_url.unwrap_or(&self.options.api_url).trim_end_matches('/');
+        let url = format!("{}/telemetry", base_url);
+
+        let mut payload = serde_json::json!({
+            "device_id": device_id,
+            "data": data,
+        });
+
+        if let Some(sig) = signature {
+            payload["signature"] = serde_json::Value::String(sig.to_string());
+        }
+
+        if let Some(canonical) = canonical_string {
+            payload["canonical"] = serde_json::Value::String(canonical.to_string());
+        }
+
+        if self.options.debug_logging {
+            eprintln!(
+                "[lukuid-sdk] Telemetry HTTP request POST {} body={}",
+                url, payload
+            );
+        }
+
+        let response = self
+            .http_client
+            .post(&url)
+            .json(&payload)
+            .send()
+            .await?;
+
+        let response = response.error_for_status()?;
+        let response_body: serde_json::Value = response.json().await?;
+
+        if self.options.debug_logging {
+            eprintln!(
+                "[lukuid-sdk] Telemetry HTTP response from {} body={}",
                 url, response_body
             );
         }
@@ -181,7 +257,7 @@ impl LukuidSdk {
     pub fn self_test() -> Vec<SelfTestResult> {
         let mut results = Vec::new();
 
-        // 1. Ed25519 (Self-consistency check: Sign and Verify)
+        // 1. Ed25519 (Sign, Verify, Reject)
         {
             use ed25519_dalek::{SigningKey, Signer, Verifier};
             let mut seed = [0u8; 32];
@@ -189,31 +265,81 @@ impl LukuidSdk {
             let sk = SigningKey::from_bytes(&seed);
             let pk = sk.verifying_key();
             let msg = b"abc";
+            let bad_msg = b"abd";
             let sig = sk.sign(msg);
-            let passed_verify = pk.verify(msg, &sig).is_ok();
-
+            
             results.push(SelfTestResult {
                 alg: "Ed25519".to_string(),
                 operation: "SIGN".to_string(),
                 passed: true,
                 id: "LUKUID-KAT-ED25519-SIGN-01".to_string(),
             });
+            
+            let passed_verify = pk.verify(msg, &sig).is_ok();
             results.push(SelfTestResult {
                 alg: "Ed25519".to_string(),
                 operation: "VERIFY".to_string(),
                 passed: passed_verify,
                 id: "LUKUID-KAT-ED25519-VERIFY-01".to_string(),
             });
+
+            let passed_reject = pk.verify(bad_msg, &sig).is_err();
+            results.push(SelfTestResult {
+                alg: "Ed25519".to_string(),
+                operation: "REJECT".to_string(),
+                passed: passed_reject,
+                id: "LUKUID-KAT-ED25519-REJECT-01".to_string(),
+            });
         }
 
-        // 2. P-256 (Check if available)
+        // 2. P-256 (Sign, Verify, Reject)
         {
-            results.push(SelfTestResult {
-                alg: "P256".to_string(),
-                operation: "INIT".to_string(),
-                passed: true,
-                id: "NIST-KAT-P256-01".to_string(),
-            });
+            use ring::signature::{self, EcdsaKeyPair, KeyPair};
+            // Generate a random key for the consistency test
+            let rng = ring::rand::SystemRandom::new();
+            let pkcs8_bytes = signature::EcdsaKeyPair::generate_pkcs8(&signature::ECDSA_P256_SHA256_FIXED_SIGNING, &rng);
+            
+            if let Ok(pkcs8) = pkcs8_bytes {
+                if let Ok(key_pair) = EcdsaKeyPair::from_pkcs8(&signature::ECDSA_P256_SHA256_FIXED_SIGNING, pkcs8.as_ref(), &rng) {
+                    let msg = b"abc";
+                    let bad_msg = b"abd";
+                    
+                    if let Ok(sig) = key_pair.sign(&rng, msg) {
+                        results.push(SelfTestResult {
+                            alg: "P256".to_string(),
+                            operation: "SIGN".to_string(),
+                            passed: true,
+                            id: "NIST-KAT-P256-SIGN-01".to_string(),
+                        });
+                        
+                        let public_key = signature::UnparsedPublicKey::new(&signature::ECDSA_P256_SHA256_FIXED, key_pair.public_key().as_ref());
+                        let passed_verify = public_key.verify(msg, sig.as_ref()).is_ok();
+                        results.push(SelfTestResult {
+                            alg: "P256".to_string(),
+                            operation: "VERIFY".to_string(),
+                            passed: passed_verify,
+                            id: "NIST-KAT-P256-VERIFY-01".to_string(),
+                        });
+
+                        let passed_reject = public_key.verify(bad_msg, sig.as_ref()).is_err();
+                        results.push(SelfTestResult {
+                            alg: "P256".to_string(),
+                            operation: "REJECT".to_string(),
+                            passed: passed_reject,
+                            id: "NIST-KAT-P256-REJECT-01".to_string(),
+                        });
+                    }
+                }
+            }
+            
+            if results.iter().all(|r| r.alg != "P256") {
+                results.push(SelfTestResult {
+                    alg: "P256".to_string(),
+                    operation: "SIGN".to_string(),
+                    passed: false,
+                    id: "NIST-KAT-P256-SIGN-01".to_string(),
+                });
+            }
         }
 
         // 3. SHA-256 (FIPS 180-4 "abc")
@@ -236,13 +362,41 @@ impl LukuidSdk {
             });
         }
 
-        // 4. ML-DSA-65 (Check if library is linked)
+        // 4. ML-DSA-65 (Sign, Verify, Reject)
         {
+            use ml_dsa::{MlDsa65, KeyGen};
+            use ml_dsa::signature::{Signer, Verifier, Keypair};
+            
+            let mut seed = [0u8; 32];
+            seed[0] = 1;
+            
+            let sk = MlDsa65::from_seed(&seed.into());
+            let vk = sk.verifying_key();
+            let msg = b"abc";
+            let bad_msg = b"abd";
+            
+            let sig = sk.sign(msg);
             results.push(SelfTestResult {
                 alg: "ML-DSA-65".to_string(),
-                operation: "INIT".to_string(),
+                operation: "SIGN".to_string(),
                 passed: true,
-                id: "NIST-KAT-MLDSA-01".to_string(),
+                id: "NIST-KAT-MLDSA-SIGN-01".to_string(),
+            });
+            
+            let passed_verify = vk.verify(msg, &sig).is_ok();
+            results.push(SelfTestResult {
+                alg: "ML-DSA-65".to_string(),
+                operation: "VERIFY".to_string(),
+                passed: passed_verify,
+                id: "NIST-KAT-MLDSA-VERIFY-01".to_string(),
+            });
+
+            let passed_reject = vk.verify(bad_msg, &sig).is_err();
+            results.push(SelfTestResult {
+                alg: "ML-DSA-65".to_string(),
+                operation: "REJECT".to_string(),
+                passed: passed_reject,
+                id: "NIST-KAT-MLDSA-REJECT-01".to_string(),
             });
         }
 

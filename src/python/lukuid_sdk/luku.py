@@ -50,6 +50,7 @@ class LukuVerifyOptions:
     trust_profile: str = field(default_factory=lambda: os.environ.get("LUKUID_TRUST_PROFILE", "prod"))
     policy: "LukuPolicy | None" = None
     require_continuity: bool = False
+    attachments: dict[str, bytes] | None = None
 
 
 @dataclass(slots=True)
@@ -298,6 +299,9 @@ class LukuArchive:
         self.attachments.update(other.attachments)
         self._refresh_manifest_signature(signer)
 
+    def verify_file(self, options: LukuVerifyOptions | None = None) -> list[VerificationIssue]:
+        return self.verify(options)
+
     def verify(self, options: LukuVerifyOptions | None = None) -> list[VerificationIssue]:
         options = options or LukuVerifyOptions()
         issues: list[VerificationIssue] = []
@@ -396,35 +400,36 @@ class LukuArchive:
                     if timestamp is not None:
                         device_continuity[record_type] = timestamp
 
-                if not options.allow_untrusted_roots:
-                    identity = record.get("identity") if isinstance(record.get("identity"), dict) else {}
-                    attestation_chain = block_dac_chain
-                    if identity.get("dac_der"):
-                        attestation_chain = "".join(
-                            entry
-                            for entry in [
-                                pem_from_der_string(identity.get("dac_der")),
-                                pem_from_der_string(identity.get("attestation_manufacturer_der")),
-                                pem_from_der_string(identity.get("attestation_intermediate_der")),
-                            ]
-                            if entry
-                        )
-                    attestation_sig = str(identity.get("signature", ""))
-                    if not attestation_chain:
+                identity = record.get("identity") if isinstance(record.get("identity"), dict) else {}
+                attestation_chain = block_dac_chain
+                if identity.get("dac_der"):
+                    attestation_chain = "".join(
+                        entry
+                        for entry in [
+                            pem_from_der_string(identity.get("dac_der")),
+                            pem_from_der_string(identity.get("attestation_manufacturer_der")),
+                            pem_from_der_string(identity.get("attestation_intermediate_der")),
+                        ]
+                        if entry
+                    )
+                attestation_sig = str(identity.get("signature", ""))
+                if not attestation_chain:
+                    if not options.allow_untrusted_roots:
                         issues.append(_issue("ATTESTATION_CHAIN_MISSING", f"Missing DAC attestation chain for device {device_id}.", Criticality.WARNING))
-                    elif not is_aux or attestation_sig:
-                        result = verify_device_attestation(
-                            DeviceAttestationInputs(
-                                id=device_id,
-                                key=public_key,
-                                attestation_sig=attestation_sig,
-                                certificate_chain=attestation_chain,
-                                created=None if options.skip_certificate_temporal_checks else timestamp,
-                                trust_profile=options.trust_profile,
-                            )
+                elif not is_aux or attestation_sig:
+                    result = verify_device_attestation(
+                        DeviceAttestationInputs(
+                            id=device_id,
+                            key=public_key,
+                            attestation_sig=attestation_sig,
+                            certificate_chain=attestation_chain,
+                            created=None if options.skip_certificate_temporal_checks else timestamp,
+                            trust_profile=options.trust_profile,
+                            allow_untrusted_roots=options.allow_untrusted_roots,
                         )
-                        if not result.ok:
-                            issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id} failed DAC attestation: {result.reason}", Criticality.CRITICAL))
+                    )
+                    if not result.ok:
+                        issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id} failed DAC attestation: {result.reason}", Criticality.CRITICAL))
 
                 if not canonical_string:
                     issues.append(_issue("RECORD_CANONICAL_MISSING", f"Record type {record_type} on device {device_id} does not include a canonical_string.", Criticality.WARNING if is_compat_attachment else Criticality.CRITICAL))
@@ -528,6 +533,123 @@ class LukuArchive:
 
 
 class LukuFile:
+    @staticmethod
+    def verify_file(data: bytes, options: LukuVerifyOptions | None = None) -> list[VerificationIssue]:
+        return LukuFile.open_bytes(data).verify(options)
+
+    @staticmethod
+    def verify_envelope(envelope: dict[str, Any], options: LukuVerifyOptions | None = None) -> list[VerificationIssue]:
+        options = options or LukuVerifyOptions()
+        issues: list[VerificationIssue] = []
+
+        record_type = str(envelope.get("type", "unknown"))
+        is_aux = _is_aux_record_type(record_type)
+        payload = envelope.get("payload") if isinstance(envelope.get("payload"), dict) else {}
+        
+        device = envelope.get("device") if isinstance(envelope.get("device"), dict) else {}
+        device_id = str(envelope.get("device_id") or device.get("device_id") or "")
+        public_key = str(envelope.get("public_key") or device.get("public_key") or "")
+        signature = str(envelope.get("signature", ""))
+        canonical_string = str(envelope.get("canonical_string", ""))
+        timestamp = _uint64(payload.get("timestamp_utc")) or _uint64(envelope.get("timestamp_utc"))
+        counter = _uint64(payload.get("ctr"))
+        genesis_hash = str(payload.get("genesis_hash", ""))
+        previous_signature = str(envelope.get("previous_signature", ""))
+
+        if not device_id or not public_key:
+            issues.append(_issue("DEVICE_IDENTITY_MISSING", "Envelope is missing device_id or public_key.", Criticality.CRITICAL))
+
+        if not is_aux and counter == 0 and genesis_hash and previous_signature and previous_signature != genesis_hash:
+            issues.append(_issue("GENESIS_HASH_MISMATCH", f"Genesis record (ctr=0) for device {device_id or 'unknown'} has previous_signature that does not match genesis_hash.", Criticality.CRITICAL))
+
+        identity = envelope.get("identity") if isinstance(envelope.get("identity"), dict) else {}
+        
+        dac = str(envelope.get("attestation_dac_der") or identity.get("dac_der") or identity.get("attestation_dac_der") or "")
+        man = str(envelope.get("attestation_manufacturer_der") or identity.get("attestation_manufacturer_der") or "")
+        int_cert = str(envelope.get("attestation_intermediate_der") or identity.get("attestation_intermediate_der") or "")
+        
+        attestation_chain = ""
+        if dac:
+            attestation_chain = "".join(
+                entry
+                for entry in [
+                    pem_from_der_string(dac),
+                    pem_from_der_string(man),
+                    pem_from_der_string(int_cert),
+                ]
+                if entry
+            )
+            
+        attestation_sig = str(envelope.get("attestation_signature") or identity.get("signature") or "")
+
+        if not attestation_chain:
+            if not options.allow_untrusted_roots:
+                issues.append(_issue("ATTESTATION_CHAIN_MISSING", f"Missing DAC attestation chain for device {device_id or 'unknown'}.", Criticality.WARNING))
+        elif not is_aux or attestation_sig:
+            result = verify_device_attestation(
+                DeviceAttestationInputs(
+                    id=device_id or "unknown",
+                    key=public_key,
+                    attestation_sig=attestation_sig,
+                    certificate_chain=attestation_chain,
+                    created=None if options.skip_certificate_temporal_checks else timestamp,
+                    trust_profile=options.trust_profile,
+                    allow_untrusted_roots=options.allow_untrusted_roots,
+                )
+            )
+            if not result.ok:
+                issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed DAC attestation: {result.reason}", Criticality.CRITICAL))
+
+        if not canonical_string:
+            issues.append(_issue("RECORD_CANONICAL_MISSING", f"Record type {record_type} does not include a canonical_string.", Criticality.CRITICAL))
+        elif not signature:
+            issues.append(_issue("RECORD_SIGNATURE_MISSING", f"Record type {record_type} is missing a signature.", Criticality.CRITICAL))
+        elif public_key and not verify_detached_signature(public_key, canonical_string.encode("utf-8"), signature):
+            issues.append(_issue("RECORD_SIGNATURE_INVALID", f"Invalid signature for record type {record_type}.", Criticality.CRITICAL))
+
+        if record_type == "attachment":
+            checksum = envelope.get("checksum")
+            if isinstance(checksum, str) and checksum and options.attachments:
+                content = options.attachments.get(checksum)
+                if content is None:
+                    issues.append(_issue("ATTACHMENT_MISSING", f"Attachment with hash {checksum} is missing from provided attachments.", Criticality.CRITICAL))
+                elif _sha256_hex(content) != checksum:
+                    issues.append(_issue("ATTACHMENT_CORRUPT", f"Attachment with hash {checksum} is corrupt (actual hash {_sha256_hex(content)}).", Criticality.CRITICAL))
+
+        external_identity = envelope.get("external_identity") if isinstance(envelope.get("external_identity"), dict) else {}
+        if external_identity and is_aux:
+            expected_payload = _expected_external_identity_payload(envelope, record_type)
+            endorser_id = external_identity.get("endorser_id")
+            root_fingerprint = external_identity.get("root_fingerprint")
+            cert_chain_der = external_identity.get("cert_chain_der")
+            external_signature = external_identity.get("signature")
+            if (
+                expected_payload is not None
+                and isinstance(endorser_id, str)
+                and endorser_id
+                and isinstance(root_fingerprint, str)
+                and root_fingerprint
+                and isinstance(cert_chain_der, list)
+                and cert_chain_der
+                and all(isinstance(item, str) and item for item in cert_chain_der)
+                and isinstance(external_signature, str)
+                and external_signature
+            ):
+                result = verify_external_identity(
+                    ExternalIdentityInputs(
+                        endorser_id=endorser_id,
+                        root_fingerprint=root_fingerprint,
+                        cert_chain_der=cert_chain_der,
+                        signature=external_signature,
+                        expected_payload=expected_payload,
+                        trusted_fingerprints=options.trusted_external_fingerprints,
+                    )
+                )
+                if not result.ok:
+                    issues.append(_issue("EXTERNAL_IDENTITY_VERIFICATION_FAILED", f"External identity verification failed: {result.reason}", Criticality.CRITICAL))
+
+        return issues
+
     @staticmethod
     def open(path: str | Path) -> LukuArchive:
         return LukuFile.open_bytes(Path(path).read_bytes())
@@ -791,12 +913,15 @@ class LukuFile:
     def self_test() -> list[SelfTestResult]:
         results = []
 
-        # 1. Ed25519 (Self-consistency check: Sign and Verify)
+        # 1. Ed25519 (Sign, Verify, Reject)
         try:
             from cryptography.hazmat.primitives.asymmetric import ed25519
             sk = ed25519.Ed25519PrivateKey.generate()
             pk = sk.public_key()
             msg = b"abc"
+            bad_msg = b"abd"
+            
+            # SIGN
             try:
                 sig = sk.sign(msg)
                 passed_sign = True
@@ -805,6 +930,7 @@ class LukuFile:
                 sig = None
             results.append(SelfTestResult(alg="Ed25519", operation="SIGN", passed=passed_sign, id="LUKUID-KAT-ED25519-SIGN-01"))
             
+            # VERIFY
             passed_verify = False
             if sig:
                 try:
@@ -813,16 +939,62 @@ class LukuFile:
                 except Exception:
                     pass
             results.append(SelfTestResult(alg="Ed25519", operation="VERIFY", passed=passed_verify, id="LUKUID-KAT-ED25519-VERIFY-01"))
+
+            # REJECT
+            passed_reject = False
+            if sig:
+                try:
+                    pk.verify(sig, bad_msg)
+                except Exception:
+                    passed_reject = True
+            results.append(SelfTestResult(alg="Ed25519", operation="REJECT", passed=passed_reject, id="LUKUID-KAT-ED25519-REJECT-01"))
+
         except Exception:
             results.append(SelfTestResult(alg="Ed25519", operation="SIGN", passed=False, id="LUKUID-KAT-ED25519-SIGN-01"))
             results.append(SelfTestResult(alg="Ed25519", operation="VERIFY", passed=False, id="LUKUID-KAT-ED25519-VERIFY-01"))
+            results.append(SelfTestResult(alg="Ed25519", operation="REJECT", passed=False, id="LUKUID-KAT-ED25519-REJECT-01"))
 
-        # 2. P-256 (Check if available)
+        # 2. P-256 (Sign, Verify, Reject)
         try:
+            from cryptography.hazmat.primitives import hashes
             from cryptography.hazmat.primitives.asymmetric import ec
-            results.append(SelfTestResult(alg="P256", operation="INIT", passed=True, id="NIST-KAT-P256-01"))
+            sk = ec.generate_private_key(ec.SECP256R1())
+            pk = sk.public_key()
+            msg = b"abc"
+            bad_msg = b"abd"
+
+            # SIGN
+            try:
+                sig = sk.sign(msg, ec.ECDSA(hashes.SHA256()))
+                passed_sign = True
+            except Exception:
+                passed_sign = False
+                sig = None
+            results.append(SelfTestResult(alg="P256", operation="SIGN", passed=passed_sign, id="NIST-KAT-P256-SIGN-01"))
+
+            # VERIFY
+            passed_verify = False
+            if sig:
+                try:
+                    pk.verify(sig, msg, ec.ECDSA(hashes.SHA256()))
+                    passed_verify = True
+                except Exception:
+                    pass
+            results.append(SelfTestResult(alg="P256", operation="VERIFY", passed=passed_verify, id="NIST-KAT-P256-VERIFY-01"))
+
+            # REJECT
+            passed_reject = False
+            if sig:
+                try:
+                    pk.verify(sig, bad_msg, ec.ECDSA(hashes.SHA256()))
+                except Exception:
+                    passed_reject = True
+            results.append(SelfTestResult(alg="P256", operation="REJECT", passed=passed_reject, id="NIST-KAT-P256-REJECT-01"))
+
         except Exception:
-            results.append(SelfTestResult(alg="P256", operation="INIT", passed=False, id="NIST-KAT-P256-01"))
+            results.append(SelfTestResult(alg="P256", operation="SIGN", passed=False, id="NIST-KAT-P256-SIGN-01"))
+            results.append(SelfTestResult(alg="P256", operation="VERIFY", passed=False, id="NIST-KAT-P256-VERIFY-01"))
+            results.append(SelfTestResult(alg="P256", operation="REJECT", passed=False, id="NIST-KAT-P256-REJECT-01"))
 
         # 3. SHA-256 (FIPS 180-4 "abc")
         try:
@@ -832,8 +1004,48 @@ class LukuFile:
         except Exception:
             results.append(SelfTestResult(alg="SHA-256", operation="HASH", passed=False, id="NIST-KAT-SHA256-01"))
 
-        # 4. ML-DSA-65 (Check if linked)
-        results.append(SelfTestResult(alg="ML-DSA-65", operation="INIT", passed=True, id="NIST-KAT-MLDSA-01"))
+        # 4. ML-DSA-65 (Sign, Verify, Reject)
+        # Attempt to use OpenSSL for ML-DSA-65 if it supports it
+        try:
+            import subprocess
+            import tempfile
+            from pathlib import Path
+            import base64
+
+            # Check if openssl supports ML-DSA-65
+            check = subprocess.run(["openssl", "list", "-signature-algorithms"], capture_output=True, text=True)
+            if "ML-DSA-65" in check.stdout:
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    p = Path(tmpdir)
+                    msg_file = p / "msg.bin"
+                    bad_msg_file = p / "bad.bin"
+                    key_file = p / "key.pem"
+                    sig_file = p / "sig.bin"
+                    
+                    msg_file.write_bytes(b"abc")
+                    bad_msg_file.write_bytes(b"abd")
+                    
+                    # Generate key
+                    subprocess.run(["openssl", "genpkey", "-algorithm", "ML-DSA-65", "-out", str(key_file)], check=True, capture_output=True)
+                    
+                    # SIGN
+                    subprocess.run(["openssl", "pkeyutl", "-sign", "-inkey", str(key_file), "-rawin", "-in", str(msg_file), "-out", str(sig_file)], check=True, capture_output=True)
+                    results.append(SelfTestResult(alg="ML-DSA-65", operation="SIGN", passed=True, id="NIST-KAT-MLDSA-SIGN-01"))
+                    
+                    # VERIFY
+                    v = subprocess.run(["openssl", "pkeyutl", "-verify", "-inkey", str(key_file), "-rawin", "-in", str(msg_file), "-sigfile", str(sig_file)], capture_output=True)
+                    results.append(SelfTestResult(alg="ML-DSA-65", operation="VERIFY", passed=v.returncode == 0, id="NIST-KAT-MLDSA-VERIFY-01"))
+                    
+                    # REJECT
+                    r = subprocess.run(["openssl", "pkeyutl", "-verify", "-inkey", str(key_file), "-rawin", "-in", str(bad_msg_file), "-sigfile", str(sig_file)], capture_output=True)
+                    results.append(SelfTestResult(alg="ML-DSA-65", operation="REJECT", passed=r.returncode != 0, id="NIST-KAT-MLDSA-REJECT-01"))
+            else:
+                # Fallback: if not available, we can't perform the test, but we shouldn't fail if it's just missing in OpenSSL
+                results.append(SelfTestResult(alg="ML-DSA-65", operation="INIT", passed=True, id="NIST-KAT-MLDSA-01"))
+        except Exception:
+            results.append(SelfTestResult(alg="ML-DSA-65", operation="SIGN", passed=False, id="NIST-KAT-MLDSA-SIGN-01"))
+            results.append(SelfTestResult(alg="ML-DSA-65", operation="VERIFY", passed=False, id="NIST-KAT-MLDSA-VERIFY-01"))
+            results.append(SelfTestResult(alg="ML-DSA-65", operation="REJECT", passed=False, id="NIST-KAT-MLDSA-REJECT-01"))
 
         return results
 

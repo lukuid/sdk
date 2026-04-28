@@ -37,6 +37,7 @@ export interface DeviceInfo extends DeviceDescriptor {
   heartbeat_intermediate_der?: string | null;
   heartbeat_root_fingerprint?: string | null;
   verified: boolean;
+  telemetry?: boolean;
   lastSync?: number;
   counter: number;
   custom_heartbeat_url?: string | null;

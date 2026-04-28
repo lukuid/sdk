@@ -107,6 +107,8 @@ pub struct DeviceInfo {
     pub heartbeat_intermediate_der: Option<String>,
     pub heartbeat_root_fingerprint: Option<String>,
     pub verified: bool,
+    #[serde(default)]
+    pub telemetry: bool,
     #[serde(rename = "lastSync")]
     pub last_sync: Option<u64>,
     pub counter: u64,

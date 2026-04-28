@@ -246,8 +246,15 @@ internal class LukuCodec(
                 if (heartbeat.lastSlacSerial.isNotEmpty()) map["last_slac_serial"] = heartbeat.lastSlacSerial
             }
             LukuIDProto.CommandResponse.PayloadCase.FETCH_TELEMETRY -> {
-                map["data"] = response.fetchTelemetry.rowsList.map { row ->
+                val telemetry = response.fetchTelemetry
+                map["data"] = telemetry.rowsList.map { row ->
                     row.valuesList.map { telemetryValueToValue(it) }
+                }
+                if (telemetry.hasSignature()) {
+                    map["signature"] = telemetry.signature.toByteArray()
+                }
+                if (telemetry.hasCanonicalString()) {
+                    map["canonical_string"] = telemetry.canonicalString
                 }
             }
             else -> {}

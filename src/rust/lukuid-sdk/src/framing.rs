@@ -410,7 +410,7 @@ fn decode_command_response(bytes: &[u8]) -> Option<Value> {
             17 => {
                 let message = read_length_delimited(bytes, &mut cursor, wire_type)?;
                 let telemetry = decode_fetch_telemetry_response(message);
-                out.insert("data".to_string(), Value::Array(telemetry));
+                out.extend(telemetry);
             }
             18 => insert_bool(bytes, &mut cursor, wire_type, &mut out, "has_more")?,
             14 => {
@@ -2192,9 +2192,10 @@ fn decode_record_batch(bytes: &[u8]) -> Value {
     Value::Object(out)
 }
 
-fn decode_fetch_telemetry_response(bytes: &[u8]) -> Vec<Value> {
+fn decode_fetch_telemetry_response(bytes: &[u8]) -> Map<String, Value> {
     let mut cursor = 0usize;
     let mut rows = Vec::new();
+    let mut out = Map::new();
 
     while cursor < bytes.len() {
         let Some(key) = read_varint(bytes, &mut cursor) else {
@@ -2203,16 +2204,32 @@ fn decode_fetch_telemetry_response(bytes: &[u8]) -> Vec<Value> {
         let field = (key >> 3) as u32;
         let wire_type = (key & 0x07) as u8;
 
-        if field == 1 && wire_type == WIRE_LENGTH_DELIMITED {
-            if let Some(message) = read_length_delimited(bytes, &mut cursor, wire_type) {
-                rows.push(Value::Array(decode_telemetry_row(message)));
+        match field {
+            1 => {
+                if let Some(message) = read_length_delimited(bytes, &mut cursor, wire_type) {
+                    rows.push(Value::Array(decode_telemetry_row(message)));
+                }
             }
-        } else {
-            let _ = skip_field(bytes, &mut cursor, wire_type);
+            2 => {
+                if let Some(message) = read_length_delimited(bytes, &mut cursor, wire_type) {
+                    out.insert("signature".to_string(), Value::String(BASE64.encode(message)));
+                }
+            }
+            3 => {
+                if let Some(message) = read_length_delimited(bytes, &mut cursor, wire_type) {
+                    if let Ok(s) = String::from_utf8(message.to_vec()) {
+                        out.insert("canonical_string".to_string(), Value::String(s));
+                    }
+                }
+            }
+            _ => {
+                let _ = skip_field(bytes, &mut cursor, wire_type);
+            }
         }
     }
 
-    rows
+    out.insert("data".to_string(), Value::Array(rows));
+    out
 }
 
 fn decode_telemetry_row(bytes: &[u8]) -> Vec<Value> {
