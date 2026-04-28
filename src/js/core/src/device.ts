@@ -624,6 +624,7 @@ export function parseInfoPayload(
     name: typeof record.name === 'string' ? record.name : descriptor.name,
     verified: false,
     lastSync,
+    sync_required: typeof record.sync_required === 'boolean' ? record.sync_required : false,
     counter,
     custom_heartbeat_url:
       typeof record.custom_heartbeat_url === 'string'

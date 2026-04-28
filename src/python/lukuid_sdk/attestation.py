@@ -4,12 +4,14 @@ from __future__ import annotations
 import base64
 import os
 import re
-import subprocess
-import tempfile
 import hashlib
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from pathlib import Path
+
+from asn1crypto import x509 as asn1_x509
+from cryptography import x509
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519, rsa, padding
 
 
 @dataclass(slots=True)
@@ -88,12 +90,13 @@ gLjvqTmjo+iypD6GZdMXKzLENI7UihmAfH9RavJXqcpIDm8vsfDMhm5TOJ+3hXhU
 Qe6dXYJxc3jlWcfPKlw4PNCRFVR3CifduPZVcoglX0T5u9oO0NKXK2CtYlCEuGNA
 pjOnCIPI2cMpiUf5lEH1QMVO/l9xZlT+su+vquoCUvMOv1VPze3fOPWUqM4NZLGH
 An3vcUK1EKUcEwSS42kowvCKId1QL1QXdoUffG5K3zt+IfDMzYc6JufdUo+X3Bd5
-KUlj1lc7dh8MKDK/jWjrxj8V7zZA77Tc7/jde/fmKfMWFmxWG9U3nBjYb85AcSE5
+KUlj1lc7dh8MKDK/jWjrxj8V7zZAq7Tc7/jde/fmKfMWFmxWG9U3nBjYb85AcSE5
 vWn2BK/zwI8eimSdNLsY4o5Zo0IwQDAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB
 /wQEAwIBBjAdBgNVHQ4EFgQUcW3eH6pWJcD+uoLcPr0TuOYQjXcwCwYJYIZIAWUD
 BAMSA4IM7gAoefUnUDQbu8jhreiaeXW4B5nHFq4W0AKz8Tw8CceQxPwrOWwZ16nv
 FJYwkMQ4QRU6BjTpAt9b1nZL0JGgbliW1NgJ25/loqlpWJsdGzzYBleKUiOpQvAE
-iZaPk61niYug4g3X10iZ935XpvmraYXuRIOraMXaP1gJIbLy1EAAzRm6LEF5JBPZzIEbUg2mo1Q3Cm/rSWj4GnAdZ6MwqWoivbuoSBPTmx40uIY4dIm47AqNyl6BFEAD
+iZaPk61niYug4g3X10iZ935XpvmraYXuRIOraMXaP1gJIbLy1EAAzRm6LEF5JBPZ
+zIEbUg2mo1Q3Cm/rSWj4GnAdZ6MwqWoivbuoSBPTmx40uIY4dIm47AqNyl6BFEAD
 gwbbI7wuSHWH9+LwdQ5+4SL38zK526fGpWB6NYyfRMLf7TjXvm+p5zcStsvN+SOY
 +5xEFwN/EhMPnaqqIkPGNMnIPrdTJ9m0BtNuknSN2daiyLG2OQ7jg+V+ILYQPKXn
 9qm+3QH61FgLQnVkxH2ep1RC2h5Z2ROIBCeaLtuQDZUQSYeHKSinIJVKhLQuIhPx
@@ -113,7 +116,7 @@ o3V7gTD508r3Iw1dzezpPRNNPwMptiA6VkKXMgndNTKoC1HYOj39wiKnGQMlIYfu
 exn8qstwXepbAS5wgMCvneyX8yumIxjrZI9j1bEx0bP6Y/u6RwJSMVPJiuLrme99
 7UjR4Soi2O6JnQz7T1wRdTxLYUlg04TgckvJIEWKnGRxbxGpYmRtKK0UZ7Kpyu9h
 hxgzm3GWzltU886QXukGdjdB9RRBOTJ5VAMfj5E7ZaeyhIH+zcDtC0v57JW70KUX
-DaUfpqDWr0CyIbTOLsGBDL9U7LgKve93cH69ugPlTfTcwhGcgd/QbcKYnpfBII1L
+DaUfpqDWr0CyIbTOLsGBDl9U7LgKve93cH69ugPlTfTcwhGcgd/QbcKYnpfBII1L
 KDE6v3rbSFoVyw3z31RRp2RaGrFy6NzA2HHTcXU4cPif/xfGEFsVDHHCsPT49q8D
 c+hRu8SF7tde4kTBJJLezN1mdDBdnJjjTtd7wEsDRN6I+slSpyVHTqvOHvp9lff4
 +JXLljMbH/BdOdJTd9EmpjQd5rHcJ9Wb6FQy2BQX5nOYXL+q1RGfLbGdpUcy3f+l
@@ -122,7 +125,44 @@ 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
-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 DxQWGRk=
+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
+DxQWGRk=
 -----END CERTIFICATE-----"""
 ]
 
@@ -130,6 +170,12 @@ _CERT_PATTERN = re.compile(
     r"-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----"
 )
 _ED25519_SPKI_PREFIX = bytes.fromhex("302a300506032b6570032100")
+_PQC_SIGNATURE_ALGORITHMS = {
+    "2.16.840.1.101.3.4.3.17": "ML-DSA-44",
+    "2.16.840.1.101.3.4.3.18": "ML-DSA-65",
+    "2.16.840.1.101.3.4.3.19": "ML-DSA-87",
+}
+_oqs_module: object | None | bool = False
 
 
 def verify_device_attestation(inputs: DeviceAttestationInputs) -> VerificationResult:
@@ -177,7 +223,7 @@ def verify_device_attestation(inputs: DeviceAttestationInputs) -> VerificationRe
                 f"Certificate chain does not match the requested trust profile: {inputs.trust_profile}",
             )
 
-        # Enforce full end-to-end PQC chain-signature validation
+        # Enforce full end-to-end PQC chain-signature validation.
         for i in range(len(certs)):
             cert_pem = certs[i]
             verified = False
@@ -185,13 +231,13 @@ def verify_device_attestation(inputs: DeviceAttestationInputs) -> VerificationRe
                 next_cert_pem = certs[i+1]
                 next_meta = _certificate_metadata(next_cert_pem)
                 next_pub_pem = next_meta["public_key_pem"]
-                if _verify_cert_signature(cert_pem, next_pub_pem):
+                if _verify_cert_signature(cert_pem, next_pub_pem, next_cert_pem):
                     verified = True
             else:
                 for root_pem in TRUSTED_ROOT_CERTS_PEM:
                     try:
                         root_meta = _certificate_metadata(root_pem)
-                        if _verify_cert_signature(cert_pem, root_meta["public_key_pem"]):
+                        if _verify_cert_signature(cert_pem, root_meta["public_key_pem"], root_pem):
                             verified = True
                             break
                     except Exception:
@@ -237,12 +283,14 @@ def verify_device_attestation(inputs: DeviceAttestationInputs) -> VerificationRe
 
 def verify_detached_signature(public_key_base64: str, payload: bytes, signature_base64: str) -> bool:
     try:
-        raw_public_key = base64.b64decode(public_key_base64)
-        signature = base64.b64decode(signature_base64)
+        raw_public_key = base64.b64decode(public_key_base64, validate=True)
+        signature = base64.b64decode(signature_base64, validate=True)
     except Exception:
         return False
 
     if len(raw_public_key) < 32:
+        return False
+    if len(signature) != 64:
         return False
 
     public_key_pem = _ed25519_public_key_pem(raw_public_key[:32])
@@ -273,12 +321,13 @@ def verify_external_identity(inputs: ExternalIdentityInputs) -> VerificationResu
                 if hashlib.sha256(root_der_trusted).hexdigest() == actual_root_fingerprint:
                     leaf_pem = pem_from_der_string(inputs.cert_chain_der[0])
                     if leaf_pem:
-                        t = _tmp_file(leaf_pem)
-                        if "1.3.6.1.4.1.65432.1.4" in _run(["openssl", "x509", "-in", t, "-text", "-noout"]):
+                        leaf_cert = x509.load_pem_x509_certificate(leaf_pem.encode("utf-8"))
+                        if any(
+                            ext.oid.dotted_string == "1.3.6.1.4.1.65432.1.4"
+                            for ext in leaf_cert.extensions
+                        ):
                             trusted = True
-                            os.unlink(t)
                             break
-                        os.unlink(t)
             except Exception:
                 continue
 
@@ -297,58 +346,37 @@ def verify_external_identity(inputs: ExternalIdentityInputs) -> VerificationResu
 
 
 def sign_detached(private_key_pem: str, payload: bytes) -> str:
-    with tempfile.TemporaryDirectory() as tmpdir:
-        key_path = Path(tmpdir) / "key.pem"
-        payload_path = Path(tmpdir) / "payload.bin"
-        sig_path = Path(tmpdir) / "sig.bin"
-        key_path.write_text(private_key_pem, encoding="utf-8")
-        payload_path.write_bytes(payload)
-        _run(
-            [
-                "openssl",
-                "pkeyutl",
-                "-sign",
-                "-inkey",
-                str(key_path),
-                "-rawin",
-                "-in",
-                str(payload_path),
-                "-out",
-                str(sig_path),
-            ]
-        )
-        return base64.b64encode(sig_path.read_bytes()).decode("ascii")
+    private_key = serialization.load_pem_private_key(private_key_pem.encode("utf-8"), password=None)
+    if not isinstance(private_key, ed25519.Ed25519PrivateKey):
+        raise ValueError("Expected Ed25519 private key")
+    return base64.b64encode(private_key.sign(payload)).decode("ascii")
 
 
 def public_key_base64_from_private_key_pem(private_key_pem: str) -> str:
-    with tempfile.TemporaryDirectory() as tmpdir:
-        key_path = Path(tmpdir) / "key.pem"
-        pub_der_path = Path(tmpdir) / "pub.der"
-        key_path.write_text(private_key_pem, encoding="utf-8")
-        _run(
-            [
-                "openssl",
-                "pkey",
-                "-in",
-                str(key_path),
-                "-pubout",
-                "-outform",
-                "DER",
-                "-out",
-                str(pub_der_path),
-            ]
-        )
-        pub_der = pub_der_path.read_bytes()
-        return base64.b64encode(pub_der[-32:]).decode("ascii")
+    private_key = serialization.load_pem_private_key(private_key_pem.encode("utf-8"), password=None)
+    if not isinstance(private_key, ed25519.Ed25519PrivateKey):
+        raise ValueError("Expected Ed25519 private key")
+    public_key_bytes = private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    return base64.b64encode(public_key_bytes).decode("ascii")
 
 
 def generate_signer() -> tuple[str, str]:
-    with tempfile.TemporaryDirectory() as tmpdir:
-        key_path = Path(tmpdir) / "key.pem"
-        _run(["openssl", "genpkey", "-algorithm", "ED25519", "-out", str(key_path)])
-        private_key_pem = key_path.read_text(encoding="utf-8")
-        public_key_base64 = public_key_base64_from_private_key_pem(private_key_pem)
-        return private_key_pem, public_key_base64
+    private_key = ed25519.Ed25519PrivateKey.generate()
+    private_key_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode("utf-8")
+    public_key_base64 = base64.b64encode(
+        private_key.public_key().public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+    ).decode("ascii")
+    return private_key_pem, public_key_base64
 
 
 def pem_from_der_string(value: str | None) -> str | None:
@@ -364,176 +392,52 @@ def pem_from_der_string(value: str | None) -> str | None:
 
 
 def _verify_signature_with_pem(public_key_pem: str, payload: bytes, signature: bytes) -> bool:
-    with tempfile.TemporaryDirectory() as tmpdir:
-        pub_path = Path(tmpdir) / "pub.pem"
-        payload_path = Path(tmpdir) / "payload.bin"
-        sig_path = Path(tmpdir) / "sig.bin"
-        pub_path.write_text(public_key_pem, encoding="utf-8")
-        payload_path.write_bytes(payload)
-        sig_path.write_bytes(signature)
-        
-        result = subprocess.run(
-            [
-                "openssl",
-                "pkeyutl",
-                "-verify",
-                "-pubin",
-                "-inkey",
-                str(pub_path),
-                "-rawin",
-                "-in",
-                str(payload_path),
-                "-sigfile",
-                str(sig_path),
-            ],
-            capture_output=True,
-            text=True,
-        )
-        return result.returncode == 0
-
-
-
-def _verify_cert_signature(cert_pem: str, issuer_pub_pem: str) -> bool:
-    from cryptography import x509
-    from cryptography.hazmat.primitives.asymmetric import ec, ed25519, ed448, rsa, dsa
-    from cryptography.hazmat.primitives import hashes
-    from cryptography.exceptions import InvalidSignature
-    import base64
-    import tempfile
-    import subprocess
-    from pathlib import Path
-
     try:
-        cert = x509.load_pem_x509_certificate(cert_pem.encode('utf-8'))
-        
-        # Load the issuer public key
-        # cryptography doesn't easily load a public key PEM directly if we don't know the type, but we can do it:
-        from cryptography.hazmat.primitives import serialization
-        issuer_pk = serialization.load_pem_public_key(issuer_pub_pem.encode('utf-8'))
-        
-        # Try native cryptography verification
-        try:
-            if isinstance(issuer_pk, ec.EllipticCurvePublicKey):
-                issuer_pk.verify(cert.signature, cert.tbs_certificate_bytes, ec.ECDSA(cert.signature_hash_algorithm))
-                return True
-            elif isinstance(issuer_pk, ed25519.Ed25519PublicKey):
-                issuer_pk.verify(cert.signature, cert.tbs_certificate_bytes)
-                return True
-            elif isinstance(issuer_pk, rsa.RSAPublicKey):
-                from cryptography.hazmat.primitives.asymmetric import padding
-                issuer_pk.verify(cert.signature, cert.tbs_certificate_bytes, padding.PKCS1v15(), cert.signature_hash_algorithm)
-                return True
-            # For ML-DSA-65, it will fail to load or verify, falling back to openssl
-        except Exception:
-            pass
-            
+        public_key = serialization.load_pem_public_key(public_key_pem.encode("utf-8"))
+        return _verify_signature_with_public_key(public_key, payload, signature)
     except Exception:
-        pass
-
-    # Fallback to OpenSSL pkeyutl
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp = Path(tmpdir)
-        cert_path = tmp / "cert.pem"
-        issuer_pub_path = tmp / "issuer_pub.pem"
-        tbs_path = tmp / "tbs.bin"
-        sig_path = tmp / "sig.bin"
-        
-        cert_path.write_text(cert_pem, encoding="utf-8")
-        issuer_pub_path.write_text(issuer_pub_pem, encoding="utf-8")
-        
-        try:
-            cert = x509.load_pem_x509_certificate(cert_pem.encode('utf-8'))
-            tbs_path.write_bytes(cert.tbs_certificate_bytes)
-            sig_path.write_bytes(cert.signature)
-        except Exception:
-            return False
-
-
-
-        # Attempt openssl verify
-        result = subprocess.run(
-            [
-                "openssl",
-                "pkeyutl",
-                "-verify",
-                "-pubin",
-                "-inkey",
-                str(issuer_pub_path),
-                "-rawin",
-                "-in",
-                str(tbs_path),
-                "-sigfile",
-                str(sig_path),
-            ],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode == 0:
-            return True
-
-        if cert.signature_algorithm_oid.dotted_string == '2.16.840.1.101.3.4.3.18':
-            # Check if issuer_pub_pem matches any of the known trusted root pubkeys
-            from lukuid_sdk.attestation import TRUSTED_ROOT_CERTS_PEM, _certificate_metadata
-            for root_pem in TRUSTED_ROOT_CERTS_PEM:
-                try:
-                    if _certificate_metadata(root_pem)["public_key_pem"].strip() == issuer_pub_pem.strip():
-                        return True
-                except Exception:
-                    continue
-                    
         return False
 
 
-def _certificate_metadata(cert_pem: str) -> dict[str, any]:
-    with tempfile.TemporaryDirectory() as tmpdir:
-        cert_path = Path(tmpdir) / "cert.pem"
-        cert_path.write_text(cert_pem, encoding="utf-8")
-        result = _run(
-            [
-                "openssl",
-                "x509",
-                "-in",
-                str(cert_path),
-                "-noout",
-                "-subject",
-                "-dates",
-                "-pubkey",
-                "-nameopt",
-                "RFC2253",
-                "-text"
-            ]
-        )
 
-    lines = [line.strip() for line in result.splitlines() if line.strip()]
-    subject_line = next(line for line in lines if line.startswith("subject="))
-    not_before_line = next(line for line in lines if line.startswith("notBefore="))
-    not_after_line = next(line for line in lines if line.startswith("notAfter="))
-    pub_start = lines.index("-----BEGIN PUBLIC KEY-----")
-    public_key_pem = "\n".join(lines[pub_start:]) + "\n"
-    
-    sig_len = 0
-    if "Signature Value:" in result:
-        match = re.search(r"Signature Value:.*?([0-9a-f:]{50,})", result, re.DOTALL)
-        if match:
-            sig_len = len(match.group(1).replace(":", "").replace("\n", "").replace(" ", "")) // 2
+def _verify_cert_signature(cert_pem: str, issuer_pub_pem: str | None, issuer_cert_pem: str | None = None) -> bool:
+    try:
+        cert = x509.load_pem_x509_certificate(cert_pem.encode('utf-8'))
+        if issuer_pub_pem:
+            issuer_pk = serialization.load_pem_public_key(issuer_pub_pem.encode('utf-8'))
+            if _verify_certificate_signature_with_public_key(cert, issuer_pk):
+                return True
+    except Exception:
+        pass
+
+    if issuer_cert_pem:
+        oqs_result = _verify_certificate_signature_with_oqs(cert_pem, issuer_cert_pem)
+        if oqs_result is not None:
+            return oqs_result
+
+    return False
+
+
+def _certificate_metadata(cert_pem: str, include_pubkey: bool = True) -> dict[str, any]:
+    cert = x509.load_pem_x509_certificate(cert_pem.encode("utf-8"))
+    public_key_pem = None
+    if include_pubkey:
+        try:
+            public_key_pem = cert.public_key().public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+            ).decode("utf-8")
+        except Exception:
+            public_key_pem = None
 
     return {
-        "subject": subject_line.split("=", 1)[1],
-        "not_before": _parse_openssl_time(not_before_line.split("=", 1)[1]),
-        "not_after": _parse_openssl_time(not_after_line.split("=", 1)[1]),
+        "subject": cert.subject.rfc4514_string(),
+        "issuer": cert.issuer.rfc4514_string(),
+        "not_before": int(cert.not_valid_before_utc.timestamp()),
+        "not_after": int(cert.not_valid_after_utc.timestamp()),
         "public_key_pem": public_key_pem,
-        "sig_len": sig_len
+        "sig_len": len(cert.signature),
     }
-
-
-def _parse_openssl_time(value: str) -> int:
-    for fmt in ("%b %d %H:%M:%S %Y %Z", "%b %d %H:%M:%S %Y GMT"):
-        try:
-            parsed = datetime.strptime(value, fmt)
-            return int(parsed.replace(tzinfo=timezone.utc).timestamp())
-        except ValueError:
-            continue
-    raise ValueError(f"Unknown openssl time format: {value}")
 
 
 def _ed25519_public_key_pem(raw_public_key: bytes) -> str:
@@ -547,15 +451,122 @@ def _pem_to_der_b64(pem: str) -> str:
     return pem.replace("-----BEGIN CERTIFICATE-----", "").replace("-----END CERTIFICATE-----", "").replace("\n", "").replace("\r", "").replace(" ", "")
 
 
-def _tmp_file(content: str) -> str:
-    fd, path = tempfile.mkstemp()
-    with os.fdopen(fd, 'w') as f:
-        f.write(content)
-    return path
+def _verify_signature_with_public_key(public_key: object, payload: bytes, signature: bytes) -> bool:
+    try:
+        if isinstance(public_key, ed25519.Ed25519PublicKey):
+            public_key.verify(signature, payload)
+            return True
+        if isinstance(public_key, ec.EllipticCurvePublicKey):
+            public_key.verify(signature, payload, ec.ECDSA(hashes.SHA256()))
+            return True
+        if isinstance(public_key, rsa.RSAPublicKey):
+            public_key.verify(signature, payload, padding.PKCS1v15(), hashes.SHA256())
+            return True
+    except InvalidSignature:
+        return False
+    except Exception:
+        return False
+    return False
 
 
-def _run(cmd: list[str]) -> str:
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip() or result.stdout.strip() or "openssl command failed")
-    return result.stdout
+def _verify_certificate_signature_with_public_key(cert: x509.Certificate, issuer_public_key: object) -> bool:
+    try:
+        if isinstance(issuer_public_key, ec.EllipticCurvePublicKey):
+            issuer_public_key.verify(
+                cert.signature,
+                cert.tbs_certificate_bytes,
+                ec.ECDSA(cert.signature_hash_algorithm),
+            )
+            return True
+        if isinstance(issuer_public_key, ed25519.Ed25519PublicKey):
+            issuer_public_key.verify(cert.signature, cert.tbs_certificate_bytes)
+            return True
+        if isinstance(issuer_public_key, rsa.RSAPublicKey):
+            issuer_public_key.verify(
+                cert.signature,
+                cert.tbs_certificate_bytes,
+                padding.PKCS1v15(),
+                cert.signature_hash_algorithm,
+            )
+            return True
+    except InvalidSignature:
+        return False
+    except Exception:
+        return False
+    return False
+
+
+def _verify_certificate_signature_with_oqs(cert_pem: str, issuer_cert_pem: str) -> bool | None:
+    oqs_module = _get_oqs_module()
+    if oqs_module is None:
+        return None
+
+    try:
+        cert = x509.load_pem_x509_certificate(cert_pem.encode("utf-8"))
+    except Exception:
+        return None
+
+    algorithm = _PQC_SIGNATURE_ALGORITHMS.get(cert.signature_algorithm_oid.dotted_string)
+    if algorithm is None:
+        return None
+
+    try:
+        enabled = set(oqs_module.get_enabled_sig_mechanisms())
+    except Exception:
+        return False
+
+    if algorithm not in enabled:
+        return False
+
+    issuer_public_key = _extract_subject_public_key_bytes_from_cert(issuer_cert_pem)
+    if not issuer_public_key:
+        return False
+
+    try:
+        with oqs_module.Signature(algorithm) as verifier:
+            return bool(verifier.verify(cert.tbs_certificate_bytes, cert.signature, issuer_public_key))
+    except Exception:
+        return False
+
+
+def _extract_subject_public_key_bytes_from_cert(cert_pem: str) -> bytes | None:
+    try:
+        cert_der = base64.b64decode(_pem_to_der_b64(cert_pem), validate=True)
+        cert = asn1_x509.Certificate.load(cert_der)
+        spki = cert["tbs_certificate"]["subject_public_key_info"]
+
+        # We parse the inner ASN.1 manually to avoid KeyError on unknown PQC algorithm OIDs 
+        # that asn1crypto.keys.PublicKeyInfo throws when it tries to map the spec.
+        from asn1crypto import parser
+        spki_contents = spki.contents
+        if not spki_contents:
+            return None
+
+        # SubjectPublicKeyInfo is SEQUENCE { algorithm AlgorithmIdentifier, subjectPublicKey BIT STRING }
+        _, consumed = parser._parse(spki_contents, len(spki_contents), 0)
+        pk_info, _ = parser._parse(spki_contents, len(spki_contents), consumed)
+
+        # pk_info[4] is the contents of the BIT STRING
+        contents = pk_info[4]
+        if isinstance(contents, bytes) and len(contents) > 0:
+            if contents[0] == 0:
+                return contents[1:]
+            return contents
+    except Exception:
+        return None
+
+    return None
+
+
+def _get_oqs_module() -> object | None:
+    global _oqs_module
+    if _oqs_module is False:
+        try:
+            import oqs as imported_oqs
+            if hasattr(imported_oqs, "Signature") and hasattr(imported_oqs, "get_enabled_sig_mechanisms"):
+                _oqs_module = imported_oqs
+            else:
+                _oqs_module = None
+        except BaseException:
+            _oqs_module = None
+    return None if _oqs_module is False else _oqs_module

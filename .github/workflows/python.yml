@@ -41,8 +41,8 @@ jobs:
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             TAG_VERSION="${GITHUB_REF_NAME#v}"
             [[ "$TAG_VERSION" == "$VERSION" ]]
-            git fetch origin main --depth=1
-            git branch -r --contains "$GITHUB_SHA" | grep -q "origin/main"
+            git fetch origin main:refs/remotes/origin/main
+            git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/main
             echo "publish=true" >> "$GITHUB_OUTPUT"
           else
             echo "publish=false" >> "$GITHUB_OUTPUT"
@@ -54,13 +54,22 @@ jobs:
     needs: meta
     steps:
       - uses: actions/checkout@v4
+      - name: Install liboqs
+        run: |
+          git clone --branch 0.14.0 --depth 1 https://github.com/open-quantum-safe/liboqs
+          cmake -S liboqs -B liboqs/build -DBUILD_SHARED_LIBS=ON -DOQS_BUILD_ONLY_LIB=ON -DOQS_ENABLE_SIG_STFL_LMS=ON -DOQS_ENABLE_SIG_STFL_XMSS=ON -DOQS_HAZARDOUS_EXPERIMENTAL_ENABLE_SIG_STFL_KEY_SIG_GEN=ON -DCMAKE_INSTALL_PREFIX=$HOME/_oqs
+          cmake --build liboqs/build --parallel 4
+          cmake --build liboqs/build --target install
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - run: python3 scripts/version_sync.py check
       - run: python3 -m pip install --upgrade pip
       - run: python3 -m pip install -e src/python
-      - run: python3 -m unittest discover -s src/python/tests -p "test_*.py"
+      - name: Run Python SDK Tests
+        run: |
+          export OQS_INSTALL_PATH=$HOME/_oqs
+          python3 -m unittest discover -s src/python/tests -p "test_*.py"
 
   build:
     runs-on: ubuntu-latest
@@ -87,6 +96,7 @@ jobs:
       contents: write
       id-token: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: sdk-python-dist

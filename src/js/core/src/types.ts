@@ -39,6 +39,7 @@ export interface DeviceInfo extends DeviceDescriptor {
   verified: boolean;
   telemetry?: boolean;
   lastSync?: number;
+  sync_required?: boolean;
   counter: number;
   custom_heartbeat_url?: string | null;
   bio_reporting?: boolean;

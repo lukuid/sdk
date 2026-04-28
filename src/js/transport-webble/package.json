@@ -1,6 +1,6 @@
 {
   "name": "@lukuid/transport-webble",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "WebBluetooth transport for Lukuid devices.",
   "private": false,
   "type": "module",

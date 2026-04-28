@@ -51,8 +51,8 @@ jobs:
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             TAG_VERSION="${GITHUB_REF_NAME#v}"
             [[ "$TAG_VERSION" == "$VERSION" ]]
-            git fetch origin main --depth=1
-            git branch -r --contains "$GITHUB_SHA" | grep -q "origin/main"
+            git fetch origin main:refs/remotes/origin/main
+            git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/main
             echo "publish=true" >> "$GITHUB_OUTPUT"
           else
             echo "publish=false" >> "$GITHUB_OUTPUT"
@@ -151,7 +151,7 @@ jobs:
             src/js/transport-ble-node \
             src/js/transport-serial-node \
             src/js/sdk; do
-            pnpm --dir "$dir" publish --access public --provenance
+            pnpm --dir "$dir" publish --access public --provenance --no-git-checks
           done
       - name: Upload Release Assets
         env:
