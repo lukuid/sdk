@@ -1,6 +1,6 @@
 {
   "name": "@lukuid/transport-serial-node",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Node.js serial transport for Lukuid devices.",
   "private": false,
   "type": "module",

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 Pod::Spec.new do |s|
   s.name             = "LukuIDSDK"
-  s.version          = "1.0.7"
+  s.version          = "1.0.8"
   s.summary          = "LukuID iOS SDK for device communication and .luku verification."
   s.description      = <<-DESC
 LukuID iOS SDK for connecting to LukuID devices, parsing and verifying .luku
