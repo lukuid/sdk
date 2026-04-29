@@ -7,7 +7,7 @@ license = "Apache-2.0"
 repository = "https://github.com/lukuid/sdk"
 homepage = "https://github.com/lukuid/sdk"
 readme = "README.md"
-keywords = ["animal-id", "bluetooth", "lukuid", ".luku", "dotluku"]
+keywords = ["animal-id", "bluetooth", "lukuid", "forensic", "dotluku"]
 categories = ["hardware-support", "api-bindings"]
 
 [features]
