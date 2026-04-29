@@ -110,24 +110,13 @@ jobs:
           workspaces: |
             src/rust/lukuid-sdk -> target
       - run: python3 scripts/version_sync.py check
-      - name: Validate Rust release auth
-        shell: bash
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [[ "${{ vars.CRATES_IO_TRUSTED_PUBLISHING }}" != "true" ]] && [[ -z "${CARGO_REGISTRY_TOKEN:-}" ]]; then
-            echo "CARGO_REGISTRY_TOKEN is not configured in the release environment and crates.io trusted publishing is disabled." >&2
-            exit 1
-          fi
       - name: Authenticate crates.io Trusted Publishing
-        if: vars.CRATES_IO_TRUSTED_PUBLISHING == 'true'
         id: auth
         uses: rust-lang/crates-io-auth-action@v1
       - run: cargo package --manifest-path src/rust/lukuid-sdk/Cargo.toml --locked
       - run: cargo publish --manifest-path src/rust/lukuid-sdk/Cargo.toml --locked
         env:
-          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token != '' && steps.auth.outputs.token || secrets.CARGO_REGISTRY_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
       - name: Upload Release Asset
         env:
           GITHUB_TOKEN: ${{ github.token }}
