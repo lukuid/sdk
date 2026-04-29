@@ -1,105 +1,98 @@
 # LukuID SDK for Rust
 
-A pure Rust implementation of the LukuID SDK, offering transport-agnostic device discovery, verification, and communication.
+`lukuid-sdk` is the Rust crate for discovering LukuID devices, validating device identity, and opening or verifying `.luku` forensic evidence archives.
 
-## Capabilities
+It is suitable for desktop tools, backend services, factory utilities, and archive-only verification flows.
 
-- **Transports**: 
-  - **Serial**: Active probing of serial ports (requires `serialport`).
-  - **BLE**: Bluetooth Low Energy support via `btleplug`.
-- **Protocol**: Full implementation of the LUKU framing protocol.
-- **Security**: Ed25519 device attestation with root key rotation.
+## Install
 
-## Installation
+Add the crate with Cargo:
 
-Add the published crate to `Cargo.toml`:
+```bash
+cargo add lukuid-sdk
+```
+
+For transport-enabled applications, you will usually also want `tokio` and `serde_json`:
 
 ```toml
 [dependencies]
-lukuid-sdk = "0.1.0"
+lukuid-sdk = "1"
 tokio = { version = "1", features = ["full"] }
-serde_json = "1.0"
+serde_json = "1"
 ```
 
-For archive-only tools that only open or verify `.luku` packages, disable the default transport features:
+For archive-only tools that do not need BLE or serial system dependencies:
 
 ```toml
 [dependencies]
-lukuid-sdk = { version = "0.1.0", default-features = false }
+lukuid-sdk = { version = "1", default-features = false }
 ```
 
-## Cargo Features
+## Features
 
-- `transport-serial` enables `transport::serial::SerialTransport`.
-- `transport-ble` enables `transport::ble::BleTransport`.
-- Default features enable both transports. Set `default-features = false` for offline archive workflows that do not need device I/O.
+- `transport-serial` enables the built-in serial transport
+- `transport-ble` enables the built-in BLE transport
+- default features enable both transports
 
-## Usage
-
-### 1. Initialize a Transport
-
-You can use `SerialTransport` (for USB/UART) or `BleTransport`.
+## Quick start
 
 ```rust
 use lukuid_sdk::transport::serial::SerialTransport;
-use lukuid_sdk::transport::ble::BleTransport;
 use lukuid_sdk::Device;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let serial = SerialTransport::new();
-    let ble = BleTransport::new().await?;
-    
-    // ...
-}
-```
+    let transport = SerialTransport::new();
+    let devices = transport.list_connected().await;
 
-### 2. Discover Devices
-
-`list_connected()` returns devices that are already known or currently visible. Note that `SerialTransport` actively probes ports for LukuID compatibility.
-
-```rust
-let devices = serial.list_connected().await;
-for dev in devices {
-    println!("Found Serial device: {} (label: {:?})", dev.id, dev.label);
-}
-```
-
-### 3. Connect and Verify
-
-The `Device::connect` call performs the handshake, `INFO` command, and cryptographic attestation.
-
-```rust
-if let Some(target) = devices.first() {
-    let device = Device::connect(&serial, &target.id).await?;
-    println!("Connected to verified device: {}", device.info.id);
-}
-```
-
-### 4. Communicate
-
-**Send Commands:**
-
-Commands return the JSON payload from the device response.
-
-```rust
-let result = device.call("info", serde_json::json!({})).await?;
-println!("Response data: {:?}", result);
-```
-
-**Listen for Events:**
-
-```rust
-let mut rx = device.subscribe();
-tokio::spawn(async move {
-    while let Ok(event) = rx.recv().await {
-        println!("Event [{}]: {:?}", event.key, event.data);
+    if let Some(target) = devices.first() {
+        let device = Device::connect(&transport, &target.id).await?;
+        println!("connected to {}", device.info.id);
+        device.close().await;
     }
-});
+
+    Ok(())
+}
 ```
 
-### 5. Cleanup
+Archive-only verification:
 
 ```rust
-device.close().await;
+use std::fs;
+use lukuid_sdk::parse_bytes;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let bytes = fs::read("identity.luku")?;
+    let result = parse_bytes(&bytes)?;
+    println!("{}", result.verified);
+    Ok(())
+}
 ```
+
+## Parse envelope
+
+Verify a single envelope loaded as JSON:
+
+```rust
+use serde_json::Value;
+use std::fs;
+use lukuid_sdk::{LukuFile, LukuVerifyOptions};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let envelope: Value = serde_json::from_str(&fs::read_to_string("envelope.json")?)?;
+    let issues = LukuFile::verify_envelope(&envelope, LukuVerifyOptions::default());
+    println!("{issues:#?}");
+    Ok(())
+}
+```
+
+## Notes
+
+- The crate keeps the host-facing API JSON-shaped through `serde_json::Value`, while device traffic is encoded into the LukuID framing and protobuf schema expected by firmware.
+- Serial support uses `serialport`.
+- BLE support uses `btleplug`.
+
+## Documentation
+
+- Rust guide: https://github.com/lukuid/sdk/blob/main/docs/rust.md
+- Verification guide: https://github.com/lukuid/sdk/blob/main/docs/verification.md
