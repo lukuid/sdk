@@ -38,9 +38,9 @@ This repository is licensed under Apache License 2.0 (`SPDX: Apache-2.0`). See [
 | React web apps | `npm install @lukuid/sdk` |
 | Rust | `cargo add lukuid-sdk` |
 | Python | `python -m pip install lukuid-sdk` |
-| Swift Package Manager | `.package(url: "https://github.com/lukuid/sdk.git", from: "0.1.0")` |
-| CocoaPods | `pod 'LukuIDSDK', '~> 0.1'` |
-| Android / Maven Central | `implementation("com.lukuid:lukuid-sdk-android:0.1.0")` |
+| Swift Package Manager | `.package(url: "https://github.com/lukuid/sdk.git", from: "1.0.8")` |
+| CocoaPods | `pod 'LukuIDSDK', '~> 1.0'` |
+| Android / Maven Central | `implementation("com.lukuid:lukuid-sdk-android:1.0.8")` |
 
 The JavaScript release also publishes:
 
@@ -59,11 +59,11 @@ The SDK release version is governed by a single source of truth: [`VERSION`](VER
 When you want to cut a new SDK release:
 
 1. Update the canonical semver and sync every derived manifest:
-   `python3 scripts/version_sync.py apply 0.1.1`
+   `python3 scripts/version_sync.py apply 1.0.8`
 2. Verify that every managed package file matches:
    `python3 scripts/version_sync.py check`
 3. Review the resulting manifest changes and commit them normally.
-4. Create the release tag as `v0.1.1` after the release commit is on `main`.
+4. Create the release tag as `v1.0.8` after the release commit is on `main`.
 
 The release workflows do not publish on every merge. They only publish when all of the following are true:
 
