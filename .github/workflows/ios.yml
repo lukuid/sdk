@@ -69,6 +69,29 @@ jobs:
       - name: Lint CocoaPods Library
         if: github.event.repository.private == false
         run: pod lib lint LukuIDSDK.podspec --allow-warnings
+      - name: Lint CocoaPods Spec Snapshot
+        if: github.event.repository.private == false
+        shell: bash
+        env:
+          PODSPEC_SOURCE_GIT: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.clone_url || format('https://github.com/{0}.git', github.repository) }}
+          PODSPEC_SOURCE_COMMIT: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          source_git = os.environ["PODSPEC_SOURCE_GIT"]
+          source_commit = os.environ["PODSPEC_SOURCE_COMMIT"]
+          spec_path = Path("LukuIDSDK.podspec")
+          spec = spec_path.read_text(encoding="utf-8")
+          original = 's.source           = { :git => "https://github.com/lukuid/sdk.git", :tag => "v#{s.version}" }'
+          replacement = f's.source           = {{ :git => "{source_git}", :commit => "{source_commit}" }}'
+          if original not in spec:
+              raise SystemExit("Expected podspec source declaration not found")
+          Path("LukuIDSDK.ci.podspec").write_text(spec.replace(original, replacement, 1), encoding="utf-8")
+          PY
+          pod spec lint LukuIDSDK.ci.podspec --allow-warnings
 
   build:
     runs-on: macos-latest
