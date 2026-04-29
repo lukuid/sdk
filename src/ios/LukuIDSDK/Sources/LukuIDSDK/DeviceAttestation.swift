@@ -2,7 +2,6 @@
 import Foundation
 import CryptoKit
 import Security
-import MLDSANative
 
 struct DeviceAttestationInputs {
     let id: String
@@ -233,7 +232,7 @@ func verifyDeviceAttestation(_ inputs: DeviceAttestationInputs) -> Result<Void, 
                     verified = verifySignatureRobust(signature: fields.signature, tbs: fields.tbs, publicKey: nextPub)
                 }
             } else {
-                for (rootIdx, rootPEM) in TRUSTED_ROOT_CERTS_PEM.enumerated() {
+                for (_, rootPEM) in TRUSTED_ROOT_CERTS_PEM.enumerated() {
                     let rootCerts = parsePEMChain(rootPEM)
                     if let root = rootCerts.first, let rootPub = extractRawPublicKey(from: root) {
                         if verifySignatureRobust(signature: fields.signature, tbs: fields.tbs, publicKey: rootPub) {
@@ -436,33 +435,14 @@ private func verifyTemporalBirth(_ cert: SecCertificate, created: Int64) -> Bool
     return created >= range.validFrom && created <= range.validTo
 }
 
-private func certificateValues(_ cert: SecCertificate, keys: [CFString]) -> [CFString: Any] {
-    (SecCertificateCopyValues(cert, keys as CFArray, nil) as? [CFString: Any]) ?? [:]
-}
-
 private func certificateSubjectValues(_ cert: SecCertificate) -> [String] {
-    let values = certificateValues(cert, keys: [kSecOIDX509V1SubjectName])
-    guard
-        let subject = values[kSecOIDX509V1SubjectName] as? [CFString: Any],
-        let entries = subject[kSecPropertyKeyValue] as? [[CFString: Any]]
-    else {
-        return []
-    }
-
-    return entries.compactMap { entry in
-        entry[kSecPropertyKeyValue] as? String
-    }
+    let certData = SecCertificateCopyData(cert) as Data
+    return (try? ASN1Parser.extractSubjectValues(certData)) ?? []
 }
 
 private func certificateValidity(_ cert: SecCertificate) -> (validFrom: Int64, validTo: Int64) {
-    let values = certificateValues(cert, keys: [kSecOIDX509V1ValidityNotBefore, kSecOIDX509V1ValidityNotAfter])
-    let validFrom = (values[kSecOIDX509V1ValidityNotBefore] as? [CFString: Any])
-        .flatMap { $0[kSecPropertyKeyValue] as? NSNumber }
-        .map(\.int64Value) ?? Int64.min
-    let validTo = (values[kSecOIDX509V1ValidityNotAfter] as? [CFString: Any])
-        .flatMap { $0[kSecPropertyKeyValue] as? NSNumber }
-        .map(\.int64Value) ?? Int64.max
-    return (validFrom, validTo)
+    let certData = SecCertificateCopyData(cert) as Data
+    return (try? ASN1Parser.extractValidityRange(certData)) ?? (Int64.min, Int64.max)
 }
 
 private func sha256Hex(_ data: Data) -> String {

@@ -15,7 +15,20 @@ other platform SDKs.
   s.swift_versions   = ["5.9"]
   s.ios.deployment_target = "15.0"
   s.osx.deployment_target = "12.0"
-  s.source_files     = "src/ios/LukuIDSDK/Sources/LukuIDSDK/**/*.swift"
+  s.source_files     = [
+    "src/ios/LukuIDSDK/Sources/LukuIDSDK/**/*.swift",
+    "src/ios/LukuIDSDK/Sources/MLDSANative/*.c",
+    "src/ios/LukuIDSDK/Sources/MLDSANative/include/*.h"
+  ]
+  s.public_header_files = "src/ios/LukuIDSDK/Sources/MLDSANative/include/*.h"
+  s.pod_target_xcconfig = {
+    "HEADER_SEARCH_PATHS" => %(
+      "${PODS_TARGET_SRCROOT}/src/ios/LukuIDSDK/Sources/MLDSANative"
+      "${PODS_TARGET_SRCROOT}/src/ios/LukuIDSDK/Sources/MLDSANative/include"
+      "${PODS_TARGET_SRCROOT}/src/ios/LukuIDSDK/Sources/MLDSANative/src"
+      "${PODS_TARGET_SRCROOT}/src/ios/LukuIDSDK/Sources/MLDSANative/src/fips202"
+    ).gsub(/\s+/, " ").strip
+  }
   s.requires_arc     = true
 
   s.dependency "ZIPFoundation", "~> 0.9"

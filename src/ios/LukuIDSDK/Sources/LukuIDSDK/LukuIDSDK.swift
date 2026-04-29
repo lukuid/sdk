@@ -2,7 +2,6 @@
 import Foundation
 import CommonCrypto
 import CryptoKit
-import MLDSANative
 @preconcurrency import CoreBluetooth
 
 @objc(LukuIDSelfTestResult)
@@ -129,25 +128,25 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
         results.append(SelfTestResult(alg: "SHA-256", operation: "HASH", passed: passed, id: "NIST-KAT-SHA256-01"))
 
         // 4. ML-DSA-65 (Sign, Verify, Reject)
-        var pk = [UInt8](repeating: 0, count: Int(MLDSA65_PUBLICKEYBYTES))
-        var sk = [UInt8](repeating: 0, count: Int(MLDSA65_SECRETKEYBYTES))
-        var seed = [UInt8](repeating: 0, count: Int(MLDSA_SEEDBYTES))
+        var pk = [UInt8](repeating: 0, count: mldsa65PublicKeyBytes)
+        var sk = [UInt8](repeating: 0, count: mldsa65SecretKeyBytes)
+        var seed = [UInt8](repeating: 0, count: mldsaSeedBytes)
         seed[0] = 1 // Fixed seed for KAT
         
-        let keyGenResult = PQCP_MLDSA_NATIVE_MLDSA65_keypair_internal(&pk, &sk, &seed)
+        let keyGenResult = mldsa65KeypairInternal(publicKey: &pk, secretKey: &sk, seed: &seed)
         if keyGenResult == 0 {
             let msg = [UInt8]("abc".utf8)
             let badMsg = [UInt8]("abd".utf8)
-            var sig = [UInt8](repeating: 0, count: Int(MLDSA65_BYTES))
+            var sig = [UInt8](repeating: 0, count: mldsa65Bytes)
             var sigLen: Int = 0
             
-            let signResult = PQCP_MLDSA_NATIVE_MLDSA65_signature(&sig, &sigLen, msg, msg.count, nil, 0, &sk)
+            let signResult = mldsa65Signature(signature: &sig, signatureLength: &sigLen, message: msg, secretKey: &sk)
             results.append(SelfTestResult(alg: "ML-DSA-65", operation: "SIGN", passed: signResult == 0, id: "NIST-KAT-MLDSA-SIGN-01"))
             
-            let verifyResult = PQCP_MLDSA_NATIVE_MLDSA65_verify(&sig, sig.count, msg, msg.count, nil, 0, &pk)
+            let verifyResult = mldsa65Verify(signature: sig, message: msg, publicKey: pk)
             results.append(SelfTestResult(alg: "ML-DSA-65", operation: "VERIFY", passed: verifyResult == 0, id: "NIST-KAT-MLDSA-VERIFY-01"))
             
-            let rejectResult = PQCP_MLDSA_NATIVE_MLDSA65_verify(&sig, sig.count, badMsg, badMsg.count, nil, 0, &pk)
+            let rejectResult = mldsa65Verify(signature: sig, message: badMsg, publicKey: pk)
             results.append(SelfTestResult(alg: "ML-DSA-65", operation: "REJECT", passed: rejectResult != 0, id: "NIST-KAT-MLDSA-REJECT-01"))
         } else {
             results.append(SelfTestResult(alg: "ML-DSA-65", operation: "SIGN", passed: false, id: "NIST-KAT-MLDSA-SIGN-01"))
