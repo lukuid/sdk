@@ -159,10 +159,7 @@ jobs:
             src/js/transport-ble-node \
             src/js/transport-serial-node \
             src/js/sdk; do
-            (
-              cd "$dir"
-              pnpm publish --access public --provenance --no-git-checks
-            )
+            pnpm --dir "$dir" publish --access public --provenance --no-git-checks
           done
       - name: Upload Release Assets
         env:
