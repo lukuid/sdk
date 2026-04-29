@@ -132,6 +132,14 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
           registry-url: https://registry.npmjs.org
+      - name: Validate npm release secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${NODE_AUTH_TOKEN:-}" ]]; then
+            echo "NPM_TOKEN is not configured in the release environment." >&2
+            exit 1
+          fi
       - name: Install Protoc
         run: |
           sudo apt-get update
@@ -151,7 +159,10 @@ jobs:
             src/js/transport-ble-node \
             src/js/transport-serial-node \
             src/js/sdk; do
-            pnpm --dir "$dir" publish --access public --provenance --no-git-checks
+            (
+              cd "$dir"
+              pnpm publish --access public --provenance --no-git-checks
+            )
           done
       - name: Upload Release Assets
         env:
