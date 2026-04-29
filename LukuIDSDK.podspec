@@ -20,6 +20,7 @@ other platform SDKs.
     "src/ios/LukuIDSDK/Sources/MLDSANative/*.c",
     "src/ios/LukuIDSDK/Sources/MLDSANative/include/*.h"
   ]
+  s.preserve_paths   = "src/ios/LukuIDSDK/Sources/MLDSANative/src/**/*"
   s.public_header_files = "src/ios/LukuIDSDK/Sources/MLDSANative/include/*.h"
   s.pod_target_xcconfig = {
     "HEADER_SEARCH_PATHS" => %(
