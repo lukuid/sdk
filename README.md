@@ -11,14 +11,15 @@ This repository is licensed under Apache License 2.0 (`SPDX: Apache-2.0`). See [
 [![SDK Python](https://github.com/lukuid/sdk/actions/workflows/python.yml/badge.svg)](https://github.com/lukuid/sdk/actions/workflows/python.yml)
 [![SDK iOS](https://github.com/lukuid/sdk/actions/workflows/ios.yml/badge.svg)](https://github.com/lukuid/sdk/actions/workflows/ios.yml)
 [![SDK Android](https://github.com/lukuid/sdk/actions/workflows/android.yml/badge.svg)](https://github.com/lukuid/sdk/actions/workflows/android.yml)
-[![npm version](https://img.shields.io/npm/v/%40lukuid%2Fsdk?style=flat-square&logo=npm)](https://www.npmjs.com/package/@lukuid/sdk)
 
 ## Published Status
 
+[![npm version](https://img.shields.io/npm/v/%40lukuid%2Fsdk?style=flat-square&logo=npm)](https://www.npmjs.com/package/@lukuid/sdk)
 [![crates.io](https://img.shields.io/crates/v/lukuid-sdk?style=flat-square&logo=rust)](https://crates.io/crates/lukuid-sdk)
 [![PyPI](https://img.shields.io/pypi/v/lukuid-sdk?style=flat-square&logo=pypi)](https://pypi.org/project/lukuid-sdk/)
 [![Maven Central](https://img.shields.io/maven-central/v/com.lukuid/lukuid-sdk-android?style=flat-square&logo=apachemaven)](https://central.sonatype.com/artifact/com.lukuid/lukuid-sdk-android)
-[![CocoaPods](https://img.shields.io/cocoapods/v/LukuIDSDK?style=flat-square)](https://cocoapods.org/pods/LukuIDSDK)
+[![CocoaPods](https://img.shields.io/cocoapods/v/LukuIDSDK?style=flat-square&logo=cocoapods)](https://cocoapods.org/pods/LukuIDSDK)
+[![SwiftPM](https://img.shields.io/badge/SwiftPM-compatible-orange?style=flat-square&logo=swift)](https://github.com/lukuid/sdk)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square)](LICENSE)
 
 ## Supported platforms
