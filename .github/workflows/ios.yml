@@ -89,9 +89,9 @@ jobs:
           replacement = f's.source           = {{ :git => "{source_git}", :commit => "{source_commit}" }}'
           if original not in spec:
               raise SystemExit("Expected podspec source declaration not found")
-          Path("LukuIDSDK.ci.podspec").write_text(spec.replace(original, replacement, 1), encoding="utf-8")
+          Path("LukuIDSDK.podspec").write_text(spec.replace(original, replacement, 1), encoding="utf-8")
           PY
-          pod spec lint LukuIDSDK.ci.podspec --allow-warnings
+          pod spec lint LukuIDSDK.podspec --allow-warnings
 
   build:
     runs-on: macos-latest
