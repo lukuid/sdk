@@ -1,6 +1,6 @@
 {
   "name": "@lukuid/core",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "Shared primitives for the Lukuid JS SDK.",
   "private": false,
   "type": "module",
