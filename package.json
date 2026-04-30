@@ -1,7 +1,7 @@
 {
   "name": "@lukuid/monorepo",
   "private": true,
-  "version": "1.0.8",
+  "version": "1.0.9",
   "license": "Apache-2.0",
   "packageManager": "pnpm@8.15.0",
   "scripts": {
