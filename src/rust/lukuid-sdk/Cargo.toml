@@ -1,6 +1,6 @@
 [package]
 name = "lukuid-sdk"
-version = "1.0.9"
+version = "1.0.10"
 edition = "2021"
 description = "Rust SDK to talk with LukuID devices and verify .luku files"
 license = "Apache-2.0"
