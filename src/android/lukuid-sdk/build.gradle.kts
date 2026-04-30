@@ -12,7 +12,7 @@ plugins {
 }
 
 group = "com.lukuid"
-version = (findProperty("VERSION_NAME") as String?) ?: "1.0.10"
+version = (findProperty("VERSION_NAME") as String?) ?: "1.0.11"
 
 android {
     namespace = "com.lukuid.sdk"
