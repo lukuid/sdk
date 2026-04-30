@@ -1,6 +1,6 @@
 {
   "name": "@lukuid/transport-ble-node",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "Node.js BLE transport for Lukuid devices.",
   "private": false,
   "type": "module",
