@@ -142,7 +142,12 @@ jobs:
         if: github.event.repository.private == false
         env:
           COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
-        run: pod trunk push LukuIDSDK.podspec --allow-warnings
+        run: |
+          if [ -z "$COCOAPODS_TRUNK_TOKEN" ]; then
+            echo "COCOAPODS_TRUNK_TOKEN is not configured. Skipping publish."
+            exit 0
+          fi
+          pod trunk push LukuIDSDK.podspec --allow-warnings
       - name: Package SwiftPM Source Bundle
         shell: bash
         run: |

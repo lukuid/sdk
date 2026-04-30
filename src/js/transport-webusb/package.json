@@ -1,6 +1,6 @@
 {
   "name": "@lukuid/transport-webusb",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "WebUSB transport for Lukuid devices.",
   "private": false,
   "type": "module",
