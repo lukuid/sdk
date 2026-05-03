@@ -29,7 +29,7 @@ class MLDSANativeVerifier: MLDSAVerifier {
     }
 }
 
-#if canImport(CryptoKit) && compiler(>=6.0)
+#if canImport(CryptoKit) && compiler(>=6.2)
 @available(iOS 26.0, macOS 26.0, *)
 class CryptoKitMLDSAVerifier: MLDSAVerifier {
     func verify(signature: Data, message: Data, publicKey: Data) -> Bool {

@@ -32,7 +32,7 @@ final class MLDSAVerifierTests: XCTestCase {
     }
 
     func testCryptoKitImplementationIfAvailable() {
-#if canImport(CryptoKit) && compiler(>=6.0)
+#if canImport(CryptoKit) && compiler(>=6.2)
         if #available(iOS 26.0, macOS 26.0, *) {
             // Generate keys and signature using the C implementation
             var pk = [UInt8](repeating: 0, count: mldsa65PublicKeyBytes)
