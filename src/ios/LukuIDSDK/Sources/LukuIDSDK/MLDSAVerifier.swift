@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import Foundation
+#if canImport(CryptoKit)
+import CryptoKit
+#endif
 
 protocol MLDSAVerifier {
     func verify(signature: Data, message: Data, publicKey: Data) -> Bool
@@ -25,3 +28,23 @@ class MLDSANativeVerifier: MLDSAVerifier {
         return result == 0
     }
 }
+
+#if canImport(CryptoKit)
+@available(iOS 26.0, macOS 26.0, *)
+class CryptoKitMLDSAVerifier: MLDSAVerifier {
+    func verify(signature: Data, message: Data, publicKey: Data) -> Bool {
+        guard signature.count == mldsa65Bytes, publicKey.count >= mldsa65PublicKeyBytes else {
+            return false
+        }
+        
+        let pubKeyRaw = publicKey.suffix(mldsa65PublicKeyBytes)
+        
+        do {
+            let mldsaPublicKey = try MLDSA65.PublicKey(rawRepresentation: pubKeyRaw)
+            return mldsaPublicKey.isValidSignature(signature, for: message)
+        } catch {
+            return false
+        }
+    }
+}
+#endif

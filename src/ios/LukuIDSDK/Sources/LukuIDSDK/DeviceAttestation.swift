@@ -348,7 +348,14 @@ func verifyExternalIdentity(_ inputs: ExternalIdentityInputs) -> Result<Void, De
 
 // MARK: - Robust Signature Verification
 
-private let mldsaVerifier: MLDSAVerifier = MLDSANativeVerifier()
+private let mldsaVerifier: MLDSAVerifier = {
+#if canImport(CryptoKit)
+    if #available(iOS 26.0, macOS 26.0, *) {
+        return CryptoKitMLDSAVerifier()
+    }
+#endif
+    return MLDSANativeVerifier()
+}()
 
 private func verifySignatureRobust(signature: Data, tbs: Data, publicKey: Data) -> Bool {
     // 1. Try ML-DSA-65
