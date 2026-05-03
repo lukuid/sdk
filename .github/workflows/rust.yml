@@ -102,19 +102,36 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           import pathlib
-          import re
 
-          text = pathlib.Path("coverage/rust/coverage.txt").read_text(encoding="utf-8")
-          summary_line = None
-          for line in text.splitlines():
-              if line.strip().startswith("TOTAL"):
-                  summary_line = line.strip()
-                  break
+          lcov_path = pathlib.Path("coverage/rust/lcov.info")
+          line_found = line_hit = 0
+          func_found = func_hit = 0
+          branch_found = branch_hit = 0
+
+          if lcov_path.exists():
+              for raw_line in lcov_path.read_text(encoding="utf-8").splitlines():
+                  if raw_line.startswith("LF:"):
+                      line_found += int(raw_line.split(":", 1)[1])
+                  elif raw_line.startswith("LH:"):
+                      line_hit += int(raw_line.split(":", 1)[1])
+                  elif raw_line.startswith("FNF:"):
+                      func_found += int(raw_line.split(":", 1)[1])
+                  elif raw_line.startswith("FNH:"):
+                      func_hit += int(raw_line.split(":", 1)[1])
+                  elif raw_line.startswith("BRF:"):
+                      branch_found += int(raw_line.split(":", 1)[1])
+                  elif raw_line.startswith("BRH:"):
+                      branch_hit += int(raw_line.split(":", 1)[1])
+
+          def pct(hit, found):
+              return f"{(hit / found * 100):.2f}%" if found else "n/a"
 
           summary = [
               "## SDK Rust Coverage",
               "",
-              f"- `{summary_line}`" if summary_line else "- Total coverage summary could not be parsed from `coverage/rust/coverage.txt`.",
+              f"- Line coverage: `{pct(line_hit, line_found)}` (`{line_hit}/{line_found}`)",
+              f"- Function coverage: `{pct(func_hit, func_found)}` (`{func_hit}/{func_found}`)",
+              f"- Branch coverage: `{pct(branch_hit, branch_found)}` (`{branch_hit}/{branch_found}`)",
               "- LCOV output is attached as an artifact.",
               "- This is report-only today. Remove `continue-on-error: true` on the job and add explicit thresholds later when you want coverage to gate CI.",
           ]
