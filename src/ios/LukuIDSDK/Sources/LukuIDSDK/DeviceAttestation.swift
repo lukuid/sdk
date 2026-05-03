@@ -349,7 +349,7 @@ func verifyExternalIdentity(_ inputs: ExternalIdentityInputs) -> Result<Void, De
 // MARK: - Robust Signature Verification
 
 private let mldsaVerifier: MLDSAVerifier = {
-#if canImport(CryptoKit)
+#if canImport(CryptoKit) && compiler(>=6.0)
     if #available(iOS 26.0, macOS 26.0, *) {
         return CryptoKitMLDSAVerifier()
     }

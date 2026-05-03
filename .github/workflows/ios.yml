@@ -54,7 +54,14 @@ jobs:
       - run: python3 scripts/version_sync.py check
 
   test:
-    runs-on: macos-latest
+    name: Test on macOS ${{ matrix.macos }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - macos: macos-13
+          - macos: macos-latest
+    runs-on: ${{ matrix.macos }}
     needs: meta
     steps:
       - uses: actions/checkout@v4
