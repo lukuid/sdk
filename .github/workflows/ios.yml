@@ -99,6 +99,75 @@ jobs:
           PY
           pod spec lint LukuIDSDK.podspec --allow-warnings
 
+  coverage:
+    runs-on: macos-latest
+    needs: [meta, test]
+    if: needs.test.result == 'success'
+    continue-on-error: true # Report-only for now. Remove this line later to make coverage failures block the pipeline.
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/version_sync.py check
+      - name: Run Swift Coverage
+        run: /usr/bin/swift test --enable-code-coverage --package-path src/ios/LukuIDSDK
+      - name: Summarize Coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p coverage/ios
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          coverage_files = sorted(Path("src/ios/LukuIDSDK/.build").glob("**/debug/codecov/*.json"))
+          coverage_file = next((path for path in coverage_files if path.name.endswith(".json")), None)
+          summary_path = Path("coverage/ios/summary.md")
+
+          if coverage_file is None:
+              lines = [
+                  "## SDK iOS Coverage",
+                  "",
+                  "- Swift coverage JSON was not found under `.build/**/debug/codecov/`.",
+                  "- This is report-only today. Remove `continue-on-error: true` on the job and add explicit thresholds later when you want coverage to gate CI.",
+              ]
+          else:
+              payload = json.loads(coverage_file.read_text(encoding="utf-8"))
+              files = [
+                  item for item in payload["data"][0]["files"]
+                  if "/Sources/LukuIDSDK/" in item["filename"]
+                  and "/.build/" not in item["filename"]
+                  and not item["filename"].endswith("lukuid.pb.swift")
+              ]
+
+              line_count = sum(item["summary"]["lines"]["count"] for item in files)
+              line_covered = sum(item["summary"]["lines"]["covered"] for item in files)
+              func_count = sum(item["summary"]["functions"]["count"] for item in files)
+              func_covered = sum(item["summary"]["functions"]["covered"] for item in files)
+
+              line_pct = f"{(line_covered / line_count * 100):.2f}%" if line_count else "0.00%"
+              func_pct = f"{(func_covered / func_count * 100):.2f}%" if func_count else "0.00%"
+
+              lines = [
+                  "## SDK iOS Coverage",
+                  "",
+                  f"- Hand-written `Sources/LukuIDSDK` line coverage excluding generated `lukuid.pb.swift`: `{line_pct}`",
+                  f"- Hand-written `Sources/LukuIDSDK` function coverage excluding generated `lukuid.pb.swift`: `{func_pct}`",
+                  f"- Raw Swift coverage export: `{coverage_file}`",
+                  "- This is report-only today. Remove `continue-on-error: true` on the job and add explicit thresholds later when you want coverage to gate CI.",
+              ]
+
+          summary_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          print("\n".join(lines))
+          PY
+          cat coverage/ios/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sdk-ios-coverage
+          path: |
+            coverage/ios/**
+            src/ios/LukuIDSDK/.build/**/debug/codecov/**
+          if-no-files-found: warn
+
   build:
     runs-on: macos-latest
     needs: [meta, test]

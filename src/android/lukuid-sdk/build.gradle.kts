@@ -1,18 +1,24 @@
 import org.gradle.jvm.tasks.Jar
 import org.gradle.plugins.signing.Sign
 import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.testing.jacoco.tasks.JacocoReport
 
 // SPDX-License-Identifier: Apache-2.0
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
     id("com.google.protobuf")
+    id("jacoco")
     id("maven-publish")
     id("signing")
 }
 
 group = "com.lukuid"
 version = (findProperty("VERSION_NAME") as String?) ?: "1.0.14"
+
+jacoco {
+    toolVersion = "0.8.12"
+}
 
 android {
     namespace = "com.lukuid.sdk"
@@ -164,4 +170,49 @@ signing {
 
 tasks.withType<Sign>().configureEach {
     onlyIf { !signingKey.isNullOrBlank() }
+}
+
+tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
+    dependsOn("testDebugUnitTest")
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        csv.required.set(false)
+    }
+
+    val coverageExcludes = listOf(
+        "**/R.class",
+        "**/R$*.class",
+        "**/BuildConfig.*",
+        "**/Manifest*.*",
+        "**/*Test*.*",
+        "**/*${'$'}Companion.class",
+        "**/*${'$'}WhenMappings.class"
+    )
+
+    classDirectories.setFrom(
+        files(
+            fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
+                exclude(coverageExcludes)
+            },
+            fileTree(layout.buildDirectory.dir("intermediates/javac/debug/compileDebugJavaWithJavac/classes")) {
+                exclude(coverageExcludes)
+            }
+        )
+    )
+
+    sourceDirectories.setFrom(
+        files(
+            projectDir.resolve("src/main/java"),
+            projectDir.resolve("src/main/kotlin")
+        )
+    )
+
+    executionData.setFrom(
+        files(
+            layout.buildDirectory.file("jacoco/testDebugUnitTest.exec"),
+            layout.buildDirectory.file("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
+        )
+    )
 }
