@@ -39,9 +39,9 @@ This repository is licensed under Apache License 2.0 (`SPDX: Apache-2.0`). See [
 | React web apps | `npm install @lukuid/sdk` |
 | Rust | `cargo add lukuid-sdk` |
 | Python | `python -m pip install lukuid-sdk` |
-| Swift Package Manager | `.package(url: "https://github.com/lukuid/sdk.git", from: "1.0.15")` |
+| Swift Package Manager | `.package(url: "https://github.com/lukuid/sdk.git", from: "1.0.16")` |
 | CocoaPods | `pod 'LukuIDSDK', '~> 1.0'` |
-| Android / Maven Central | `implementation("com.lukuid:lukuid-sdk-android:1.0.15")` |
+| Android / Maven Central | `implementation("com.lukuid:lukuid-sdk-android:1.0.16")` |
 
 The JavaScript release also publishes:
 

@@ -39,6 +39,18 @@ TEXT_TARGETS = [
         "replacement": lambda version: f'  s.version          = "{version}"',
         "extract": lambda content, pattern: re.search(r'"([^"]+)"', pattern.search(content).group(0)).group(1) if pattern.search(content) else None,
     },
+    {
+        "path": ROOT / "README.md",
+        "pattern": re.compile(r'(?m)^\| Swift Package Manager \| `\.package\(url: "https://github\.com/lukuid/sdk\.git", from: "[^"]+"\)` \|$'),
+        "replacement": lambda version: f'| Swift Package Manager | `.package(url: "https://github.com/lukuid/sdk.git", from: "{version}")` |',
+        "extract": lambda content, pattern: re.search(r'from: "([^"]+)"', pattern.search(content).group(0)).group(1) if pattern.search(content) else None,
+    },
+    {
+        "path": ROOT / "README.md",
+        "pattern": re.compile(r'(?m)^\| Android / Maven Central \| `implementation\("com\.lukuid:lukuid-sdk-android:[^"]+"\)` \|$'),
+        "replacement": lambda version: f'| Android / Maven Central | `implementation("com.lukuid:lukuid-sdk-android:{version}")` |',
+        "extract": lambda content, pattern: re.search(r'android:([^"]+)"', pattern.search(content).group(0)).group(1) if pattern.search(content) else None,
+    },
 ]
 
 
