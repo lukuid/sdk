@@ -210,15 +210,9 @@ jobs:
       - name: Publish Packages
         shell: bash
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
-
-          # Conditionally configure NPM token if provided
-          if [ -n "${NPM_TOKEN:-}" ]; then
-            echo "Configuring NPM token for authentication"
-            echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
-          fi
 
           for dir in \
             src/js/core \
@@ -236,7 +230,7 @@ jobs:
                 exit 0
               fi
 
-              if [ -n "${NPM_TOKEN:-}" ]; then
+              if [ -n "${NODE_AUTH_TOKEN:-}" ]; then
                 pnpm publish --access public --no-git-checks
               else
                 pnpm publish --access public --provenance --no-git-checks

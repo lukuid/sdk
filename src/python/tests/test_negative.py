@@ -74,12 +74,11 @@ class TestNegativeTampering(unittest.TestCase):
         # Tamper with signature in the first block's first record
         record = archive.blocks[0].batch[0]
         original_sig = record["signature"]
-        new_sig = original_sig.replace("A", "B")
-        if new_sig == original_sig:
-            new_sig = original_sig.replace("B", "A")
-        if new_sig == original_sig:
-            new_sig = original_sig + "X"
-        record["signature"] = new_sig
+        
+        # Deterministically alter the first character so the signature remains valid base64 
+        # but fails cryptographic verification.
+        new_char = 'B' if original_sig[0] == 'A' else 'A'
+        record["signature"] = new_char + original_sig[1:]
         
         issues = archive.verify(self.get_test_options())
         self.assertTrue(any(i.code in ["RECORD_SIGNATURE_INVALID", "ATTESTATION_FAILED"] for i in issues))
