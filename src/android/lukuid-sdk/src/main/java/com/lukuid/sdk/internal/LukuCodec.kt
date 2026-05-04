@@ -193,7 +193,7 @@ internal class LukuCodec(
                 if (info.revision.isNotEmpty()) map["revision"] = info.revision
                 map["pairing"] = info.pairing
                 if (info.customHeartbeatUrl.isNotEmpty()) map["custom_heartbeat_url"] = info.customHeartbeatUrl
-                map["telemetry"] = info.telemetry
+                map["network_participation_enabled"] = info.networkParticipationEnabled
                 if (info.managedBy.isNotEmpty()) map["managed_by"] = info.managedBy
                 if (!info.attestationDacDer.isEmpty) map["attestation_dac_der"] = info.attestationDacDer.toByteArray()
                 if (!info.attestationManufacturerDer.isEmpty) map["attestation_manufacturer_der"] = info.attestationManufacturerDer.toByteArray()
@@ -205,6 +205,10 @@ internal class LukuCodec(
                 if (info.heartbeatRootFingerprint.isNotEmpty()) map["heartbeat_root_fingerprint"] = info.heartbeatRootFingerprint
                 if (!info.signature.isEmpty) map["signature"] = info.signature.toByteArray()
                 if (!info.key.isEmpty) map["key"] = info.key.toByteArray()
+                
+                map["upload_mode"] = info.uploadModeValue
+                if (info.uploadDestination.isNotEmpty()) map["upload_destination"] = info.uploadDestination
+                map["upload_auth"] = info.uploadAuthValue
             }
             LukuIDProto.CommandResponse.PayloadCase.NETWORK_CONFIG -> {
                 val config = response.networkConfig
@@ -213,13 +217,20 @@ internal class LukuCodec(
                 if (config.mqttBrokerUrl.isNotEmpty()) map["mqtt_broker_url"] = config.mqttBrokerUrl
                 map["mqtt_port"] = config.mqttPort
                 if (config.mqttTopic.isNotEmpty()) map["mqtt_topic"] = config.mqttTopic
-                map["mqtt_broadcast_frequency_seconds"] = config.mqttBroadcastFrequencySeconds
                 if (config.mqttUsername.isNotEmpty()) map["mqtt_username"] = config.mqttUsername
                 map["mqtt_password_set"] = config.mqttPasswordSet
                 map["mqtt_broadcast_enabled"] = config.mqttBroadcastEnabled
                 if (!config.csr.isEmpty) map["csr"] = config.csr.toByteArray()
                 if (!config.mqttCertificateDer.isEmpty) map["mqtt_certificate_der"] = config.mqttCertificateDer.toByteArray()
                 if (!config.mqttCaDer.isEmpty) map["mqtt_ca_der"] = config.mqttCaDer.toByteArray()
+
+                map["upload_mode"] = config.uploadModeValue
+                if (config.uploadDestination.isNotEmpty()) map["upload_destination"] = config.uploadDestination
+                map["upload_auth"] = config.uploadAuthValue
+                if (config.uploadTokenKey.isNotEmpty()) map["upload_token_key"] = config.uploadTokenKey
+                map["upload_token_type"] = config.uploadTokenTypeValue
+                if (config.uploadTopic.isNotEmpty()) map["upload_topic"] = config.uploadTopic
+                map["upload_frequency"] = config.uploadFrequency
             }
             LukuIDProto.CommandResponse.PayloadCase.SCAN_RECORD -> {
                 map["scan_record"] = scanRecordToMap(response.scanRecord)
@@ -483,14 +494,24 @@ internal class LukuCodec(
                     asString("mqtt_broker_url")?.let { config.mqttBrokerUrl = it }
                     asInt("mqtt_port")?.let { config.mqttPort = it }
                     asString("mqtt_topic")?.let { config.mqttTopic = it }
-                    asInt("mqtt_broadcast_frequency_seconds")?.let { config.mqttBroadcastFrequencySeconds = it }
                     asString("mqtt_username")?.let { config.mqttUsername = it }
                     asString("mqtt_password")?.let { config.mqttPassword = it }
                     asBytes("mqtt_certificate_der")?.let { config.mqttCertificateDer = it }
                     asBytes("mqtt_ca_der")?.let { config.mqttCaDer = it }
                     asBool("mqtt_broadcast_enabled")?.let { config.mqttBroadcastEnabled = it }
                     asString("custom_heartbeat_url")?.let { config.customHeartbeatUrl = it }
-                    asBool("telemetry_enabled")?.let { config.telemetryEnabled = it }
+                    asBool("network_participation_enabled")?.let { config.networkParticipationEnabled = it }
+
+                    asInt("upload_mode")?.let { config.uploadModeValue = it }
+                    asString("upload_destination")?.let { config.uploadDestination = it }
+                    asInt("upload_auth")?.let { config.uploadAuthValue = it }
+                    asString("upload_token_key")?.let { config.uploadTokenKey = it }
+                    asString("upload_token_value")?.let { config.uploadTokenValue = it }
+                    asInt("upload_token_type")?.let { config.uploadTokenTypeValue = it }
+                    asString("upload_topic")?.let { config.uploadTopic = it }
+                    asBytes("upload_certificate_der")?.let { config.uploadCertificateDer = it }
+                    asBytes("upload_ca_der")?.let { config.uploadCaDer = it }
+                    asInt("upload_frequency")?.let { config.uploadFrequency = it }
                     builder.config = config.build()
                 }
                 "ota_begin" -> {

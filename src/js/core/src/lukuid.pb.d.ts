@@ -12,6 +12,28 @@ export namespace lukuid {
         STATUS_READY = 3
     }
 
+    /** UploadMode enum. */
+    enum UploadMode {
+        UPLOAD_MODE_NONE = 0,
+        UPLOAD_MODE_HTTP = 1,
+        UPLOAD_MODE_MQTT = 2
+    }
+
+    /** UploadAuth enum. */
+    enum UploadAuth {
+        UPLOAD_AUTH_NONE = 0,
+        UPLOAD_AUTH_TOKEN = 1,
+        UPLOAD_AUTH_MTLS = 2
+    }
+
+    /** UploadTokenType enum. */
+    enum UploadTokenType {
+        UPLOAD_TOKEN_TYPE_HEADER = 0,
+        UPLOAD_TOKEN_TYPE_QUERY = 1,
+        UPLOAD_TOKEN_TYPE_BODY = 2,
+        UPLOAD_TOKEN_TYPE_BEARER = 3
+    }
+
     /** FetchWindow enum. */
     enum FetchWindow {
         FETCH_WINDOW_NONE = 0,
@@ -674,9 +696,6 @@ export namespace lukuid {
         /** ConfigRequest mqttTopic */
         mqttTopic?: (string|null);
 
-        /** ConfigRequest mqttBroadcastFrequencySeconds */
-        mqttBroadcastFrequencySeconds?: (number|null);
-
         /** ConfigRequest mqttUsername */
         mqttUsername?: (string|null);
 
@@ -695,8 +714,38 @@ export namespace lukuid {
         /** ConfigRequest customHeartbeatUrl */
         customHeartbeatUrl?: (string|null);
 
-        /** ConfigRequest telemetryEnabled */
-        telemetryEnabled?: (boolean|null);
+        /** ConfigRequest networkParticipationEnabled */
+        networkParticipationEnabled?: (boolean|null);
+
+        /** ConfigRequest uploadMode */
+        uploadMode?: (lukuid.UploadMode|null);
+
+        /** ConfigRequest uploadDestination */
+        uploadDestination?: (string|null);
+
+        /** ConfigRequest uploadAuth */
+        uploadAuth?: (lukuid.UploadAuth|null);
+
+        /** ConfigRequest uploadTokenKey */
+        uploadTokenKey?: (string|null);
+
+        /** ConfigRequest uploadTokenValue */
+        uploadTokenValue?: (string|null);
+
+        /** ConfigRequest uploadTokenType */
+        uploadTokenType?: (lukuid.UploadTokenType|null);
+
+        /** ConfigRequest uploadTopic */
+        uploadTopic?: (string|null);
+
+        /** ConfigRequest uploadCertificateDer */
+        uploadCertificateDer?: (Uint8Array|null);
+
+        /** ConfigRequest uploadCaDer */
+        uploadCaDer?: (Uint8Array|null);
+
+        /** ConfigRequest uploadFrequency */
+        uploadFrequency?: (number|null);
     }
 
     /** Represents a ConfigRequest. */
@@ -726,9 +775,6 @@ export namespace lukuid {
         /** ConfigRequest mqttTopic. */
         public mqttTopic?: (string|null);
 
-        /** ConfigRequest mqttBroadcastFrequencySeconds. */
-        public mqttBroadcastFrequencySeconds?: (number|null);
-
         /** ConfigRequest mqttUsername. */
         public mqttUsername?: (string|null);
 
@@ -747,8 +793,38 @@ export namespace lukuid {
         /** ConfigRequest customHeartbeatUrl. */
         public customHeartbeatUrl?: (string|null);
 
-        /** ConfigRequest telemetryEnabled. */
-        public telemetryEnabled?: (boolean|null);
+        /** ConfigRequest networkParticipationEnabled. */
+        public networkParticipationEnabled?: (boolean|null);
+
+        /** ConfigRequest uploadMode. */
+        public uploadMode?: (lukuid.UploadMode|null);
+
+        /** ConfigRequest uploadDestination. */
+        public uploadDestination?: (string|null);
+
+        /** ConfigRequest uploadAuth. */
+        public uploadAuth?: (lukuid.UploadAuth|null);
+
+        /** ConfigRequest uploadTokenKey. */
+        public uploadTokenKey?: (string|null);
+
+        /** ConfigRequest uploadTokenValue. */
+        public uploadTokenValue?: (string|null);
+
+        /** ConfigRequest uploadTokenType. */
+        public uploadTokenType?: (lukuid.UploadTokenType|null);
+
+        /** ConfigRequest uploadTopic. */
+        public uploadTopic?: (string|null);
+
+        /** ConfigRequest uploadCertificateDer. */
+        public uploadCertificateDer?: (Uint8Array|null);
+
+        /** ConfigRequest uploadCaDer. */
+        public uploadCaDer?: (Uint8Array|null);
+
+        /** ConfigRequest uploadFrequency. */
+        public uploadFrequency?: (number|null);
 
         /**
          * Creates a new ConfigRequest instance using the specified properties.
@@ -2211,8 +2287,8 @@ export namespace lukuid {
         /** DeviceInfoResponse customHeartbeatUrl */
         customHeartbeatUrl?: (string|null);
 
-        /** DeviceInfoResponse telemetry */
-        telemetry?: (boolean|null);
+        /** DeviceInfoResponse networkParticipationEnabled */
+        networkParticipationEnabled?: (boolean|null);
 
         /** DeviceInfoResponse managedBy */
         managedBy?: (string|null);
@@ -2246,6 +2322,15 @@ export namespace lukuid {
 
         /** DeviceInfoResponse key */
         key?: (Uint8Array|null);
+
+        /** DeviceInfoResponse uploadMode */
+        uploadMode?: (lukuid.UploadMode|null);
+
+        /** DeviceInfoResponse uploadDestination */
+        uploadDestination?: (string|null);
+
+        /** DeviceInfoResponse uploadAuth */
+        uploadAuth?: (lukuid.UploadAuth|null);
     }
 
     /** Represents a DeviceInfoResponse. */
@@ -2305,8 +2390,8 @@ export namespace lukuid {
         /** DeviceInfoResponse customHeartbeatUrl. */
         public customHeartbeatUrl: string;
 
-        /** DeviceInfoResponse telemetry. */
-        public telemetry: boolean;
+        /** DeviceInfoResponse networkParticipationEnabled. */
+        public networkParticipationEnabled: boolean;
 
         /** DeviceInfoResponse managedBy. */
         public managedBy: string;
@@ -2340,6 +2425,15 @@ export namespace lukuid {
 
         /** DeviceInfoResponse key. */
         public key: Uint8Array;
+
+        /** DeviceInfoResponse uploadMode. */
+        public uploadMode: lukuid.UploadMode;
+
+        /** DeviceInfoResponse uploadDestination. */
+        public uploadDestination: string;
+
+        /** DeviceInfoResponse uploadAuth. */
+        public uploadAuth: lukuid.UploadAuth;
 
         /**
          * Creates a new DeviceInfoResponse instance using the specified properties.
@@ -2588,9 +2682,6 @@ export namespace lukuid {
         /** NetworkConfigResponse mqttTopic */
         mqttTopic?: (string|null);
 
-        /** NetworkConfigResponse mqttBroadcastFrequencySeconds */
-        mqttBroadcastFrequencySeconds?: (number|null);
-
         /** NetworkConfigResponse mqttUsername */
         mqttUsername?: (string|null);
 
@@ -2608,6 +2699,27 @@ export namespace lukuid {
 
         /** NetworkConfigResponse mqttCaDer */
         mqttCaDer?: (Uint8Array|null);
+
+        /** NetworkConfigResponse uploadMode */
+        uploadMode?: (lukuid.UploadMode|null);
+
+        /** NetworkConfigResponse uploadDestination */
+        uploadDestination?: (string|null);
+
+        /** NetworkConfigResponse uploadAuth */
+        uploadAuth?: (lukuid.UploadAuth|null);
+
+        /** NetworkConfigResponse uploadTokenKey */
+        uploadTokenKey?: (string|null);
+
+        /** NetworkConfigResponse uploadTokenType */
+        uploadTokenType?: (lukuid.UploadTokenType|null);
+
+        /** NetworkConfigResponse uploadTopic */
+        uploadTopic?: (string|null);
+
+        /** NetworkConfigResponse uploadFrequency */
+        uploadFrequency?: (number|null);
     }
 
     /** Represents a NetworkConfigResponse. */
@@ -2634,9 +2746,6 @@ export namespace lukuid {
         /** NetworkConfigResponse mqttTopic. */
         public mqttTopic: string;
 
-        /** NetworkConfigResponse mqttBroadcastFrequencySeconds. */
-        public mqttBroadcastFrequencySeconds: number;
-
         /** NetworkConfigResponse mqttUsername. */
         public mqttUsername: string;
 
@@ -2654,6 +2763,27 @@ export namespace lukuid {
 
         /** NetworkConfigResponse mqttCaDer. */
         public mqttCaDer: Uint8Array;
+
+        /** NetworkConfigResponse uploadMode. */
+        public uploadMode: lukuid.UploadMode;
+
+        /** NetworkConfigResponse uploadDestination. */
+        public uploadDestination: string;
+
+        /** NetworkConfigResponse uploadAuth. */
+        public uploadAuth: lukuid.UploadAuth;
+
+        /** NetworkConfigResponse uploadTokenKey. */
+        public uploadTokenKey: string;
+
+        /** NetworkConfigResponse uploadTokenType. */
+        public uploadTokenType: lukuid.UploadTokenType;
+
+        /** NetworkConfigResponse uploadTopic. */
+        public uploadTopic: string;
+
+        /** NetworkConfigResponse uploadFrequency. */
+        public uploadFrequency: number;
 
         /**
          * Creates a new NetworkConfigResponse instance using the specified properties.

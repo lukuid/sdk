@@ -176,6 +176,8 @@ fn log_device_target(info: &DeviceInfo) -> &str {
     }
 }
 
+use crate::revocation::RevocationManager;
+
 pub struct Device {
     pub info: Arc<DeviceInfo>,
     debug_logging: bool,
@@ -186,6 +188,7 @@ pub struct Device {
     close_tx: mpsc::Sender<()>,
     _event_rx: broadcast::Receiver<DeviceEventPayload>,
     cmd_mutex: tokio::sync::Mutex<()>,
+    revocation_manager: Option<Arc<RevocationManager>>,
 }
 
 impl Device {
@@ -200,6 +203,7 @@ impl Device {
             close_tx: self.close_tx.clone(),
             _event_rx: self.event_tx.subscribe(),
             cmd_mutex: tokio::sync::Mutex::new(()),
+            revocation_manager: self.revocation_manager.clone(),
         }
     }
 
@@ -207,6 +211,7 @@ impl Device {
         transport: &dyn Transport,
         device_id: &str,
         options: LukuidSdkOptions,
+        revocation_manager: Option<Arc<RevocationManager>>,
     ) -> Result<Self, DeviceError> {
         if options.debug_logging {
             eprintln!(
@@ -335,7 +340,7 @@ impl Device {
                 heartbeat_intermediate_der: None,
                 heartbeat_root_fingerprint: None,
                 verified: false,
-                telemetry: false,
+                network_participation_enabled: false,
                 last_sync: None,
                 counter: 0,
                 sync_required: false,
@@ -348,6 +353,7 @@ impl Device {
             close_tx: close_tx.clone(),
             _event_rx: event_rx,
             cmd_mutex: tokio::sync::Mutex::new(()),
+            revocation_manager,
         };
 
         // Initial Handshake
@@ -406,7 +412,7 @@ impl Device {
             heartbeat_intermediate_der: None,
             heartbeat_root_fingerprint: None,
             verified: false,
-            telemetry: false,
+            network_participation_enabled: false,
             last_sync: None,
             counter: 0,
             sync_required,
@@ -472,7 +478,7 @@ impl Device {
             trust_profile: options.trust_profile.clone(),
         };
 
-        let verification = verify_device_attestation(&inputs);
+        let verification = verify_device_attestation(&inputs, self.revocation_manager.as_deref());
 
         if options.debug_logging {
             eprintln!(
@@ -588,20 +594,16 @@ impl Device {
             eprintln!("[lukuid-sdk] Heartbeat sync starting for {}", self.info.id);
         }
 
-        // 1. Fetch Telemetry if needed (either for public API or custom heartbeat)
-        let mut telemetry = json!([]);
-        let mut telemetry_signature = None;
-        let mut telemetry_canonical_string = None;
-
-        if self.info.telemetry || self.info.custom_heartbeat_url.is_some() {
+        // 1. Push Telemetry to public API if participating
+        if self.info.network_participation_enabled {
             let telemetry_resp = self
                 .call("fetch_telemetry", json!({}))
                 .await
                 .unwrap_or(json!({ "data": [] }));
 
-            telemetry = telemetry_resp.get("data").cloned().unwrap_or(json!([]));
-            telemetry_signature = telemetry_resp.get("signature").and_then(|v| v.as_str()).map(|s| s.to_string());
-            telemetry_canonical_string = telemetry_resp.get("canonical_string").and_then(|v| v.as_str()).map(|s| s.to_string());
+            let telemetry = telemetry_resp.get("data").cloned().unwrap_or(json!([]));
+            let telemetry_signature = telemetry_resp.get("signature").and_then(|v| v.as_str()).map(|s| s.to_string());
+            let telemetry_canonical_string = telemetry_resp.get("canonical_string").and_then(|v| v.as_str()).map(|s| s.to_string());
 
             if sdk.options.debug_logging {
                 let telemetry_count = telemetry.as_array().map(|items| items.len()).unwrap_or(0);
@@ -610,20 +612,17 @@ impl Device {
                     self.info.id, telemetry_count
                 );
             }
-        }
 
-        // 2. Push Telemetry to public API if enabled
-        if self.info.telemetry {
             let _ = sdk.telemetry(
                 None, // Always default API
                 &self.info.id,
-                telemetry.clone(),
+                telemetry,
                 telemetry_signature.as_deref(),
                 telemetry_canonical_string.as_deref()
             ).await;
         }
 
-        // 3. Generate Heartbeat CSR
+        // 2. Generate Heartbeat CSR
         let generate_response =
             self.call("generate_heartbeat", json!({}))
                 .await
@@ -669,7 +668,6 @@ impl Device {
             "integration": "native-sdk"
         });
 
-        let has_custom_url = self.info.custom_heartbeat_url.is_some();
         let api_url = resolve_heartbeat_api_url(
             self.info.custom_heartbeat_url.as_deref(),
             &sdk.options.api_url,
@@ -694,9 +692,7 @@ impl Device {
                 counter,
                 previous_state,
                 source,
-                if has_custom_url { Some(telemetry) } else { None },
-                if has_custom_url { telemetry_signature.as_deref() } else { None },
-                if has_custom_url { telemetry_canonical_string.as_deref() } else { None },
+                self.info.network_participation_enabled,
             )
             .await
             .map_err(|error| {

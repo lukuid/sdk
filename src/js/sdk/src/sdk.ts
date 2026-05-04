@@ -10,8 +10,10 @@ import {
   TinyEventEmitter,
   Transport,
   TransportDeviceEvent,
-  Unsubscribe
+  Unsubscribe,
+  RevocationManager
 } from '@lukuid/core';
+import { isExternalCallAllowed } from './urlUtils.js';
 
 export interface DeviceDiscoveryOptions {
   preferredTransports?: string[];
@@ -44,6 +46,27 @@ export interface LukuidSdkOptions {
    * Base URL for the LukuID API. Defaults to https://api.lukuid.com.
    */
   apiUrl?: string;
+  /**
+   * Completely disables network calls to LukuID (e.g. heartbeats, CRL fetches).
+   * Defaults to false.
+   * Custom endpoints configured on the device bypass this check.
+   */
+  disableExternalCalls?: boolean;
+  /**
+   * If true, certificate revocation list (CRL) is only kept in memory.
+   * Default is `false`.
+   */
+  crlMemoryOnly?: boolean;
+  /**
+   * Local folder for storing the CRL cache. (In web, this might be ignored or used as prefix)
+   */
+  crlCachePath?: string;
+  /**
+   * Frequency of CRL background refresh in hours.
+   * Set to 0 to disable auto-refresh.
+   * Default is 4 hours.
+   */
+  crlRefreshIntervalHours?: number;
 }
 
 export interface AttestationItem {
@@ -72,9 +95,8 @@ export interface HeartbeatRequest {
   counter: number;
   previousState: Record<string, unknown>;
   source: Record<string, unknown>;
-  telemetry?: unknown[];
-  telemetry_signature?: string;
-  telemetry_canonical_string?: string;
+  networkParticipationEnabled: boolean;
+  customUrl?: string;
 }
 
 export interface HeartbeatResponse {
@@ -128,6 +150,7 @@ export class LukuidSdk {
   private readonly watchers = new Map<string, WatcherHandle>();
   private readonly defaultTransportsReady: Promise<void>;
   private watchRequested = false;
+  private readonly revocationManager: RevocationManager;
 
   constructor(private readonly options: LukuidSdkOptions = {}) {
     this.defaultTransportsReady = autoRegisterDefaultTransports(
@@ -135,6 +158,14 @@ export class LukuidSdk {
       (level, message, context) => this.log(level, message, context),
       this.options.debugLogging ?? false
     );
+    this.revocationManager = new RevocationManager({
+      apiUrl: this.options.apiUrl || 'https://api.lukuid.com',
+      disableExternalCalls: this.options.disableExternalCalls,
+      crlMemoryOnly: this.options.crlMemoryOnly,
+      crlCachePath: this.options.crlCachePath,
+      crlRefreshIntervalHours: this.options.crlRefreshIntervalHours ?? 4,
+      debugLogging: this.options.debugLogging
+    });
   }
 
   async getConnectedDevices(options?: DeviceDiscoveryOptions): Promise<Device[]> {
@@ -346,6 +377,20 @@ export class LukuidSdk {
     const defaultApiUrl = this.options.apiUrl || 'https://api.lukuid.com';
     const apiUrl = customUrl || defaultApiUrl;
 
+    if (!isExternalCallAllowed(apiUrl, this.options.disableExternalCalls || false)) {
+      if (this.options.debugLogging) {
+        console.warn(`[lukuid-sdk] External calls disabled, dropping heartbeat to ${apiUrl}`);
+      }
+      return {
+        action: 'dropped',
+        slac_der: '',
+        heartbeat_der: '',
+        intermediate_der: '',
+        signature: '',
+        timestamp: 0
+      };
+    }
+
     const response = await fetch(`${apiUrl.replace(/\/$/, '')}/heartbeat`, {
       method: 'POST',
       headers: {
@@ -361,9 +406,7 @@ export class LukuidSdk {
         counter: request.counter,
         previous_state: request.previousState,
         source: request.source,
-        telemetry: request.telemetry,
-        telemetry_signature: request.telemetry_signature,
-        telemetry_canonical_string: request.telemetry_canonical_string
+        network_participation_enabled: request.networkParticipationEnabled
       })
     });
     if (!response.ok) {
@@ -387,7 +430,14 @@ export class LukuidSdk {
     const defaultApiUrl = this.options.apiUrl || 'https://api.lukuid.com';
     const apiUrl = request.customUrl || defaultApiUrl;
 
-    const response = await fetch(`${apiUrl.replace(/\/$/, '')}/telemetry`, {
+    if (!isExternalCallAllowed(apiUrl, this.options.disableExternalCalls || false)) {
+      if (this.options.debugLogging) {
+        console.warn(`[lukuid-sdk] External calls disabled, dropping telemetry to ${apiUrl}`);
+      }
+      return { status: 'dropped', reason: 'LUKUID_DISABLE_EXTERNAL_CALLS' };
+    }
+
+    const response = await fetch(`${apiUrl.replace(/\/$/, '')}/participate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -611,7 +661,9 @@ export class LukuidSdk {
         cachedInfo: this.infoCache.get(key),
         onValidated: (info) => this.infoCache.set(key, info),
         logger: (level, message, context) => this.log(level, message, { transport: transport.name, ...context }),
-        allowUnverifiedDevices: this.options.allowUnverifiedDevices
+        allowUnverifiedDevices: this.options.allowUnverifiedDevices,
+        revocationManager: this.revocationManager,
+        apiUrl: this.options.apiUrl
       }
     });
   }

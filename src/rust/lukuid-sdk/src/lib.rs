@@ -5,7 +5,9 @@ pub mod framing;
 pub mod luku;
 pub mod models;
 pub mod parser;
+pub mod revocation;
 pub mod transport;
+pub(crate) mod url_utils;
 
 pub use device::{Device, DeviceError};
 pub use luku::{
@@ -18,10 +20,12 @@ pub use models::{
 };
 pub use parser::{parse, parse_bytes, LukuItemResult, LukuParseResult};
 pub use transport::{Connection, Transport};
+use revocation::RevocationManager;
 
 pub struct LukuidSdk {
     options: LukuidSdkOptions,
     http_client: reqwest::Client,
+    pub revocation_manager: RevocationManager,
 }
 
 impl LukuidSdk {
@@ -30,9 +34,11 @@ impl LukuidSdk {
     }
 
     pub fn with_options(options: LukuidSdkOptions) -> Self {
+        let revocation_manager = RevocationManager::new(options.clone());
         Self {
             options,
             http_client: reqwest::Client::new(),
+            revocation_manager,
         }
     }
 
@@ -70,9 +76,7 @@ impl LukuidSdk {
         counter: u64,
         previous_state: serde_json::Value,
         source: serde_json::Value,
-        telemetry: Option<serde_json::Value>,
-        telemetry_signature: Option<&str>,
-        telemetry_canonical_string: Option<&str>,
+        network_participation_enabled: bool,
     ) -> Result<serde_json::Value, reqwest::Error> {
         let api_url = self.options.api_url.clone();
         self.heartbeat_with_api_url(
@@ -86,9 +90,7 @@ impl LukuidSdk {
             counter,
             previous_state,
             source,
-            telemetry,
-            telemetry_signature,
-            telemetry_canonical_string,
+            network_participation_enabled,
         )
         .await
     }
@@ -110,11 +112,20 @@ impl LukuidSdk {
         counter: u64,
         previous_state: serde_json::Value,
         source: serde_json::Value,
-        telemetry: Option<serde_json::Value>,
-        telemetry_signature: Option<&str>,
-        telemetry_canonical_string: Option<&str>,
+        network_participation_enabled: bool,
     ) -> Result<serde_json::Value, reqwest::Error> {
-        let url = format!("{}/heartbeat", api_url.trim_end_matches('/'));
+        let clean_api_url = api_url.trim_end_matches('/');
+        if !url_utils::is_external_call_allowed(clean_api_url, self.options.disable_external_calls) {
+            if self.options.debug_logging {
+                eprintln!("[lukuid-sdk] External calls disabled, dropping heartbeat to {}", clean_api_url);
+            }
+            return Ok(serde_json::json!({
+                "status": "dropped",
+                "reason": "LUKUID_DISABLE_EXTERNAL_CALLS"
+            }));
+        }
+
+        let url = format!("{}/heartbeat", clean_api_url);
         let mut payload = serde_json::json!({
             "device_id": device_id,
             "public_key": public_key,
@@ -124,11 +135,8 @@ impl LukuidSdk {
             "counter": counter,
             "previous_state": previous_state,
             "source": source,
+            "network_participation_enabled": network_participation_enabled,
         });
-
-        if let Some(telemetry) = telemetry {
-            payload["telemetry"] = telemetry;
-        }
 
         if let Some(root_fingerprint) = attestation_root_fingerprint
             .map(str::trim)
@@ -137,17 +145,6 @@ impl LukuidSdk {
             payload["attestation_root_fingerprint"] =
                 serde_json::Value::String(root_fingerprint.to_string());
         }
-
-        if let Some(telemetry_signature) = telemetry_signature {
-            payload["telemetry_signature"] =
-                serde_json::Value::String(telemetry_signature.to_string());
-        }
-
-        if let Some(telemetry_canonical_string) = telemetry_canonical_string {
-            payload["telemetry_canonical_string"] =
-                serde_json::Value::String(telemetry_canonical_string.to_string());
-        }
-
 
         if self.options.debug_logging {
             eprintln!(
@@ -182,7 +179,18 @@ impl LukuidSdk {
         canonical_string: Option<&str>,
     ) -> Result<serde_json::Value, reqwest::Error> {
         let base_url = api_url.unwrap_or(&self.options.api_url).trim_end_matches('/');
-        let url = format!("{}/telemetry", base_url);
+        
+        if !url_utils::is_external_call_allowed(base_url, self.options.disable_external_calls) {
+            if self.options.debug_logging {
+                eprintln!("[lukuid-sdk] External calls disabled, dropping telemetry to {}", base_url);
+            }
+            return Ok(serde_json::json!({
+                "status": "dropped",
+                "reason": "LUKUID_DISABLE_EXTERNAL_CALLS"
+            }));
+        }
+
+        let url = format!("{}/participate", base_url);
 
         let mut payload = serde_json::json!({
             "device_id": device_id,

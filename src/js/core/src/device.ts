@@ -290,8 +290,9 @@ class LukuidDevice implements Device {
       key: normalized.attestation.key,
       attestationSig: normalized.attestation.attestationSig,
       attestationAlg: normalized.attestation.attestationAlg,
-      attestationPayloadVersion: normalized.attestation.attestationPayloadVersion
-    });
+      attestationPayloadVersion: normalized.attestation.attestationPayloadVersion,
+      certificateChain: assembleCertificateChain(normalized.attestation as unknown as Record<string, unknown>)
+    }, this.context.options?.revocationManager);
 
     if (!result.ok && !this.context.options?.allowUnverifiedDevices) {
         await this.close('Verification failed');
@@ -313,41 +314,37 @@ class LukuidDevice implements Device {
         const lastSync = info.lastSync ?? 0;
         if (now - lastSync > 24 * 3600 || info.sync_required) {
             try {
-                // 1. Fetch Telemetry if needed (either for public API or custom heartbeat)
-                let telemetry: unknown[] = [];
-                let telemetrySignature: any;
-                let telemetryCanonical: string | undefined;
-
-                if (info.telemetry || info.custom_heartbeat_url) {
-                    const telemetryResult = await this.call('fetch_telemetry', {}) as any;
-                    telemetry = telemetryResult?.data || [];
-                    telemetrySignature = telemetryResult?.signature;
-                    telemetryCanonical = telemetryResult?.canonical_string;
-                }
-
                 const defaultApiUrl = (this.context as any).options?.apiUrl || 'https://api.lukuid.com';
+                const apiUrl = info.custom_heartbeat_url || defaultApiUrl;
 
-                // 2. Push Telemetry to public API if enabled
-                if (info.telemetry && telemetry.length > 0) {
+                // 1. Push Telemetry to public API if enabled
+                if (info.network_participation_enabled) {
                     try {
-                        await fetch(`${defaultApiUrl.replace(/\/$/, '')}/telemetry`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                device_id: info.id,
-                                data: telemetry,
-                                signature: telemetrySignature instanceof Uint8Array 
-                                    ? encodeBase64(telemetrySignature) 
-                                    : telemetrySignature,
-                                canonical: telemetryCanonical
-                            })
-                        });
+                        const telemetryResult = await this.call('fetch_telemetry', {}) as any;
+                        const telemetry = telemetryResult?.data || [];
+                        const telemetrySignature = telemetryResult?.signature;
+                        const telemetryCanonical = telemetryResult?.canonical_string;
+
+                        if (telemetry.length > 0) {
+                            await fetch(`${apiUrl.replace(/\/$/, '')}/participate`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    device_id: info.id,
+                                    data: telemetry,
+                                    signature: telemetrySignature instanceof Uint8Array 
+                                        ? encodeBase64(telemetrySignature) 
+                                        : telemetrySignature,
+                                    canonical: telemetryCanonical
+                                })
+                            });
+                        }
                     } catch (e) {
-                        // Ignore public telemetry failure
+                        // Ignore telemetry failure
                     }
                 }
 
-                // 3. Generate Heartbeat CSR
+                // 2. Generate Heartbeat CSR
                 const hbInit = await this.call('generate_heartbeat', {}) as any;
                 const signature = hbInit?.signature;
                 const csr = hbInit?.csr;
@@ -355,9 +352,6 @@ class LukuidDevice implements Device {
                 const counter = hbInit?.counter;
 
                 if (signature) {
-                    const apiUrl = info.custom_heartbeat_url || defaultApiUrl;
-                    const hasCustomUrl = !!info.custom_heartbeat_url;
-                    
                     const hbResponse = await fetch(`${apiUrl.replace(/\/$/, '')}/heartbeat`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -382,12 +376,7 @@ class LukuidDevice implements Device {
                                 last_intermediate_serial: hbInit?.last_intermediate_serial,
                                 last_slac_serial: hbInit?.last_slac_serial
                             },
-                            // Only include telemetry in heartbeat if it's a custom URL
-                            telemetry: hasCustomUrl ? telemetry : undefined,
-                            telemetry_signature: hasCustomUrl ? (telemetrySignature instanceof Uint8Array 
-                                ? encodeBase64(telemetrySignature) 
-                                : telemetrySignature) : undefined,
-                            telemetry_canonical_string: hasCustomUrl ? telemetryCanonical : undefined
+                            network_participation_enabled: info.network_participation_enabled || false
                         })
                     });
                     if (hbResponse.ok) {
@@ -630,24 +619,19 @@ export function parseInfoPayload(
       typeof record.custom_heartbeat_url === 'string'
         ? record.custom_heartbeat_url
         : (typeof record.custom_url === 'string' ? record.custom_url : null),
-    bio_reporting: typeof record.bio_reporting === 'boolean'
-      ? record.bio_reporting
-      : (typeof record.telemetry === 'boolean' ? record.telemetry : true),
+    network_participation_enabled: typeof record.network_participation_enabled === 'boolean'
+      ? record.network_participation_enabled
+      : false,
+    bio_reporting: typeof record.bio_reporting === 'boolean' ? record.bio_reporting : true,
     wifi_ssid: typeof record.wifi_ssid === 'string' ? record.wifi_ssid : null,
     wifi_password_set: typeof record.wifi_password_set === 'boolean' ? record.wifi_password_set : false,
-    mqtt_broker_url: typeof record.mqtt_broker_url === 'string' ? record.mqtt_broker_url : null,
-    mqtt_port: typeof record.mqtt_port === 'number' ? record.mqtt_port : undefined,
-    mqtt_topic: typeof record.mqtt_topic === 'string' ? record.mqtt_topic : null,
-    mqtt_broadcast_frequency_seconds:
-      typeof record.mqtt_broadcast_frequency_seconds === 'number'
-        ? record.mqtt_broadcast_frequency_seconds
-        : (typeof record.mqtt_broadcast_frequency === 'number' ? record.mqtt_broadcast_frequency : undefined),
-    mqtt_username: typeof record.mqtt_username === 'string' ? record.mqtt_username : null,
-    mqtt_certificate_der: typeof record.mqtt_certificate_der === 'string' ? record.mqtt_certificate_der : null,
-    mqtt_ca_der: typeof record.mqtt_ca_der === 'string' ? record.mqtt_ca_der : null,
-    mqtt_password_set: typeof record.mqtt_password_set === 'boolean' ? record.mqtt_password_set : false,
-    mqtt_broadcast_enabled:
-      typeof record.mqtt_broadcast_enabled === 'boolean' ? record.mqtt_broadcast_enabled : false
+    upload_mode: typeof record.upload_mode === 'number' ? record.upload_mode : undefined,
+    upload_destination: typeof record.upload_destination === 'string' ? record.upload_destination : null,
+    upload_topic: typeof record.upload_topic === 'string' ? record.upload_topic : null,
+    upload_auth: typeof record.upload_auth === 'number' ? record.upload_auth : undefined,
+    upload_token_type: typeof record.upload_token_type === 'number' ? record.upload_token_type : undefined,
+    upload_token_key: typeof record.upload_token_key === 'string' ? record.upload_token_key : null,
+    upload_frequency: typeof record.upload_frequency === 'number' ? record.upload_frequency : undefined,
   };
 
   const attestation = attestationSig

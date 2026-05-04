@@ -77,7 +77,8 @@ internal class SerialTransport(
     private val scope: CoroutineScope,
     private val infoCache: DeviceInfoCache,
     private val sdkOptions: com.lukuid.sdk.LukuSdkOptions,
-    private val errorSink: (SdkError) -> Unit
+    private val errorSink: (SdkError) -> Unit,
+    private val revocationManager: RevocationManager
 ) : Closeable {
 
     private val appContext = context.applicationContext
@@ -96,7 +97,7 @@ internal class SerialTransport(
                     val transportId = "${device.deviceName}:${port.portNumber}"
                     try {
                         val session = sessions.getOrPut(transportId) {
-                            SerialDeviceSession(usbManager, port, transportId, infoCache, sdkOptions, errorSink)
+                            SerialDeviceSession(usbManager, port, transportId, infoCache, sdkOptions, errorSink, revocationManager)
                         }
                         debugLog(sdkOptions, "Ensuring USB serial session", mapOf("transportId" to transportId))
                         session.ensureConnected()
@@ -181,7 +182,7 @@ internal class SerialTransport(
                     continue
                 }
                 val session = sessions.getOrPut(transportId) {
-                    SerialDeviceSession(usbManager, port, transportId, infoCache, sdkOptions, errorSink)
+                    SerialDeviceSession(usbManager, port, transportId, infoCache, sdkOptions, errorSink, revocationManager)
                 }
                 session.ensureConnected()
                 return session
@@ -302,7 +303,8 @@ internal class SerialDeviceSession(
     val transportId: String,
     private val infoCache: DeviceInfoCache,
     private val sdkOptions: com.lukuid.sdk.LukuSdkOptions,
-    private val errorSink: (SdkError) -> Unit
+    private val errorSink: (SdkError) -> Unit,
+    private val revocationManager: RevocationManager
 ) : Device, SerialInputOutputManager.Listener {
     private data class PendingCall(
         val action: String,
@@ -364,7 +366,7 @@ internal class SerialDeviceSession(
                 attestationPayloadVersion = null
             )
 
-            val verification = com.lukuid.sdk.internal.verifyDeviceAttestation(inputs)
+            val verification = com.lukuid.sdk.internal.verifyDeviceAttestation(inputs, revocationManager)
             debugLog(
                 sdkOptions,
                 "USB serial INFO validation result",

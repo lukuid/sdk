@@ -1164,9 +1164,7 @@ private func serializeJSONObject(_ json: [String: Any], pretty: Bool) throws -> 
     return String(decoding: data, as: UTF8.self)
 }
 
-private func sha256Hex(_ data: Data) -> String {
-    SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
-}
+
 
 private func detachedSignatureBase64(privateKey: Curve25519.Signing.PrivateKey, payload: Data) throws -> String {
     try Data(privateKey.signature(for: payload)).base64EncodedString()

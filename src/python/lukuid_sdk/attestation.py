@@ -178,7 +178,13 @@ _PQC_SIGNATURE_ALGORITHMS = {
 _oqs_module: object | None | bool = False
 
 
-def verify_device_attestation(inputs: DeviceAttestationInputs) -> VerificationResult:
+from .revocation import RevocationManager
+
+
+def verify_device_attestation(
+    inputs: DeviceAttestationInputs,
+    revocation_manager: RevocationManager | None = None
+) -> VerificationResult:
     if not inputs.attestation_sig:
         return VerificationResult(False, "attestationSig missing")
 
@@ -191,13 +197,17 @@ def verify_device_attestation(inputs: DeviceAttestationInputs) -> VerificationRe
     leaf_public_key_pem: str | None = None
 
     if inputs.certificate_chain:
-        certs = _CERT_PATTERN.findall(inputs.certificate_chain)
-        if not certs:
+        certs_pem = _CERT_PATTERN.findall(inputs.certificate_chain)
+        if not certs_pem:
             return VerificationResult(False, "Invalid certificate chain PEM")
 
         try:
-            leaf_meta = _certificate_metadata(certs[0])
+            certs = [x509.load_pem_x509_certificate(p.encode("utf-8")) for p in certs_pem]
+
+            leaf_meta = _certificate_metadata(certs_pem[0])
+
             leaf_public_key_pem = leaf_meta["public_key_pem"]
+
         except Exception as exc:
             return VerificationResult(False, f"Chain processing error: {exc}")
 
@@ -209,7 +219,7 @@ def verify_device_attestation(inputs: DeviceAttestationInputs) -> VerificationRe
 
         has_valid_profile = False
         try:
-            for cert_pem in certs[1:]:
+            for cert_pem in certs_pem[1:]:
                 subject = _certificate_metadata(cert_pem)["subject"]
                 if required_ou in subject:
                     has_valid_profile = True
@@ -224,11 +234,11 @@ def verify_device_attestation(inputs: DeviceAttestationInputs) -> VerificationRe
             )
 
         # Enforce full end-to-end PQC chain-signature validation.
-        for i in range(len(certs)):
-            cert_pem = certs[i]
+        for i in range(len(certs_pem)):
+            cert_pem = certs_pem[i]
             verified = False
-            if i + 1 < len(certs):
-                next_cert_pem = certs[i+1]
+            if i + 1 < len(certs_pem):
+                next_cert_pem = certs_pem[i+1]
                 next_meta = _certificate_metadata(next_cert_pem)
                 next_pub_pem = next_meta["public_key_pem"]
                 if _verify_cert_signature(cert_pem, next_pub_pem, next_cert_pem):
@@ -251,19 +261,24 @@ def verify_device_attestation(inputs: DeviceAttestationInputs) -> VerificationRe
             if not verified:
                 return VerificationResult(False, f"Signature verification failed at chain level {i}")
 
-        if inputs.created is not None:
-            try:
-                for cert_pem in certs:
-                    meta = _certificate_metadata(cert_pem)
-                    valid_from = meta["not_before"]
-                    valid_to = meta["not_after"]
-                    if inputs.created < valid_from or inputs.created > valid_to:
-                        return VerificationResult(
-                            False,
-                            f"Temporal birth check failed: created ({inputs.created}) is outside cert window [{valid_from} - {valid_to}]",
-                        )
-            except Exception as exc:
-                return VerificationResult(False, f"Chain processing error: {exc}")
+            # Revocation Check: Check every certificate in the chain (After verification)
+            if revocation_manager:
+                for cert in certs:
+                    if revocation_manager.is_revoked(cert):
+                        return VerificationResult(False, f"Certificate is revoked: {revocation_manager.get_fingerprint(cert)}")
+
+            if inputs.created:
+                try:
+                    for cert_obj in certs:
+                        valid_from = int(cert_obj.not_valid_before_utc.timestamp())
+                        valid_to = int(cert_obj.not_valid_after_utc.timestamp())
+                        if inputs.created < valid_from or inputs.created > valid_to:
+                            return VerificationResult(
+                                False,
+                                f"Temporal birth check failed: created ({inputs.created}) is outside cert window [{valid_from} - {valid_to}]",
+                            )
+                except Exception as exc:
+                    return VerificationResult(False, f"Chain processing error: {exc}")
 
     if leaf_public_key_pem is not None:
         if _verify_signature_with_pem(leaf_public_key_pem, payload, signature_bytes):
@@ -297,16 +312,36 @@ def verify_detached_signature(public_key_base64: str, payload: bytes, signature_
     return _verify_signature_with_pem(public_key_pem, payload, signature)
 
 
-def verify_external_identity(inputs: ExternalIdentityInputs) -> VerificationResult:
+def verify_external_identity(
+    inputs: ExternalIdentityInputs,
+    revocation_manager: RevocationManager | None = None
+) -> VerificationResult:
     try:
-        signature = base64.b64decode(inputs.signature)
+        signature_bytes = base64.b64decode(inputs.signature, validate=True)
     except Exception:
         return VerificationResult(False, "signature is not valid base64")
 
     if not inputs.cert_chain_der:
         return VerificationResult(False, "Certificate chain is empty")
 
-    root_der = base64.b64decode(inputs.cert_chain_der[-1])
+    certs = []
+    for der_b64 in inputs.cert_chain_der:
+        try:
+            der = base64.b64decode(der_b64)
+            cert = x509.load_der_x509_certificate(der)
+            certs.append(cert)
+        except Exception:
+            return VerificationResult(False, "Failed to parse X509 certificate in chain")
+
+    # Revocation Check: Check every certificate in the chain
+    if revocation_manager:
+        for cert in certs:
+            if revocation_manager.is_revoked(cert):
+                return VerificationResult(False, f"External identity certificate is revoked: {revocation_manager.get_fingerprint(cert)}")
+
+    root_cert = certs[-1]
+    root_der = root_cert.public_bytes(serialization.Encoding.DER)
+
     actual_root_fingerprint = hashlib.sha256(root_der).hexdigest()
     
     if actual_root_fingerprint != inputs.root_fingerprint.lower():
@@ -339,9 +374,8 @@ def verify_external_identity(inputs: ExternalIdentityInputs) -> VerificationResu
         return VerificationResult(False, "Invalid leaf certificate")
     
     leaf_meta = _certificate_metadata(leaf_pem)
-    if _verify_signature_with_pem(leaf_meta["public_key_pem"], inputs.expected_payload.encode("utf-8"), signature):
-        return VerificationResult(True)
-    
+    if _verify_signature_with_pem(leaf_meta["public_key_pem"], inputs.expected_payload.encode("utf-8"), signature_bytes):
+        return VerificationResult(True)    
     return VerificationResult(False, "External identity signature verification failed")
 
 

@@ -98,6 +98,8 @@ dependencies {
     api("com.google.protobuf:protobuf-kotlin-lite:3.25.1")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
+    testImplementation("io.mockk:mockk:1.13.10")
+
 }
 
 publishing {

@@ -156,7 +156,12 @@ DxQWGRk=
 -----END CERTIFICATE-----"#,
 ];
 
-pub fn verify_device_attestation(inputs: &DeviceAttestationInputs) -> VerificationResult {
+use crate::revocation::RevocationManager;
+
+pub fn verify_device_attestation(
+    inputs: &DeviceAttestationInputs,
+    revocation_manager: Option<&RevocationManager>,
+) -> VerificationResult {
     let signature_bytes = match BASE64.decode(inputs.attestation_sig.trim()) {
         Ok(bytes) => bytes,
         Err(_) => {
@@ -186,10 +191,9 @@ pub fn verify_device_attestation(inputs: &DeviceAttestationInputs) -> Verificati
                 ok: false,
                 reason: Some("Invalid certificate chain".to_string()),
             };
-        }
+            }
 
-        leaf_pubkey_bytes = Some(certs[0].public_key().subject_public_key.data.to_vec());
-
+            leaf_pubkey_bytes = Some(certs[0].public_key().subject_public_key.data.to_vec());
         let required_ou = match inputs.trust_profile.as_str() {
             "dev" => "lukuid-dev",
             "test" => "lukuid-test",
@@ -249,6 +253,18 @@ pub fn verify_device_attestation(inputs: &DeviceAttestationInputs) -> Verificati
             }
         }
 
+        // Revocation Check: Check every certificate in the chain (After verification)
+        if let Some(rm) = revocation_manager {
+            for cert in &certs {
+                if rm.is_revoked(cert) {
+                    return VerificationResult {
+                        ok: false,
+                        reason: Some(format!("Certificate is revoked: {}", rm.get_fingerprint(cert))),
+                    };
+                }
+            }
+        }
+
         if let Some(created_ts) = inputs.created {
             for cert in &certs {
                 let valid_from = cert.validity().not_before.timestamp();
@@ -295,7 +311,10 @@ pub fn verify_device_attestation(inputs: &DeviceAttestationInputs) -> Verificati
     }
 }
 
-pub fn verify_external_identity(inputs: &ExternalIdentityInputs) -> VerificationResult {
+pub fn verify_external_identity(
+    inputs: &ExternalIdentityInputs,
+    revocation_manager: Option<&RevocationManager>,
+) -> VerificationResult {
     let signature_bytes = match BASE64.decode(inputs.signature.trim()) {
         Ok(bytes) => bytes,
         Err(_) => return VerificationResult { ok: false, reason: Some("signature is not valid base64".to_string()) },
@@ -312,6 +331,20 @@ pub fn verify_external_identity(inputs: &ExternalIdentityInputs) -> Verification
             Err(_) => return VerificationResult { ok: false, reason: Some("Invalid base64 in cert_chain_der".to_string()) },
         };
         cert_ders.push(der);
+    }
+
+    // Revocation Check: Check every certificate in the chain
+    if let Some(rm) = revocation_manager {
+        for der in &cert_ders {
+            if let Ok((_, cert)) = X509Certificate::from_der(der) {
+                if rm.is_revoked(&cert) {
+                    return VerificationResult {
+                        ok: false,
+                        reason: Some(format!("External identity certificate is revoked: {}", rm.get_fingerprint(&cert))),
+                    };
+                }
+            }
+        }
     }
 
     let actual_root_fingerprint = {

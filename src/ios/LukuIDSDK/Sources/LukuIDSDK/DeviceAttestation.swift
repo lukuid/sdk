@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import Foundation
 import CryptoKit
+import CryptoKit
 import Security
 
 struct DeviceAttestationInputs {
@@ -166,7 +167,7 @@ private let TRUSTED_ROOT_CERTS_PEM = [
     """
 ]
 
-func verifyDeviceAttestation(_ inputs: DeviceAttestationInputs) -> Result<Void, DeviceTrustError> {
+func verifyDeviceAttestation(_ inputs: DeviceAttestationInputs, revocationManager: RevocationManager? = nil) -> Result<Void, DeviceTrustError> {
     if inputs.attestationSig.isEmpty {
         return .failure(DeviceTrustError(id: inputs.id, reason: "attestationSig missing", attemptedKeyIds: []))
     }
@@ -248,6 +249,16 @@ func verifyDeviceAttestation(_ inputs: DeviceAttestationInputs) -> Result<Void, 
             }
         }
 
+        // Revocation Check: Check every certificate in the chain (After verification)
+        if let rm = revocationManager {
+            for cert in certs {
+                if rm.isRevoked(certificate: cert) {
+                    let fp = extractRawPublicKey(from: cert).map { sha256Hex($0) } ?? "unknown"
+                    return .failure(DeviceTrustError(id: inputs.id, reason: "Certificate is revoked: \(fp)", attemptedKeyIds: []))
+                }
+            }
+        }
+
         // 1.1 MANDATORY: Temporal Birth Check
         if let createdTs = inputs.created {
             for cert in certs {
@@ -282,7 +293,7 @@ func verifyDeviceAttestation(_ inputs: DeviceAttestationInputs) -> Result<Void, 
     return .failure(DeviceTrustError(id: inputs.id, reason: "Attestation verification failed", attemptedKeyIds: []))
 }
 
-func verifyExternalIdentity(_ inputs: ExternalIdentityInputs) -> Result<Void, DeviceTrustError> {
+func verifyExternalIdentity(_ inputs: ExternalIdentityInputs, revocationManager: RevocationManager? = nil) -> Result<Void, DeviceTrustError> {
     guard let signature = Data(base64Encoded: inputs.signature) else {
         return .failure(DeviceTrustError(id: inputs.endorserID, reason: "signature is not valid base64", attemptedKeyIds: []))
     }
@@ -298,6 +309,16 @@ func verifyExternalIdentity(_ inputs: ExternalIdentityInputs) -> Result<Void, De
             return .failure(DeviceTrustError(id: inputs.endorserID, reason: "Failed to parse X509 certificate in chain", attemptedKeyIds: []))
         }
         certs.append(cert)
+    }
+
+    // Revocation Check: Check every certificate in the chain
+    if let rm = revocationManager {
+        for cert in certs {
+            if rm.isRevoked(certificate: cert) {
+                let fp = extractRawPublicKey(from: cert).map { sha256Hex($0) } ?? "unknown"
+                return .failure(DeviceTrustError(id: inputs.endorserID, reason: "External identity certificate is revoked: \(fp)", attemptedKeyIds: []))
+            }
+        }
     }
 
     guard let rootData = SecCertificateCopyData(certs.last!) as Data? else {
@@ -412,7 +433,7 @@ private func parsePEMChain(_ pem: String) -> [SecCertificate] {
     }
 }
 
-private func extractRawPublicKey(from cert: SecCertificate) -> Data? {
+internal func extractRawPublicKey(from cert: SecCertificate) -> Data? {
     if let key = SecCertificateCopyKey(cert) {
         var error: Unmanaged<CFError>?
         if let data = SecKeyCopyExternalRepresentation(key, &error) as Data? {
@@ -452,6 +473,6 @@ private func certificateValidity(_ cert: SecCertificate) -> (validFrom: Int64, v
     return (try? ASN1Parser.extractValidityRange(certData)) ?? (Int64.min, Int64.max)
 }
 
-private func sha256Hex(_ data: Data) -> String {
+internal func sha256Hex(_ data: Data) -> String {
     SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
 }

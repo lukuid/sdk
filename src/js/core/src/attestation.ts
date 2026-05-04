@@ -430,7 +430,12 @@ function getSubtleCrypto(): SubtleCrypto {
   return subtle;
 }
 
-export async function verifyDeviceAttestation(inputs: DeviceAttestationInputs): Promise<DeviceAttestationResult> {
+import { RevocationManager } from './revocation.js';
+
+export async function verifyDeviceAttestation(
+  inputs: DeviceAttestationInputs,
+  revocationManager?: RevocationManager
+): Promise<DeviceAttestationResult> {
   if (inputs.attestationSig.trim().length === 0) {
     return { ok: false, reason: 'Missing signature' };
   }
@@ -462,8 +467,7 @@ export async function verifyDeviceAttestation(inputs: DeviceAttestationInputs): 
           return { ok: false, reason: 'Invalid certificate chain PEM' };
         }
 
-        const exportedSpki = certs[0].publicKey.export({ format: 'der', type: 'spki' });
-        leafSpki = exportedSpki instanceof Uint8Array ? exportedSpki : new Uint8Array(exportedSpki);
+        leafSpki = new Uint8Array(certs[0].publicKey.export({ format: 'der', type: 'spki' }));
 
         const hasValidProfile = certs.slice(1).some((cert) => cert.subject.includes(requiredOu));
         if (!hasValidProfile) {
@@ -501,6 +505,17 @@ export async function verifyDeviceAttestation(inputs: DeviceAttestationInputs): 
           if (!stepVerified) {
             return { ok: false, reason: `Certificate chain verification failed at level ${i}` };
           }
+        }
+
+        // Revocation Check: Check every certificate in the chain (After verification)
+        if (revocationManager) {
+           const pems = inputs.certificateChain.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [];
+           for (const cert of pems) {
+              const forgeCert = forge.pki.certificateFromPem(cert);
+              if (revocationManager.isRevoked(forgeCert)) {
+                 return { ok: false, reason: 'Certificate is revoked' };
+              }
+           }
         }
 
         if (inputs.created) {
@@ -565,6 +580,17 @@ export async function verifyDeviceAttestation(inputs: DeviceAttestationInputs): 
           }
         }
 
+        // Revocation Check: Check every certificate in the chain (After verification)
+        if (revocationManager) {
+           const pems = inputs.certificateChain.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [];
+           for (const cert of pems) {
+              const forgeCert = forge.pki.certificateFromPem(cert);
+              if (revocationManager.isRevoked(forgeCert)) {
+                 return { ok: false, reason: 'Certificate is revoked' };
+              }
+           }
+        }
+
         if (inputs.created) {
           for (const cert of certs) {
             const validFrom = cert.validFrom;
@@ -627,7 +653,10 @@ export async function verifyDeviceAttestation(inputs: DeviceAttestationInputs): 
   return { ok: false, reason: 'Attestation verification failed' };
 }
 
-export async function verifyExternalIdentity(inputs: ExternalIdentityInputs): Promise<DeviceAttestationResult> {
+export async function verifyExternalIdentity(
+  inputs: ExternalIdentityInputs,
+  revocationManager?: RevocationManager
+): Promise<DeviceAttestationResult> {
   const signatureBytes = decodeBase64(inputs.signature);
   if (!signatureBytes) {
     return { ok: false, reason: 'Invalid signature base64' };
@@ -635,6 +664,20 @@ export async function verifyExternalIdentity(inputs: ExternalIdentityInputs): Pr
 
   if (inputs.certChainDer.length === 0) {
     return { ok: false, reason: 'Certificate chain is empty' };
+  }
+
+  // Revocation Check: Check every certificate in the chain
+  if (revocationManager) {
+    for (const derBase64 of inputs.certChainDer) {
+       const der = decodeBase64(derBase64);
+       if (der) {
+          const f = forge as any;
+          const forgeCert = f.pki.certificateFromAsn1(f.asn1.fromDer(f.util.createBuffer(der)));
+          if (revocationManager.isRevoked(forgeCert)) {
+             return { ok: false, reason: 'External identity certificate is revoked' };
+          }
+       }
+    }
   }
 
   let leafSpki: Uint8Array | null = null;

@@ -37,7 +37,7 @@ export interface DeviceInfo extends DeviceDescriptor {
   heartbeat_intermediate_der?: string | null;
   heartbeat_root_fingerprint?: string | null;
   verified: boolean;
-  telemetry?: boolean;
+  network_participation_enabled?: boolean;
   lastSync?: number;
   sync_required?: boolean;
   counter: number;
@@ -45,15 +45,13 @@ export interface DeviceInfo extends DeviceDescriptor {
   bio_reporting?: boolean;
   wifi_ssid?: string | null;
   wifi_password_set?: boolean;
-  mqtt_broker_url?: string | null;
-  mqtt_port?: number;
-  mqtt_topic?: string | null;
-  mqtt_broadcast_frequency_seconds?: number;
-  mqtt_username?: string | null;
-  mqtt_certificate_der?: string | null;
-  mqtt_ca_der?: string | null;
-  mqtt_password_set?: boolean;
-  mqtt_broadcast_enabled?: boolean;
+  upload_mode?: number;
+  upload_destination?: string | null;
+  upload_topic?: string | null;
+  upload_auth?: number;
+  upload_token_type?: number;
+  upload_token_key?: string | null;
+  upload_frequency?: number;
 }
 
 export interface DeviceCandidate<TNative = unknown> extends DeviceDescriptor {
@@ -98,12 +96,16 @@ export interface Device {
   on<TEvent extends keyof DeviceEventMap>(event: TEvent, handler: (payload: DeviceEventMap[TEvent]) => void): Unsubscribe;
 }
 
+import type { RevocationManager } from './revocation.js';
+
 export interface DeviceFactoryOptions {
   logger?: Logger;
   cachedInfo?: DeviceInfo;
   onValidated?: (info: DeviceInfo) => void;
   allowUnverifiedDevices?: boolean;
   commandTimeoutMs?: number;
+  revocationManager?: RevocationManager;
+  apiUrl?: string;
 }
 
 export interface DeviceContext {

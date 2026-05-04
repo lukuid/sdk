@@ -36,6 +36,56 @@ export const lukuid = $root.lukuid = (() => {
     })();
 
     /**
+     * UploadMode enum.
+     * @name lukuid.UploadMode
+     * @enum {number}
+     * @property {number} UPLOAD_MODE_NONE=0 UPLOAD_MODE_NONE value
+     * @property {number} UPLOAD_MODE_HTTP=1 UPLOAD_MODE_HTTP value
+     * @property {number} UPLOAD_MODE_MQTT=2 UPLOAD_MODE_MQTT value
+     */
+    lukuid.UploadMode = (function() {
+        const valuesById = {}, values = Object.create(valuesById);
+        values[valuesById[0] = "UPLOAD_MODE_NONE"] = 0;
+        values[valuesById[1] = "UPLOAD_MODE_HTTP"] = 1;
+        values[valuesById[2] = "UPLOAD_MODE_MQTT"] = 2;
+        return values;
+    })();
+
+    /**
+     * UploadAuth enum.
+     * @name lukuid.UploadAuth
+     * @enum {number}
+     * @property {number} UPLOAD_AUTH_NONE=0 UPLOAD_AUTH_NONE value
+     * @property {number} UPLOAD_AUTH_TOKEN=1 UPLOAD_AUTH_TOKEN value
+     * @property {number} UPLOAD_AUTH_MTLS=2 UPLOAD_AUTH_MTLS value
+     */
+    lukuid.UploadAuth = (function() {
+        const valuesById = {}, values = Object.create(valuesById);
+        values[valuesById[0] = "UPLOAD_AUTH_NONE"] = 0;
+        values[valuesById[1] = "UPLOAD_AUTH_TOKEN"] = 1;
+        values[valuesById[2] = "UPLOAD_AUTH_MTLS"] = 2;
+        return values;
+    })();
+
+    /**
+     * UploadTokenType enum.
+     * @name lukuid.UploadTokenType
+     * @enum {number}
+     * @property {number} UPLOAD_TOKEN_TYPE_HEADER=0 UPLOAD_TOKEN_TYPE_HEADER value
+     * @property {number} UPLOAD_TOKEN_TYPE_QUERY=1 UPLOAD_TOKEN_TYPE_QUERY value
+     * @property {number} UPLOAD_TOKEN_TYPE_BODY=2 UPLOAD_TOKEN_TYPE_BODY value
+     * @property {number} UPLOAD_TOKEN_TYPE_BEARER=3 UPLOAD_TOKEN_TYPE_BEARER value
+     */
+    lukuid.UploadTokenType = (function() {
+        const valuesById = {}, values = Object.create(valuesById);
+        values[valuesById[0] = "UPLOAD_TOKEN_TYPE_HEADER"] = 0;
+        values[valuesById[1] = "UPLOAD_TOKEN_TYPE_QUERY"] = 1;
+        values[valuesById[2] = "UPLOAD_TOKEN_TYPE_BODY"] = 2;
+        values[valuesById[3] = "UPLOAD_TOKEN_TYPE_BEARER"] = 3;
+        return values;
+    })();
+
+    /**
      * FetchWindow enum.
      * @name lukuid.FetchWindow
      * @enum {number}
@@ -1748,14 +1798,23 @@ export const lukuid = $root.lukuid = (() => {
          * @property {string|null} [mqttBrokerUrl] ConfigRequest mqttBrokerUrl
          * @property {number|null} [mqttPort] ConfigRequest mqttPort
          * @property {string|null} [mqttTopic] ConfigRequest mqttTopic
-         * @property {number|null} [mqttBroadcastFrequencySeconds] ConfigRequest mqttBroadcastFrequencySeconds
          * @property {string|null} [mqttUsername] ConfigRequest mqttUsername
          * @property {string|null} [mqttPassword] ConfigRequest mqttPassword
          * @property {Uint8Array|null} [mqttCertificateDer] ConfigRequest mqttCertificateDer
          * @property {Uint8Array|null} [mqttCaDer] ConfigRequest mqttCaDer
          * @property {boolean|null} [mqttBroadcastEnabled] ConfigRequest mqttBroadcastEnabled
          * @property {string|null} [customHeartbeatUrl] ConfigRequest customHeartbeatUrl
-         * @property {boolean|null} [telemetryEnabled] ConfigRequest telemetryEnabled
+         * @property {boolean|null} [networkParticipationEnabled] ConfigRequest networkParticipationEnabled
+         * @property {lukuid.UploadMode|null} [uploadMode] ConfigRequest uploadMode
+         * @property {string|null} [uploadDestination] ConfigRequest uploadDestination
+         * @property {lukuid.UploadAuth|null} [uploadAuth] ConfigRequest uploadAuth
+         * @property {string|null} [uploadTokenKey] ConfigRequest uploadTokenKey
+         * @property {string|null} [uploadTokenValue] ConfigRequest uploadTokenValue
+         * @property {lukuid.UploadTokenType|null} [uploadTokenType] ConfigRequest uploadTokenType
+         * @property {string|null} [uploadTopic] ConfigRequest uploadTopic
+         * @property {Uint8Array|null} [uploadCertificateDer] ConfigRequest uploadCertificateDer
+         * @property {Uint8Array|null} [uploadCaDer] ConfigRequest uploadCaDer
+         * @property {number|null} [uploadFrequency] ConfigRequest uploadFrequency
          */
 
         /**
@@ -1822,14 +1881,6 @@ export const lukuid = $root.lukuid = (() => {
         ConfigRequest.prototype.mqttTopic = null;
 
         /**
-         * ConfigRequest mqttBroadcastFrequencySeconds.
-         * @member {number|null|undefined} mqttBroadcastFrequencySeconds
-         * @memberof lukuid.ConfigRequest
-         * @instance
-         */
-        ConfigRequest.prototype.mqttBroadcastFrequencySeconds = null;
-
-        /**
          * ConfigRequest mqttUsername.
          * @member {string|null|undefined} mqttUsername
          * @memberof lukuid.ConfigRequest
@@ -1878,12 +1929,92 @@ export const lukuid = $root.lukuid = (() => {
         ConfigRequest.prototype.customHeartbeatUrl = null;
 
         /**
-         * ConfigRequest telemetryEnabled.
-         * @member {boolean|null|undefined} telemetryEnabled
+         * ConfigRequest networkParticipationEnabled.
+         * @member {boolean|null|undefined} networkParticipationEnabled
          * @memberof lukuid.ConfigRequest
          * @instance
          */
-        ConfigRequest.prototype.telemetryEnabled = null;
+        ConfigRequest.prototype.networkParticipationEnabled = null;
+
+        /**
+         * ConfigRequest uploadMode.
+         * @member {lukuid.UploadMode|null|undefined} uploadMode
+         * @memberof lukuid.ConfigRequest
+         * @instance
+         */
+        ConfigRequest.prototype.uploadMode = null;
+
+        /**
+         * ConfigRequest uploadDestination.
+         * @member {string|null|undefined} uploadDestination
+         * @memberof lukuid.ConfigRequest
+         * @instance
+         */
+        ConfigRequest.prototype.uploadDestination = null;
+
+        /**
+         * ConfigRequest uploadAuth.
+         * @member {lukuid.UploadAuth|null|undefined} uploadAuth
+         * @memberof lukuid.ConfigRequest
+         * @instance
+         */
+        ConfigRequest.prototype.uploadAuth = null;
+
+        /**
+         * ConfigRequest uploadTokenKey.
+         * @member {string|null|undefined} uploadTokenKey
+         * @memberof lukuid.ConfigRequest
+         * @instance
+         */
+        ConfigRequest.prototype.uploadTokenKey = null;
+
+        /**
+         * ConfigRequest uploadTokenValue.
+         * @member {string|null|undefined} uploadTokenValue
+         * @memberof lukuid.ConfigRequest
+         * @instance
+         */
+        ConfigRequest.prototype.uploadTokenValue = null;
+
+        /**
+         * ConfigRequest uploadTokenType.
+         * @member {lukuid.UploadTokenType|null|undefined} uploadTokenType
+         * @memberof lukuid.ConfigRequest
+         * @instance
+         */
+        ConfigRequest.prototype.uploadTokenType = null;
+
+        /**
+         * ConfigRequest uploadTopic.
+         * @member {string|null|undefined} uploadTopic
+         * @memberof lukuid.ConfigRequest
+         * @instance
+         */
+        ConfigRequest.prototype.uploadTopic = null;
+
+        /**
+         * ConfigRequest uploadCertificateDer.
+         * @member {Uint8Array|null|undefined} uploadCertificateDer
+         * @memberof lukuid.ConfigRequest
+         * @instance
+         */
+        ConfigRequest.prototype.uploadCertificateDer = null;
+
+        /**
+         * ConfigRequest uploadCaDer.
+         * @member {Uint8Array|null|undefined} uploadCaDer
+         * @memberof lukuid.ConfigRequest
+         * @instance
+         */
+        ConfigRequest.prototype.uploadCaDer = null;
+
+        /**
+         * ConfigRequest uploadFrequency.
+         * @member {number|null|undefined} uploadFrequency
+         * @memberof lukuid.ConfigRequest
+         * @instance
+         */
+        ConfigRequest.prototype.uploadFrequency = null;
 
         // OneOf field names bound to virtual getters and setters
         let $oneOfFields;
@@ -1925,12 +2056,6 @@ export const lukuid = $root.lukuid = (() => {
         });
 
         // Virtual OneOf for proto3 optional field
-        Object.defineProperty(ConfigRequest.prototype, "_mqttBroadcastFrequencySeconds", {
-            get: $util.oneOfGetter($oneOfFields = ["mqttBroadcastFrequencySeconds"]),
-            set: $util.oneOfSetter($oneOfFields)
-        });
-
-        // Virtual OneOf for proto3 optional field
         Object.defineProperty(ConfigRequest.prototype, "_mqttUsername", {
             get: $util.oneOfGetter($oneOfFields = ["mqttUsername"]),
             set: $util.oneOfSetter($oneOfFields)
@@ -1967,8 +2092,68 @@ export const lukuid = $root.lukuid = (() => {
         });
 
         // Virtual OneOf for proto3 optional field
-        Object.defineProperty(ConfigRequest.prototype, "_telemetryEnabled", {
-            get: $util.oneOfGetter($oneOfFields = ["telemetryEnabled"]),
+        Object.defineProperty(ConfigRequest.prototype, "_networkParticipationEnabled", {
+            get: $util.oneOfGetter($oneOfFields = ["networkParticipationEnabled"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(ConfigRequest.prototype, "_uploadMode", {
+            get: $util.oneOfGetter($oneOfFields = ["uploadMode"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(ConfigRequest.prototype, "_uploadDestination", {
+            get: $util.oneOfGetter($oneOfFields = ["uploadDestination"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(ConfigRequest.prototype, "_uploadAuth", {
+            get: $util.oneOfGetter($oneOfFields = ["uploadAuth"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(ConfigRequest.prototype, "_uploadTokenKey", {
+            get: $util.oneOfGetter($oneOfFields = ["uploadTokenKey"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(ConfigRequest.prototype, "_uploadTokenValue", {
+            get: $util.oneOfGetter($oneOfFields = ["uploadTokenValue"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(ConfigRequest.prototype, "_uploadTokenType", {
+            get: $util.oneOfGetter($oneOfFields = ["uploadTokenType"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(ConfigRequest.prototype, "_uploadTopic", {
+            get: $util.oneOfGetter($oneOfFields = ["uploadTopic"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(ConfigRequest.prototype, "_uploadCertificateDer", {
+            get: $util.oneOfGetter($oneOfFields = ["uploadCertificateDer"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(ConfigRequest.prototype, "_uploadCaDer", {
+            get: $util.oneOfGetter($oneOfFields = ["uploadCaDer"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(ConfigRequest.prototype, "_uploadFrequency", {
+            get: $util.oneOfGetter($oneOfFields = ["uploadFrequency"]),
             set: $util.oneOfSetter($oneOfFields)
         });
 
@@ -2008,8 +2193,6 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 5, wireType 0 =*/40).uint32(message.mqttPort);
             if (message.mqttTopic != null && Object.hasOwnProperty.call(message, "mqttTopic"))
                 writer.uint32(/* id 6, wireType 2 =*/50).string(message.mqttTopic);
-            if (message.mqttBroadcastFrequencySeconds != null && Object.hasOwnProperty.call(message, "mqttBroadcastFrequencySeconds"))
-                writer.uint32(/* id 7, wireType 0 =*/56).uint32(message.mqttBroadcastFrequencySeconds);
             if (message.mqttUsername != null && Object.hasOwnProperty.call(message, "mqttUsername"))
                 writer.uint32(/* id 8, wireType 2 =*/66).string(message.mqttUsername);
             if (message.mqttPassword != null && Object.hasOwnProperty.call(message, "mqttPassword"))
@@ -2022,8 +2205,28 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 12, wireType 0 =*/96).bool(message.mqttBroadcastEnabled);
             if (message.customHeartbeatUrl != null && Object.hasOwnProperty.call(message, "customHeartbeatUrl"))
                 writer.uint32(/* id 13, wireType 2 =*/106).string(message.customHeartbeatUrl);
-            if (message.telemetryEnabled != null && Object.hasOwnProperty.call(message, "telemetryEnabled"))
-                writer.uint32(/* id 14, wireType 0 =*/112).bool(message.telemetryEnabled);
+            if (message.networkParticipationEnabled != null && Object.hasOwnProperty.call(message, "networkParticipationEnabled"))
+                writer.uint32(/* id 14, wireType 0 =*/112).bool(message.networkParticipationEnabled);
+            if (message.uploadMode != null && Object.hasOwnProperty.call(message, "uploadMode"))
+                writer.uint32(/* id 15, wireType 0 =*/120).int32(message.uploadMode);
+            if (message.uploadDestination != null && Object.hasOwnProperty.call(message, "uploadDestination"))
+                writer.uint32(/* id 16, wireType 2 =*/130).string(message.uploadDestination);
+            if (message.uploadAuth != null && Object.hasOwnProperty.call(message, "uploadAuth"))
+                writer.uint32(/* id 17, wireType 0 =*/136).int32(message.uploadAuth);
+            if (message.uploadTokenKey != null && Object.hasOwnProperty.call(message, "uploadTokenKey"))
+                writer.uint32(/* id 18, wireType 2 =*/146).string(message.uploadTokenKey);
+            if (message.uploadTokenValue != null && Object.hasOwnProperty.call(message, "uploadTokenValue"))
+                writer.uint32(/* id 19, wireType 2 =*/154).string(message.uploadTokenValue);
+            if (message.uploadTokenType != null && Object.hasOwnProperty.call(message, "uploadTokenType"))
+                writer.uint32(/* id 20, wireType 0 =*/160).int32(message.uploadTokenType);
+            if (message.uploadTopic != null && Object.hasOwnProperty.call(message, "uploadTopic"))
+                writer.uint32(/* id 21, wireType 2 =*/170).string(message.uploadTopic);
+            if (message.uploadCertificateDer != null && Object.hasOwnProperty.call(message, "uploadCertificateDer"))
+                writer.uint32(/* id 22, wireType 2 =*/178).bytes(message.uploadCertificateDer);
+            if (message.uploadCaDer != null && Object.hasOwnProperty.call(message, "uploadCaDer"))
+                writer.uint32(/* id 23, wireType 2 =*/186).bytes(message.uploadCaDer);
+            if (message.uploadFrequency != null && Object.hasOwnProperty.call(message, "uploadFrequency"))
+                writer.uint32(/* id 24, wireType 0 =*/192).uint32(message.uploadFrequency);
             return writer;
         };
 
@@ -2084,10 +2287,6 @@ export const lukuid = $root.lukuid = (() => {
                         message.mqttTopic = reader.string();
                         break;
                     }
-                case 7: {
-                        message.mqttBroadcastFrequencySeconds = reader.uint32();
-                        break;
-                    }
                 case 8: {
                         message.mqttUsername = reader.string();
                         break;
@@ -2113,7 +2312,47 @@ export const lukuid = $root.lukuid = (() => {
                         break;
                     }
                 case 14: {
-                        message.telemetryEnabled = reader.bool();
+                        message.networkParticipationEnabled = reader.bool();
+                        break;
+                    }
+                case 15: {
+                        message.uploadMode = reader.int32();
+                        break;
+                    }
+                case 16: {
+                        message.uploadDestination = reader.string();
+                        break;
+                    }
+                case 17: {
+                        message.uploadAuth = reader.int32();
+                        break;
+                    }
+                case 18: {
+                        message.uploadTokenKey = reader.string();
+                        break;
+                    }
+                case 19: {
+                        message.uploadTokenValue = reader.string();
+                        break;
+                    }
+                case 20: {
+                        message.uploadTokenType = reader.int32();
+                        break;
+                    }
+                case 21: {
+                        message.uploadTopic = reader.string();
+                        break;
+                    }
+                case 22: {
+                        message.uploadCertificateDer = reader.bytes();
+                        break;
+                    }
+                case 23: {
+                        message.uploadCaDer = reader.bytes();
+                        break;
+                    }
+                case 24: {
+                        message.uploadFrequency = reader.uint32();
                         break;
                     }
                 default:
@@ -2182,11 +2421,6 @@ export const lukuid = $root.lukuid = (() => {
                 if (!$util.isString(message.mqttTopic))
                     return "mqttTopic: string expected";
             }
-            if (message.mqttBroadcastFrequencySeconds != null && message.hasOwnProperty("mqttBroadcastFrequencySeconds")) {
-                properties._mqttBroadcastFrequencySeconds = 1;
-                if (!$util.isInteger(message.mqttBroadcastFrequencySeconds))
-                    return "mqttBroadcastFrequencySeconds: integer expected";
-            }
             if (message.mqttUsername != null && message.hasOwnProperty("mqttUsername")) {
                 properties._mqttUsername = 1;
                 if (!$util.isString(message.mqttUsername))
@@ -2217,10 +2451,79 @@ export const lukuid = $root.lukuid = (() => {
                 if (!$util.isString(message.customHeartbeatUrl))
                     return "customHeartbeatUrl: string expected";
             }
-            if (message.telemetryEnabled != null && message.hasOwnProperty("telemetryEnabled")) {
-                properties._telemetryEnabled = 1;
-                if (typeof message.telemetryEnabled !== "boolean")
-                    return "telemetryEnabled: boolean expected";
+            if (message.networkParticipationEnabled != null && message.hasOwnProperty("networkParticipationEnabled")) {
+                properties._networkParticipationEnabled = 1;
+                if (typeof message.networkParticipationEnabled !== "boolean")
+                    return "networkParticipationEnabled: boolean expected";
+            }
+            if (message.uploadMode != null && message.hasOwnProperty("uploadMode")) {
+                properties._uploadMode = 1;
+                switch (message.uploadMode) {
+                default:
+                    return "uploadMode: enum value expected";
+                case 0:
+                case 1:
+                case 2:
+                    break;
+                }
+            }
+            if (message.uploadDestination != null && message.hasOwnProperty("uploadDestination")) {
+                properties._uploadDestination = 1;
+                if (!$util.isString(message.uploadDestination))
+                    return "uploadDestination: string expected";
+            }
+            if (message.uploadAuth != null && message.hasOwnProperty("uploadAuth")) {
+                properties._uploadAuth = 1;
+                switch (message.uploadAuth) {
+                default:
+                    return "uploadAuth: enum value expected";
+                case 0:
+                case 1:
+                case 2:
+                    break;
+                }
+            }
+            if (message.uploadTokenKey != null && message.hasOwnProperty("uploadTokenKey")) {
+                properties._uploadTokenKey = 1;
+                if (!$util.isString(message.uploadTokenKey))
+                    return "uploadTokenKey: string expected";
+            }
+            if (message.uploadTokenValue != null && message.hasOwnProperty("uploadTokenValue")) {
+                properties._uploadTokenValue = 1;
+                if (!$util.isString(message.uploadTokenValue))
+                    return "uploadTokenValue: string expected";
+            }
+            if (message.uploadTokenType != null && message.hasOwnProperty("uploadTokenType")) {
+                properties._uploadTokenType = 1;
+                switch (message.uploadTokenType) {
+                default:
+                    return "uploadTokenType: enum value expected";
+                case 0:
+                case 1:
+                case 2:
+                case 3:
+                    break;
+                }
+            }
+            if (message.uploadTopic != null && message.hasOwnProperty("uploadTopic")) {
+                properties._uploadTopic = 1;
+                if (!$util.isString(message.uploadTopic))
+                    return "uploadTopic: string expected";
+            }
+            if (message.uploadCertificateDer != null && message.hasOwnProperty("uploadCertificateDer")) {
+                properties._uploadCertificateDer = 1;
+                if (!(message.uploadCertificateDer && typeof message.uploadCertificateDer.length === "number" || $util.isString(message.uploadCertificateDer)))
+                    return "uploadCertificateDer: buffer expected";
+            }
+            if (message.uploadCaDer != null && message.hasOwnProperty("uploadCaDer")) {
+                properties._uploadCaDer = 1;
+                if (!(message.uploadCaDer && typeof message.uploadCaDer.length === "number" || $util.isString(message.uploadCaDer)))
+                    return "uploadCaDer: buffer expected";
+            }
+            if (message.uploadFrequency != null && message.hasOwnProperty("uploadFrequency")) {
+                properties._uploadFrequency = 1;
+                if (!$util.isInteger(message.uploadFrequency))
+                    return "uploadFrequency: integer expected";
             }
             return null;
         };
@@ -2249,8 +2552,6 @@ export const lukuid = $root.lukuid = (() => {
                 message.mqttPort = object.mqttPort >>> 0;
             if (object.mqttTopic != null)
                 message.mqttTopic = String(object.mqttTopic);
-            if (object.mqttBroadcastFrequencySeconds != null)
-                message.mqttBroadcastFrequencySeconds = object.mqttBroadcastFrequencySeconds >>> 0;
             if (object.mqttUsername != null)
                 message.mqttUsername = String(object.mqttUsername);
             if (object.mqttPassword != null)
@@ -2269,8 +2570,92 @@ export const lukuid = $root.lukuid = (() => {
                 message.mqttBroadcastEnabled = Boolean(object.mqttBroadcastEnabled);
             if (object.customHeartbeatUrl != null)
                 message.customHeartbeatUrl = String(object.customHeartbeatUrl);
-            if (object.telemetryEnabled != null)
-                message.telemetryEnabled = Boolean(object.telemetryEnabled);
+            if (object.networkParticipationEnabled != null)
+                message.networkParticipationEnabled = Boolean(object.networkParticipationEnabled);
+            switch (object.uploadMode) {
+            default:
+                if (typeof object.uploadMode === "number") {
+                    message.uploadMode = object.uploadMode;
+                    break;
+                }
+                break;
+            case "UPLOAD_MODE_NONE":
+            case 0:
+                message.uploadMode = 0;
+                break;
+            case "UPLOAD_MODE_HTTP":
+            case 1:
+                message.uploadMode = 1;
+                break;
+            case "UPLOAD_MODE_MQTT":
+            case 2:
+                message.uploadMode = 2;
+                break;
+            }
+            if (object.uploadDestination != null)
+                message.uploadDestination = String(object.uploadDestination);
+            switch (object.uploadAuth) {
+            default:
+                if (typeof object.uploadAuth === "number") {
+                    message.uploadAuth = object.uploadAuth;
+                    break;
+                }
+                break;
+            case "UPLOAD_AUTH_NONE":
+            case 0:
+                message.uploadAuth = 0;
+                break;
+            case "UPLOAD_AUTH_TOKEN":
+            case 1:
+                message.uploadAuth = 1;
+                break;
+            case "UPLOAD_AUTH_MTLS":
+            case 2:
+                message.uploadAuth = 2;
+                break;
+            }
+            if (object.uploadTokenKey != null)
+                message.uploadTokenKey = String(object.uploadTokenKey);
+            if (object.uploadTokenValue != null)
+                message.uploadTokenValue = String(object.uploadTokenValue);
+            switch (object.uploadTokenType) {
+            default:
+                if (typeof object.uploadTokenType === "number") {
+                    message.uploadTokenType = object.uploadTokenType;
+                    break;
+                }
+                break;
+            case "UPLOAD_TOKEN_TYPE_HEADER":
+            case 0:
+                message.uploadTokenType = 0;
+                break;
+            case "UPLOAD_TOKEN_TYPE_QUERY":
+            case 1:
+                message.uploadTokenType = 1;
+                break;
+            case "UPLOAD_TOKEN_TYPE_BODY":
+            case 2:
+                message.uploadTokenType = 2;
+                break;
+            case "UPLOAD_TOKEN_TYPE_BEARER":
+            case 3:
+                message.uploadTokenType = 3;
+                break;
+            }
+            if (object.uploadTopic != null)
+                message.uploadTopic = String(object.uploadTopic);
+            if (object.uploadCertificateDer != null)
+                if (typeof object.uploadCertificateDer === "string")
+                    $util.base64.decode(object.uploadCertificateDer, message.uploadCertificateDer = $util.newBuffer($util.base64.length(object.uploadCertificateDer)), 0);
+                else if (object.uploadCertificateDer.length >= 0)
+                    message.uploadCertificateDer = object.uploadCertificateDer;
+            if (object.uploadCaDer != null)
+                if (typeof object.uploadCaDer === "string")
+                    $util.base64.decode(object.uploadCaDer, message.uploadCaDer = $util.newBuffer($util.base64.length(object.uploadCaDer)), 0);
+                else if (object.uploadCaDer.length >= 0)
+                    message.uploadCaDer = object.uploadCaDer;
+            if (object.uploadFrequency != null)
+                message.uploadFrequency = object.uploadFrequency >>> 0;
             return message;
         };
 
@@ -2317,11 +2702,6 @@ export const lukuid = $root.lukuid = (() => {
                 if (options.oneofs)
                     object._mqttTopic = "mqttTopic";
             }
-            if (message.mqttBroadcastFrequencySeconds != null && message.hasOwnProperty("mqttBroadcastFrequencySeconds")) {
-                object.mqttBroadcastFrequencySeconds = message.mqttBroadcastFrequencySeconds;
-                if (options.oneofs)
-                    object._mqttBroadcastFrequencySeconds = "mqttBroadcastFrequencySeconds";
-            }
             if (message.mqttUsername != null && message.hasOwnProperty("mqttUsername")) {
                 object.mqttUsername = message.mqttUsername;
                 if (options.oneofs)
@@ -2352,10 +2732,60 @@ export const lukuid = $root.lukuid = (() => {
                 if (options.oneofs)
                     object._customHeartbeatUrl = "customHeartbeatUrl";
             }
-            if (message.telemetryEnabled != null && message.hasOwnProperty("telemetryEnabled")) {
-                object.telemetryEnabled = message.telemetryEnabled;
+            if (message.networkParticipationEnabled != null && message.hasOwnProperty("networkParticipationEnabled")) {
+                object.networkParticipationEnabled = message.networkParticipationEnabled;
                 if (options.oneofs)
-                    object._telemetryEnabled = "telemetryEnabled";
+                    object._networkParticipationEnabled = "networkParticipationEnabled";
+            }
+            if (message.uploadMode != null && message.hasOwnProperty("uploadMode")) {
+                object.uploadMode = options.enums === String ? $root.lukuid.UploadMode[message.uploadMode] === undefined ? message.uploadMode : $root.lukuid.UploadMode[message.uploadMode] : message.uploadMode;
+                if (options.oneofs)
+                    object._uploadMode = "uploadMode";
+            }
+            if (message.uploadDestination != null && message.hasOwnProperty("uploadDestination")) {
+                object.uploadDestination = message.uploadDestination;
+                if (options.oneofs)
+                    object._uploadDestination = "uploadDestination";
+            }
+            if (message.uploadAuth != null && message.hasOwnProperty("uploadAuth")) {
+                object.uploadAuth = options.enums === String ? $root.lukuid.UploadAuth[message.uploadAuth] === undefined ? message.uploadAuth : $root.lukuid.UploadAuth[message.uploadAuth] : message.uploadAuth;
+                if (options.oneofs)
+                    object._uploadAuth = "uploadAuth";
+            }
+            if (message.uploadTokenKey != null && message.hasOwnProperty("uploadTokenKey")) {
+                object.uploadTokenKey = message.uploadTokenKey;
+                if (options.oneofs)
+                    object._uploadTokenKey = "uploadTokenKey";
+            }
+            if (message.uploadTokenValue != null && message.hasOwnProperty("uploadTokenValue")) {
+                object.uploadTokenValue = message.uploadTokenValue;
+                if (options.oneofs)
+                    object._uploadTokenValue = "uploadTokenValue";
+            }
+            if (message.uploadTokenType != null && message.hasOwnProperty("uploadTokenType")) {
+                object.uploadTokenType = options.enums === String ? $root.lukuid.UploadTokenType[message.uploadTokenType] === undefined ? message.uploadTokenType : $root.lukuid.UploadTokenType[message.uploadTokenType] : message.uploadTokenType;
+                if (options.oneofs)
+                    object._uploadTokenType = "uploadTokenType";
+            }
+            if (message.uploadTopic != null && message.hasOwnProperty("uploadTopic")) {
+                object.uploadTopic = message.uploadTopic;
+                if (options.oneofs)
+                    object._uploadTopic = "uploadTopic";
+            }
+            if (message.uploadCertificateDer != null && message.hasOwnProperty("uploadCertificateDer")) {
+                object.uploadCertificateDer = options.bytes === String ? $util.base64.encode(message.uploadCertificateDer, 0, message.uploadCertificateDer.length) : options.bytes === Array ? Array.prototype.slice.call(message.uploadCertificateDer) : message.uploadCertificateDer;
+                if (options.oneofs)
+                    object._uploadCertificateDer = "uploadCertificateDer";
+            }
+            if (message.uploadCaDer != null && message.hasOwnProperty("uploadCaDer")) {
+                object.uploadCaDer = options.bytes === String ? $util.base64.encode(message.uploadCaDer, 0, message.uploadCaDer.length) : options.bytes === Array ? Array.prototype.slice.call(message.uploadCaDer) : message.uploadCaDer;
+                if (options.oneofs)
+                    object._uploadCaDer = "uploadCaDer";
+            }
+            if (message.uploadFrequency != null && message.hasOwnProperty("uploadFrequency")) {
+                object.uploadFrequency = message.uploadFrequency;
+                if (options.oneofs)
+                    object._uploadFrequency = "uploadFrequency";
             }
             return object;
         };
@@ -5885,7 +6315,7 @@ export const lukuid = $root.lukuid = (() => {
          * @property {string|null} [revision] DeviceInfoResponse revision
          * @property {boolean|null} [pairing] DeviceInfoResponse pairing
          * @property {string|null} [customHeartbeatUrl] DeviceInfoResponse customHeartbeatUrl
-         * @property {boolean|null} [telemetry] DeviceInfoResponse telemetry
+         * @property {boolean|null} [networkParticipationEnabled] DeviceInfoResponse networkParticipationEnabled
          * @property {string|null} [managedBy] DeviceInfoResponse managedBy
          * @property {Uint8Array|null} [attestationDacDer] DeviceInfoResponse attestationDacDer
          * @property {Uint8Array|null} [attestationManufacturerDer] DeviceInfoResponse attestationManufacturerDer
@@ -5897,6 +6327,9 @@ export const lukuid = $root.lukuid = (() => {
          * @property {string|null} [heartbeatRootFingerprint] DeviceInfoResponse heartbeatRootFingerprint
          * @property {Uint8Array|null} [signature] DeviceInfoResponse signature
          * @property {Uint8Array|null} [key] DeviceInfoResponse key
+         * @property {lukuid.UploadMode|null} [uploadMode] DeviceInfoResponse uploadMode
+         * @property {string|null} [uploadDestination] DeviceInfoResponse uploadDestination
+         * @property {lukuid.UploadAuth|null} [uploadAuth] DeviceInfoResponse uploadAuth
          */
 
         /**
@@ -6043,12 +6476,12 @@ export const lukuid = $root.lukuid = (() => {
         DeviceInfoResponse.prototype.customHeartbeatUrl = "";
 
         /**
-         * DeviceInfoResponse telemetry.
-         * @member {boolean} telemetry
+         * DeviceInfoResponse networkParticipationEnabled.
+         * @member {boolean} networkParticipationEnabled
          * @memberof lukuid.DeviceInfoResponse
          * @instance
          */
-        DeviceInfoResponse.prototype.telemetry = false;
+        DeviceInfoResponse.prototype.networkParticipationEnabled = false;
 
         /**
          * DeviceInfoResponse managedBy.
@@ -6139,6 +6572,30 @@ export const lukuid = $root.lukuid = (() => {
         DeviceInfoResponse.prototype.key = $util.newBuffer([]);
 
         /**
+         * DeviceInfoResponse uploadMode.
+         * @member {lukuid.UploadMode} uploadMode
+         * @memberof lukuid.DeviceInfoResponse
+         * @instance
+         */
+        DeviceInfoResponse.prototype.uploadMode = 0;
+
+        /**
+         * DeviceInfoResponse uploadDestination.
+         * @member {string} uploadDestination
+         * @memberof lukuid.DeviceInfoResponse
+         * @instance
+         */
+        DeviceInfoResponse.prototype.uploadDestination = "";
+
+        /**
+         * DeviceInfoResponse uploadAuth.
+         * @member {lukuid.UploadAuth} uploadAuth
+         * @memberof lukuid.DeviceInfoResponse
+         * @instance
+         */
+        DeviceInfoResponse.prototype.uploadAuth = 0;
+
+        /**
          * Creates a new DeviceInfoResponse instance using the specified properties.
          * @function create
          * @memberof lukuid.DeviceInfoResponse
@@ -6194,8 +6651,8 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 15, wireType 0 =*/120).bool(message.pairing);
             if (message.customHeartbeatUrl != null && Object.hasOwnProperty.call(message, "customHeartbeatUrl"))
                 writer.uint32(/* id 16, wireType 2 =*/130).string(message.customHeartbeatUrl);
-            if (message.telemetry != null && Object.hasOwnProperty.call(message, "telemetry"))
-                writer.uint32(/* id 17, wireType 0 =*/136).bool(message.telemetry);
+            if (message.networkParticipationEnabled != null && Object.hasOwnProperty.call(message, "networkParticipationEnabled"))
+                writer.uint32(/* id 17, wireType 0 =*/136).bool(message.networkParticipationEnabled);
             if (message.managedBy != null && Object.hasOwnProperty.call(message, "managedBy"))
                 writer.uint32(/* id 18, wireType 2 =*/146).string(message.managedBy);
             if (message.attestationDacDer != null && Object.hasOwnProperty.call(message, "attestationDacDer"))
@@ -6218,6 +6675,12 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 27, wireType 2 =*/218).bytes(message.signature);
             if (message.key != null && Object.hasOwnProperty.call(message, "key"))
                 writer.uint32(/* id 28, wireType 2 =*/226).bytes(message.key);
+            if (message.uploadMode != null && Object.hasOwnProperty.call(message, "uploadMode"))
+                writer.uint32(/* id 29, wireType 0 =*/232).int32(message.uploadMode);
+            if (message.uploadDestination != null && Object.hasOwnProperty.call(message, "uploadDestination"))
+                writer.uint32(/* id 30, wireType 2 =*/242).string(message.uploadDestination);
+            if (message.uploadAuth != null && Object.hasOwnProperty.call(message, "uploadAuth"))
+                writer.uint32(/* id 31, wireType 0 =*/248).int32(message.uploadAuth);
             return writer;
         };
 
@@ -6319,7 +6782,7 @@ export const lukuid = $root.lukuid = (() => {
                         break;
                     }
                 case 17: {
-                        message.telemetry = reader.bool();
+                        message.networkParticipationEnabled = reader.bool();
                         break;
                     }
                 case 18: {
@@ -6364,6 +6827,18 @@ export const lukuid = $root.lukuid = (() => {
                     }
                 case 28: {
                         message.key = reader.bytes();
+                        break;
+                    }
+                case 29: {
+                        message.uploadMode = reader.int32();
+                        break;
+                    }
+                case 30: {
+                        message.uploadDestination = reader.string();
+                        break;
+                    }
+                case 31: {
+                        message.uploadAuth = reader.int32();
                         break;
                     }
                 default:
@@ -6449,9 +6924,9 @@ export const lukuid = $root.lukuid = (() => {
             if (message.customHeartbeatUrl != null && message.hasOwnProperty("customHeartbeatUrl"))
                 if (!$util.isString(message.customHeartbeatUrl))
                     return "customHeartbeatUrl: string expected";
-            if (message.telemetry != null && message.hasOwnProperty("telemetry"))
-                if (typeof message.telemetry !== "boolean")
-                    return "telemetry: boolean expected";
+            if (message.networkParticipationEnabled != null && message.hasOwnProperty("networkParticipationEnabled"))
+                if (typeof message.networkParticipationEnabled !== "boolean")
+                    return "networkParticipationEnabled: boolean expected";
             if (message.managedBy != null && message.hasOwnProperty("managedBy"))
                 if (!$util.isString(message.managedBy))
                     return "managedBy: string expected";
@@ -6485,6 +6960,27 @@ export const lukuid = $root.lukuid = (() => {
             if (message.key != null && message.hasOwnProperty("key"))
                 if (!(message.key && typeof message.key.length === "number" || $util.isString(message.key)))
                     return "key: buffer expected";
+            if (message.uploadMode != null && message.hasOwnProperty("uploadMode"))
+                switch (message.uploadMode) {
+                default:
+                    return "uploadMode: enum value expected";
+                case 0:
+                case 1:
+                case 2:
+                    break;
+                }
+            if (message.uploadDestination != null && message.hasOwnProperty("uploadDestination"))
+                if (!$util.isString(message.uploadDestination))
+                    return "uploadDestination: string expected";
+            if (message.uploadAuth != null && message.hasOwnProperty("uploadAuth"))
+                switch (message.uploadAuth) {
+                default:
+                    return "uploadAuth: enum value expected";
+                case 0:
+                case 1:
+                case 2:
+                    break;
+                }
             return null;
         };
 
@@ -6542,8 +7038,8 @@ export const lukuid = $root.lukuid = (() => {
                 message.pairing = Boolean(object.pairing);
             if (object.customHeartbeatUrl != null)
                 message.customHeartbeatUrl = String(object.customHeartbeatUrl);
-            if (object.telemetry != null)
-                message.telemetry = Boolean(object.telemetry);
+            if (object.networkParticipationEnabled != null)
+                message.networkParticipationEnabled = Boolean(object.networkParticipationEnabled);
             if (object.managedBy != null)
                 message.managedBy = String(object.managedBy);
             if (object.attestationDacDer != null)
@@ -6590,6 +7086,48 @@ export const lukuid = $root.lukuid = (() => {
                     $util.base64.decode(object.key, message.key = $util.newBuffer($util.base64.length(object.key)), 0);
                 else if (object.key.length >= 0)
                     message.key = object.key;
+            switch (object.uploadMode) {
+            default:
+                if (typeof object.uploadMode === "number") {
+                    message.uploadMode = object.uploadMode;
+                    break;
+                }
+                break;
+            case "UPLOAD_MODE_NONE":
+            case 0:
+                message.uploadMode = 0;
+                break;
+            case "UPLOAD_MODE_HTTP":
+            case 1:
+                message.uploadMode = 1;
+                break;
+            case "UPLOAD_MODE_MQTT":
+            case 2:
+                message.uploadMode = 2;
+                break;
+            }
+            if (object.uploadDestination != null)
+                message.uploadDestination = String(object.uploadDestination);
+            switch (object.uploadAuth) {
+            default:
+                if (typeof object.uploadAuth === "number") {
+                    message.uploadAuth = object.uploadAuth;
+                    break;
+                }
+                break;
+            case "UPLOAD_AUTH_NONE":
+            case 0:
+                message.uploadAuth = 0;
+                break;
+            case "UPLOAD_AUTH_TOKEN":
+            case 1:
+                message.uploadAuth = 1;
+                break;
+            case "UPLOAD_AUTH_MTLS":
+            case 2:
+                message.uploadAuth = 2;
+                break;
+            }
             return message;
         };
 
@@ -6633,7 +7171,7 @@ export const lukuid = $root.lukuid = (() => {
                 object.revision = "";
                 object.pairing = false;
                 object.customHeartbeatUrl = "";
-                object.telemetry = false;
+                object.networkParticipationEnabled = false;
                 object.managedBy = "";
                 if (options.bytes === String)
                     object.attestationDacDer = "";
@@ -6693,6 +7231,9 @@ export const lukuid = $root.lukuid = (() => {
                     if (options.bytes !== Array)
                         object.key = $util.newBuffer(object.key);
                 }
+                object.uploadMode = options.enums === String ? "UPLOAD_MODE_NONE" : 0;
+                object.uploadDestination = "";
+                object.uploadAuth = options.enums === String ? "UPLOAD_AUTH_NONE" : 0;
             }
             if (message.handshake != null && message.hasOwnProperty("handshake"))
                 object.handshake = message.handshake;
@@ -6729,8 +7270,8 @@ export const lukuid = $root.lukuid = (() => {
                 object.pairing = message.pairing;
             if (message.customHeartbeatUrl != null && message.hasOwnProperty("customHeartbeatUrl"))
                 object.customHeartbeatUrl = message.customHeartbeatUrl;
-            if (message.telemetry != null && message.hasOwnProperty("telemetry"))
-                object.telemetry = message.telemetry;
+            if (message.networkParticipationEnabled != null && message.hasOwnProperty("networkParticipationEnabled"))
+                object.networkParticipationEnabled = message.networkParticipationEnabled;
             if (message.managedBy != null && message.hasOwnProperty("managedBy"))
                 object.managedBy = message.managedBy;
             if (message.attestationDacDer != null && message.hasOwnProperty("attestationDacDer"))
@@ -6753,6 +7294,12 @@ export const lukuid = $root.lukuid = (() => {
                 object.signature = options.bytes === String ? $util.base64.encode(message.signature, 0, message.signature.length) : options.bytes === Array ? Array.prototype.slice.call(message.signature) : message.signature;
             if (message.key != null && message.hasOwnProperty("key"))
                 object.key = options.bytes === String ? $util.base64.encode(message.key, 0, message.key.length) : options.bytes === Array ? Array.prototype.slice.call(message.key) : message.key;
+            if (message.uploadMode != null && message.hasOwnProperty("uploadMode"))
+                object.uploadMode = options.enums === String ? $root.lukuid.UploadMode[message.uploadMode] === undefined ? message.uploadMode : $root.lukuid.UploadMode[message.uploadMode] : message.uploadMode;
+            if (message.uploadDestination != null && message.hasOwnProperty("uploadDestination"))
+                object.uploadDestination = message.uploadDestination;
+            if (message.uploadAuth != null && message.hasOwnProperty("uploadAuth"))
+                object.uploadAuth = options.enums === String ? $root.lukuid.UploadAuth[message.uploadAuth] === undefined ? message.uploadAuth : $root.lukuid.UploadAuth[message.uploadAuth] : message.uploadAuth;
             return object;
         };
 
@@ -7232,13 +7779,19 @@ export const lukuid = $root.lukuid = (() => {
          * @property {string|null} [mqttBrokerUrl] NetworkConfigResponse mqttBrokerUrl
          * @property {number|null} [mqttPort] NetworkConfigResponse mqttPort
          * @property {string|null} [mqttTopic] NetworkConfigResponse mqttTopic
-         * @property {number|null} [mqttBroadcastFrequencySeconds] NetworkConfigResponse mqttBroadcastFrequencySeconds
          * @property {string|null} [mqttUsername] NetworkConfigResponse mqttUsername
          * @property {boolean|null} [mqttPasswordSet] NetworkConfigResponse mqttPasswordSet
          * @property {boolean|null} [mqttBroadcastEnabled] NetworkConfigResponse mqttBroadcastEnabled
          * @property {Uint8Array|null} [csr] NetworkConfigResponse csr
          * @property {Uint8Array|null} [mqttCertificateDer] NetworkConfigResponse mqttCertificateDer
          * @property {Uint8Array|null} [mqttCaDer] NetworkConfigResponse mqttCaDer
+         * @property {lukuid.UploadMode|null} [uploadMode] NetworkConfigResponse uploadMode
+         * @property {string|null} [uploadDestination] NetworkConfigResponse uploadDestination
+         * @property {lukuid.UploadAuth|null} [uploadAuth] NetworkConfigResponse uploadAuth
+         * @property {string|null} [uploadTokenKey] NetworkConfigResponse uploadTokenKey
+         * @property {lukuid.UploadTokenType|null} [uploadTokenType] NetworkConfigResponse uploadTokenType
+         * @property {string|null} [uploadTopic] NetworkConfigResponse uploadTopic
+         * @property {number|null} [uploadFrequency] NetworkConfigResponse uploadFrequency
          */
 
         /**
@@ -7297,14 +7850,6 @@ export const lukuid = $root.lukuid = (() => {
         NetworkConfigResponse.prototype.mqttTopic = "";
 
         /**
-         * NetworkConfigResponse mqttBroadcastFrequencySeconds.
-         * @member {number} mqttBroadcastFrequencySeconds
-         * @memberof lukuid.NetworkConfigResponse
-         * @instance
-         */
-        NetworkConfigResponse.prototype.mqttBroadcastFrequencySeconds = 0;
-
-        /**
          * NetworkConfigResponse mqttUsername.
          * @member {string} mqttUsername
          * @memberof lukuid.NetworkConfigResponse
@@ -7353,6 +7898,62 @@ export const lukuid = $root.lukuid = (() => {
         NetworkConfigResponse.prototype.mqttCaDer = $util.newBuffer([]);
 
         /**
+         * NetworkConfigResponse uploadMode.
+         * @member {lukuid.UploadMode} uploadMode
+         * @memberof lukuid.NetworkConfigResponse
+         * @instance
+         */
+        NetworkConfigResponse.prototype.uploadMode = 0;
+
+        /**
+         * NetworkConfigResponse uploadDestination.
+         * @member {string} uploadDestination
+         * @memberof lukuid.NetworkConfigResponse
+         * @instance
+         */
+        NetworkConfigResponse.prototype.uploadDestination = "";
+
+        /**
+         * NetworkConfigResponse uploadAuth.
+         * @member {lukuid.UploadAuth} uploadAuth
+         * @memberof lukuid.NetworkConfigResponse
+         * @instance
+         */
+        NetworkConfigResponse.prototype.uploadAuth = 0;
+
+        /**
+         * NetworkConfigResponse uploadTokenKey.
+         * @member {string} uploadTokenKey
+         * @memberof lukuid.NetworkConfigResponse
+         * @instance
+         */
+        NetworkConfigResponse.prototype.uploadTokenKey = "";
+
+        /**
+         * NetworkConfigResponse uploadTokenType.
+         * @member {lukuid.UploadTokenType} uploadTokenType
+         * @memberof lukuid.NetworkConfigResponse
+         * @instance
+         */
+        NetworkConfigResponse.prototype.uploadTokenType = 0;
+
+        /**
+         * NetworkConfigResponse uploadTopic.
+         * @member {string} uploadTopic
+         * @memberof lukuid.NetworkConfigResponse
+         * @instance
+         */
+        NetworkConfigResponse.prototype.uploadTopic = "";
+
+        /**
+         * NetworkConfigResponse uploadFrequency.
+         * @member {number} uploadFrequency
+         * @memberof lukuid.NetworkConfigResponse
+         * @instance
+         */
+        NetworkConfigResponse.prototype.uploadFrequency = 0;
+
+        /**
          * Creates a new NetworkConfigResponse instance using the specified properties.
          * @function create
          * @memberof lukuid.NetworkConfigResponse
@@ -7386,8 +7987,6 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 4, wireType 0 =*/32).uint32(message.mqttPort);
             if (message.mqttTopic != null && Object.hasOwnProperty.call(message, "mqttTopic"))
                 writer.uint32(/* id 5, wireType 2 =*/42).string(message.mqttTopic);
-            if (message.mqttBroadcastFrequencySeconds != null && Object.hasOwnProperty.call(message, "mqttBroadcastFrequencySeconds"))
-                writer.uint32(/* id 6, wireType 0 =*/48).uint32(message.mqttBroadcastFrequencySeconds);
             if (message.mqttUsername != null && Object.hasOwnProperty.call(message, "mqttUsername"))
                 writer.uint32(/* id 7, wireType 2 =*/58).string(message.mqttUsername);
             if (message.mqttPasswordSet != null && Object.hasOwnProperty.call(message, "mqttPasswordSet"))
@@ -7400,6 +7999,20 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 11, wireType 2 =*/90).bytes(message.mqttCertificateDer);
             if (message.mqttCaDer != null && Object.hasOwnProperty.call(message, "mqttCaDer"))
                 writer.uint32(/* id 12, wireType 2 =*/98).bytes(message.mqttCaDer);
+            if (message.uploadMode != null && Object.hasOwnProperty.call(message, "uploadMode"))
+                writer.uint32(/* id 13, wireType 0 =*/104).int32(message.uploadMode);
+            if (message.uploadDestination != null && Object.hasOwnProperty.call(message, "uploadDestination"))
+                writer.uint32(/* id 14, wireType 2 =*/114).string(message.uploadDestination);
+            if (message.uploadAuth != null && Object.hasOwnProperty.call(message, "uploadAuth"))
+                writer.uint32(/* id 15, wireType 0 =*/120).int32(message.uploadAuth);
+            if (message.uploadTokenKey != null && Object.hasOwnProperty.call(message, "uploadTokenKey"))
+                writer.uint32(/* id 16, wireType 2 =*/130).string(message.uploadTokenKey);
+            if (message.uploadTokenType != null && Object.hasOwnProperty.call(message, "uploadTokenType"))
+                writer.uint32(/* id 17, wireType 0 =*/136).int32(message.uploadTokenType);
+            if (message.uploadTopic != null && Object.hasOwnProperty.call(message, "uploadTopic"))
+                writer.uint32(/* id 18, wireType 2 =*/146).string(message.uploadTopic);
+            if (message.uploadFrequency != null && Object.hasOwnProperty.call(message, "uploadFrequency"))
+                writer.uint32(/* id 19, wireType 0 =*/152).uint32(message.uploadFrequency);
             return writer;
         };
 
@@ -7456,10 +8069,6 @@ export const lukuid = $root.lukuid = (() => {
                         message.mqttTopic = reader.string();
                         break;
                     }
-                case 6: {
-                        message.mqttBroadcastFrequencySeconds = reader.uint32();
-                        break;
-                    }
                 case 7: {
                         message.mqttUsername = reader.string();
                         break;
@@ -7482,6 +8091,34 @@ export const lukuid = $root.lukuid = (() => {
                     }
                 case 12: {
                         message.mqttCaDer = reader.bytes();
+                        break;
+                    }
+                case 13: {
+                        message.uploadMode = reader.int32();
+                        break;
+                    }
+                case 14: {
+                        message.uploadDestination = reader.string();
+                        break;
+                    }
+                case 15: {
+                        message.uploadAuth = reader.int32();
+                        break;
+                    }
+                case 16: {
+                        message.uploadTokenKey = reader.string();
+                        break;
+                    }
+                case 17: {
+                        message.uploadTokenType = reader.int32();
+                        break;
+                    }
+                case 18: {
+                        message.uploadTopic = reader.string();
+                        break;
+                    }
+                case 19: {
+                        message.uploadFrequency = reader.uint32();
                         break;
                     }
                 default:
@@ -7534,9 +8171,6 @@ export const lukuid = $root.lukuid = (() => {
             if (message.mqttTopic != null && message.hasOwnProperty("mqttTopic"))
                 if (!$util.isString(message.mqttTopic))
                     return "mqttTopic: string expected";
-            if (message.mqttBroadcastFrequencySeconds != null && message.hasOwnProperty("mqttBroadcastFrequencySeconds"))
-                if (!$util.isInteger(message.mqttBroadcastFrequencySeconds))
-                    return "mqttBroadcastFrequencySeconds: integer expected";
             if (message.mqttUsername != null && message.hasOwnProperty("mqttUsername"))
                 if (!$util.isString(message.mqttUsername))
                     return "mqttUsername: string expected";
@@ -7555,6 +8189,46 @@ export const lukuid = $root.lukuid = (() => {
             if (message.mqttCaDer != null && message.hasOwnProperty("mqttCaDer"))
                 if (!(message.mqttCaDer && typeof message.mqttCaDer.length === "number" || $util.isString(message.mqttCaDer)))
                     return "mqttCaDer: buffer expected";
+            if (message.uploadMode != null && message.hasOwnProperty("uploadMode"))
+                switch (message.uploadMode) {
+                default:
+                    return "uploadMode: enum value expected";
+                case 0:
+                case 1:
+                case 2:
+                    break;
+                }
+            if (message.uploadDestination != null && message.hasOwnProperty("uploadDestination"))
+                if (!$util.isString(message.uploadDestination))
+                    return "uploadDestination: string expected";
+            if (message.uploadAuth != null && message.hasOwnProperty("uploadAuth"))
+                switch (message.uploadAuth) {
+                default:
+                    return "uploadAuth: enum value expected";
+                case 0:
+                case 1:
+                case 2:
+                    break;
+                }
+            if (message.uploadTokenKey != null && message.hasOwnProperty("uploadTokenKey"))
+                if (!$util.isString(message.uploadTokenKey))
+                    return "uploadTokenKey: string expected";
+            if (message.uploadTokenType != null && message.hasOwnProperty("uploadTokenType"))
+                switch (message.uploadTokenType) {
+                default:
+                    return "uploadTokenType: enum value expected";
+                case 0:
+                case 1:
+                case 2:
+                case 3:
+                    break;
+                }
+            if (message.uploadTopic != null && message.hasOwnProperty("uploadTopic"))
+                if (!$util.isString(message.uploadTopic))
+                    return "uploadTopic: string expected";
+            if (message.uploadFrequency != null && message.hasOwnProperty("uploadFrequency"))
+                if (!$util.isInteger(message.uploadFrequency))
+                    return "uploadFrequency: integer expected";
             return null;
         };
 
@@ -7580,8 +8254,6 @@ export const lukuid = $root.lukuid = (() => {
                 message.mqttPort = object.mqttPort >>> 0;
             if (object.mqttTopic != null)
                 message.mqttTopic = String(object.mqttTopic);
-            if (object.mqttBroadcastFrequencySeconds != null)
-                message.mqttBroadcastFrequencySeconds = object.mqttBroadcastFrequencySeconds >>> 0;
             if (object.mqttUsername != null)
                 message.mqttUsername = String(object.mqttUsername);
             if (object.mqttPasswordSet != null)
@@ -7603,6 +8275,78 @@ export const lukuid = $root.lukuid = (() => {
                     $util.base64.decode(object.mqttCaDer, message.mqttCaDer = $util.newBuffer($util.base64.length(object.mqttCaDer)), 0);
                 else if (object.mqttCaDer.length >= 0)
                     message.mqttCaDer = object.mqttCaDer;
+            switch (object.uploadMode) {
+            default:
+                if (typeof object.uploadMode === "number") {
+                    message.uploadMode = object.uploadMode;
+                    break;
+                }
+                break;
+            case "UPLOAD_MODE_NONE":
+            case 0:
+                message.uploadMode = 0;
+                break;
+            case "UPLOAD_MODE_HTTP":
+            case 1:
+                message.uploadMode = 1;
+                break;
+            case "UPLOAD_MODE_MQTT":
+            case 2:
+                message.uploadMode = 2;
+                break;
+            }
+            if (object.uploadDestination != null)
+                message.uploadDestination = String(object.uploadDestination);
+            switch (object.uploadAuth) {
+            default:
+                if (typeof object.uploadAuth === "number") {
+                    message.uploadAuth = object.uploadAuth;
+                    break;
+                }
+                break;
+            case "UPLOAD_AUTH_NONE":
+            case 0:
+                message.uploadAuth = 0;
+                break;
+            case "UPLOAD_AUTH_TOKEN":
+            case 1:
+                message.uploadAuth = 1;
+                break;
+            case "UPLOAD_AUTH_MTLS":
+            case 2:
+                message.uploadAuth = 2;
+                break;
+            }
+            if (object.uploadTokenKey != null)
+                message.uploadTokenKey = String(object.uploadTokenKey);
+            switch (object.uploadTokenType) {
+            default:
+                if (typeof object.uploadTokenType === "number") {
+                    message.uploadTokenType = object.uploadTokenType;
+                    break;
+                }
+                break;
+            case "UPLOAD_TOKEN_TYPE_HEADER":
+            case 0:
+                message.uploadTokenType = 0;
+                break;
+            case "UPLOAD_TOKEN_TYPE_QUERY":
+            case 1:
+                message.uploadTokenType = 1;
+                break;
+            case "UPLOAD_TOKEN_TYPE_BODY":
+            case 2:
+                message.uploadTokenType = 2;
+                break;
+            case "UPLOAD_TOKEN_TYPE_BEARER":
+            case 3:
+                message.uploadTokenType = 3;
+                break;
+            }
+            if (object.uploadTopic != null)
+                message.uploadTopic = String(object.uploadTopic);
+            if (object.uploadFrequency != null)
+                message.uploadFrequency = object.uploadFrequency >>> 0;
             return message;
         };
 
@@ -7625,7 +8369,6 @@ export const lukuid = $root.lukuid = (() => {
                 object.mqttBrokerUrl = "";
                 object.mqttPort = 0;
                 object.mqttTopic = "";
-                object.mqttBroadcastFrequencySeconds = 0;
                 object.mqttUsername = "";
                 object.mqttPasswordSet = false;
                 object.mqttBroadcastEnabled = false;
@@ -7650,6 +8393,13 @@ export const lukuid = $root.lukuid = (() => {
                     if (options.bytes !== Array)
                         object.mqttCaDer = $util.newBuffer(object.mqttCaDer);
                 }
+                object.uploadMode = options.enums === String ? "UPLOAD_MODE_NONE" : 0;
+                object.uploadDestination = "";
+                object.uploadAuth = options.enums === String ? "UPLOAD_AUTH_NONE" : 0;
+                object.uploadTokenKey = "";
+                object.uploadTokenType = options.enums === String ? "UPLOAD_TOKEN_TYPE_HEADER" : 0;
+                object.uploadTopic = "";
+                object.uploadFrequency = 0;
             }
             if (message.wifiSsid != null && message.hasOwnProperty("wifiSsid"))
                 object.wifiSsid = message.wifiSsid;
@@ -7661,8 +8411,6 @@ export const lukuid = $root.lukuid = (() => {
                 object.mqttPort = message.mqttPort;
             if (message.mqttTopic != null && message.hasOwnProperty("mqttTopic"))
                 object.mqttTopic = message.mqttTopic;
-            if (message.mqttBroadcastFrequencySeconds != null && message.hasOwnProperty("mqttBroadcastFrequencySeconds"))
-                object.mqttBroadcastFrequencySeconds = message.mqttBroadcastFrequencySeconds;
             if (message.mqttUsername != null && message.hasOwnProperty("mqttUsername"))
                 object.mqttUsername = message.mqttUsername;
             if (message.mqttPasswordSet != null && message.hasOwnProperty("mqttPasswordSet"))
@@ -7675,6 +8423,20 @@ export const lukuid = $root.lukuid = (() => {
                 object.mqttCertificateDer = options.bytes === String ? $util.base64.encode(message.mqttCertificateDer, 0, message.mqttCertificateDer.length) : options.bytes === Array ? Array.prototype.slice.call(message.mqttCertificateDer) : message.mqttCertificateDer;
             if (message.mqttCaDer != null && message.hasOwnProperty("mqttCaDer"))
                 object.mqttCaDer = options.bytes === String ? $util.base64.encode(message.mqttCaDer, 0, message.mqttCaDer.length) : options.bytes === Array ? Array.prototype.slice.call(message.mqttCaDer) : message.mqttCaDer;
+            if (message.uploadMode != null && message.hasOwnProperty("uploadMode"))
+                object.uploadMode = options.enums === String ? $root.lukuid.UploadMode[message.uploadMode] === undefined ? message.uploadMode : $root.lukuid.UploadMode[message.uploadMode] : message.uploadMode;
+            if (message.uploadDestination != null && message.hasOwnProperty("uploadDestination"))
+                object.uploadDestination = message.uploadDestination;
+            if (message.uploadAuth != null && message.hasOwnProperty("uploadAuth"))
+                object.uploadAuth = options.enums === String ? $root.lukuid.UploadAuth[message.uploadAuth] === undefined ? message.uploadAuth : $root.lukuid.UploadAuth[message.uploadAuth] : message.uploadAuth;
+            if (message.uploadTokenKey != null && message.hasOwnProperty("uploadTokenKey"))
+                object.uploadTokenKey = message.uploadTokenKey;
+            if (message.uploadTokenType != null && message.hasOwnProperty("uploadTokenType"))
+                object.uploadTokenType = options.enums === String ? $root.lukuid.UploadTokenType[message.uploadTokenType] === undefined ? message.uploadTokenType : $root.lukuid.UploadTokenType[message.uploadTokenType] : message.uploadTokenType;
+            if (message.uploadTopic != null && message.hasOwnProperty("uploadTopic"))
+                object.uploadTopic = message.uploadTopic;
+            if (message.uploadFrequency != null && message.hasOwnProperty("uploadFrequency"))
+                object.uploadFrequency = message.uploadFrequency;
             return object;
         };
 

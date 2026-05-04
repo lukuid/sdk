@@ -12,6 +12,7 @@ import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.security.spec.X509EncodedKeySpec
 import java.io.ByteArrayInputStream
+import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
 
 internal data class DeviceAttestationInput(
     val id: String,
@@ -162,7 +163,7 @@ private val TRUSTED_ROOT_CERTS_PEM = listOf(
     """
 )
 
-internal fun verifyDeviceAttestation(input: DeviceAttestationInput): VerificationResult {
+internal fun verifyDeviceAttestation(input: DeviceAttestationInput, revocationManager: RevocationManager? = null): VerificationResult {
     if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
         Security.insertProviderAt(BouncyCastleProvider(), 1)
     }
@@ -192,6 +193,15 @@ internal fun verifyDeviceAttestation(input: DeviceAttestationInput): Verificatio
             }
             
             leafPublicKey = certs[0].publicKey
+
+            // 1.05 Revocation Check: Check every certificate in the chain
+            if (revocationManager != null) {
+                for (cert in certs) {
+                    if (revocationManager.isRevoked(cert)) {
+                        return VerificationResult(false, "Certificate is revoked: ${sha256Hex(extractRawPublicKey(cert.publicKey))}")
+                    }
+                }
+            }
 
             val requiredOu = when (input.trustProfile) {
                 "dev" -> "lukuid-dev"
@@ -253,11 +263,21 @@ internal fun verifyDeviceAttestation(input: DeviceAttestationInput): Verificatio
                 }
                 
                 if (!verified) {
-                    return VerificationResult(false, "Signature verification failed at chain level $i")
+                    return VerificationResult(false, "Signature verification failed at level $i")
                 }
-            }
+                }
 
-            if (input.created != null) {
+                // Revocation Check: Check every certificate in the chain (After verification)
+                if (revocationManager != null) {
+                for (cert in certs) {
+                    if (revocationManager.isRevoked(cert)) {
+                        return VerificationResult(false, "Certificate is revoked: ${sha256Hex(extractRawPublicKey(cert.publicKey))}")
+                    }
+                }
+                }
+
+                if (input.created != null) {
+
                 val leaf = certs[0]
                 val validFrom = leaf.notBefore.time / 1000
                 val validTo = leaf.notAfter.time / 1000
@@ -294,7 +314,7 @@ internal fun verifyDeviceAttestation(input: DeviceAttestationInput): Verificatio
     return VerificationResult(false, "Attestation verification failed")
 }
 
-internal fun verifyExternalIdentity(input: ExternalIdentityInput): VerificationResult {
+internal fun verifyExternalIdentity(input: ExternalIdentityInput, revocationManager: RevocationManager? = null): VerificationResult {
     if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
         Security.insertProviderAt(BouncyCastleProvider(), 1)
     }
@@ -313,6 +333,15 @@ internal fun verifyExternalIdentity(input: ExternalIdentityInput): VerificationR
         val cert = try { cf.generateCertificate(ByteArrayInputStream(der)) as X509Certificate } catch (e: Exception) { null }
             ?: return VerificationResult(false, "Failed to parse X509 certificate in chain")
         certs += cert
+    }
+
+    // Revocation Check: Check every certificate in the chain
+    if (revocationManager != null) {
+        for (cert in certs) {
+            if (revocationManager.isRevoked(cert)) {
+                return VerificationResult(false, "External identity certificate is revoked: ${sha256Hex(extractRawPublicKey(cert.publicKey))}")
+            }
+        }
     }
 
     val actualRootFingerprint = sha256Hex(certs.last().encoded)
@@ -352,6 +381,15 @@ internal fun verifyExternalIdentity(input: ExternalIdentityInput): VerificationR
 
 private fun decodeBase64(value: String): ByteArray? {
     return try { Base64.getDecoder().decode(value) } catch (_: Exception) { null }
+}
+
+private fun extractRawPublicKey(publicKey: PublicKey): ByteArray {
+    return try {
+        val spki = SubjectPublicKeyInfo.getInstance(publicKey.encoded)
+        spki.publicKeyData.bytes
+    } catch (e: Exception) {
+        publicKey.encoded // Fallback to full SPKI if parsing fails
+    }
 }
 
 private fun sha256Hex(input: ByteArray): String {

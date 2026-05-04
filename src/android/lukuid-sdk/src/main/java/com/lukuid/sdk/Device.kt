@@ -31,7 +31,7 @@ data class DeviceInfo(
     val heartbeatIntermediateDer: String? = null,
     val heartbeatRootFingerprint: String? = null,
     val verified: Boolean,
-    val telemetry: Boolean = false,
+    val networkParticipationEnabled: Boolean = false,
     val lastSync: Long? = null,
     val counter: Long = 0,
     val syncRequired: Boolean = false
@@ -99,7 +99,29 @@ data class LukuSdkOptions(
     /**
      * Base URL for the LukuID API. Defaults to https://api.lukuid.com.
      */
-    val apiUrl: String = "https://api.lukuid.com"
+    val apiUrl: String = "https://api.lukuid.com",
+    /**
+     * Completely disables network calls to LukuID (e.g. heartbeats, CRL fetches).
+     * Defaults to false.
+     * Custom endpoints configured on the device bypass this check.
+     */
+    val disableExternalCalls: Boolean = false,
+    /**
+     * If true, certificate revocation list (CRL) is only kept in memory.
+     * Default is `false`.
+     */
+    val crlMemoryOnly: Boolean = false,
+    /**
+     * Local folder for storing the CRL cache.
+     * Defaults to the application's internal files directory.
+     */
+    val crlCachePath: String? = null,
+    /**
+     * Frequency of CRL background refresh in hours.
+     * Set to 0 to disable auto-refresh.
+     * Default is 4 hours.
+     */
+    val crlRefreshIntervalHours: Int = 4
 )
 
 /** Item for Level 2 Cloud Attestation. */

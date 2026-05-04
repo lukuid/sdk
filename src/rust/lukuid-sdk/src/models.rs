@@ -42,12 +42,39 @@ pub struct LukuidSdkOptions {
      * Can be "prod", "test", or "dev". Default is "prod".
      */
     pub trust_profile: String,
+    /**
+     * Completely disables network calls to LukuID (e.g. heartbeats, CRL fetches).
+     * Set by LUKUID_DISABLE_EXTERNAL_CALLS=1. Defaults to false.
+     * Custom endpoints configured on the device bypass this check.
+     */
+    pub disable_external_calls: bool,
+    /**
+     * If true, certificate revocation list (CRL) is only kept in memory.
+     * Default is `false`.
+     */
+    pub crl_memory_only: bool,
+    /**
+     * Local folder for storing the CRL cache.
+     * Defaults to ~/.lukuid
+     */
+    pub crl_cache_path: Option<String>,
+    /**
+     * Frequency of CRL background refresh in hours.
+     * Set to 0 to disable auto-refresh.
+     * Default is 4 hours.
+     */
+    pub crl_refresh_interval_hours: u32,
 }
 
 impl Default for LukuidSdkOptions {
     fn default() -> Self {
         let trust_profile =
             std::env::var("LUKUID_TRUST_PROFILE").unwrap_or_else(|_| "prod".to_string());
+        
+        let disable_external_calls = std::env::var("LUKUID_DISABLE_EXTERNAL_CALLS")
+            .map(|val| val == "1" || val.to_lowercase() == "true")
+            .unwrap_or(false);
+
         Self {
             debug_logging: false,
             allow_unverified_devices: false,
@@ -55,6 +82,10 @@ impl Default for LukuidSdkOptions {
             connect_lifecycle_sync: true,
             command_timeout: 30,
             trust_profile,
+            disable_external_calls,
+            crl_memory_only: false,
+            crl_cache_path: None,
+            crl_refresh_interval_hours: 4,
         }
     }
 }
@@ -107,8 +138,8 @@ pub struct DeviceInfo {
     pub heartbeat_intermediate_der: Option<String>,
     pub heartbeat_root_fingerprint: Option<String>,
     pub verified: bool,
-    #[serde(default)]
-    pub telemetry: bool,
+    #[serde(rename = "network_participation_enabled", default)]
+    pub network_participation_enabled: bool,
     #[serde(rename = "lastSync")]
     pub last_sync: Option<u64>,
     pub counter: u64,

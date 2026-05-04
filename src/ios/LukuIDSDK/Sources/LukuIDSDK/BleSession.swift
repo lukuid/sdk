@@ -277,7 +277,7 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
         }
         let parsed = try parseInfo(infoMap)
         
-        let verification = verifyDeviceAttestation(parsed.attestation)
+        let verification = verifyDeviceAttestation(parsed.attestation, revocationManager: client.revocationManager)
         let verificationOk: Bool
         if case .success = verification {
             verificationOk = true
@@ -337,30 +337,25 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
             if now - lastSync > 24 * 3600 || finalInfo.syncRequired {
                 Task {
                     do {
-                        // 1. Fetch Telemetry if needed (either for public API or custom heartbeat)
-                        var telemetry: [[String: Any]] = []
-                        var telemetrySignature: String?
-                        var telemetryCanonical: String?
-
-                        if finalInfo.telemetry || finalInfo.customHeartbeatURL != nil {
-                            let telemetryResult = (try? await call(key: "fetch_telemetry", opts: [:], timeout: 10) as? [String: Any])
-                            telemetry = telemetryResult?["data"] as? [[String: Any]] ?? []
-                            telemetrySignature = telemetryResult?["signature"] as? String
-                            telemetryCanonical = telemetryResult?["canonical_string"] as? String
+                        // 1. Fetch Telemetry if network participation is enabled
+                        if finalInfo.networkParticipationEnabled {
+                            if let telemetryResult = (try? await call(key: "fetch_telemetry", opts: [:], timeout: 10) as? [String: Any]),
+                               let telemetry = telemetryResult["data"] as? [[String: Any]], !telemetry.isEmpty {
+                                
+                                let telemetrySignature = telemetryResult["signature"] as? String
+                                let telemetryCanonical = telemetryResult["canonical_string"] as? String
+                                
+                                _ = try? await client.telemetry(
+                                    deviceId: finalInfo.id,
+                                    data: telemetry,
+                                    signature: telemetrySignature,
+                                    canonicalString: telemetryCanonical,
+                                    customURL: nil // Always to api.lukuid.com or custom participating url, the SDK method handles it
+                                )
+                            }
                         }
 
-                        // 2. Push Telemetry to public API if enabled
-                        if finalInfo.telemetry && !telemetry.isEmpty {
-                            _ = try? await client.telemetry(
-                                deviceId: finalInfo.id,
-                                data: telemetry,
-                                signature: telemetrySignature,
-                                canonicalString: telemetryCanonical,
-                                customURL: nil // Always to api.lukuid.com
-                            )
-                        }
-
-                        // 3. Generate Heartbeat
+                        // 2. Generate Heartbeat
                         if let hbInit = try await call(key: "generate_heartbeat", opts: [:], timeout: 10) as? [String: Any],
                            let signature = hbInit["signature"] as? String,
                            let csr = hbInit["csr"] as? String,
@@ -382,7 +377,6 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
                                 "integration": "native-sdk"
                             ]
 
-                            // Heartbeat: only include telemetry if it's a custom URL
                             let hbResp = try await client.heartbeat(
                                 deviceId: finalInfo.id,
                                 publicKey: finalInfo.key,
@@ -393,9 +387,7 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
                                 counter: counter,
                                 previousState: previousState,
                                 source: source,
-                                telemetry: finalInfo.customHeartbeatURL != nil ? telemetry : nil,
-                                telemetrySignature: finalInfo.customHeartbeatURL != nil ? telemetrySignature : nil,
-                                telemetryCanonicalString: finalInfo.customHeartbeatURL != nil ? telemetryCanonical : nil,
+                                networkParticipationEnabled: finalInfo.networkParticipationEnabled,
                                 customURL: finalInfo.customHeartbeatURL
                             )
                             let payload: [String: Any] = [
@@ -456,7 +448,7 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
             heartbeatIntermediateDer: infoFieldBase64(map["heartbeat_intermediate_der"]),
             heartbeatRootFingerprint: map["heartbeat_root_fingerprint"] as? String,
             verified: false,
-            telemetry: map["telemetry"] as? Bool ?? false,
+            networkParticipationEnabled: map["network_participation_enabled"] as? Bool ?? false,
             lastSync: lastSync,
             counter: counter,
             syncRequired: syncRequired

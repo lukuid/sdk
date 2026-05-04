@@ -209,8 +209,17 @@ jobs:
       - run: pnpm run build:cdn
       - name: Publish Packages
         shell: bash
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
+
+          # Conditionally configure NPM token if provided
+          if [ -n "${NPM_TOKEN:-}" ]; then
+            echo "Configuring NPM token for authentication"
+            echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+          fi
+
           for dir in \
             src/js/core \
             src/js/transport-webble \
@@ -226,7 +235,12 @@ jobs:
                 echo "Skipping ${PACKAGE_NAME}@${PACKAGE_VERSION}; version already published."
                 exit 0
               fi
-              pnpm publish --access public --provenance --no-git-checks
+
+              if [ -n "${NPM_TOKEN:-}" ]; then
+                pnpm publish --access public --no-git-checks
+              else
+                pnpm publish --access public --provenance --no-git-checks
+              fi
             )
           done
       - name: Upload Release Assets

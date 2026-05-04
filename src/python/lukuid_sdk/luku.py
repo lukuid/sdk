@@ -42,15 +42,19 @@ class VerificationIssue:
     criticality: Criticality
 
 
+from .revocation import RevocationManager
+
+
 @dataclass(slots=True)
 class LukuVerifyOptions:
     allow_untrusted_roots: bool = False
     skip_certificate_temporal_checks: bool = False
     trusted_external_fingerprints: list[str] = field(default_factory=list)
     trust_profile: str = field(default_factory=lambda: os.environ.get("LUKUID_TRUST_PROFILE", "prod"))
-    policy: "LukuPolicy | None" = None
+    policy: LukuPolicy | None = None
     require_continuity: bool = False
     attachments: dict[str, bytes] | None = None
+    revocation_manager: RevocationManager | None = None
 
 
 @dataclass(slots=True)
@@ -426,7 +430,8 @@ class LukuArchive:
                             created=None if options.skip_certificate_temporal_checks else timestamp,
                             trust_profile=options.trust_profile,
                             allow_untrusted_roots=options.allow_untrusted_roots,
-                        )
+                        ),
+                        revocation_manager=options.revocation_manager
                     )
                     if not result.ok:
                         issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id} failed DAC attestation: {result.reason}", Criticality.CRITICAL))
@@ -488,7 +493,8 @@ class LukuArchive:
                                 signature=external_signature,
                                 expected_payload=expected_payload,
                                 trusted_fingerprints=options.trusted_external_fingerprints,
-                            )
+                            ),
+                            revocation_manager=options.revocation_manager
                         )
                         if not result.ok:
                             issues.append(_issue("EXTERNAL_IDENTITY_VERIFICATION_FAILED", f"External identity verification failed: {result.reason}", Criticality.CRITICAL))
@@ -595,7 +601,8 @@ class LukuFile:
                     created=None if options.skip_certificate_temporal_checks else timestamp,
                     trust_profile=options.trust_profile,
                     allow_untrusted_roots=options.allow_untrusted_roots,
-                )
+                ),
+                revocation_manager=options.revocation_manager
             )
             if not result.ok:
                 issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed DAC attestation: {result.reason}", Criticality.CRITICAL))

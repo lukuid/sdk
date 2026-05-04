@@ -217,9 +217,6 @@ fn encode_command_request(input: &Value) -> Option<Vec<u8>> {
             if let Some(v) = source.get("mqtt_topic").and_then(Value::as_str) {
                 write_string(&mut nested, 6, v);
             }
-            if let Some(v) = as_u32(source.get("mqtt_broadcast_frequency_seconds")) {
-                write_u32(&mut nested, 7, v);
-            }
             if let Some(v) = source.get("mqtt_username").and_then(Value::as_str) {
                 write_string(&mut nested, 8, v);
             }
@@ -243,6 +240,36 @@ fn encode_command_request(input: &Value) -> Option<Vec<u8>> {
             }
             if let Some(v) = source.get("telemetry_enabled").and_then(Value::as_bool) {
                 write_bool(&mut nested, 14, v);
+            }
+            if let Some(v) = as_u32(source.get("upload_mode")) {
+                write_u32(&mut nested, 15, v);
+            }
+            if let Some(v) = source.get("upload_destination").and_then(Value::as_str) {
+                write_string(&mut nested, 16, v);
+            }
+            if let Some(v) = as_u32(source.get("upload_auth")) {
+                write_u32(&mut nested, 17, v);
+            }
+            if let Some(v) = source.get("upload_token_key").and_then(Value::as_str) {
+                write_string(&mut nested, 18, v);
+            }
+            if let Some(v) = source.get("upload_token_value").and_then(Value::as_str) {
+                write_string(&mut nested, 19, v);
+            }
+            if let Some(v) = as_u32(source.get("upload_token_type")) {
+                write_u32(&mut nested, 20, v);
+            }
+            if let Some(v) = source.get("upload_topic").and_then(Value::as_str) {
+                write_string(&mut nested, 21, v);
+            }
+            if let Some(v) = source.get("upload_certificate_der").and_then(as_bytes) {
+                write_bytes(&mut nested, 22, &v);
+            }
+            if let Some(v) = source.get("upload_ca_der").and_then(as_bytes) {
+                write_bytes(&mut nested, 23, &v);
+            }
+            if let Some(v) = as_u32(source.get("upload_frequency")) {
+                write_u32(&mut nested, 24, v);
             }
             write_message(&mut out, 5, &nested);
         }
@@ -1249,13 +1276,6 @@ fn decode_network_config_response(bytes: &[u8]) -> Option<Value> {
             3 => insert_string(bytes, &mut cursor, wire_type, &mut out, "mqtt_broker_url")?,
             4 => insert_u32(bytes, &mut cursor, wire_type, &mut out, "mqtt_port")?,
             5 => insert_string(bytes, &mut cursor, wire_type, &mut out, "mqtt_topic")?,
-            6 => insert_u32(
-                bytes,
-                &mut cursor,
-                wire_type,
-                &mut out,
-                "mqtt_broadcast_frequency_seconds",
-            )?,
             7 => insert_string(bytes, &mut cursor, wire_type, &mut out, "mqtt_username")?,
             8 => insert_bool(bytes, &mut cursor, wire_type, &mut out, "mqtt_password_set")?,
             9 => insert_bool(
@@ -1274,6 +1294,13 @@ fn decode_network_config_response(bytes: &[u8]) -> Option<Value> {
                 "mqtt_certificate_der",
             )?,
             12 => insert_string(bytes, &mut cursor, wire_type, &mut out, "mqtt_ca_der")?,
+            13 => insert_u32(bytes, &mut cursor, wire_type, &mut out, "upload_mode")?,
+            14 => insert_string(bytes, &mut cursor, wire_type, &mut out, "upload_destination")?,
+            15 => insert_u32(bytes, &mut cursor, wire_type, &mut out, "upload_auth")?,
+            16 => insert_string(bytes, &mut cursor, wire_type, &mut out, "upload_token_key")?,
+            17 => insert_u32(bytes, &mut cursor, wire_type, &mut out, "upload_token_type")?,
+            18 => insert_string(bytes, &mut cursor, wire_type, &mut out, "upload_topic")?,
+            19 => insert_u32(bytes, &mut cursor, wire_type, &mut out, "upload_frequency")?,
             _ => skip_field(bytes, &mut cursor, wire_type)?,
         }
     }

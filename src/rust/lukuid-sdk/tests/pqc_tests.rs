@@ -18,7 +18,7 @@ fn test_pqc_signature_rejection() {
         trust_profile: "prod".to_string(),
     };
     
-    let result = verify_device_attestation(&inputs);
+    let result = verify_device_attestation(&inputs, None);
     assert!(!result.ok);
     let reason = result.reason.unwrap();
     assert!(reason.contains("PQC Signature verification failed") || reason.contains("Invalid certificate chain"));
@@ -40,7 +40,7 @@ fn test_ed25519_signature_legacy_pass() {
         trust_profile: "prod".to_string(),
     };
     
-    let result = verify_device_attestation(&inputs);
+    let result = verify_device_attestation(&inputs, None);
     // Should fail because sig is all zeros, but it shouldn't be a PQC error
     assert!(!result.ok);
 }

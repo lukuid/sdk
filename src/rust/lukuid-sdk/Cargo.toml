@@ -36,6 +36,8 @@ reqwest = { version = "0.12", features = ["json"] }
 sha2 = "0.10"
 ml-dsa = "0.1.0-rc.8"
 hex = "0.4"
+dirs = "6.0.0"
+chrono = "0.4.44"
 
 [dev-dependencies]
 ed25519-dalek = { version = "2.1", features = ["rand_core"] }

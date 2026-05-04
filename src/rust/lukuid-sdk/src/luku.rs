@@ -736,7 +736,7 @@ impl LukuFile {
                     attestation_alg: Some(attestation_alg.to_string()),
                     attestation_payload_version: Some(attestation_payload_version as u32),
                 };
-                let result = crate::attestation::verify_device_attestation(&inputs);
+                let result = crate::attestation::verify_device_attestation(&inputs, None);
                 if !result.ok {
                     Self::push_issue(&mut issues, debug_logging, None, VerificationIssue {
                         code: "ATTESTATION_FAILED".to_string(),
@@ -845,7 +845,7 @@ impl LukuFile {
                         expected_payload: expected,
                         trusted_fingerprints: options.trusted_external_fingerprints.clone(),
                     };
-                    let result = crate::attestation::verify_external_identity(&inputs);
+                    let result = crate::attestation::verify_external_identity(&inputs, None);
                     if !result.ok {
                         Self::push_issue(&mut issues, debug_logging, None, VerificationIssue {
                             code: "EXTERNAL_IDENTITY_VERIFICATION_FAILED".to_string(),
@@ -1434,7 +1434,7 @@ impl LukuFile {
                                 trust_profile: options.trust_profile.clone(),
                             };
 
-                            let result = verify_device_attestation(&inputs);
+                            let result = verify_device_attestation(&inputs, None);
                             if !result.ok {
                                 if debug_logging {
                                     Self::debug_log(format!(
@@ -1575,7 +1575,7 @@ impl LukuFile {
                                 trusted_fingerprints: options.trusted_external_fingerprints.clone(),
                             };
 
-                            let result = verify_external_identity(&inputs);
+                            let result = verify_external_identity(&inputs, None);
                             if !result.ok {
                                 LukuFile::push_issue(
                                     issues,

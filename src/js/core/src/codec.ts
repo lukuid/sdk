@@ -229,7 +229,7 @@ function encodeCommandRequest(frame: DeviceFrame): Uint8Array {
 
     if (typeof source.mqtt_broadcast_enabled === 'boolean') writeBool(nested, 12, source.mqtt_broadcast_enabled);
     if (typeof source.custom_heartbeat_url === 'string') writeString(nested, 13, source.custom_heartbeat_url);
-    if (typeof source.telemetry_enabled === 'boolean') writeBool(nested, 14, source.telemetry_enabled);
+    if (typeof source.network_participation_enabled === 'boolean') writeBool(nested, 14, source.network_participation_enabled);
     writeMessage(chunks, 5, nested);
   } else if (action === 'ota_begin') {
     const nested: number[] = [];

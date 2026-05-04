@@ -26,7 +26,7 @@ public struct DeviceInfo: @unchecked Sendable {
     public let heartbeatIntermediateDer: String?
     public let heartbeatRootFingerprint: String?
     public let verified: Bool
-    public let telemetry: Bool
+    public let networkParticipationEnabled: Bool
     public let lastSync: UInt64?
     public let counter: UInt64
     public let syncRequired: Bool
@@ -51,7 +51,7 @@ public struct DeviceInfo: @unchecked Sendable {
                     heartbeatIntermediateDer: String? = nil,
                     heartbeatRootFingerprint: String? = nil,
                     verified: Bool,
-                    telemetry: Bool = false,
+                    networkParticipationEnabled: Bool = false,
                     lastSync: UInt64? = nil,
                     counter: UInt64 = 0,
                     syncRequired: Bool = false) {
@@ -75,7 +75,7 @@ public struct DeviceInfo: @unchecked Sendable {
             self.heartbeatIntermediateDer = heartbeatIntermediateDer
             self.heartbeatRootFingerprint = heartbeatRootFingerprint
             self.verified = verified
-            self.telemetry = telemetry
+            self.networkParticipationEnabled = networkParticipationEnabled
             self.lastSync = lastSync
             self.counter = counter
             self.syncRequired = syncRequired
@@ -151,15 +151,49 @@ public struct LukuIDClientOptions: Sendable {
      * Base URL for the LukuID API. Defaults to https://api.lukuid.com.
      */
     public let apiUrl: String
+    
+    /**
+     * Completely disables network calls to LukuID (e.g. heartbeats, CRL fetches).
+     * Defaults to false.
+     * Custom endpoints configured on the device bypass this check.
+     */
+    public let disableExternalCalls: Bool
+
+    /**
+     * If true, certificate revocation list (CRL) is only kept in memory.
+     * Default is `false`.
+     */
+    public let crlMemoryOnly: Bool
+
+    /**
+     * Local folder for storing the CRL cache.
+     * Defaults to the application's support directory.
+     */
+    public let crlCachePath: String?
+
+    /**
+     * Frequency of CRL background refresh in hours.
+     * Set to 0 to disable auto-refresh.
+     * Default is 4 hours.
+     */
+    public let crlRefreshIntervalHours: Int
 
     public init(
         debugLogging: Bool = false,
         allowUnverifiedDevices: Bool = false,
-        apiUrl: String = "https://api.lukuid.com"
+        apiUrl: String = "https://api.lukuid.com",
+        disableExternalCalls: Bool = false,
+        crlMemoryOnly: Bool = false,
+        crlCachePath: String? = nil,
+        crlRefreshIntervalHours: Int = 4
     ) {
         self.debugLogging = debugLogging
         self.allowUnverifiedDevices = allowUnverifiedDevices
         self.apiUrl = apiUrl
+        self.disableExternalCalls = disableExternalCalls
+        self.crlMemoryOnly = crlMemoryOnly
+        self.crlCachePath = crlCachePath
+        self.crlRefreshIntervalHours = crlRefreshIntervalHours
     }
 }
 

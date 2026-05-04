@@ -51,18 +51,28 @@ class DeviceAttestationTest {
     }
 
     @Test
-    fun `fails verification with bad signature`() {
-        val zeros = ByteArray(64)
-        val sig = Base64.getEncoder().encodeToString(zeros)
+    fun `fails when certificate is revoked`() {
+        val rm = io.mockk.mockk<RevocationManager>()
+        io.mockk.every { rm.isRevoked(any()) } returns true
+        
         val input = DeviceAttestationInput(
             id = "u1",
             key = "pk1",
-            attestationSig = sig,
-            attestationAlg = "Ed25519",
-            attestationPayloadVersion = 1
+            attestationSig = Base64.getEncoder().encodeToString(ByteArray(64)),
+            certificateChain = """
+                -----BEGIN CERTIFICATE-----
+                MIHhMIGUoAMCAQICFDBuxrgcYpuheOUtSj+5MNeNceKdMAUGAytlcDARMQ8wDQYD
+                VQQDDAZMdWt1SUQwHhcNMjYwNTAzMTc0NDMzWhcNMjYwNTA1MTc0NDMzWjARMQ8w
+                DQYDVQQDDAZMdWt1SUQwKjAFBgMrZXADIQBTnje3eWj/vySKRmsOI1+nLqOC1fZj
+                ZjhwLYult7i7MjAFBgMrZXADQQD+1kT5vGzbjsJYupiT31op66BsZHq0vQwsPaOp
+                PxbF+fhDYmefcFH2KgEXgDTLu2k559JclEq3GN/a9oXUxUkN
+                -----END CERTIFICATE-----
+            """.trimIndent(),
+            trustProfile = "prod"
         )
-        val result = verifyDeviceAttestation(input)
+        
+        val result = verifyDeviceAttestation(input, rm)
         assertFalse(result.ok)
-        assertEquals("Attestation verification failed", result.reason)
+        println("REASON: ${result.reason}"); assertTrue(result.reason?.contains("revoked") == true)
     }
 }

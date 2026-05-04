@@ -47,6 +47,7 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
     private lazy var central: CBCentralManager = CBCentralManager(delegate: self, queue: queue)
     private let cache = DeviceInfoCache()
     private let options: LukuIDClientOptions
+    internal let revocationManager: RevocationManager
 
     private var sessions: [UUID: BleSession] = [:]
     private var validated: Set<UUID> = []
@@ -159,6 +160,7 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
 
     public init(options: LukuIDClientOptions = LukuIDClientOptions()) {
         self.options = options
+        self.revocationManager = RevocationManager(options: options)
         super.init()
     }
 
@@ -298,12 +300,18 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
         counter: UInt64,
         previousState: [String: Any],
         source: [String: Any],
-        telemetry: [[String: Any]]? = nil,
-        telemetrySignature: String? = nil,
-        telemetryCanonicalString: String? = nil,
+        networkParticipationEnabled: Bool,
         customURL: String? = nil
     ) async throws -> [String: Any] {
         let apiUrl = (customURL ?? options.apiUrl).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        
+        if !isExternalCallAllowed(targetUrl: apiUrl, disableExternalCalls: options.disableExternalCalls) {
+            return [
+                "status": "dropped",
+                "reason": "LUKUID_DISABLE_EXTERNAL_CALLS"
+            ]
+        }
+
         guard let url = URL(string: "\(apiUrl)/heartbeat") else {
             throw NSError(domain: "lukuid", code: -40, userInfo: [NSLocalizedDescriptionKey: "Invalid API URL"])
         }
@@ -320,20 +328,11 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
             "attestation": attestationCertificate,
             "counter": counter,
             "previous_state": previousState,
-            "source": source
+            "source": source,
+            "network_participation_enabled": networkParticipationEnabled
         ]
         if let attestationRootFingerprint, !attestationRootFingerprint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             body["attestation_root_fingerprint"] = attestationRootFingerprint
-        }
-
-        if let telemetry {
-            body["telemetry"] = telemetry
-        }
-        if let telemetrySignature, !telemetrySignature.isEmpty {
-            body["telemetry_signature"] = telemetrySignature
-        }
-        if let telemetryCanonicalString, !telemetryCanonicalString.isEmpty {
-            body["telemetry_canonical_string"] = telemetryCanonicalString
         }
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -358,7 +357,15 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
         customURL: String? = nil
     ) async throws -> [String: Any] {
         let apiUrl = (customURL ?? options.apiUrl).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        guard let url = URL(string: "\(apiUrl)/telemetry") else {
+        
+        if !isExternalCallAllowed(targetUrl: apiUrl, disableExternalCalls: options.disableExternalCalls) {
+            return [
+                "status": "dropped",
+                "reason": "LUKUID_DISABLE_EXTERNAL_CALLS"
+            ]
+        }
+
+        guard let url = URL(string: "\(apiUrl)/participate") else {
             throw NSError(domain: "lukuid", code: -40, userInfo: [NSLocalizedDescriptionKey: "Invalid API URL"])
         }
 

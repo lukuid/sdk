@@ -11,10 +11,12 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import com.lukuid.sdk.internal.BleTransport
+import com.lukuid.sdk.internal.RevocationManager
 import com.lukuid.sdk.internal.SerialTransport
 import com.lukuid.sdk.internal.DeviceInfoCache
 import com.lukuid.sdk.internal.BleTransportEvent
 import com.lukuid.sdk.internal.JsonUtils
+import com.lukuid.sdk.internal.UrlUtils
 import com.lukuid.sdk.internal.debugLog
 import org.json.JSONArray
 import org.json.JSONObject
@@ -39,8 +41,9 @@ class LukuSdk(
     private val infoCache = DeviceInfoCache()
     private val deviceListeners = CopyOnWriteArraySet<(DeviceLifecycleEvent) -> Unit>()
     private val errorListeners = CopyOnWriteArraySet<(SdkError) -> Unit>()
+    internal val revocationManager = RevocationManager(appContext, options, scope)
     private val bleTransport = BleTransport(appContext, scope, infoCache, options, ::emitError, { this })
-    private val serialTransport = SerialTransport(appContext, scope, infoCache, options, ::emitError)
+    private val serialTransport = SerialTransport(appContext, scope, infoCache, options, ::emitError, revocationManager)
     private val lifecycleSubscription = bleTransport.onLifecycle(::handleLifecycle)
     private val watching = AtomicBoolean(false)
 
@@ -201,12 +204,18 @@ class LukuSdk(
         counter: Long,
         previousState: JSONObject,
         source: JSONObject,
-        telemetry: JSONArray? = null,
-        telemetrySignature: String? = null,
-        telemetryCanonicalString: String? = null,
+        networkParticipationEnabled: Boolean,
         customUrl: String? = null
     ): JSONObject = withContext(Dispatchers.IO) {
         val apiUrl = (customUrl ?: options.apiUrl).trimEnd('/')
+        
+        if (!UrlUtils.isExternalCallAllowed(apiUrl, options.disableExternalCalls)) {
+            val res = JSONObject()
+            res.put("status", "dropped")
+            res.put("reason", "LUKUID_DISABLE_EXTERNAL_CALLS")
+            return@withContext res
+        }
+
         val url = URL("$apiUrl/heartbeat")
         val conn = url.openConnection() as HttpURLConnection
         conn.requestMethod = "POST"
@@ -225,16 +234,7 @@ class LukuSdk(
         payload.put("counter", counter)
         payload.put("previous_state", previousState)
         payload.put("source", source)
-        
-        if (telemetry != null) {
-            payload.put("telemetry", telemetry)
-        }
-        if (!telemetrySignature.isNullOrBlank()) {
-            payload.put("telemetry_signature", telemetrySignature)
-        }
-        if (!telemetryCanonicalString.isNullOrBlank()) {
-            payload.put("telemetry_canonical_string", telemetryCanonicalString)
-        }
+        payload.put("network_participation_enabled", networkParticipationEnabled)
 
         conn.outputStream.use { os ->
             os.write(payload.toString().toByteArray(Charsets.UTF_8))
@@ -260,7 +260,15 @@ class LukuSdk(
         customUrl: String? = null
     ): JSONObject = withContext(Dispatchers.IO) {
         val apiUrl = (customUrl ?: options.apiUrl).trimEnd('/')
-        val url = URL("$apiUrl/telemetry")
+        
+        if (!UrlUtils.isExternalCallAllowed(apiUrl, options.disableExternalCalls)) {
+            val res = JSONObject()
+            res.put("status", "dropped")
+            res.put("reason", "LUKUID_DISABLE_EXTERNAL_CALLS")
+            return@withContext res
+        }
+
+        val url = URL("$apiUrl/participate")
         val conn = url.openConnection() as HttpURLConnection
         conn.requestMethod = "POST"
         conn.doOutput = true
@@ -357,6 +365,7 @@ class LukuSdk(
         lifecycleSubscription.close()
         bleTransport.close()
         serialTransport.close()
+        revocationManager.close()
         scope.cancel()
     }
 
