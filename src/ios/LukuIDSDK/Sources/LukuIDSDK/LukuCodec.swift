@@ -234,14 +234,12 @@ final class LukuCodec {
             if let v = asString("mqtt_broker_url") { config.mqttBrokerURL = v }
             if let v = asUInt32("mqtt_port") { config.mqttPort = v }
             if let v = asString("mqtt_topic") { config.mqttTopic = v }
-            if let v = asUInt32("mqtt_broadcast_frequency_seconds") { config.mqttBroadcastFrequencySeconds = v }
             if let v = asString("mqtt_username") { config.mqttUsername = v }
             if let v = asString("mqtt_password") { config.mqttPassword = v }
             if let v = asData("mqtt_certificate_der") { config.mqttCertificateDer = v }
             if let v = asData("mqtt_ca_der") { config.mqttCaDer = v }
             if let v = asBool("mqtt_broadcast_enabled") { config.mqttBroadcastEnabled = v }
             if let v = asString("custom_heartbeat_url") { config.customHeartbeatURL = v }
-            if let v = asBool("telemetry_enabled") { config.telemetryEnabled = v }
             request.config = config
         case "ota_begin":
             var ota = LukuIDOtaBeginRequest()
@@ -331,7 +329,6 @@ final class LukuCodec {
             dict["revision"] = info.revision
             dict["pairing"] = info.pairing
             dict["custom_heartbeat_url"] = info.customHeartbeatURL
-            dict["telemetry"] = info.telemetry
             dict["managed_by"] = info.managedBy
             dict["attestation_dac_der"] = info.attestationDacDer
             dict["attestation_manufacturer_der"] = info.attestationManufacturerDer
@@ -349,7 +346,6 @@ final class LukuCodec {
             dict["mqtt_broker_url"] = config.mqttBrokerURL
             dict["mqtt_port"] = config.mqttPort
             dict["mqtt_topic"] = config.mqttTopic
-            dict["mqtt_broadcast_frequency_seconds"] = config.mqttBroadcastFrequencySeconds
             dict["mqtt_username"] = config.mqttUsername
             dict["mqtt_password_set"] = config.mqttPasswordSet
             dict["mqtt_broadcast_enabled"] = config.mqttBroadcastEnabled
@@ -385,6 +381,15 @@ final class LukuCodec {
             }
             if telemetry.hasCanonicalString {
                 dict["canonical_string"] = telemetry.canonicalString
+            }
+            if telemetry.hasTelemetryChainVersion {
+                dict["telemetry_chain_version"] = telemetry.telemetryChainVersion
+            }
+            if telemetry.hasTelemetryChainTail {
+                dict["telemetry_chain_tail"] = telemetry.telemetryChainTail
+            }
+            if telemetry.hasRowCount {
+                dict["row_count"] = telemetry.rowCount
             }
         case .statusResponse(let status):
             dict["id"] = status.id

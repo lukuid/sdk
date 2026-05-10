@@ -77,6 +77,7 @@ impl LukuidSdk {
         previous_state: serde_json::Value,
         source: serde_json::Value,
         network_participation_enabled: bool,
+        telemetry: Option<serde_json::Value>,
     ) -> Result<serde_json::Value, reqwest::Error> {
         let api_url = self.options.api_url.clone();
         self.heartbeat_with_api_url(
@@ -91,9 +92,12 @@ impl LukuidSdk {
             previous_state,
             source,
             network_participation_enabled,
+            telemetry
         )
         .await
     }
+
+
 
     /**
      * Fetches a signed heartbeat payload from the LukuID API using an explicit
@@ -113,6 +117,7 @@ impl LukuidSdk {
         previous_state: serde_json::Value,
         source: serde_json::Value,
         network_participation_enabled: bool,
+        telemetry: Option<serde_json::Value>,
     ) -> Result<serde_json::Value, reqwest::Error> {
         let clean_api_url = api_url.trim_end_matches('/');
         if !url_utils::is_external_call_allowed(clean_api_url, self.options.disable_external_calls) {
@@ -146,6 +151,13 @@ impl LukuidSdk {
                 serde_json::Value::String(root_fingerprint.to_string());
         }
 
+        if let Some(mut tel) = telemetry {
+            if std::env::var("LUKUID_DISABLE_TELEMETRY").unwrap_or_default() != "1" {
+                tel["device_counter"] = serde_json::json!(counter);
+                payload["telemetry"] = tel;
+            }
+        }
+
         if self.options.debug_logging {
             eprintln!(
                 "[lukuid-sdk] Heartbeat HTTP request POST {} body={}",
@@ -174,9 +186,12 @@ impl LukuidSdk {
         &self,
         api_url: Option<&str>,
         device_id: &str,
+        device_counter: u64,
         data: serde_json::Value,
         signature: Option<&str>,
         canonical_string: Option<&str>,
+        telemetry_chain_version: Option<u32>,
+        telemetry_chain_tail: Option<&str>,
     ) -> Result<serde_json::Value, reqwest::Error> {
         let base_url = api_url.unwrap_or(&self.options.api_url).trim_end_matches('/');
         
@@ -190,19 +205,38 @@ impl LukuidSdk {
             }));
         }
 
-        let url = format!("{}/participate", base_url);
-
-        let mut payload = serde_json::json!({
-            "device_id": device_id,
-            "data": data,
-        });
-
-        if let Some(sig) = signature {
-            payload["signature"] = serde_json::Value::String(sig.to_string());
+        if std::env::var("LUKUID_DISABLE_TELEMETRY").unwrap_or_default() == "1" {
+            if self.options.debug_logging {
+                eprintln!("[lukuid-sdk] Telemetry disabled via LUKUID_DISABLE_TELEMETRY env var");
+            }
+            return Ok(serde_json::json!({
+                "status": "dropped",
+                "reason": "LUKUID_DISABLE_TELEMETRY"
+            }));
         }
 
-        if let Some(canonical) = canonical_string {
-            payload["canonical"] = serde_json::Value::String(canonical.to_string());
+        let url = format!("{}/participate", base_url);
+        let mut payload = serde_json::json!({
+            "device_id": device_id,
+            "device_counter": device_counter,
+            "rows": data,
+        });
+
+        if let Some(arr) = data.as_array() {
+            payload["row_count"] = serde_json::json!(arr.len());
+        }
+
+        if let Some(sig) = signature {
+            payload["signature"] = serde_json::json!(sig);
+        }
+        if let Some(can) = canonical_string {
+            payload["canonical_string"] = serde_json::json!(can);
+        }
+        if let Some(ver) = telemetry_chain_version {
+            payload["telemetry_chain_version"] = serde_json::json!(ver);
+        }
+        if let Some(tail) = telemetry_chain_tail {
+            payload["telemetry_chain_tail"] = serde_json::json!(tail);
         }
 
         if self.options.debug_logging {

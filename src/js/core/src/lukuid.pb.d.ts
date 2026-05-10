@@ -1966,6 +1966,15 @@ export namespace lukuid {
 
         /** FetchTelemetryResponse canonicalString */
         canonicalString?: (string|null);
+
+        /** FetchTelemetryResponse telemetryChainVersion */
+        telemetryChainVersion?: (number|null);
+
+        /** FetchTelemetryResponse telemetryChainTail */
+        telemetryChainTail?: (string|null);
+
+        /** FetchTelemetryResponse rowCount */
+        rowCount?: (number|null);
     }
 
     /** Represents a FetchTelemetryResponse. */
@@ -1985,6 +1994,15 @@ export namespace lukuid {
 
         /** FetchTelemetryResponse canonicalString. */
         public canonicalString?: (string|null);
+
+        /** FetchTelemetryResponse telemetryChainVersion. */
+        public telemetryChainVersion?: (number|null);
+
+        /** FetchTelemetryResponse telemetryChainTail. */
+        public telemetryChainTail?: (string|null);
+
+        /** FetchTelemetryResponse rowCount. */
+        public rowCount?: (number|null);
 
         /**
          * Creates a new FetchTelemetryResponse instance using the specified properties.
@@ -4816,6 +4834,9 @@ export namespace lukuid {
 
         /** EnvironmentPayload genesisHash */
         genesisHash?: (string|null);
+
+        /** EnvironmentPayload batteryPercent */
+        batteryPercent?: (number|null);
     }
 
     /** Represents an EnvironmentPayload. */
@@ -4871,6 +4892,9 @@ export namespace lukuid {
 
         /** EnvironmentPayload genesisHash. */
         public genesisHash: string;
+
+        /** EnvironmentPayload batteryPercent. */
+        public batteryPercent: number;
 
         /**
          * Creates a new EnvironmentPayload instance using the specified properties.

@@ -171,6 +171,9 @@ message FetchTelemetryResponse {
   repeated TelemetryRow rows = 1;
   optional bytes signature = 2;
   optional string canonical_string = 3;
+  optional int32 telemetry_chain_version = 4;
+  optional string telemetry_chain_tail = 5;
+  optional int32 row_count = 6;
 }
 
 message CommandRequest {
@@ -463,6 +466,7 @@ message EnvironmentPayload {
   bool wake_event = 13;
   bool vbus_present = 14;
   string genesis_hash = 15;
+  uint32 battery_percent = 16;
 }
 
 message EnvironmentRecord {

@@ -5365,6 +5365,9 @@ export const lukuid = $root.lukuid = (() => {
          * @property {Array.<lukuid.ITelemetryRow>|null} [rows] FetchTelemetryResponse rows
          * @property {Uint8Array|null} [signature] FetchTelemetryResponse signature
          * @property {string|null} [canonicalString] FetchTelemetryResponse canonicalString
+         * @property {number|null} [telemetryChainVersion] FetchTelemetryResponse telemetryChainVersion
+         * @property {string|null} [telemetryChainTail] FetchTelemetryResponse telemetryChainTail
+         * @property {number|null} [rowCount] FetchTelemetryResponse rowCount
          */
 
         /**
@@ -5407,6 +5410,30 @@ export const lukuid = $root.lukuid = (() => {
          */
         FetchTelemetryResponse.prototype.canonicalString = null;
 
+        /**
+         * FetchTelemetryResponse telemetryChainVersion.
+         * @member {number|null|undefined} telemetryChainVersion
+         * @memberof lukuid.FetchTelemetryResponse
+         * @instance
+         */
+        FetchTelemetryResponse.prototype.telemetryChainVersion = null;
+
+        /**
+         * FetchTelemetryResponse telemetryChainTail.
+         * @member {string|null|undefined} telemetryChainTail
+         * @memberof lukuid.FetchTelemetryResponse
+         * @instance
+         */
+        FetchTelemetryResponse.prototype.telemetryChainTail = null;
+
+        /**
+         * FetchTelemetryResponse rowCount.
+         * @member {number|null|undefined} rowCount
+         * @memberof lukuid.FetchTelemetryResponse
+         * @instance
+         */
+        FetchTelemetryResponse.prototype.rowCount = null;
+
         // OneOf field names bound to virtual getters and setters
         let $oneOfFields;
 
@@ -5419,6 +5446,24 @@ export const lukuid = $root.lukuid = (() => {
         // Virtual OneOf for proto3 optional field
         Object.defineProperty(FetchTelemetryResponse.prototype, "_canonicalString", {
             get: $util.oneOfGetter($oneOfFields = ["canonicalString"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(FetchTelemetryResponse.prototype, "_telemetryChainVersion", {
+            get: $util.oneOfGetter($oneOfFields = ["telemetryChainVersion"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(FetchTelemetryResponse.prototype, "_telemetryChainTail", {
+            get: $util.oneOfGetter($oneOfFields = ["telemetryChainTail"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(FetchTelemetryResponse.prototype, "_rowCount", {
+            get: $util.oneOfGetter($oneOfFields = ["rowCount"]),
             set: $util.oneOfSetter($oneOfFields)
         });
 
@@ -5453,6 +5498,12 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 2, wireType 2 =*/18).bytes(message.signature);
             if (message.canonicalString != null && Object.hasOwnProperty.call(message, "canonicalString"))
                 writer.uint32(/* id 3, wireType 2 =*/26).string(message.canonicalString);
+            if (message.telemetryChainVersion != null && Object.hasOwnProperty.call(message, "telemetryChainVersion"))
+                writer.uint32(/* id 4, wireType 0 =*/32).int32(message.telemetryChainVersion);
+            if (message.telemetryChainTail != null && Object.hasOwnProperty.call(message, "telemetryChainTail"))
+                writer.uint32(/* id 5, wireType 2 =*/42).string(message.telemetryChainTail);
+            if (message.rowCount != null && Object.hasOwnProperty.call(message, "rowCount"))
+                writer.uint32(/* id 6, wireType 0 =*/48).int32(message.rowCount);
             return writer;
         };
 
@@ -5501,6 +5552,18 @@ export const lukuid = $root.lukuid = (() => {
                     }
                 case 3: {
                         message.canonicalString = reader.string();
+                        break;
+                    }
+                case 4: {
+                        message.telemetryChainVersion = reader.int32();
+                        break;
+                    }
+                case 5: {
+                        message.telemetryChainTail = reader.string();
+                        break;
+                    }
+                case 6: {
+                        message.rowCount = reader.int32();
                         break;
                     }
                 default:
@@ -5558,6 +5621,21 @@ export const lukuid = $root.lukuid = (() => {
                 if (!$util.isString(message.canonicalString))
                     return "canonicalString: string expected";
             }
+            if (message.telemetryChainVersion != null && message.hasOwnProperty("telemetryChainVersion")) {
+                properties._telemetryChainVersion = 1;
+                if (!$util.isInteger(message.telemetryChainVersion))
+                    return "telemetryChainVersion: integer expected";
+            }
+            if (message.telemetryChainTail != null && message.hasOwnProperty("telemetryChainTail")) {
+                properties._telemetryChainTail = 1;
+                if (!$util.isString(message.telemetryChainTail))
+                    return "telemetryChainTail: string expected";
+            }
+            if (message.rowCount != null && message.hasOwnProperty("rowCount")) {
+                properties._rowCount = 1;
+                if (!$util.isInteger(message.rowCount))
+                    return "rowCount: integer expected";
+            }
             return null;
         };
 
@@ -5590,6 +5668,12 @@ export const lukuid = $root.lukuid = (() => {
                     message.signature = object.signature;
             if (object.canonicalString != null)
                 message.canonicalString = String(object.canonicalString);
+            if (object.telemetryChainVersion != null)
+                message.telemetryChainVersion = object.telemetryChainVersion | 0;
+            if (object.telemetryChainTail != null)
+                message.telemetryChainTail = String(object.telemetryChainTail);
+            if (object.rowCount != null)
+                message.rowCount = object.rowCount | 0;
             return message;
         };
 
@@ -5622,6 +5706,21 @@ export const lukuid = $root.lukuid = (() => {
                 object.canonicalString = message.canonicalString;
                 if (options.oneofs)
                     object._canonicalString = "canonicalString";
+            }
+            if (message.telemetryChainVersion != null && message.hasOwnProperty("telemetryChainVersion")) {
+                object.telemetryChainVersion = message.telemetryChainVersion;
+                if (options.oneofs)
+                    object._telemetryChainVersion = "telemetryChainVersion";
+            }
+            if (message.telemetryChainTail != null && message.hasOwnProperty("telemetryChainTail")) {
+                object.telemetryChainTail = message.telemetryChainTail;
+                if (options.oneofs)
+                    object._telemetryChainTail = "telemetryChainTail";
+            }
+            if (message.rowCount != null && message.hasOwnProperty("rowCount")) {
+                object.rowCount = message.rowCount;
+                if (options.oneofs)
+                    object._rowCount = "rowCount";
             }
             return object;
         };
@@ -14060,6 +14159,7 @@ export const lukuid = $root.lukuid = (() => {
          * @property {boolean|null} [wakeEvent] EnvironmentPayload wakeEvent
          * @property {boolean|null} [vbusPresent] EnvironmentPayload vbusPresent
          * @property {string|null} [genesisHash] EnvironmentPayload genesisHash
+         * @property {number|null} [batteryPercent] EnvironmentPayload batteryPercent
          */
 
         /**
@@ -14198,6 +14298,14 @@ export const lukuid = $root.lukuid = (() => {
         EnvironmentPayload.prototype.genesisHash = "";
 
         /**
+         * EnvironmentPayload batteryPercent.
+         * @member {number} batteryPercent
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.batteryPercent = 0;
+
+        /**
          * Creates a new EnvironmentPayload instance using the specified properties.
          * @function create
          * @memberof lukuid.EnvironmentPayload
@@ -14251,6 +14359,8 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 14, wireType 0 =*/112).bool(message.vbusPresent);
             if (message.genesisHash != null && Object.hasOwnProperty.call(message, "genesisHash"))
                 writer.uint32(/* id 15, wireType 2 =*/122).string(message.genesisHash);
+            if (message.batteryPercent != null && Object.hasOwnProperty.call(message, "batteryPercent"))
+                writer.uint32(/* id 16, wireType 0 =*/128).uint32(message.batteryPercent);
             return writer;
         };
 
@@ -14347,6 +14457,10 @@ export const lukuid = $root.lukuid = (() => {
                         message.genesisHash = reader.string();
                         break;
                     }
+                case 16: {
+                        message.batteryPercent = reader.uint32();
+                        break;
+                    }
                 default:
                     reader.skipType(tag & 7);
                     break;
@@ -14429,6 +14543,9 @@ export const lukuid = $root.lukuid = (() => {
             if (message.genesisHash != null && message.hasOwnProperty("genesisHash"))
                 if (!$util.isString(message.genesisHash))
                     return "genesisHash: string expected";
+            if (message.batteryPercent != null && message.hasOwnProperty("batteryPercent"))
+                if (!$util.isInteger(message.batteryPercent))
+                    return "batteryPercent: integer expected";
             return null;
         };
 
@@ -14498,6 +14615,8 @@ export const lukuid = $root.lukuid = (() => {
                 message.vbusPresent = Boolean(object.vbusPresent);
             if (object.genesisHash != null)
                 message.genesisHash = String(object.genesisHash);
+            if (object.batteryPercent != null)
+                message.batteryPercent = object.batteryPercent >>> 0;
             return message;
         };
 
@@ -14542,6 +14661,7 @@ export const lukuid = $root.lukuid = (() => {
                 object.wakeEvent = false;
                 object.vbusPresent = false;
                 object.genesisHash = "";
+                object.batteryPercent = 0;
             }
             if (message.ctr != null && message.hasOwnProperty("ctr"))
                 if (typeof message.ctr === "number")
@@ -14582,6 +14702,8 @@ export const lukuid = $root.lukuid = (() => {
                 object.vbusPresent = message.vbusPresent;
             if (message.genesisHash != null && message.hasOwnProperty("genesisHash"))
                 object.genesisHash = message.genesisHash;
+            if (message.batteryPercent != null && message.hasOwnProperty("batteryPercent"))
+                object.batteryPercent = message.batteryPercent;
             return object;
         };
 

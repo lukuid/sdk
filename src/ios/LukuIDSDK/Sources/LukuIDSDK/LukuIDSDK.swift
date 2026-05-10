@@ -301,6 +301,7 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
         previousState: [String: Any],
         source: [String: Any],
         networkParticipationEnabled: Bool,
+        telemetry: [String: Any]? = nil,
         customURL: String? = nil
     ) async throws -> [String: Any] {
         let apiUrl = (customURL ?? options.apiUrl).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
@@ -335,6 +336,12 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
             body["attestation_root_fingerprint"] = attestationRootFingerprint
         }
         
+        let disableTelemetry = ProcessInfo.processInfo.environment["LUKUID_DISABLE_TELEMETRY"] == "1"
+        if var telemetryPayload = telemetry, !disableTelemetry {
+            telemetryPayload["device_counter"] = counter
+            body["telemetry"] = telemetryPayload
+        }
+        
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -351,9 +358,12 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
      */
     public func telemetry(
         deviceId: String,
-        data: [[String: Any]],
+        deviceCounter: UInt64,
+        rows: [Any],
         signature: String? = nil,
         canonicalString: String? = nil,
+        telemetryChainVersion: Int? = nil,
+        telemetryChainTail: String? = nil,
         customURL: String? = nil
     ) async throws -> [String: Any] {
         let apiUrl = (customURL ?? options.apiUrl).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
@@ -364,61 +374,30 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
                 "reason": "LUKUID_DISABLE_EXTERNAL_CALLS"
             ]
         }
-
-        guard let url = URL(string: "\(apiUrl)/participate") else {
-            throw NSError(domain: "lukuid", code: -40, userInfo: [NSLocalizedDescriptionKey: "Invalid API URL"])
+        
+        if ProcessInfo.processInfo.environment["LUKUID_DISABLE_TELEMETRY"] == "1" {
+            return [
+                "status": "dropped",
+                "reason": "LUKUID_DISABLE_TELEMETRY"
+            ]
         }
-
-        var request = URLRequest(url: url)
+        
+        let targetUrl = URL(string: "\(apiUrl)/participate")!
+        var request = URLRequest(url: targetUrl)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        var body: [String: Any] = [
+        
+        var payload: [String: Any] = [
             "device_id": deviceId,
-            "data": data
+            "device_counter": deviceCounter,
+            "rows": rows,
+            "row_count": rows.count
         ]
+        if let sig = signature { payload["signature"] = sig }
+        if let can = canonicalString { payload["canonical_string"] = can }
+        if let version = telemetryChainVersion { payload["telemetry_chain_version"] = version }
+        if let tail = telemetryChainTail { payload["telemetry_chain_tail"] = tail }
         
-        if let signature, !signature.isEmpty {
-            body["signature"] = signature
-        }
-        
-        if let canonicalString, !canonicalString.isEmpty {
-            body["canonical"] = canonicalString
-        }
-
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        
-        let (responseBody, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
-            throw NSError(domain: "lukuid", code: (response as? HTTPURLResponse)?.statusCode ?? -1, userInfo: [NSLocalizedDescriptionKey: "Telemetry failed"])
-        }
-        
-        return try JSONSerialization.jsonObject(with: responseBody) as? [String: Any] ?? [:]
-    }
-
-    /**
-     * Requests the latest firmware information from the LukuID API.
-     */
-    public func requestOta(
-        deviceId: String,
-        publicKey: String,
-        signature: String
-    ) async throws -> [String: Any] {
-        let apiUrl = options.apiUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        guard let url = URL(string: "\(apiUrl)/firmware/request") else {
-            throw NSError(domain: "lukuid", code: -40, userInfo: [NSLocalizedDescriptionKey: "Invalid API URL"])
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let payload = [
-            "device_id": deviceId,
-            "public_key": publicKey,
-            "attestation": signature
-        ]
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
         
         let (data, response) = try await URLSession.shared.data(for: request)

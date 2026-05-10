@@ -47,6 +47,27 @@ class LukuSdk(
     private val lifecycleSubscription = bleTransport.onLifecycle(::handleLifecycle)
     private val watching = AtomicBoolean(false)
 
+    private fun normalizeTelemetryRows(rows: JSONArray): JSONArray {
+        val normalized = JSONArray()
+        for (i in 0 until rows.length()) {
+            val row = rows.opt(i)
+            if (row is JSONObject) {
+                val normalizedRow = JSONObject(row.toString())
+                if (!normalizedRow.has("index")) {
+                    normalizedRow.put("index", i)
+                }
+                normalized.put(normalizedRow)
+            } else {
+                val values = when (row) {
+                    is JSONArray -> row
+                    else -> JSONArray().put(row)
+                }
+                normalized.put(JSONObject().put("index", i).put("values", values))
+            }
+        }
+        return normalized
+    }
+
     suspend fun getConnectedDevices(options: EnumerateOptions = EnumerateOptions()): List<Device> {
         debugLog(
             this.options,
@@ -205,6 +226,7 @@ class LukuSdk(
         previousState: JSONObject,
         source: JSONObject,
         networkParticipationEnabled: Boolean,
+        telemetry: JSONObject? = null,
         customUrl: String? = null
     ): JSONObject = withContext(Dispatchers.IO) {
         val apiUrl = (customUrl ?: options.apiUrl).trimEnd('/')
@@ -236,6 +258,13 @@ class LukuSdk(
         payload.put("source", source)
         payload.put("network_participation_enabled", networkParticipationEnabled)
 
+        val disableTelemetry = System.getenv("LUKUID_DISABLE_TELEMETRY") == "1"
+        if (telemetry != null && !disableTelemetry) {
+            val telWithCounter = JSONObject(telemetry.toString())
+            telWithCounter.put("device_counter", counter)
+            payload.put("telemetry", telWithCounter)
+        }
+
         conn.outputStream.use { os ->
             os.write(payload.toString().toByteArray(Charsets.UTF_8))
         }
@@ -254,9 +283,12 @@ class LukuSdk(
      */
     suspend fun telemetry(
         deviceId: String,
-        data: JSONArray,
+        deviceCounter: Long,
+        rows: JSONArray,
         signature: String? = null,
         canonicalString: String? = null,
+        telemetryChainVersion: Int? = null,
+        telemetryChainTail: String? = null,
         customUrl: String? = null
     ): JSONObject = withContext(Dispatchers.IO) {
         val apiUrl = (customUrl ?: options.apiUrl).trimEnd('/')
@@ -268,21 +300,37 @@ class LukuSdk(
             return@withContext res
         }
 
+        if (System.getenv("LUKUID_DISABLE_TELEMETRY") == "1") {
+            val res = JSONObject()
+            res.put("status", "dropped")
+            res.put("reason", "LUKUID_DISABLE_TELEMETRY")
+            return@withContext res
+        }
+
+        val normalizedRows = normalizeTelemetryRows(rows)
+        val payload = JSONObject()
+        payload.put("device_id", deviceId)
+        payload.put("device_counter", deviceCounter)
+        payload.put("rows", normalizedRows)
+        payload.put("row_count", normalizedRows.length())
+        if (signature != null) {
+            payload.put("signature", signature)
+        }
+        if (canonicalString != null) {
+            payload.put("canonical_string", canonicalString)
+        }
+        if (telemetryChainVersion != null) {
+            payload.put("telemetry_chain_version", telemetryChainVersion)
+        }
+        if (telemetryChainTail != null) {
+            payload.put("telemetry_chain_tail", telemetryChainTail)
+        }
+
         val url = URL("$apiUrl/participate")
         val conn = url.openConnection() as HttpURLConnection
         conn.requestMethod = "POST"
         conn.doOutput = true
         conn.setRequestProperty("Content-Type", "application/json")
-
-        val payload = JSONObject()
-        payload.put("device_id", deviceId)
-        payload.put("data", data)
-        if (!signature.isNullOrBlank()) {
-            payload.put("signature", signature)
-        }
-        if (!canonicalString.isNullOrBlank()) {
-            payload.put("canonical", canonicalString)
-        }
 
         conn.outputStream.use { os ->
             os.write(payload.toString().toByteArray(Charsets.UTF_8))

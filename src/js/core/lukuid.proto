@@ -13,6 +13,25 @@ enum Status {
   STATUS_READY = 3;
 }
 
+enum UploadMode {
+  UPLOAD_MODE_NONE = 0;
+  UPLOAD_MODE_HTTP = 1;
+  UPLOAD_MODE_MQTT = 2;
+}
+
+enum UploadAuth {
+  UPLOAD_AUTH_NONE = 0;
+  UPLOAD_AUTH_TOKEN = 1;
+  UPLOAD_AUTH_MTLS = 2;
+}
+
+enum UploadTokenType {
+  UPLOAD_TOKEN_TYPE_HEADER = 0;
+  UPLOAD_TOKEN_TYPE_QUERY = 1;
+  UPLOAD_TOKEN_TYPE_BODY = 2;
+  UPLOAD_TOKEN_TYPE_BEARER = 3;
+}
+
 enum FetchWindow {
   FETCH_WINDOW_NONE = 0;
   FETCH_WINDOW_HOURLY = 1;
@@ -75,14 +94,24 @@ message ConfigRequest {
   optional string mqtt_broker_url = 4;
   optional uint32 mqtt_port = 5;
   optional string mqtt_topic = 6;
-  optional uint32 mqtt_broadcast_frequency_seconds = 7;
+  reserved 7; // Previously mqtt_broadcast_frequency_seconds
   optional string mqtt_username = 8;
   optional string mqtt_password = 9;
   optional bytes mqtt_certificate_der = 10;
   optional bytes mqtt_ca_der = 11;
   optional bool mqtt_broadcast_enabled = 12;
   optional string custom_heartbeat_url = 13;
-  optional bool telemetry_enabled = 14;
+  optional bool network_participation_enabled = 14;
+  optional UploadMode upload_mode = 15;
+  optional string upload_destination = 16;
+  optional UploadAuth upload_auth = 17;
+  optional string upload_token_key = 18;
+  optional string upload_token_value = 19;
+  optional UploadTokenType upload_token_type = 20;
+  optional string upload_topic = 21;
+  optional bytes upload_certificate_der = 22;
+  optional bytes upload_ca_der = 23;
+  optional uint32 upload_frequency = 24;
 }
 
 message OtaBeginRequest {
@@ -142,6 +171,9 @@ message FetchTelemetryResponse {
   repeated TelemetryRow rows = 1;
   optional bytes signature = 2;
   optional string canonical_string = 3;
+  optional int32 telemetry_chain_version = 4;
+  optional string telemetry_chain_tail = 5;
+  optional int32 row_count = 6;
 }
 
 message CommandRequest {
@@ -181,7 +213,7 @@ message DeviceInfoResponse {
   string revision = 14;
   bool pairing = 15;
   string custom_heartbeat_url = 16;
-  bool telemetry = 17;
+  bool network_participation_enabled = 17;
   string managed_by = 18;
   bytes attestation_dac_der = 19;
   bytes attestation_manufacturer_der = 20;
@@ -193,6 +225,10 @@ message DeviceInfoResponse {
   string heartbeat_root_fingerprint = 26;
   bytes signature = 27;
   bytes key = 28;
+
+  UploadMode upload_mode = 29;
+  string upload_destination = 30;
+  UploadAuth upload_auth = 31;
 }
 
 message StatusResponse {
@@ -214,13 +250,21 @@ message NetworkConfigResponse {
   string mqtt_broker_url = 3;
   uint32 mqtt_port = 4;
   string mqtt_topic = 5;
-  uint32 mqtt_broadcast_frequency_seconds = 6;
+  reserved 6; // Previously mqtt_broadcast_frequency_seconds
   string mqtt_username = 7;
   bool mqtt_password_set = 8;
   bool mqtt_broadcast_enabled = 9;
   bytes csr = 10;
   bytes mqtt_certificate_der = 11;
   bytes mqtt_ca_der = 12;
+
+  UploadMode upload_mode = 13;
+  string upload_destination = 14;
+  UploadAuth upload_auth = 15;
+  string upload_token_key = 16;
+  UploadTokenType upload_token_type = 17;
+  string upload_topic = 18;
+  uint32 upload_frequency = 19;
 }
 
 message RecordMeta {
@@ -422,6 +466,7 @@ message EnvironmentPayload {
   bool wake_event = 13;
   bool vbus_present = 14;
   string genesis_hash = 15;
+  uint32 battery_percent = 16;
 }
 
 message EnvironmentRecord {

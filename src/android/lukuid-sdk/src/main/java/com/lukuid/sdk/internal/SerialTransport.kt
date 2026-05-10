@@ -212,7 +212,7 @@ internal class SerialTransport(
                 var infoResponse: Map<String, Any?>? = null
                 val inspectCodec = LukuCodec(
                     onMessage = { message ->
-                        if ((message["action"] as? String) == "info") {
+                        if ((message["action"] as? String) == "status") {
                             infoResponse = message
                         }
                     },
@@ -222,7 +222,7 @@ internal class SerialTransport(
                 try {
                     val payload = LukuCodec.encode(
                         mapOf(
-                            "action" to "info",
+                            "action" to "status",
                             "id" to "probe",
                             "opts" to emptyMap<String, Any?>()
                         )
@@ -268,31 +268,18 @@ internal class SerialTransport(
     }
 
     private fun parseDiscoveredInfo(response: Map<String, Any?>, transportId: String): DeviceInfo {
-        val id = response["id"]?.toString() ?: throw IllegalStateException("INFO missing id")
-        val key = response["key"]?.toString() ?: throw IllegalStateException("INFO missing key")
+        val id = response["id"]?.toString() ?: throw IllegalStateException("STATUS missing id")
 
         return DeviceInfo(
             transportId = transportId,
             transport = TransportType.USB,
             name = response["name"] as? String,
             id = id,
-            key = key,
-            firmware = response["firmware"] as? String,
+            key = "",
+            firmware = null,
             model = response["model"] as? String,
-            signature = serialInfoFieldAsBase64(response["signature"]),
-            customHeartbeatUrl = response["custom_heartbeat_url"] as? String,
-            attestationDacDer = serialInfoFieldAsBase64(response["attestation_dac_der"]),
-            attestationManufacturerDer = serialInfoFieldAsBase64(response["attestation_manufacturer_der"]),
-            attestationIntermediateDer = serialInfoFieldAsBase64(response["attestation_intermediate_der"]),
-            attestationRootFingerprint = response["attestation_root_fingerprint"] as? String,
-            heartbeatSlacDer = serialInfoFieldAsBase64(response["heartbeat_slac_der"]),
-            heartbeatDer = serialInfoFieldAsBase64(response["heartbeat_der"]),
-            heartbeatIntermediateDer = serialInfoFieldAsBase64(response["heartbeat_intermediate_der"]),
-            heartbeatRootFingerprint = response["heartbeat_root_fingerprint"] as? String,
             verified = false,
-            lastSync = (response["last_sync"] as? Number)?.toLong(),
-            counter = (response["counter"] as? Number)?.toLong() ?: 0L,
-            syncRequired = response["sync_required"] as? Boolean ?: false
+            syncRequired = response["needs_sync"] as? Boolean ?: false
         )
     }
 }
@@ -349,62 +336,82 @@ internal class SerialDeviceSession(
             ioManager = SerialInputOutputManager(port, this)
             ioManager?.start()
 
-            // Perform initial INFO
-            val infoResponse = call("info", emptyMap()) as Map<String, Any?>
+            // Perform initial STATUS
+            val statusResponse = call("status", emptyMap()) as Map<String, Any?>
 
-            val id = infoResponse["id"] as String
-            val key = serialInfoFieldAsBase64(infoResponse["key"])
-                ?: throw IllegalStateException("INFO missing key")
-
-            val inputs = com.lukuid.sdk.internal.DeviceAttestationInput(
-                id = id,
-                key = key,
-                attestationSig = serialInfoFieldAsBase64(infoResponse["signature"])
-                    ?: throw IllegalStateException("INFO missing attestation signature"),
-                certificateChain = serialAssembleInfoCertificateChain(infoResponse),
-                attestationAlg = null,
-                attestationPayloadVersion = null
-            )
-
-            val verification = com.lukuid.sdk.internal.verifyDeviceAttestation(inputs, revocationManager)
-            debugLog(
-                sdkOptions,
-                "USB serial INFO validation result",
-                mapOf("transportId" to transportId, "deviceId" to id, "verified" to verification.ok, "reason" to verification.reason)
-            )
-
-            if (!verification.ok && !sdkOptions.allowUnverifiedDevices) {
-                closeSession()
-                throw com.lukuid.sdk.DeviceTrustException(id, verification.reason ?: "Signature rejected", emptyList())
-            }
+            val id = statusResponse["id"] as String
 
             info = DeviceInfo(
                 transportId = transportId,
                 transport = TransportType.USB,
-                name = infoResponse["name"] as? String,
+                name = statusResponse["name"] as? String,
                 id = id,
-                key = key,
-                firmware = infoResponse["firmware"] as? String,
-                model = infoResponse["model"] as? String,
-                signature = serialInfoFieldAsBase64(infoResponse["signature"]),
-                customHeartbeatUrl = infoResponse["custom_heartbeat_url"] as? String,
-                attestationDacDer = serialInfoFieldAsBase64(infoResponse["attestation_dac_der"]),
-                attestationManufacturerDer = serialInfoFieldAsBase64(infoResponse["attestation_manufacturer_der"]),
-                attestationIntermediateDer = serialInfoFieldAsBase64(infoResponse["attestation_intermediate_der"]),
-                attestationRootFingerprint = infoResponse["attestation_root_fingerprint"] as? String,
-                heartbeatSlacDer = serialInfoFieldAsBase64(infoResponse["heartbeat_slac_der"]),
-                heartbeatDer = serialInfoFieldAsBase64(infoResponse["heartbeat_der"]),
-                heartbeatIntermediateDer = serialInfoFieldAsBase64(infoResponse["heartbeat_intermediate_der"]),
-                heartbeatRootFingerprint = infoResponse["heartbeat_root_fingerprint"] as? String,
-                verified = verification.ok,
-                lastSync = (infoResponse["last_sync"] as? Number)?.toLong(),
-                counter = (infoResponse["counter"] as? Number)?.toLong() ?: 0L,
-                syncRequired = infoResponse["sync_required"] as? Boolean ?: false
+                key = "",
+                firmware = null,
+                model = statusResponse["model"] as? String,
+                verified = false,
+                syncRequired = statusResponse["needs_sync"] as? Boolean ?: false
             )
         } catch (e: Exception) {
             closeSession()
             throw e
         }
+    }
+
+    override suspend fun verify(): DeviceInfo {
+        debugLog(sdkOptions, "Requesting USB serial INFO for verify", mapOf("transportId" to transportId))
+        val infoResponse = call("info", emptyMap(), Device.DEFAULT_CALL_TIMEOUT) as Map<String, Any?>
+
+        val id = infoResponse["id"] as String
+        val key = serialInfoFieldAsBase64(infoResponse["key"])
+            ?: throw IllegalStateException("INFO missing key")
+
+        val inputs = com.lukuid.sdk.internal.DeviceAttestationInput(
+            id = id,
+            key = key,
+            attestationSig = serialInfoFieldAsBase64(infoResponse["signature"])
+                ?: throw IllegalStateException("INFO missing attestation signature"),
+            certificateChain = serialAssembleInfoCertificateChain(infoResponse),
+            attestationAlg = null,
+            attestationPayloadVersion = null
+        )
+
+        val verification = com.lukuid.sdk.internal.verifyDeviceAttestation(inputs, revocationManager)
+        debugLog(
+            sdkOptions,
+            "USB serial INFO validation result",
+            mapOf("transportId" to transportId, "deviceId" to id, "verified" to verification.ok, "reason" to verification.reason)
+        )
+
+        if (!verification.ok && !sdkOptions.allowUnverifiedDevices) {
+            throw com.lukuid.sdk.DeviceTrustException(id, verification.reason ?: "Signature rejected", emptyList())
+        }
+
+        info = DeviceInfo(
+            transportId = transportId,
+            transport = TransportType.USB,
+            name = infoResponse["name"] as? String,
+            id = id,
+            key = key,
+            firmware = infoResponse["firmware"] as? String,
+            model = infoResponse["model"] as? String,
+            signature = serialInfoFieldAsBase64(infoResponse["signature"]),
+            customHeartbeatUrl = infoResponse["custom_heartbeat_url"] as? String,
+            attestationDacDer = serialInfoFieldAsBase64(infoResponse["attestation_dac_der"]),
+            attestationManufacturerDer = serialInfoFieldAsBase64(infoResponse["attestation_manufacturer_der"]),
+            attestationIntermediateDer = serialInfoFieldAsBase64(infoResponse["attestation_intermediate_der"]),
+            attestationRootFingerprint = infoResponse["attestation_root_fingerprint"] as? String,
+            heartbeatSlacDer = serialInfoFieldAsBase64(infoResponse["heartbeat_slac_der"]),
+            heartbeatDer = serialInfoFieldAsBase64(infoResponse["heartbeat_der"]),
+            heartbeatIntermediateDer = serialInfoFieldAsBase64(infoResponse["heartbeat_intermediate_der"]),
+            heartbeatRootFingerprint = infoResponse["heartbeat_root_fingerprint"] as? String,
+            verified = verification.ok,
+            lastSync = (infoResponse["last_sync"] as? Number)?.toLong(),
+            counter = (infoResponse["counter"] as? Number)?.toLong() ?: 0L,
+            syncRequired = infoResponse["sync_required"] as? Boolean ?: false
+        )
+
+        return info
     }
 
     private fun handleMessage(message: Map<String, Any?>) {

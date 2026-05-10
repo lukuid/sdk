@@ -161,6 +161,12 @@ interface Device {
     ): Any?
 
     /**
+     * Performs an INFO command, verifies the device's cryptographic attestation,
+     * and triggers automatic lifecycle syncs (telemetry/heartbeat).
+     */
+    suspend fun verify(): DeviceInfo
+
+    /**
      * Sends raw binary data to the device (e.g. for OTA updates).
      */
     suspend fun send(data: ByteArray)

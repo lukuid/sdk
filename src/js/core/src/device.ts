@@ -107,6 +107,29 @@ function assembleCertificateChain(record: Record<string, unknown>): string | und
   return parts.length > 0 ? parts.join('') : undefined;
 }
 
+function normalizeTelemetryRows(rows: unknown[]): Array<{ index: number; values: unknown[] }> {
+  return rows.map((row, index) => {
+    if (
+      row &&
+      typeof row === 'object' &&
+      'values' in row &&
+      Array.isArray((row as { values: unknown[] }).values)
+    ) {
+      const telemetryRow = row as { index?: unknown; values: unknown[] };
+      return {
+        index: typeof telemetryRow.index === 'number' ? telemetryRow.index : index,
+        values: telemetryRow.values
+      };
+    }
+
+    if (Array.isArray(row)) {
+      return { index, values: row };
+    }
+
+    return { index, values: [row] };
+  });
+}
+
 class LukuidDevice implements Device {
   private readonly descriptor: DeviceDescriptor;
   private readonly openConnectionFn: () => Promise<Connection>;
@@ -273,8 +296,44 @@ class LukuidDevice implements Device {
       return this.validationPromise;
     }
 
-    this.validationPromise = this.fetchInfo();
+    this.validationPromise = this.fetchStatus();
     return this.validationPromise;
+  }
+
+  async verify(): Promise<DeviceInfo> {
+    return this.fetchInfo();
+  }
+
+  private async fetchStatus(): Promise<DeviceInfo> {
+    const connection = await this.ensureConnection();
+    const payload = await this.call('status', {});
+    
+    if (!payload || typeof payload !== 'object') {
+        throw new Error('STATUS payload is invalid');
+    }
+
+    const record = payload as Record<string, unknown>;
+    const id = typeof record.id === 'string' ? record.id : undefined;
+    if (!id || id.length === 0) {
+        throw new Error('STATUS response missing id');
+    }
+
+    const info: DeviceInfo = {
+        transportId: this.descriptor.transportId,
+        transport: this.descriptor.transport,
+        name: typeof record.name === 'string' ? record.name : undefined,
+        id,
+        key: '',
+        capabilities: [],
+        firmware: undefined,
+        model: typeof record.model === 'string' ? record.model : undefined,
+        verified: false,
+        sync_required: Boolean(record.needs_sync),
+        counter: 0
+    };
+
+    this.infoValue = info;
+    return info;
   }
 
   private async fetchInfo(): Promise<DeviceInfo> {
@@ -322,20 +381,24 @@ class LukuidDevice implements Device {
                     try {
                         const telemetryResult = await this.call('fetch_telemetry', {}) as any;
                         const telemetry = telemetryResult?.data || [];
+                        const normalizedTelemetry = normalizeTelemetryRows(Array.isArray(telemetry) ? telemetry : []);
                         const telemetrySignature = telemetryResult?.signature;
                         const telemetryCanonical = telemetryResult?.canonical_string;
 
-                        if (telemetry.length > 0) {
+                        if (normalizedTelemetry.length > 0) {
                             await fetch(`${apiUrl.replace(/\/$/, '')}/participate`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                     device_id: info.id,
-                                    data: telemetry,
+                                    rows: normalizedTelemetry,
+                                    row_count: telemetryResult?.row_count ?? normalizedTelemetry.length,
+                                    telemetry_chain_version: telemetryResult?.telemetry_chain_version,
+                                    telemetry_chain_tail: telemetryResult?.telemetry_chain_tail,
                                     signature: telemetrySignature instanceof Uint8Array 
                                         ? encodeBase64(telemetrySignature) 
                                         : telemetrySignature,
-                                    canonical: telemetryCanonical
+                                    canonical_string: telemetryCanonical
                                 })
                             });
                         }

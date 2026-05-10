@@ -85,6 +85,28 @@ export interface CheckResult {
   }>;
 }
 
+function normalizeTelemetryRows(rows: unknown[]): { index: number; values: unknown[] }[] {
+  if (!Array.isArray(rows)) {
+    throw new Error('rows must be an array');
+  }
+
+  return rows.map((row, index) => {
+    if (Array.isArray(row)) {
+      return { index, values: row };
+    }
+
+    if (!row || typeof row !== 'object' || !Array.isArray((row as any).values)) {
+      throw new Error(`row values are required at index ${index}`);
+    }
+
+    const telemetryRow = row as { index?: unknown; values: unknown[] };
+    return {
+      index: typeof telemetryRow.index === 'number' ? telemetryRow.index : index,
+      values: telemetryRow.values
+    };
+  });
+}
+
 export interface HeartbeatRequest {
   deviceId: string;
   publicKey: string;
@@ -96,7 +118,7 @@ export interface HeartbeatRequest {
   previousState: Record<string, unknown>;
   source: Record<string, unknown>;
   networkParticipationEnabled: boolean;
-  customUrl?: string;
+  telemetry?: Record<string, unknown>;
 }
 
 export interface HeartbeatResponse {
@@ -391,23 +413,33 @@ export class LukuidSdk {
       };
     }
 
+    const payload: Record<string, unknown> = {
+      device_id: request.deviceId,
+      public_key: request.publicKey,
+      signature: request.signature,
+      csr: request.csr,
+      attestation: request.attestationCertificate,
+      attestation_root_fingerprint: request.attestationRootFingerprint,
+      counter: request.counter,
+      previous_state: request.previousState,
+      source: request.source,
+      network_participation_enabled: request.networkParticipationEnabled
+    };
+
+    const disableTelemetry = typeof process !== 'undefined' && process?.env?.LUKUID_DISABLE_TELEMETRY === '1';
+    if (request.telemetry && !disableTelemetry) {
+      payload.telemetry = {
+        ...request.telemetry,
+        device_counter: request.counter
+      };
+    }
+
     const response = await fetch(`${apiUrl.replace(/\/$/, '')}/heartbeat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        device_id: request.deviceId,
-        public_key: request.publicKey,
-        signature: request.signature,
-        csr: request.csr,
-        attestation: request.attestationCertificate,
-        attestation_root_fingerprint: request.attestationRootFingerprint,
-        counter: request.counter,
-        previous_state: request.previousState,
-        source: request.source,
-        network_participation_enabled: request.networkParticipationEnabled
-      })
+      body: JSON.stringify(payload)
     });
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
@@ -422,13 +454,18 @@ export class LukuidSdk {
    */
   async telemetry(request: {
     deviceId: string;
-    data: unknown[];
+    deviceCounter: number;
+    rows: unknown[];
+    rowCount?: number;
     signature?: string;
     canonicalString?: string;
+    telemetryChainVersion?: number;
+    telemetryChainTail?: string;
     customUrl?: string;
   }): Promise<Record<string, unknown>> {
     const defaultApiUrl = this.options.apiUrl || 'https://api.lukuid.com';
     const apiUrl = request.customUrl || defaultApiUrl;
+    const normalizedRows = normalizeTelemetryRows(request.rows);
 
     if (!isExternalCallAllowed(apiUrl, this.options.disableExternalCalls || false)) {
       if (this.options.debugLogging) {
@@ -437,17 +474,31 @@ export class LukuidSdk {
       return { status: 'dropped', reason: 'LUKUID_DISABLE_EXTERNAL_CALLS' };
     }
 
+    const disableTelemetry = typeof process !== 'undefined' && process?.env?.LUKUID_DISABLE_TELEMETRY === '1';
+    if (disableTelemetry) {
+      if (this.options.debugLogging) {
+        console.warn(`[lukuid-sdk] Telemetry disabled via LUKUID_DISABLE_TELEMETRY env var`);
+      }
+      return { status: 'dropped', reason: 'LUKUID_DISABLE_TELEMETRY' };
+    }
+
+    const payload = {
+      device_id: request.deviceId,
+      device_counter: request.deviceCounter,
+      rows: normalizedRows,
+      row_count: request.rowCount ?? normalizedRows.length,
+      signature: request.signature,
+      canonical_string: request.canonicalString,
+      telemetry_chain_version: request.telemetryChainVersion,
+      telemetry_chain_tail: request.telemetryChainTail
+    };
+
     const response = await fetch(`${apiUrl.replace(/\/$/, '')}/participate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        device_id: request.deviceId,
-        data: request.data,
-        signature: request.signature,
-        canonical: request.canonicalString
-      })
+      body: JSON.stringify(payload)
     });
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
@@ -616,34 +667,21 @@ export class LukuidSdk {
     }
 
     const controller = this.createDeviceController(transport, candidate, key);
-    this.log('debug', 'Validating device candidate', {
+    
+    // We intentionally delay full info/validation (and telemetry/heartbeat sync)
+    // until the consumer explicitly opens/verifies the device.
+    const device = controller.device;
+    this.devices.set(key, { device, transport: transport.name, candidateId: candidate.transportId });
+    this.deviceKeys.set(device, key);
+    this.attachDeviceListeners(device, key, transport.name);
+    this.emitter.emit('device', { kind: 'added', device });
+    this.log('debug', 'Device added without deep validation', {
       transport: transport.name,
       transportId: candidate.transportId,
-      name: candidate.name
+      deviceId: device.info.id,
+      verified: device.info.verified
     });
-
-    try {
-      await controller.ensureValidated();
-      const device = controller.device;
-      this.devices.set(key, { device, transport: transport.name, candidateId: candidate.transportId });
-      this.deviceKeys.set(device, key);
-      this.attachDeviceListeners(device, key, transport.name);
-      this.emitter.emit('device', { kind: 'added', device });
-      this.log('debug', 'Device validated and added', {
-        transport: transport.name,
-        transportId: candidate.transportId,
-        deviceId: device.info.id,
-        verified: device.info.verified
-      });
-      return device;
-    } catch (error) {
-      await controller.device.close('validation').catch(() => undefined);
-      this.emitError('validate', error, transport.name, candidate.transportId);
-      if (options?.propagateTrustError && error instanceof DeviceTrustError) {
-        throw error;
-      }
-      return null;
-    }
+    return device;
   }
 
   private createDeviceController(transport: Transport, candidate: DeviceCandidate, key: string): DeviceController {

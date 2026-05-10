@@ -73,3 +73,21 @@ print(issues)
 
 - Apple guide: https://github.com/lukuid/sdk/blob/main/docs/apple.md
 - Verification guide: https://github.com/lukuid/sdk/blob/main/docs/verification.md
+
+## Configuration & Privacy Options
+
+The SDK and Device interactions can be customized using initialization options or environment variables.
+
+| Option / Env Var | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `LUKUID_DISABLE_TELEMETRY` | Env Var | `undefined` | Set to `"1"` to strictly block all telemetry data extraction and transmission globally. |
+| `disableExternalCalls` | Config | `false` | Air-gap mode. Blocks all outbound traffic to the LukuID cloud (allows custom local endpoints). |
+| `apiUrl` | Config | `https://api.lukuid.com` | Base URL for the LukuID API. |
+| `allowUnverifiedDevices` | Config | `false` | If true, permits connection to devices that fail cryptographic attestation (flags as `verified=false`). |
+| `debugLogging` | Config | `false` | Emits verbose discovery and validation diagnostics. |
+| `crlMemoryOnly` | Config | `false` | Keeps Certificate Revocation Lists (CRLs) strictly in memory without writing to disk. |
+| `crlCachePath` | Config | *OS Default* | Custom local directory path for storing the CRL cache. |
+| `crlRefreshIntervalHours`| Config | `4` | Frequency of background CRL refresh. Set to `0` to disable auto-refresh. |
+| `trustProfile` | Verify Config | `'prod'` | Enforces specific trust roots during `.luku` parsing (`'prod'`, `'dev'`, `'test'`). |
+| `allowUntrustedRoots` | Verify Config | `false` | Permits `.luku` verification even if the root certificate isn't in the trusted store. |
+| `skipCertificateTemporalChecks`| Verify Config | `false` | Bypasses time-based expiration checks on certificates during `.luku` parsing. |

@@ -175,6 +175,19 @@ internal class LukuCodec(
         }
         
         when (response.payloadCase) {
+            LukuIDProto.CommandResponse.PayloadCase.STATUS_RESPONSE -> {
+                val status = response.statusResponse
+                if (status.id.isNotEmpty()) map["id"] = status.id
+                if (status.name.isNotEmpty()) map["name"] = status.name
+                if (!status.publicKey.isEmpty) map["public_key"] = status.publicKey.toByteArray()
+                map["battery_health"] = status.batteryHealth
+                map["timestamp"] = status.timestamp
+                map["has_attestation"] = status.hasAttestation
+                map["has_heartbeat"] = status.hasHeartbeat
+                map["needs_sync"] = status.needsSync
+                if (status.product.isNotEmpty()) map["product"] = status.product
+                if (status.model.isNotEmpty()) map["model"] = status.model
+            }
             LukuIDProto.CommandResponse.PayloadCase.DEVICE_INFO -> {
                 val info = response.deviceInfo
                 if (info.handshake.isNotEmpty()) map["handshake"] = info.handshake
@@ -262,10 +275,19 @@ internal class LukuCodec(
                     row.valuesList.map { telemetryValueToValue(it) }
                 }
                 if (telemetry.hasSignature()) {
-                    map["signature"] = telemetry.signature.toByteArray()
+                    map["signature"] = Base64.getEncoder().encodeToString(telemetry.signature.toByteArray())
                 }
                 if (telemetry.hasCanonicalString()) {
                     map["canonical_string"] = telemetry.canonicalString
+                }
+                if (telemetry.hasTelemetryChainVersion()) {
+                    map["telemetry_chain_version"] = telemetry.telemetryChainVersion
+                }
+                if (telemetry.hasTelemetryChainTail()) {
+                    map["telemetry_chain_tail"] = telemetry.telemetryChainTail
+                }
+                if (telemetry.hasRowCount()) {
+                    map["row_count"] = telemetry.rowCount
                 }
             }
             else -> {}

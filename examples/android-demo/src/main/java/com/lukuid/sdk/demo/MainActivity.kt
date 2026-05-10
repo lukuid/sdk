@@ -78,7 +78,7 @@ class MainActivity : AppCompatActivity() {
                     devices[device.info.id] = device
                     updateDevices()
                     setStatus("Connected ${device.info.id}")
-                    val infoResponse = device.cmd("INFO") as? Map<*, *>
+                    val infoResponse = device.action("info") as? Map<*, *>
                     appendDeviceLog("INFO => $infoResponse")
                 } catch (t: Throwable) {
                     setStatus("Request failed: ${t.message}")

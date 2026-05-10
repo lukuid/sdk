@@ -67,6 +67,124 @@ enum LukuIDStatus: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
+enum LukuIDUploadMode: SwiftProtobuf.Enum, Swift.CaseIterable {
+  typealias RawValue = Int
+  case none // = 0
+  case http // = 1
+  case mqtt // = 2
+  case UNRECOGNIZED(Int)
+
+  init() {
+    self = .none
+  }
+
+  init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .none
+    case 1: self = .http
+    case 2: self = .mqtt
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  var rawValue: Int {
+    switch self {
+    case .none: return 0
+    case .http: return 1
+    case .mqtt: return 2
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  static let allCases: [LukuIDUploadMode] = [
+    .none,
+    .http,
+    .mqtt,
+  ]
+
+}
+
+enum LukuIDUploadAuth: SwiftProtobuf.Enum, Swift.CaseIterable {
+  typealias RawValue = Int
+  case none // = 0
+  case token // = 1
+  case mtls // = 2
+  case UNRECOGNIZED(Int)
+
+  init() {
+    self = .none
+  }
+
+  init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .none
+    case 1: self = .token
+    case 2: self = .mtls
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  var rawValue: Int {
+    switch self {
+    case .none: return 0
+    case .token: return 1
+    case .mtls: return 2
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  static let allCases: [LukuIDUploadAuth] = [
+    .none,
+    .token,
+    .mtls,
+  ]
+
+}
+
+enum LukuIDUploadTokenType: SwiftProtobuf.Enum, Swift.CaseIterable {
+  typealias RawValue = Int
+  case header // = 0
+  case query // = 1
+  case body // = 2
+  case bearer // = 3
+  case UNRECOGNIZED(Int)
+
+  init() {
+    self = .header
+  }
+
+  init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .header
+    case 1: self = .query
+    case 2: self = .body
+    case 3: self = .bearer
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  var rawValue: Int {
+    switch self {
+    case .header: return 0
+    case .query: return 1
+    case .body: return 2
+    case .bearer: return 3
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  static let allCases: [LukuIDUploadTokenType] = [
+    .header,
+    .query,
+    .body,
+    .bearer,
+  ]
+
+}
+
 enum LukuIDFetchWindow: SwiftProtobuf.Enum, Swift.CaseIterable {
   typealias RawValue = Int
   case none // = 0
@@ -241,155 +359,223 @@ struct LukuIDAttestRequest: Sendable {
   init() {}
 }
 
-struct LukuIDConfigRequest: Sendable {
+struct LukuIDConfigRequest: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   var name: String {
-    get {_name ?? String()}
-    set {_name = newValue}
+    get {_storage._name ?? String()}
+    set {_uniqueStorage()._name = newValue}
   }
   /// Returns true if `name` has been explicitly set.
-  var hasName: Bool {self._name != nil}
+  var hasName: Bool {_storage._name != nil}
   /// Clears the value of `name`. Subsequent reads from it will return its default value.
-  mutating func clearName() {self._name = nil}
+  mutating func clearName() {_uniqueStorage()._name = nil}
 
   var wifiSsid: String {
-    get {_wifiSsid ?? String()}
-    set {_wifiSsid = newValue}
+    get {_storage._wifiSsid ?? String()}
+    set {_uniqueStorage()._wifiSsid = newValue}
   }
   /// Returns true if `wifiSsid` has been explicitly set.
-  var hasWifiSsid: Bool {self._wifiSsid != nil}
+  var hasWifiSsid: Bool {_storage._wifiSsid != nil}
   /// Clears the value of `wifiSsid`. Subsequent reads from it will return its default value.
-  mutating func clearWifiSsid() {self._wifiSsid = nil}
+  mutating func clearWifiSsid() {_uniqueStorage()._wifiSsid = nil}
 
   var wifiPassword: String {
-    get {_wifiPassword ?? String()}
-    set {_wifiPassword = newValue}
+    get {_storage._wifiPassword ?? String()}
+    set {_uniqueStorage()._wifiPassword = newValue}
   }
   /// Returns true if `wifiPassword` has been explicitly set.
-  var hasWifiPassword: Bool {self._wifiPassword != nil}
+  var hasWifiPassword: Bool {_storage._wifiPassword != nil}
   /// Clears the value of `wifiPassword`. Subsequent reads from it will return its default value.
-  mutating func clearWifiPassword() {self._wifiPassword = nil}
+  mutating func clearWifiPassword() {_uniqueStorage()._wifiPassword = nil}
 
   var mqttBrokerURL: String {
-    get {_mqttBrokerURL ?? String()}
-    set {_mqttBrokerURL = newValue}
+    get {_storage._mqttBrokerURL ?? String()}
+    set {_uniqueStorage()._mqttBrokerURL = newValue}
   }
   /// Returns true if `mqttBrokerURL` has been explicitly set.
-  var hasMqttBrokerURL: Bool {self._mqttBrokerURL != nil}
+  var hasMqttBrokerURL: Bool {_storage._mqttBrokerURL != nil}
   /// Clears the value of `mqttBrokerURL`. Subsequent reads from it will return its default value.
-  mutating func clearMqttBrokerURL() {self._mqttBrokerURL = nil}
+  mutating func clearMqttBrokerURL() {_uniqueStorage()._mqttBrokerURL = nil}
 
   var mqttPort: UInt32 {
-    get {_mqttPort ?? 0}
-    set {_mqttPort = newValue}
+    get {_storage._mqttPort ?? 0}
+    set {_uniqueStorage()._mqttPort = newValue}
   }
   /// Returns true if `mqttPort` has been explicitly set.
-  var hasMqttPort: Bool {self._mqttPort != nil}
+  var hasMqttPort: Bool {_storage._mqttPort != nil}
   /// Clears the value of `mqttPort`. Subsequent reads from it will return its default value.
-  mutating func clearMqttPort() {self._mqttPort = nil}
+  mutating func clearMqttPort() {_uniqueStorage()._mqttPort = nil}
 
   var mqttTopic: String {
-    get {_mqttTopic ?? String()}
-    set {_mqttTopic = newValue}
+    get {_storage._mqttTopic ?? String()}
+    set {_uniqueStorage()._mqttTopic = newValue}
   }
   /// Returns true if `mqttTopic` has been explicitly set.
-  var hasMqttTopic: Bool {self._mqttTopic != nil}
+  var hasMqttTopic: Bool {_storage._mqttTopic != nil}
   /// Clears the value of `mqttTopic`. Subsequent reads from it will return its default value.
-  mutating func clearMqttTopic() {self._mqttTopic = nil}
-
-  var mqttBroadcastFrequencySeconds: UInt32 {
-    get {_mqttBroadcastFrequencySeconds ?? 0}
-    set {_mqttBroadcastFrequencySeconds = newValue}
-  }
-  /// Returns true if `mqttBroadcastFrequencySeconds` has been explicitly set.
-  var hasMqttBroadcastFrequencySeconds: Bool {self._mqttBroadcastFrequencySeconds != nil}
-  /// Clears the value of `mqttBroadcastFrequencySeconds`. Subsequent reads from it will return its default value.
-  mutating func clearMqttBroadcastFrequencySeconds() {self._mqttBroadcastFrequencySeconds = nil}
+  mutating func clearMqttTopic() {_uniqueStorage()._mqttTopic = nil}
 
   var mqttUsername: String {
-    get {_mqttUsername ?? String()}
-    set {_mqttUsername = newValue}
+    get {_storage._mqttUsername ?? String()}
+    set {_uniqueStorage()._mqttUsername = newValue}
   }
   /// Returns true if `mqttUsername` has been explicitly set.
-  var hasMqttUsername: Bool {self._mqttUsername != nil}
+  var hasMqttUsername: Bool {_storage._mqttUsername != nil}
   /// Clears the value of `mqttUsername`. Subsequent reads from it will return its default value.
-  mutating func clearMqttUsername() {self._mqttUsername = nil}
+  mutating func clearMqttUsername() {_uniqueStorage()._mqttUsername = nil}
 
   var mqttPassword: String {
-    get {_mqttPassword ?? String()}
-    set {_mqttPassword = newValue}
+    get {_storage._mqttPassword ?? String()}
+    set {_uniqueStorage()._mqttPassword = newValue}
   }
   /// Returns true if `mqttPassword` has been explicitly set.
-  var hasMqttPassword: Bool {self._mqttPassword != nil}
+  var hasMqttPassword: Bool {_storage._mqttPassword != nil}
   /// Clears the value of `mqttPassword`. Subsequent reads from it will return its default value.
-  mutating func clearMqttPassword() {self._mqttPassword = nil}
+  mutating func clearMqttPassword() {_uniqueStorage()._mqttPassword = nil}
 
   var mqttCertificateDer: Data {
-    get {_mqttCertificateDer ?? Data()}
-    set {_mqttCertificateDer = newValue}
+    get {_storage._mqttCertificateDer ?? Data()}
+    set {_uniqueStorage()._mqttCertificateDer = newValue}
   }
   /// Returns true if `mqttCertificateDer` has been explicitly set.
-  var hasMqttCertificateDer: Bool {self._mqttCertificateDer != nil}
+  var hasMqttCertificateDer: Bool {_storage._mqttCertificateDer != nil}
   /// Clears the value of `mqttCertificateDer`. Subsequent reads from it will return its default value.
-  mutating func clearMqttCertificateDer() {self._mqttCertificateDer = nil}
+  mutating func clearMqttCertificateDer() {_uniqueStorage()._mqttCertificateDer = nil}
 
   var mqttCaDer: Data {
-    get {_mqttCaDer ?? Data()}
-    set {_mqttCaDer = newValue}
+    get {_storage._mqttCaDer ?? Data()}
+    set {_uniqueStorage()._mqttCaDer = newValue}
   }
   /// Returns true if `mqttCaDer` has been explicitly set.
-  var hasMqttCaDer: Bool {self._mqttCaDer != nil}
+  var hasMqttCaDer: Bool {_storage._mqttCaDer != nil}
   /// Clears the value of `mqttCaDer`. Subsequent reads from it will return its default value.
-  mutating func clearMqttCaDer() {self._mqttCaDer = nil}
+  mutating func clearMqttCaDer() {_uniqueStorage()._mqttCaDer = nil}
 
   var mqttBroadcastEnabled: Bool {
-    get {_mqttBroadcastEnabled ?? false}
-    set {_mqttBroadcastEnabled = newValue}
+    get {_storage._mqttBroadcastEnabled ?? false}
+    set {_uniqueStorage()._mqttBroadcastEnabled = newValue}
   }
   /// Returns true if `mqttBroadcastEnabled` has been explicitly set.
-  var hasMqttBroadcastEnabled: Bool {self._mqttBroadcastEnabled != nil}
+  var hasMqttBroadcastEnabled: Bool {_storage._mqttBroadcastEnabled != nil}
   /// Clears the value of `mqttBroadcastEnabled`. Subsequent reads from it will return its default value.
-  mutating func clearMqttBroadcastEnabled() {self._mqttBroadcastEnabled = nil}
+  mutating func clearMqttBroadcastEnabled() {_uniqueStorage()._mqttBroadcastEnabled = nil}
 
   var customHeartbeatURL: String {
-    get {_customHeartbeatURL ?? String()}
-    set {_customHeartbeatURL = newValue}
+    get {_storage._customHeartbeatURL ?? String()}
+    set {_uniqueStorage()._customHeartbeatURL = newValue}
   }
   /// Returns true if `customHeartbeatURL` has been explicitly set.
-  var hasCustomHeartbeatURL: Bool {self._customHeartbeatURL != nil}
+  var hasCustomHeartbeatURL: Bool {_storage._customHeartbeatURL != nil}
   /// Clears the value of `customHeartbeatURL`. Subsequent reads from it will return its default value.
-  mutating func clearCustomHeartbeatURL() {self._customHeartbeatURL = nil}
+  mutating func clearCustomHeartbeatURL() {_uniqueStorage()._customHeartbeatURL = nil}
 
-  var telemetryEnabled: Bool {
-    get {_telemetryEnabled ?? false}
-    set {_telemetryEnabled = newValue}
+  var networkParticipationEnabled: Bool {
+    get {_storage._networkParticipationEnabled ?? false}
+    set {_uniqueStorage()._networkParticipationEnabled = newValue}
   }
-  /// Returns true if `telemetryEnabled` has been explicitly set.
-  var hasTelemetryEnabled: Bool {self._telemetryEnabled != nil}
-  /// Clears the value of `telemetryEnabled`. Subsequent reads from it will return its default value.
-  mutating func clearTelemetryEnabled() {self._telemetryEnabled = nil}
+  /// Returns true if `networkParticipationEnabled` has been explicitly set.
+  var hasNetworkParticipationEnabled: Bool {_storage._networkParticipationEnabled != nil}
+  /// Clears the value of `networkParticipationEnabled`. Subsequent reads from it will return its default value.
+  mutating func clearNetworkParticipationEnabled() {_uniqueStorage()._networkParticipationEnabled = nil}
+
+  var uploadMode: LukuIDUploadMode {
+    get {_storage._uploadMode ?? .none}
+    set {_uniqueStorage()._uploadMode = newValue}
+  }
+  /// Returns true if `uploadMode` has been explicitly set.
+  var hasUploadMode: Bool {_storage._uploadMode != nil}
+  /// Clears the value of `uploadMode`. Subsequent reads from it will return its default value.
+  mutating func clearUploadMode() {_uniqueStorage()._uploadMode = nil}
+
+  var uploadDestination: String {
+    get {_storage._uploadDestination ?? String()}
+    set {_uniqueStorage()._uploadDestination = newValue}
+  }
+  /// Returns true if `uploadDestination` has been explicitly set.
+  var hasUploadDestination: Bool {_storage._uploadDestination != nil}
+  /// Clears the value of `uploadDestination`. Subsequent reads from it will return its default value.
+  mutating func clearUploadDestination() {_uniqueStorage()._uploadDestination = nil}
+
+  var uploadAuth: LukuIDUploadAuth {
+    get {_storage._uploadAuth ?? .none}
+    set {_uniqueStorage()._uploadAuth = newValue}
+  }
+  /// Returns true if `uploadAuth` has been explicitly set.
+  var hasUploadAuth: Bool {_storage._uploadAuth != nil}
+  /// Clears the value of `uploadAuth`. Subsequent reads from it will return its default value.
+  mutating func clearUploadAuth() {_uniqueStorage()._uploadAuth = nil}
+
+  var uploadTokenKey: String {
+    get {_storage._uploadTokenKey ?? String()}
+    set {_uniqueStorage()._uploadTokenKey = newValue}
+  }
+  /// Returns true if `uploadTokenKey` has been explicitly set.
+  var hasUploadTokenKey: Bool {_storage._uploadTokenKey != nil}
+  /// Clears the value of `uploadTokenKey`. Subsequent reads from it will return its default value.
+  mutating func clearUploadTokenKey() {_uniqueStorage()._uploadTokenKey = nil}
+
+  var uploadTokenValue: String {
+    get {_storage._uploadTokenValue ?? String()}
+    set {_uniqueStorage()._uploadTokenValue = newValue}
+  }
+  /// Returns true if `uploadTokenValue` has been explicitly set.
+  var hasUploadTokenValue: Bool {_storage._uploadTokenValue != nil}
+  /// Clears the value of `uploadTokenValue`. Subsequent reads from it will return its default value.
+  mutating func clearUploadTokenValue() {_uniqueStorage()._uploadTokenValue = nil}
+
+  var uploadTokenType: LukuIDUploadTokenType {
+    get {_storage._uploadTokenType ?? .header}
+    set {_uniqueStorage()._uploadTokenType = newValue}
+  }
+  /// Returns true if `uploadTokenType` has been explicitly set.
+  var hasUploadTokenType: Bool {_storage._uploadTokenType != nil}
+  /// Clears the value of `uploadTokenType`. Subsequent reads from it will return its default value.
+  mutating func clearUploadTokenType() {_uniqueStorage()._uploadTokenType = nil}
+
+  var uploadTopic: String {
+    get {_storage._uploadTopic ?? String()}
+    set {_uniqueStorage()._uploadTopic = newValue}
+  }
+  /// Returns true if `uploadTopic` has been explicitly set.
+  var hasUploadTopic: Bool {_storage._uploadTopic != nil}
+  /// Clears the value of `uploadTopic`. Subsequent reads from it will return its default value.
+  mutating func clearUploadTopic() {_uniqueStorage()._uploadTopic = nil}
+
+  var uploadCertificateDer: Data {
+    get {_storage._uploadCertificateDer ?? Data()}
+    set {_uniqueStorage()._uploadCertificateDer = newValue}
+  }
+  /// Returns true if `uploadCertificateDer` has been explicitly set.
+  var hasUploadCertificateDer: Bool {_storage._uploadCertificateDer != nil}
+  /// Clears the value of `uploadCertificateDer`. Subsequent reads from it will return its default value.
+  mutating func clearUploadCertificateDer() {_uniqueStorage()._uploadCertificateDer = nil}
+
+  var uploadCaDer: Data {
+    get {_storage._uploadCaDer ?? Data()}
+    set {_uniqueStorage()._uploadCaDer = newValue}
+  }
+  /// Returns true if `uploadCaDer` has been explicitly set.
+  var hasUploadCaDer: Bool {_storage._uploadCaDer != nil}
+  /// Clears the value of `uploadCaDer`. Subsequent reads from it will return its default value.
+  mutating func clearUploadCaDer() {_uniqueStorage()._uploadCaDer = nil}
+
+  var uploadFrequency: UInt32 {
+    get {_storage._uploadFrequency ?? 0}
+    set {_uniqueStorage()._uploadFrequency = newValue}
+  }
+  /// Returns true if `uploadFrequency` has been explicitly set.
+  var hasUploadFrequency: Bool {_storage._uploadFrequency != nil}
+  /// Clears the value of `uploadFrequency`. Subsequent reads from it will return its default value.
+  mutating func clearUploadFrequency() {_uniqueStorage()._uploadFrequency = nil}
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
 
-  fileprivate var _name: String? = nil
-  fileprivate var _wifiSsid: String? = nil
-  fileprivate var _wifiPassword: String? = nil
-  fileprivate var _mqttBrokerURL: String? = nil
-  fileprivate var _mqttPort: UInt32? = nil
-  fileprivate var _mqttTopic: String? = nil
-  fileprivate var _mqttBroadcastFrequencySeconds: UInt32? = nil
-  fileprivate var _mqttUsername: String? = nil
-  fileprivate var _mqttPassword: String? = nil
-  fileprivate var _mqttCertificateDer: Data? = nil
-  fileprivate var _mqttCaDer: Data? = nil
-  fileprivate var _mqttBroadcastEnabled: Bool? = nil
-  fileprivate var _customHeartbeatURL: String? = nil
-  fileprivate var _telemetryEnabled: Bool? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 struct LukuIDOtaBeginRequest: Sendable {
@@ -597,12 +783,42 @@ struct LukuIDFetchTelemetryResponse: Sendable {
   /// Clears the value of `canonicalString`. Subsequent reads from it will return its default value.
   mutating func clearCanonicalString() {self._canonicalString = nil}
 
+  var telemetryChainVersion: Int32 {
+    get {_telemetryChainVersion ?? 0}
+    set {_telemetryChainVersion = newValue}
+  }
+  /// Returns true if `telemetryChainVersion` has been explicitly set.
+  var hasTelemetryChainVersion: Bool {self._telemetryChainVersion != nil}
+  /// Clears the value of `telemetryChainVersion`. Subsequent reads from it will return its default value.
+  mutating func clearTelemetryChainVersion() {self._telemetryChainVersion = nil}
+
+  var telemetryChainTail: String {
+    get {_telemetryChainTail ?? String()}
+    set {_telemetryChainTail = newValue}
+  }
+  /// Returns true if `telemetryChainTail` has been explicitly set.
+  var hasTelemetryChainTail: Bool {self._telemetryChainTail != nil}
+  /// Clears the value of `telemetryChainTail`. Subsequent reads from it will return its default value.
+  mutating func clearTelemetryChainTail() {self._telemetryChainTail = nil}
+
+  var rowCount: Int32 {
+    get {_rowCount ?? 0}
+    set {_rowCount = newValue}
+  }
+  /// Returns true if `rowCount` has been explicitly set.
+  var hasRowCount: Bool {self._rowCount != nil}
+  /// Clears the value of `rowCount`. Subsequent reads from it will return its default value.
+  mutating func clearRowCount() {self._rowCount = nil}
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
 
   fileprivate var _signature: Data? = nil
   fileprivate var _canonicalString: String? = nil
+  fileprivate var _telemetryChainVersion: Int32? = nil
+  fileprivate var _telemetryChainTail: String? = nil
+  fileprivate var _rowCount: Int32? = nil
 }
 
 struct LukuIDCommandRequest: Sendable {
@@ -818,9 +1034,9 @@ struct LukuIDDeviceInfoResponse: @unchecked Sendable {
     set {_uniqueStorage()._customHeartbeatURL = newValue}
   }
 
-  var telemetry: Bool {
-    get {_storage._telemetry}
-    set {_uniqueStorage()._telemetry = newValue}
+  var networkParticipationEnabled: Bool {
+    get {_storage._networkParticipationEnabled}
+    set {_uniqueStorage()._networkParticipationEnabled = newValue}
   }
 
   var managedBy: String {
@@ -878,6 +1094,21 @@ struct LukuIDDeviceInfoResponse: @unchecked Sendable {
     set {_uniqueStorage()._key = newValue}
   }
 
+  var uploadMode: LukuIDUploadMode {
+    get {_storage._uploadMode}
+    set {_uniqueStorage()._uploadMode = newValue}
+  }
+
+  var uploadDestination: String {
+    get {_storage._uploadDestination}
+    set {_uniqueStorage()._uploadDestination = newValue}
+  }
+
+  var uploadAuth: LukuIDUploadAuth {
+    get {_storage._uploadAuth}
+    set {_uniqueStorage()._uploadAuth = newValue}
+  }
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -915,38 +1146,106 @@ struct LukuIDStatusResponse: Sendable {
   init() {}
 }
 
-struct LukuIDNetworkConfigResponse: Sendable {
+struct LukuIDNetworkConfigResponse: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var wifiSsid: String = String()
+  var wifiSsid: String {
+    get {_storage._wifiSsid}
+    set {_uniqueStorage()._wifiSsid = newValue}
+  }
 
-  var wifiPasswordSet: Bool = false
+  var wifiPasswordSet: Bool {
+    get {_storage._wifiPasswordSet}
+    set {_uniqueStorage()._wifiPasswordSet = newValue}
+  }
 
-  var mqttBrokerURL: String = String()
+  var mqttBrokerURL: String {
+    get {_storage._mqttBrokerURL}
+    set {_uniqueStorage()._mqttBrokerURL = newValue}
+  }
 
-  var mqttPort: UInt32 = 0
+  var mqttPort: UInt32 {
+    get {_storage._mqttPort}
+    set {_uniqueStorage()._mqttPort = newValue}
+  }
 
-  var mqttTopic: String = String()
+  var mqttTopic: String {
+    get {_storage._mqttTopic}
+    set {_uniqueStorage()._mqttTopic = newValue}
+  }
 
-  var mqttBroadcastFrequencySeconds: UInt32 = 0
+  var mqttUsername: String {
+    get {_storage._mqttUsername}
+    set {_uniqueStorage()._mqttUsername = newValue}
+  }
 
-  var mqttUsername: String = String()
+  var mqttPasswordSet: Bool {
+    get {_storage._mqttPasswordSet}
+    set {_uniqueStorage()._mqttPasswordSet = newValue}
+  }
 
-  var mqttPasswordSet: Bool = false
+  var mqttBroadcastEnabled: Bool {
+    get {_storage._mqttBroadcastEnabled}
+    set {_uniqueStorage()._mqttBroadcastEnabled = newValue}
+  }
 
-  var mqttBroadcastEnabled: Bool = false
+  var csr: Data {
+    get {_storage._csr}
+    set {_uniqueStorage()._csr = newValue}
+  }
 
-  var csr: Data = Data()
+  var mqttCertificateDer: Data {
+    get {_storage._mqttCertificateDer}
+    set {_uniqueStorage()._mqttCertificateDer = newValue}
+  }
 
-  var mqttCertificateDer: Data = Data()
+  var mqttCaDer: Data {
+    get {_storage._mqttCaDer}
+    set {_uniqueStorage()._mqttCaDer = newValue}
+  }
 
-  var mqttCaDer: Data = Data()
+  var uploadMode: LukuIDUploadMode {
+    get {_storage._uploadMode}
+    set {_uniqueStorage()._uploadMode = newValue}
+  }
+
+  var uploadDestination: String {
+    get {_storage._uploadDestination}
+    set {_uniqueStorage()._uploadDestination = newValue}
+  }
+
+  var uploadAuth: LukuIDUploadAuth {
+    get {_storage._uploadAuth}
+    set {_uniqueStorage()._uploadAuth = newValue}
+  }
+
+  var uploadTokenKey: String {
+    get {_storage._uploadTokenKey}
+    set {_uniqueStorage()._uploadTokenKey = newValue}
+  }
+
+  var uploadTokenType: LukuIDUploadTokenType {
+    get {_storage._uploadTokenType}
+    set {_uniqueStorage()._uploadTokenType = newValue}
+  }
+
+  var uploadTopic: String {
+    get {_storage._uploadTopic}
+    set {_uniqueStorage()._uploadTopic = newValue}
+  }
+
+  var uploadFrequency: UInt32 {
+    get {_storage._uploadFrequency}
+    set {_uniqueStorage()._uploadFrequency = newValue}
+  }
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 struct LukuIDRecordMeta: Sendable {
@@ -1695,6 +1994,11 @@ struct LukuIDEnvironmentPayload: @unchecked Sendable {
     set {_uniqueStorage()._genesisHash = newValue}
   }
 
+  var batteryPercent: UInt32 {
+    get {_storage._batteryPercent}
+    set {_uniqueStorage()._batteryPercent = newValue}
+  }
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   struct Accel: Sendable {
@@ -2082,6 +2386,18 @@ extension LukuIDStatus: SwiftProtobuf._ProtoNameProviding {
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0STATUS_UNKNOWN\0\u{1}STATUS_OK\0\u{1}STATUS_ERROR\0\u{1}STATUS_READY\0")
 }
 
+extension LukuIDUploadMode: SwiftProtobuf._ProtoNameProviding {
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0UPLOAD_MODE_NONE\0\u{1}UPLOAD_MODE_HTTP\0\u{1}UPLOAD_MODE_MQTT\0")
+}
+
+extension LukuIDUploadAuth: SwiftProtobuf._ProtoNameProviding {
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0UPLOAD_AUTH_NONE\0\u{1}UPLOAD_AUTH_TOKEN\0\u{1}UPLOAD_AUTH_MTLS\0")
+}
+
+extension LukuIDUploadTokenType: SwiftProtobuf._ProtoNameProviding {
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0UPLOAD_TOKEN_TYPE_HEADER\0\u{1}UPLOAD_TOKEN_TYPE_QUERY\0\u{1}UPLOAD_TOKEN_TYPE_BODY\0\u{1}UPLOAD_TOKEN_TYPE_BEARER\0")
+}
+
 extension LukuIDFetchWindow: SwiftProtobuf._ProtoNameProviding {
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0FETCH_WINDOW_NONE\0\u{1}FETCH_WINDOW_HOURLY\0\u{1}FETCH_WINDOW_DAILY\0\u{1}FETCH_WINDOW_WEEKLY\0\u{1}FETCH_WINDOW_MONTHLY\0")
 }
@@ -2385,98 +2701,223 @@ extension LukuIDAttestRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension LukuIDConfigRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ConfigRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{3}wifi_ssid\0\u{3}wifi_password\0\u{3}mqtt_broker_url\0\u{3}mqtt_port\0\u{3}mqtt_topic\0\u{3}mqtt_broadcast_frequency_seconds\0\u{3}mqtt_username\0\u{3}mqtt_password\0\u{3}mqtt_certificate_der\0\u{3}mqtt_ca_der\0\u{3}mqtt_broadcast_enabled\0\u{3}custom_heartbeat_url\0\u{3}telemetry_enabled\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{3}wifi_ssid\0\u{3}wifi_password\0\u{3}mqtt_broker_url\0\u{3}mqtt_port\0\u{3}mqtt_topic\0\u{4}\u{2}mqtt_username\0\u{3}mqtt_password\0\u{3}mqtt_certificate_der\0\u{3}mqtt_ca_der\0\u{3}mqtt_broadcast_enabled\0\u{3}custom_heartbeat_url\0\u{3}network_participation_enabled\0\u{3}upload_mode\0\u{3}upload_destination\0\u{3}upload_auth\0\u{3}upload_token_key\0\u{3}upload_token_value\0\u{3}upload_token_type\0\u{3}upload_topic\0\u{3}upload_certificate_der\0\u{3}upload_ca_der\0\u{3}upload_frequency\0\u{c}\u{7}\u{1}")
+
+  fileprivate class _StorageClass {
+    var _name: String? = nil
+    var _wifiSsid: String? = nil
+    var _wifiPassword: String? = nil
+    var _mqttBrokerURL: String? = nil
+    var _mqttPort: UInt32? = nil
+    var _mqttTopic: String? = nil
+    var _mqttUsername: String? = nil
+    var _mqttPassword: String? = nil
+    var _mqttCertificateDer: Data? = nil
+    var _mqttCaDer: Data? = nil
+    var _mqttBroadcastEnabled: Bool? = nil
+    var _customHeartbeatURL: String? = nil
+    var _networkParticipationEnabled: Bool? = nil
+    var _uploadMode: LukuIDUploadMode? = nil
+    var _uploadDestination: String? = nil
+    var _uploadAuth: LukuIDUploadAuth? = nil
+    var _uploadTokenKey: String? = nil
+    var _uploadTokenValue: String? = nil
+    var _uploadTokenType: LukuIDUploadTokenType? = nil
+    var _uploadTopic: String? = nil
+    var _uploadCertificateDer: Data? = nil
+    var _uploadCaDer: Data? = nil
+    var _uploadFrequency: UInt32? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _name = source._name
+      _wifiSsid = source._wifiSsid
+      _wifiPassword = source._wifiPassword
+      _mqttBrokerURL = source._mqttBrokerURL
+      _mqttPort = source._mqttPort
+      _mqttTopic = source._mqttTopic
+      _mqttUsername = source._mqttUsername
+      _mqttPassword = source._mqttPassword
+      _mqttCertificateDer = source._mqttCertificateDer
+      _mqttCaDer = source._mqttCaDer
+      _mqttBroadcastEnabled = source._mqttBroadcastEnabled
+      _customHeartbeatURL = source._customHeartbeatURL
+      _networkParticipationEnabled = source._networkParticipationEnabled
+      _uploadMode = source._uploadMode
+      _uploadDestination = source._uploadDestination
+      _uploadAuth = source._uploadAuth
+      _uploadTokenKey = source._uploadTokenKey
+      _uploadTokenValue = source._uploadTokenValue
+      _uploadTokenType = source._uploadTokenType
+      _uploadTopic = source._uploadTopic
+      _uploadCertificateDer = source._uploadCertificateDer
+      _uploadCaDer = source._uploadCaDer
+      _uploadFrequency = source._uploadFrequency
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self._name) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self._wifiSsid) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self._wifiPassword) }()
-      case 4: try { try decoder.decodeSingularStringField(value: &self._mqttBrokerURL) }()
-      case 5: try { try decoder.decodeSingularUInt32Field(value: &self._mqttPort) }()
-      case 6: try { try decoder.decodeSingularStringField(value: &self._mqttTopic) }()
-      case 7: try { try decoder.decodeSingularUInt32Field(value: &self._mqttBroadcastFrequencySeconds) }()
-      case 8: try { try decoder.decodeSingularStringField(value: &self._mqttUsername) }()
-      case 9: try { try decoder.decodeSingularStringField(value: &self._mqttPassword) }()
-      case 10: try { try decoder.decodeSingularBytesField(value: &self._mqttCertificateDer) }()
-      case 11: try { try decoder.decodeSingularBytesField(value: &self._mqttCaDer) }()
-      case 12: try { try decoder.decodeSingularBoolField(value: &self._mqttBroadcastEnabled) }()
-      case 13: try { try decoder.decodeSingularStringField(value: &self._customHeartbeatURL) }()
-      case 14: try { try decoder.decodeSingularBoolField(value: &self._telemetryEnabled) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._name) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._wifiSsid) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._wifiPassword) }()
+        case 4: try { try decoder.decodeSingularStringField(value: &_storage._mqttBrokerURL) }()
+        case 5: try { try decoder.decodeSingularUInt32Field(value: &_storage._mqttPort) }()
+        case 6: try { try decoder.decodeSingularStringField(value: &_storage._mqttTopic) }()
+        case 8: try { try decoder.decodeSingularStringField(value: &_storage._mqttUsername) }()
+        case 9: try { try decoder.decodeSingularStringField(value: &_storage._mqttPassword) }()
+        case 10: try { try decoder.decodeSingularBytesField(value: &_storage._mqttCertificateDer) }()
+        case 11: try { try decoder.decodeSingularBytesField(value: &_storage._mqttCaDer) }()
+        case 12: try { try decoder.decodeSingularBoolField(value: &_storage._mqttBroadcastEnabled) }()
+        case 13: try { try decoder.decodeSingularStringField(value: &_storage._customHeartbeatURL) }()
+        case 14: try { try decoder.decodeSingularBoolField(value: &_storage._networkParticipationEnabled) }()
+        case 15: try { try decoder.decodeSingularEnumField(value: &_storage._uploadMode) }()
+        case 16: try { try decoder.decodeSingularStringField(value: &_storage._uploadDestination) }()
+        case 17: try { try decoder.decodeSingularEnumField(value: &_storage._uploadAuth) }()
+        case 18: try { try decoder.decodeSingularStringField(value: &_storage._uploadTokenKey) }()
+        case 19: try { try decoder.decodeSingularStringField(value: &_storage._uploadTokenValue) }()
+        case 20: try { try decoder.decodeSingularEnumField(value: &_storage._uploadTokenType) }()
+        case 21: try { try decoder.decodeSingularStringField(value: &_storage._uploadTopic) }()
+        case 22: try { try decoder.decodeSingularBytesField(value: &_storage._uploadCertificateDer) }()
+        case 23: try { try decoder.decodeSingularBytesField(value: &_storage._uploadCaDer) }()
+        case 24: try { try decoder.decodeSingularUInt32Field(value: &_storage._uploadFrequency) }()
+        default: break
+        }
       }
     }
   }
 
   func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    try { if let v = self._name {
-      try visitor.visitSingularStringField(value: v, fieldNumber: 1)
-    } }()
-    try { if let v = self._wifiSsid {
-      try visitor.visitSingularStringField(value: v, fieldNumber: 2)
-    } }()
-    try { if let v = self._wifiPassword {
-      try visitor.visitSingularStringField(value: v, fieldNumber: 3)
-    } }()
-    try { if let v = self._mqttBrokerURL {
-      try visitor.visitSingularStringField(value: v, fieldNumber: 4)
-    } }()
-    try { if let v = self._mqttPort {
-      try visitor.visitSingularUInt32Field(value: v, fieldNumber: 5)
-    } }()
-    try { if let v = self._mqttTopic {
-      try visitor.visitSingularStringField(value: v, fieldNumber: 6)
-    } }()
-    try { if let v = self._mqttBroadcastFrequencySeconds {
-      try visitor.visitSingularUInt32Field(value: v, fieldNumber: 7)
-    } }()
-    try { if let v = self._mqttUsername {
-      try visitor.visitSingularStringField(value: v, fieldNumber: 8)
-    } }()
-    try { if let v = self._mqttPassword {
-      try visitor.visitSingularStringField(value: v, fieldNumber: 9)
-    } }()
-    try { if let v = self._mqttCertificateDer {
-      try visitor.visitSingularBytesField(value: v, fieldNumber: 10)
-    } }()
-    try { if let v = self._mqttCaDer {
-      try visitor.visitSingularBytesField(value: v, fieldNumber: 11)
-    } }()
-    try { if let v = self._mqttBroadcastEnabled {
-      try visitor.visitSingularBoolField(value: v, fieldNumber: 12)
-    } }()
-    try { if let v = self._customHeartbeatURL {
-      try visitor.visitSingularStringField(value: v, fieldNumber: 13)
-    } }()
-    try { if let v = self._telemetryEnabled {
-      try visitor.visitSingularBoolField(value: v, fieldNumber: 14)
-    } }()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      try { if let v = _storage._name {
+        try visitor.visitSingularStringField(value: v, fieldNumber: 1)
+      } }()
+      try { if let v = _storage._wifiSsid {
+        try visitor.visitSingularStringField(value: v, fieldNumber: 2)
+      } }()
+      try { if let v = _storage._wifiPassword {
+        try visitor.visitSingularStringField(value: v, fieldNumber: 3)
+      } }()
+      try { if let v = _storage._mqttBrokerURL {
+        try visitor.visitSingularStringField(value: v, fieldNumber: 4)
+      } }()
+      try { if let v = _storage._mqttPort {
+        try visitor.visitSingularUInt32Field(value: v, fieldNumber: 5)
+      } }()
+      try { if let v = _storage._mqttTopic {
+        try visitor.visitSingularStringField(value: v, fieldNumber: 6)
+      } }()
+      try { if let v = _storage._mqttUsername {
+        try visitor.visitSingularStringField(value: v, fieldNumber: 8)
+      } }()
+      try { if let v = _storage._mqttPassword {
+        try visitor.visitSingularStringField(value: v, fieldNumber: 9)
+      } }()
+      try { if let v = _storage._mqttCertificateDer {
+        try visitor.visitSingularBytesField(value: v, fieldNumber: 10)
+      } }()
+      try { if let v = _storage._mqttCaDer {
+        try visitor.visitSingularBytesField(value: v, fieldNumber: 11)
+      } }()
+      try { if let v = _storage._mqttBroadcastEnabled {
+        try visitor.visitSingularBoolField(value: v, fieldNumber: 12)
+      } }()
+      try { if let v = _storage._customHeartbeatURL {
+        try visitor.visitSingularStringField(value: v, fieldNumber: 13)
+      } }()
+      try { if let v = _storage._networkParticipationEnabled {
+        try visitor.visitSingularBoolField(value: v, fieldNumber: 14)
+      } }()
+      try { if let v = _storage._uploadMode {
+        try visitor.visitSingularEnumField(value: v, fieldNumber: 15)
+      } }()
+      try { if let v = _storage._uploadDestination {
+        try visitor.visitSingularStringField(value: v, fieldNumber: 16)
+      } }()
+      try { if let v = _storage._uploadAuth {
+        try visitor.visitSingularEnumField(value: v, fieldNumber: 17)
+      } }()
+      try { if let v = _storage._uploadTokenKey {
+        try visitor.visitSingularStringField(value: v, fieldNumber: 18)
+      } }()
+      try { if let v = _storage._uploadTokenValue {
+        try visitor.visitSingularStringField(value: v, fieldNumber: 19)
+      } }()
+      try { if let v = _storage._uploadTokenType {
+        try visitor.visitSingularEnumField(value: v, fieldNumber: 20)
+      } }()
+      try { if let v = _storage._uploadTopic {
+        try visitor.visitSingularStringField(value: v, fieldNumber: 21)
+      } }()
+      try { if let v = _storage._uploadCertificateDer {
+        try visitor.visitSingularBytesField(value: v, fieldNumber: 22)
+      } }()
+      try { if let v = _storage._uploadCaDer {
+        try visitor.visitSingularBytesField(value: v, fieldNumber: 23)
+      } }()
+      try { if let v = _storage._uploadFrequency {
+        try visitor.visitSingularUInt32Field(value: v, fieldNumber: 24)
+      } }()
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   static func ==(lhs: LukuIDConfigRequest, rhs: LukuIDConfigRequest) -> Bool {
-    if lhs._name != rhs._name {return false}
-    if lhs._wifiSsid != rhs._wifiSsid {return false}
-    if lhs._wifiPassword != rhs._wifiPassword {return false}
-    if lhs._mqttBrokerURL != rhs._mqttBrokerURL {return false}
-    if lhs._mqttPort != rhs._mqttPort {return false}
-    if lhs._mqttTopic != rhs._mqttTopic {return false}
-    if lhs._mqttBroadcastFrequencySeconds != rhs._mqttBroadcastFrequencySeconds {return false}
-    if lhs._mqttUsername != rhs._mqttUsername {return false}
-    if lhs._mqttPassword != rhs._mqttPassword {return false}
-    if lhs._mqttCertificateDer != rhs._mqttCertificateDer {return false}
-    if lhs._mqttCaDer != rhs._mqttCaDer {return false}
-    if lhs._mqttBroadcastEnabled != rhs._mqttBroadcastEnabled {return false}
-    if lhs._customHeartbeatURL != rhs._customHeartbeatURL {return false}
-    if lhs._telemetryEnabled != rhs._telemetryEnabled {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._name != rhs_storage._name {return false}
+        if _storage._wifiSsid != rhs_storage._wifiSsid {return false}
+        if _storage._wifiPassword != rhs_storage._wifiPassword {return false}
+        if _storage._mqttBrokerURL != rhs_storage._mqttBrokerURL {return false}
+        if _storage._mqttPort != rhs_storage._mqttPort {return false}
+        if _storage._mqttTopic != rhs_storage._mqttTopic {return false}
+        if _storage._mqttUsername != rhs_storage._mqttUsername {return false}
+        if _storage._mqttPassword != rhs_storage._mqttPassword {return false}
+        if _storage._mqttCertificateDer != rhs_storage._mqttCertificateDer {return false}
+        if _storage._mqttCaDer != rhs_storage._mqttCaDer {return false}
+        if _storage._mqttBroadcastEnabled != rhs_storage._mqttBroadcastEnabled {return false}
+        if _storage._customHeartbeatURL != rhs_storage._customHeartbeatURL {return false}
+        if _storage._networkParticipationEnabled != rhs_storage._networkParticipationEnabled {return false}
+        if _storage._uploadMode != rhs_storage._uploadMode {return false}
+        if _storage._uploadDestination != rhs_storage._uploadDestination {return false}
+        if _storage._uploadAuth != rhs_storage._uploadAuth {return false}
+        if _storage._uploadTokenKey != rhs_storage._uploadTokenKey {return false}
+        if _storage._uploadTokenValue != rhs_storage._uploadTokenValue {return false}
+        if _storage._uploadTokenType != rhs_storage._uploadTokenType {return false}
+        if _storage._uploadTopic != rhs_storage._uploadTopic {return false}
+        if _storage._uploadCertificateDer != rhs_storage._uploadCertificateDer {return false}
+        if _storage._uploadCaDer != rhs_storage._uploadCaDer {return false}
+        if _storage._uploadFrequency != rhs_storage._uploadFrequency {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2873,7 +3314,7 @@ extension LukuIDTelemetryRow: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
 
 extension LukuIDFetchTelemetryResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".FetchTelemetryResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}rows\0\u{1}signature\0\u{3}canonical_string\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}rows\0\u{1}signature\0\u{3}canonical_string\0\u{3}telemetry_chain_version\0\u{3}telemetry_chain_tail\0\u{3}row_count\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2884,6 +3325,9 @@ extension LukuIDFetchTelemetryResponse: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 1: try { try decoder.decodeRepeatedMessageField(value: &self.rows) }()
       case 2: try { try decoder.decodeSingularBytesField(value: &self._signature) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self._canonicalString) }()
+      case 4: try { try decoder.decodeSingularInt32Field(value: &self._telemetryChainVersion) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self._telemetryChainTail) }()
+      case 6: try { try decoder.decodeSingularInt32Field(value: &self._rowCount) }()
       default: break
       }
     }
@@ -2903,6 +3347,15 @@ extension LukuIDFetchTelemetryResponse: SwiftProtobuf.Message, SwiftProtobuf._Me
     try { if let v = self._canonicalString {
       try visitor.visitSingularStringField(value: v, fieldNumber: 3)
     } }()
+    try { if let v = self._telemetryChainVersion {
+      try visitor.visitSingularInt32Field(value: v, fieldNumber: 4)
+    } }()
+    try { if let v = self._telemetryChainTail {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 5)
+    } }()
+    try { if let v = self._rowCount {
+      try visitor.visitSingularInt32Field(value: v, fieldNumber: 6)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2910,6 +3363,9 @@ extension LukuIDFetchTelemetryResponse: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.rows != rhs.rows {return false}
     if lhs._signature != rhs._signature {return false}
     if lhs._canonicalString != rhs._canonicalString {return false}
+    if lhs._telemetryChainVersion != rhs._telemetryChainVersion {return false}
+    if lhs._telemetryChainTail != rhs._telemetryChainTail {return false}
+    if lhs._rowCount != rhs._rowCount {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3159,7 +3615,7 @@ extension LukuIDCommandRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
 extension LukuIDDeviceInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".DeviceInfoResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}handshake\0\u{3}uptime_ms\0\u{1}token\0\u{1}battery\0\u{1}voltage\0\u{1}vbus\0\u{1}counter\0\u{3}sync_required\0\u{1}name\0\u{1}id\0\u{1}product\0\u{1}model\0\u{1}firmware\0\u{1}revision\0\u{1}pairing\0\u{3}custom_heartbeat_url\0\u{1}telemetry\0\u{3}managed_by\0\u{3}attestation_dac_der\0\u{3}attestation_manufacturer_der\0\u{3}attestation_intermediate_der\0\u{3}attestation_root_fingerprint\0\u{3}heartbeat_slac_der\0\u{3}heartbeat_der\0\u{3}heartbeat_intermediate_der\0\u{3}heartbeat_root_fingerprint\0\u{1}signature\0\u{1}key\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}handshake\0\u{3}uptime_ms\0\u{1}token\0\u{1}battery\0\u{1}voltage\0\u{1}vbus\0\u{1}counter\0\u{3}sync_required\0\u{1}name\0\u{1}id\0\u{1}product\0\u{1}model\0\u{1}firmware\0\u{1}revision\0\u{1}pairing\0\u{3}custom_heartbeat_url\0\u{3}network_participation_enabled\0\u{3}managed_by\0\u{3}attestation_dac_der\0\u{3}attestation_manufacturer_der\0\u{3}attestation_intermediate_der\0\u{3}attestation_root_fingerprint\0\u{3}heartbeat_slac_der\0\u{3}heartbeat_der\0\u{3}heartbeat_intermediate_der\0\u{3}heartbeat_root_fingerprint\0\u{1}signature\0\u{1}key\0\u{3}upload_mode\0\u{3}upload_destination\0\u{3}upload_auth\0")
 
   fileprivate class _StorageClass {
     var _handshake: String = String()
@@ -3178,7 +3634,7 @@ extension LukuIDDeviceInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._Messag
     var _revision: String = String()
     var _pairing: Bool = false
     var _customHeartbeatURL: String = String()
-    var _telemetry: Bool = false
+    var _networkParticipationEnabled: Bool = false
     var _managedBy: String = String()
     var _attestationDacDer: Data = Data()
     var _attestationManufacturerDer: Data = Data()
@@ -3190,6 +3646,9 @@ extension LukuIDDeviceInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._Messag
     var _heartbeatRootFingerprint: String = String()
     var _signature: Data = Data()
     var _key: Data = Data()
+    var _uploadMode: LukuIDUploadMode = .none
+    var _uploadDestination: String = String()
+    var _uploadAuth: LukuIDUploadAuth = .none
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3216,7 +3675,7 @@ extension LukuIDDeviceInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._Messag
       _revision = source._revision
       _pairing = source._pairing
       _customHeartbeatURL = source._customHeartbeatURL
-      _telemetry = source._telemetry
+      _networkParticipationEnabled = source._networkParticipationEnabled
       _managedBy = source._managedBy
       _attestationDacDer = source._attestationDacDer
       _attestationManufacturerDer = source._attestationManufacturerDer
@@ -3228,6 +3687,9 @@ extension LukuIDDeviceInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._Messag
       _heartbeatRootFingerprint = source._heartbeatRootFingerprint
       _signature = source._signature
       _key = source._key
+      _uploadMode = source._uploadMode
+      _uploadDestination = source._uploadDestination
+      _uploadAuth = source._uploadAuth
     }
   }
 
@@ -3262,7 +3724,7 @@ extension LukuIDDeviceInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._Messag
         case 14: try { try decoder.decodeSingularStringField(value: &_storage._revision) }()
         case 15: try { try decoder.decodeSingularBoolField(value: &_storage._pairing) }()
         case 16: try { try decoder.decodeSingularStringField(value: &_storage._customHeartbeatURL) }()
-        case 17: try { try decoder.decodeSingularBoolField(value: &_storage._telemetry) }()
+        case 17: try { try decoder.decodeSingularBoolField(value: &_storage._networkParticipationEnabled) }()
         case 18: try { try decoder.decodeSingularStringField(value: &_storage._managedBy) }()
         case 19: try { try decoder.decodeSingularBytesField(value: &_storage._attestationDacDer) }()
         case 20: try { try decoder.decodeSingularBytesField(value: &_storage._attestationManufacturerDer) }()
@@ -3274,6 +3736,9 @@ extension LukuIDDeviceInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._Messag
         case 26: try { try decoder.decodeSingularStringField(value: &_storage._heartbeatRootFingerprint) }()
         case 27: try { try decoder.decodeSingularBytesField(value: &_storage._signature) }()
         case 28: try { try decoder.decodeSingularBytesField(value: &_storage._key) }()
+        case 29: try { try decoder.decodeSingularEnumField(value: &_storage._uploadMode) }()
+        case 30: try { try decoder.decodeSingularStringField(value: &_storage._uploadDestination) }()
+        case 31: try { try decoder.decodeSingularEnumField(value: &_storage._uploadAuth) }()
         default: break
         }
       }
@@ -3330,8 +3795,8 @@ extension LukuIDDeviceInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._Messag
       if !_storage._customHeartbeatURL.isEmpty {
         try visitor.visitSingularStringField(value: _storage._customHeartbeatURL, fieldNumber: 16)
       }
-      if _storage._telemetry != false {
-        try visitor.visitSingularBoolField(value: _storage._telemetry, fieldNumber: 17)
+      if _storage._networkParticipationEnabled != false {
+        try visitor.visitSingularBoolField(value: _storage._networkParticipationEnabled, fieldNumber: 17)
       }
       if !_storage._managedBy.isEmpty {
         try visitor.visitSingularStringField(value: _storage._managedBy, fieldNumber: 18)
@@ -3366,6 +3831,15 @@ extension LukuIDDeviceInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._Messag
       if !_storage._key.isEmpty {
         try visitor.visitSingularBytesField(value: _storage._key, fieldNumber: 28)
       }
+      if _storage._uploadMode != .none {
+        try visitor.visitSingularEnumField(value: _storage._uploadMode, fieldNumber: 29)
+      }
+      if !_storage._uploadDestination.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._uploadDestination, fieldNumber: 30)
+      }
+      if _storage._uploadAuth != .none {
+        try visitor.visitSingularEnumField(value: _storage._uploadAuth, fieldNumber: 31)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3391,7 +3865,7 @@ extension LukuIDDeviceInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._Messag
         if _storage._revision != rhs_storage._revision {return false}
         if _storage._pairing != rhs_storage._pairing {return false}
         if _storage._customHeartbeatURL != rhs_storage._customHeartbeatURL {return false}
-        if _storage._telemetry != rhs_storage._telemetry {return false}
+        if _storage._networkParticipationEnabled != rhs_storage._networkParticipationEnabled {return false}
         if _storage._managedBy != rhs_storage._managedBy {return false}
         if _storage._attestationDacDer != rhs_storage._attestationDacDer {return false}
         if _storage._attestationManufacturerDer != rhs_storage._attestationManufacturerDer {return false}
@@ -3403,6 +3877,9 @@ extension LukuIDDeviceInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._Messag
         if _storage._heartbeatRootFingerprint != rhs_storage._heartbeatRootFingerprint {return false}
         if _storage._signature != rhs_storage._signature {return false}
         if _storage._key != rhs_storage._key {return false}
+        if _storage._uploadMode != rhs_storage._uploadMode {return false}
+        if _storage._uploadDestination != rhs_storage._uploadDestination {return false}
+        if _storage._uploadAuth != rhs_storage._uploadAuth {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -3489,84 +3966,184 @@ extension LukuIDStatusResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
 extension LukuIDNetworkConfigResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".NetworkConfigResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}wifi_ssid\0\u{3}wifi_password_set\0\u{3}mqtt_broker_url\0\u{3}mqtt_port\0\u{3}mqtt_topic\0\u{3}mqtt_broadcast_frequency_seconds\0\u{3}mqtt_username\0\u{3}mqtt_password_set\0\u{3}mqtt_broadcast_enabled\0\u{1}csr\0\u{3}mqtt_certificate_der\0\u{3}mqtt_ca_der\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}wifi_ssid\0\u{3}wifi_password_set\0\u{3}mqtt_broker_url\0\u{3}mqtt_port\0\u{3}mqtt_topic\0\u{4}\u{2}mqtt_username\0\u{3}mqtt_password_set\0\u{3}mqtt_broadcast_enabled\0\u{1}csr\0\u{3}mqtt_certificate_der\0\u{3}mqtt_ca_der\0\u{3}upload_mode\0\u{3}upload_destination\0\u{3}upload_auth\0\u{3}upload_token_key\0\u{3}upload_token_type\0\u{3}upload_topic\0\u{3}upload_frequency\0\u{c}\u{6}\u{1}")
+
+  fileprivate class _StorageClass {
+    var _wifiSsid: String = String()
+    var _wifiPasswordSet: Bool = false
+    var _mqttBrokerURL: String = String()
+    var _mqttPort: UInt32 = 0
+    var _mqttTopic: String = String()
+    var _mqttUsername: String = String()
+    var _mqttPasswordSet: Bool = false
+    var _mqttBroadcastEnabled: Bool = false
+    var _csr: Data = Data()
+    var _mqttCertificateDer: Data = Data()
+    var _mqttCaDer: Data = Data()
+    var _uploadMode: LukuIDUploadMode = .none
+    var _uploadDestination: String = String()
+    var _uploadAuth: LukuIDUploadAuth = .none
+    var _uploadTokenKey: String = String()
+    var _uploadTokenType: LukuIDUploadTokenType = .header
+    var _uploadTopic: String = String()
+    var _uploadFrequency: UInt32 = 0
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _wifiSsid = source._wifiSsid
+      _wifiPasswordSet = source._wifiPasswordSet
+      _mqttBrokerURL = source._mqttBrokerURL
+      _mqttPort = source._mqttPort
+      _mqttTopic = source._mqttTopic
+      _mqttUsername = source._mqttUsername
+      _mqttPasswordSet = source._mqttPasswordSet
+      _mqttBroadcastEnabled = source._mqttBroadcastEnabled
+      _csr = source._csr
+      _mqttCertificateDer = source._mqttCertificateDer
+      _mqttCaDer = source._mqttCaDer
+      _uploadMode = source._uploadMode
+      _uploadDestination = source._uploadDestination
+      _uploadAuth = source._uploadAuth
+      _uploadTokenKey = source._uploadTokenKey
+      _uploadTokenType = source._uploadTokenType
+      _uploadTopic = source._uploadTopic
+      _uploadFrequency = source._uploadFrequency
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.wifiSsid) }()
-      case 2: try { try decoder.decodeSingularBoolField(value: &self.wifiPasswordSet) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.mqttBrokerURL) }()
-      case 4: try { try decoder.decodeSingularUInt32Field(value: &self.mqttPort) }()
-      case 5: try { try decoder.decodeSingularStringField(value: &self.mqttTopic) }()
-      case 6: try { try decoder.decodeSingularUInt32Field(value: &self.mqttBroadcastFrequencySeconds) }()
-      case 7: try { try decoder.decodeSingularStringField(value: &self.mqttUsername) }()
-      case 8: try { try decoder.decodeSingularBoolField(value: &self.mqttPasswordSet) }()
-      case 9: try { try decoder.decodeSingularBoolField(value: &self.mqttBroadcastEnabled) }()
-      case 10: try { try decoder.decodeSingularBytesField(value: &self.csr) }()
-      case 11: try { try decoder.decodeSingularBytesField(value: &self.mqttCertificateDer) }()
-      case 12: try { try decoder.decodeSingularBytesField(value: &self.mqttCaDer) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._wifiSsid) }()
+        case 2: try { try decoder.decodeSingularBoolField(value: &_storage._wifiPasswordSet) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._mqttBrokerURL) }()
+        case 4: try { try decoder.decodeSingularUInt32Field(value: &_storage._mqttPort) }()
+        case 5: try { try decoder.decodeSingularStringField(value: &_storage._mqttTopic) }()
+        case 7: try { try decoder.decodeSingularStringField(value: &_storage._mqttUsername) }()
+        case 8: try { try decoder.decodeSingularBoolField(value: &_storage._mqttPasswordSet) }()
+        case 9: try { try decoder.decodeSingularBoolField(value: &_storage._mqttBroadcastEnabled) }()
+        case 10: try { try decoder.decodeSingularBytesField(value: &_storage._csr) }()
+        case 11: try { try decoder.decodeSingularBytesField(value: &_storage._mqttCertificateDer) }()
+        case 12: try { try decoder.decodeSingularBytesField(value: &_storage._mqttCaDer) }()
+        case 13: try { try decoder.decodeSingularEnumField(value: &_storage._uploadMode) }()
+        case 14: try { try decoder.decodeSingularStringField(value: &_storage._uploadDestination) }()
+        case 15: try { try decoder.decodeSingularEnumField(value: &_storage._uploadAuth) }()
+        case 16: try { try decoder.decodeSingularStringField(value: &_storage._uploadTokenKey) }()
+        case 17: try { try decoder.decodeSingularEnumField(value: &_storage._uploadTokenType) }()
+        case 18: try { try decoder.decodeSingularStringField(value: &_storage._uploadTopic) }()
+        case 19: try { try decoder.decodeSingularUInt32Field(value: &_storage._uploadFrequency) }()
+        default: break
+        }
       }
     }
   }
 
   func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.wifiSsid.isEmpty {
-      try visitor.visitSingularStringField(value: self.wifiSsid, fieldNumber: 1)
-    }
-    if self.wifiPasswordSet != false {
-      try visitor.visitSingularBoolField(value: self.wifiPasswordSet, fieldNumber: 2)
-    }
-    if !self.mqttBrokerURL.isEmpty {
-      try visitor.visitSingularStringField(value: self.mqttBrokerURL, fieldNumber: 3)
-    }
-    if self.mqttPort != 0 {
-      try visitor.visitSingularUInt32Field(value: self.mqttPort, fieldNumber: 4)
-    }
-    if !self.mqttTopic.isEmpty {
-      try visitor.visitSingularStringField(value: self.mqttTopic, fieldNumber: 5)
-    }
-    if self.mqttBroadcastFrequencySeconds != 0 {
-      try visitor.visitSingularUInt32Field(value: self.mqttBroadcastFrequencySeconds, fieldNumber: 6)
-    }
-    if !self.mqttUsername.isEmpty {
-      try visitor.visitSingularStringField(value: self.mqttUsername, fieldNumber: 7)
-    }
-    if self.mqttPasswordSet != false {
-      try visitor.visitSingularBoolField(value: self.mqttPasswordSet, fieldNumber: 8)
-    }
-    if self.mqttBroadcastEnabled != false {
-      try visitor.visitSingularBoolField(value: self.mqttBroadcastEnabled, fieldNumber: 9)
-    }
-    if !self.csr.isEmpty {
-      try visitor.visitSingularBytesField(value: self.csr, fieldNumber: 10)
-    }
-    if !self.mqttCertificateDer.isEmpty {
-      try visitor.visitSingularBytesField(value: self.mqttCertificateDer, fieldNumber: 11)
-    }
-    if !self.mqttCaDer.isEmpty {
-      try visitor.visitSingularBytesField(value: self.mqttCaDer, fieldNumber: 12)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      if !_storage._wifiSsid.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._wifiSsid, fieldNumber: 1)
+      }
+      if _storage._wifiPasswordSet != false {
+        try visitor.visitSingularBoolField(value: _storage._wifiPasswordSet, fieldNumber: 2)
+      }
+      if !_storage._mqttBrokerURL.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._mqttBrokerURL, fieldNumber: 3)
+      }
+      if _storage._mqttPort != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._mqttPort, fieldNumber: 4)
+      }
+      if !_storage._mqttTopic.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._mqttTopic, fieldNumber: 5)
+      }
+      if !_storage._mqttUsername.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._mqttUsername, fieldNumber: 7)
+      }
+      if _storage._mqttPasswordSet != false {
+        try visitor.visitSingularBoolField(value: _storage._mqttPasswordSet, fieldNumber: 8)
+      }
+      if _storage._mqttBroadcastEnabled != false {
+        try visitor.visitSingularBoolField(value: _storage._mqttBroadcastEnabled, fieldNumber: 9)
+      }
+      if !_storage._csr.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._csr, fieldNumber: 10)
+      }
+      if !_storage._mqttCertificateDer.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._mqttCertificateDer, fieldNumber: 11)
+      }
+      if !_storage._mqttCaDer.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._mqttCaDer, fieldNumber: 12)
+      }
+      if _storage._uploadMode != .none {
+        try visitor.visitSingularEnumField(value: _storage._uploadMode, fieldNumber: 13)
+      }
+      if !_storage._uploadDestination.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._uploadDestination, fieldNumber: 14)
+      }
+      if _storage._uploadAuth != .none {
+        try visitor.visitSingularEnumField(value: _storage._uploadAuth, fieldNumber: 15)
+      }
+      if !_storage._uploadTokenKey.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._uploadTokenKey, fieldNumber: 16)
+      }
+      if _storage._uploadTokenType != .header {
+        try visitor.visitSingularEnumField(value: _storage._uploadTokenType, fieldNumber: 17)
+      }
+      if !_storage._uploadTopic.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._uploadTopic, fieldNumber: 18)
+      }
+      if _storage._uploadFrequency != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._uploadFrequency, fieldNumber: 19)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   static func ==(lhs: LukuIDNetworkConfigResponse, rhs: LukuIDNetworkConfigResponse) -> Bool {
-    if lhs.wifiSsid != rhs.wifiSsid {return false}
-    if lhs.wifiPasswordSet != rhs.wifiPasswordSet {return false}
-    if lhs.mqttBrokerURL != rhs.mqttBrokerURL {return false}
-    if lhs.mqttPort != rhs.mqttPort {return false}
-    if lhs.mqttTopic != rhs.mqttTopic {return false}
-    if lhs.mqttBroadcastFrequencySeconds != rhs.mqttBroadcastFrequencySeconds {return false}
-    if lhs.mqttUsername != rhs.mqttUsername {return false}
-    if lhs.mqttPasswordSet != rhs.mqttPasswordSet {return false}
-    if lhs.mqttBroadcastEnabled != rhs.mqttBroadcastEnabled {return false}
-    if lhs.csr != rhs.csr {return false}
-    if lhs.mqttCertificateDer != rhs.mqttCertificateDer {return false}
-    if lhs.mqttCaDer != rhs.mqttCaDer {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._wifiSsid != rhs_storage._wifiSsid {return false}
+        if _storage._wifiPasswordSet != rhs_storage._wifiPasswordSet {return false}
+        if _storage._mqttBrokerURL != rhs_storage._mqttBrokerURL {return false}
+        if _storage._mqttPort != rhs_storage._mqttPort {return false}
+        if _storage._mqttTopic != rhs_storage._mqttTopic {return false}
+        if _storage._mqttUsername != rhs_storage._mqttUsername {return false}
+        if _storage._mqttPasswordSet != rhs_storage._mqttPasswordSet {return false}
+        if _storage._mqttBroadcastEnabled != rhs_storage._mqttBroadcastEnabled {return false}
+        if _storage._csr != rhs_storage._csr {return false}
+        if _storage._mqttCertificateDer != rhs_storage._mqttCertificateDer {return false}
+        if _storage._mqttCaDer != rhs_storage._mqttCaDer {return false}
+        if _storage._uploadMode != rhs_storage._uploadMode {return false}
+        if _storage._uploadDestination != rhs_storage._uploadDestination {return false}
+        if _storage._uploadAuth != rhs_storage._uploadAuth {return false}
+        if _storage._uploadTokenKey != rhs_storage._uploadTokenKey {return false}
+        if _storage._uploadTokenType != rhs_storage._uploadTokenType {return false}
+        if _storage._uploadTopic != rhs_storage._uploadTopic {return false}
+        if _storage._uploadFrequency != rhs_storage._uploadFrequency {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -4829,7 +5406,7 @@ extension LukuIDScanRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
 
 extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".EnvironmentPayload"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ctr\0\u{3}timestamp_utc\0\u{3}uptime_us\0\u{1}nonce\0\u{1}firmware\0\u{1}lux\0\u{3}temp_c\0\u{3}humidity_pct\0\u{3}pressure_hpa\0\u{3}voc_index\0\u{3}accel_g\0\u{1}tamper\0\u{3}wake_event\0\u{3}vbus_present\0\u{3}genesis_hash\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ctr\0\u{3}timestamp_utc\0\u{3}uptime_us\0\u{1}nonce\0\u{1}firmware\0\u{1}lux\0\u{3}temp_c\0\u{3}humidity_pct\0\u{3}pressure_hpa\0\u{3}voc_index\0\u{3}accel_g\0\u{1}tamper\0\u{3}wake_event\0\u{3}vbus_present\0\u{3}genesis_hash\0\u{3}battery_percent\0")
 
   fileprivate class _StorageClass {
     var _ctr: UInt64 = 0
@@ -4847,6 +5424,7 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
     var _wakeEvent: Bool = false
     var _vbusPresent: Bool = false
     var _genesisHash: String = String()
+    var _batteryPercent: UInt32 = 0
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -4872,6 +5450,7 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
       _wakeEvent = source._wakeEvent
       _vbusPresent = source._vbusPresent
       _genesisHash = source._genesisHash
+      _batteryPercent = source._batteryPercent
     }
   }
 
@@ -4905,6 +5484,7 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
         case 13: try { try decoder.decodeSingularBoolField(value: &_storage._wakeEvent) }()
         case 14: try { try decoder.decodeSingularBoolField(value: &_storage._vbusPresent) }()
         case 15: try { try decoder.decodeSingularStringField(value: &_storage._genesisHash) }()
+        case 16: try { try decoder.decodeSingularUInt32Field(value: &_storage._batteryPercent) }()
         default: break
         }
       }
@@ -4962,6 +5542,9 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
       if !_storage._genesisHash.isEmpty {
         try visitor.visitSingularStringField(value: _storage._genesisHash, fieldNumber: 15)
       }
+      if _storage._batteryPercent != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._batteryPercent, fieldNumber: 16)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4986,6 +5569,7 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
         if _storage._wakeEvent != rhs_storage._wakeEvent {return false}
         if _storage._vbusPresent != rhs_storage._vbusPresent {return false}
         if _storage._genesisHash != rhs_storage._genesisHash {return false}
+        if _storage._batteryPercent != rhs_storage._batteryPercent {return false}
         return true
       }
       if !storagesAreEqual {return false}

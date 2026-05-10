@@ -338,28 +338,34 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
                 Task {
                     do {
                         // 1. Fetch Telemetry if network participation is enabled
-                        if finalInfo.networkParticipationEnabled {
-                            if let telemetryResult = (try? await call(key: "fetch_telemetry", opts: [:], timeout: 10) as? [String: Any]),
-                               let telemetry = telemetryResult["data"] as? [[String: Any]], !telemetry.isEmpty {
-                                
-                                let telemetrySignature = telemetryResult["signature"] as? String
-                                let telemetryCanonical = telemetryResult["canonical_string"] as? String
-                                
-                                _ = try? await client.telemetry(
-                                    deviceId: finalInfo.id,
-                                    data: telemetry,
-                                    signature: telemetrySignature,
-                                    canonicalString: telemetryCanonical,
-                                    customURL: nil // Always to api.lukuid.com or custom participating url, the SDK method handles it
-                                )
-                            }
-                        }
-
                         // 2. Generate Heartbeat
                         if let hbInit = try await call(key: "generate_heartbeat", opts: [:], timeout: 10) as? [String: Any],
                            let signature = hbInit["signature"] as? String,
                            let csr = hbInit["csr"] as? String,
                            let counter = hbInit["counter"] as? UInt64 {
+                            
+                        if finalInfo.networkParticipationEnabled {
+                            if let telemetryResult = (try? await call(key: "fetch_telemetry", opts: [:], timeout: 10) as? [String: Any]),
+                               let telemetry = telemetryResult["data"] as? [Any], !telemetry.isEmpty {
+                                
+                                let telemetrySignature = telemetryResult["signature"] as? String
+                                let telemetryCanonical = telemetryResult["canonical_string"] as? String
+                                let telemetryChainVersion = telemetryResult["telemetry_chain_version"] as? Int
+                                let telemetryChainTail = telemetryResult["telemetry_chain_tail"] as? String
+                                
+                                _ = try? await client.telemetry(
+                                    deviceId: finalInfo.id,
+                                    deviceCounter: counter,
+                                    rows: telemetry,
+                                    signature: telemetrySignature,
+                                    canonicalString: telemetryCanonical,
+                                    telemetryChainVersion: telemetryChainVersion,
+                                    telemetryChainTail: telemetryChainTail,
+                                    customURL: nil // Always to api.lukuid.com or custom participating url, the SDK method handles it
+                                )
+                            }
+                        }
+
                             let attestationCert = assembleInfoCertificateChain(finalInfo) ?? (hbInit["attestation"] as? String ?? "")
                             
                             let previousState: [String: Any] = [

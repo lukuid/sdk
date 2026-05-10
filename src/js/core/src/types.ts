@@ -94,6 +94,7 @@ export interface Device {
   send(data: Uint8Array): Promise<void>;
   close(reason?: string): Promise<void>;
   on<TEvent extends keyof DeviceEventMap>(event: TEvent, handler: (payload: DeviceEventMap[TEvent]) => void): Unsubscribe;
+  verify(): Promise<DeviceInfo>;
 }
 
 import type { RevocationManager } from './revocation.js';

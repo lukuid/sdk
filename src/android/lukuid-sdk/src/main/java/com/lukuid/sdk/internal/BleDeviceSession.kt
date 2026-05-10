@@ -121,7 +121,7 @@ internal class BleDeviceSession(
     suspend fun awaitValid(timeoutMillis: Long): Device {
         return withTimeout(timeoutMillis) {
             ensureReady()
-            ensureInfo()
+            ensureStatus()
             this@BleDeviceSession
         }
     }
@@ -205,7 +205,7 @@ internal class BleDeviceSession(
 
     private val infoMutex = Mutex()
 
-    private suspend fun ensureInfo(): DeviceInfo {
+    private suspend fun ensureStatus(): DeviceInfo {
         infoInternal?.let { return it }
         return infoMutex.withLock {
             infoInternal?.let { return@withLock it }
@@ -215,7 +215,18 @@ internal class BleDeviceSession(
                 infoInternal = cached
                 return@withLock cached
             }
-            debugLog(sdkOptions, "Requesting BLE INFO", mapOf("transportId" to transportId))
+            debugLog(sdkOptions, "Requesting BLE STATUS", mapOf("transportId" to transportId))
+            val statusData = call("status", emptyMap(), Device.DEFAULT_CALL_TIMEOUT)
+            val parsed = parseStatus(statusData)
+            
+            infoInternal = parsed
+            return@withLock parsed
+        }
+    }
+
+    override suspend fun verify(): DeviceInfo {
+        return infoMutex.withLock {
+            debugLog(sdkOptions, "Requesting BLE INFO for verify", mapOf("transportId" to transportId))
             val infoData = call("info", emptyMap(), Device.DEFAULT_CALL_TIMEOUT)
             val parsed = parseInfo(infoData)
             val verification = verifyDeviceAttestation(parsed.attestation, sdkProvider().revocationManager)
@@ -241,6 +252,15 @@ internal class BleDeviceSession(
                 val lastSync = info.lastSync ?: 0L
                 if (now - lastSync > 24 * 3600 || info.syncRequired) {
                     try {
+                        // 2. Generate Heartbeat
+                        val hbInit = call("generate_heartbeat", emptyMap()) as? Map<*, *>
+                        val signature = hbInit?.get("signature")?.toString() ?: ""
+                        val csr = hbInit?.get("csr")?.toString() ?: ""
+                        val attestationCert = assembleInfoCertificateChain(info) ?: (hbInit?.get("attestation")?.toString() ?: "")
+                        val counter = (hbInit?.get("counter") as? Number)?.toLong() ?: 0L
+                        
+                        var telemetryPayload: JSONObject? = null
+
                         // 1. Push Telemetry to public API if enabled
                         if (info.networkParticipationEnabled) {
                             try {
@@ -249,35 +269,32 @@ internal class BleDeviceSession(
                                 val rows = telemetryResult?.get("data") as? List<*>
                                 if (rows != null && rows.isNotEmpty()) {
                                     val telemetryData = JSONArray(rows)
-                                    val telemetrySignature = telemetryResult["signature"] as? ByteArray
-                                    val telemetrySignatureB64 = telemetrySignature?.let { 
-                                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                                            java.util.Base64.getEncoder().encodeToString(it)
-                                        } else {
-                                            android.util.Base64.encodeToString(it, android.util.Base64.NO_WRAP)
-                                        }
-                                    }
+                                    val telemetrySignatureB64 = telemetryResult["signature"] as? String
                                     val telemetryCanonical = telemetryResult["canonical_string"] as? String
+                                    val telemetryChainVersion = (telemetryResult["telemetry_chain_version"] as? Number)?.toInt()
+                                    val telemetryChainTail = telemetryResult["telemetry_chain_tail"] as? String
 
                                     sdkProvider().telemetry(
                                         info.id,
+                                        counter,
                                         telemetryData,
                                         telemetrySignatureB64,
                                         telemetryCanonical,
+                                        telemetryChainVersion,
+                                        telemetryChainTail,
                                         null // Always to api.lukuid.com or custom participating url, the SDK method handles it
                                     )
+                                    telemetryPayload = JSONObject()
+                                    telemetryPayload.put("rows", telemetryData)
+                                    telemetryPayload.put("signature", telemetrySignatureB64)
+                                    telemetryPayload.put("canonical_string", telemetryCanonical)
+                                    telemetryPayload.put("telemetry_chain_version", telemetryChainVersion)
+                                    telemetryPayload.put("telemetry_chain_tail", telemetryChainTail)
                                 }
                             } catch (e: Exception) {
                                 // Log or ignore public telemetry failure
                             }
                         }
-
-                        // 2. Generate Heartbeat
-                        val hbInit = call("generate_heartbeat", emptyMap()) as? Map<*, *>
-                        val signature = hbInit?.get("signature")?.toString() ?: ""
-                        val csr = hbInit?.get("csr")?.toString() ?: ""
-                        val attestationCert = assembleInfoCertificateChain(info) ?: (hbInit?.get("attestation")?.toString() ?: "")
-                        val counter = (hbInit?.get("counter") as? Number)?.toLong() ?: 0L
 
                         if (signature.isNotEmpty()) {
                             val previousState = JSONObject()
@@ -304,6 +321,7 @@ internal class BleDeviceSession(
                                 previousState = previousState,
                                 source = source,
                                 networkParticipationEnabled = info.networkParticipationEnabled,
+                                telemetry = telemetryPayload,
                                 customUrl = info.customHeartbeatUrl
                             )
                             val payload = mutableMapOf<String, Any>()
@@ -325,6 +343,24 @@ internal class BleDeviceSession(
             infoInternal = info
             info
         }
+    }
+
+    private fun parseStatus(data: Any?): DeviceInfo {
+        val map = data as? Map<*, *> ?: throw IllegalStateException("STATUS response missing body")
+        val normalized = map.entries.associate { (k, v) -> k.toString() to JsonUtils.fromJsonValue(v) }
+        val id = normalized["id"]?.toString() ?: throw IllegalStateException("STATUS missing id")
+
+        return DeviceInfo(
+            transportId = transportId,
+            transport = TransportType.BLE,
+            name = normalized["name"]?.toString(),
+            id = id,
+            key = "",
+            firmware = null,
+            model = normalized["model"]?.toString(),
+            verified = false,
+            syncRequired = normalized["needs_sync"] as? Boolean ?: false
+        )
     }
 
     private fun parseInfo(data: Any?): ParsedInfo {

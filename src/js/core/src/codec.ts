@@ -1450,6 +1450,15 @@ function decodeFetchTelemetryResponse(payload: Uint8Array): JsonRecord {
       case 3:
         assignString(payload, cursor, wireType, out, 'canonical_string');
         break;
+      case 4:
+        assignInt32(payload, cursor, wireType, out, 'telemetry_chain_version');
+        break;
+      case 5:
+        assignString(payload, cursor, wireType, out, 'telemetry_chain_tail');
+        break;
+      case 6:
+        assignInt32(payload, cursor, wireType, out, 'row_count');
+        break;
       default:
         skipField(payload, cursor, wireType);
         break;

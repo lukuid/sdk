@@ -96,3 +96,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - Rust guide: https://github.com/lukuid/sdk/blob/main/docs/rust.md
 - Verification guide: https://github.com/lukuid/sdk/blob/main/docs/verification.md
+
+## Configuration & Privacy Options
+
+The SDK and Device interactions can be customized using initialization options or environment variables.
+
+| Option / Env Var | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `LUKUID_DISABLE_TELEMETRY` | Env Var | `undefined` | Set to `"1"` to strictly block all telemetry data extraction and transmission globally. |
+| `disable_external_calls` | Config | `false` | Air-gap mode. Blocks all outbound traffic to the LukuID cloud (allows custom local endpoints). |
+| `api_url` | Config | `https://api.lukuid.com` | Base URL for the LukuID API. |
+| `allow_unverified_devices` | Config | `false` | If true, permits connection to devices that fail cryptographic attestation (flags as `verified=false`). |
+| `debug_logging` | Config | `false` | Emits verbose discovery and validation diagnostics. |
+| `crl_memory_only` | Config | `false` | Keeps Certificate Revocation Lists (CRLs) strictly in memory without writing to disk. |
+| `crl_cache_path` | Config | *OS Default* | Custom local directory path for storing the CRL cache. |
+| `crl_refresh_interval_hours`| Config | `4` | Frequency of background CRL refresh. Set to `0` to disable auto-refresh. |
+| `trust_profile` | Verify Config | `"prod"` | Enforces specific trust roots during `.luku` parsing (`"prod"`, `"dev"`, `"test"`). |
+| `allow_untrusted_roots` | Verify Config | `false` | Permits `.luku` verification even if the root certificate isn't in the trusted store. |
+| `skip_certificate_temporal_checks`| Verify Config | `false` | Bypasses time-based expiration checks on certificates during `.luku` parsing. |

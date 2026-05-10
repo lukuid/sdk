@@ -594,34 +594,6 @@ impl Device {
             eprintln!("[lukuid-sdk] Heartbeat sync starting for {}", self.info.id);
         }
 
-        // 1. Push Telemetry to public API if participating
-        if self.info.network_participation_enabled {
-            let telemetry_resp = self
-                .call("fetch_telemetry", json!({}))
-                .await
-                .unwrap_or(json!({ "data": [] }));
-
-            let telemetry = telemetry_resp.get("data").cloned().unwrap_or(json!([]));
-            let telemetry_signature = telemetry_resp.get("signature").and_then(|v| v.as_str()).map(|s| s.to_string());
-            let telemetry_canonical_string = telemetry_resp.get("canonical_string").and_then(|v| v.as_str()).map(|s| s.to_string());
-
-            if sdk.options.debug_logging {
-                let telemetry_count = telemetry.as_array().map(|items| items.len()).unwrap_or(0);
-                eprintln!(
-                    "[lukuid-sdk] Heartbeat sync fetched telemetry for {} ({} entries)",
-                    self.info.id, telemetry_count
-                );
-            }
-
-            let _ = sdk.telemetry(
-                None, // Always default API
-                &self.info.id,
-                telemetry,
-                telemetry_signature.as_deref(),
-                telemetry_canonical_string.as_deref()
-            ).await;
-        }
-
         // 2. Generate Heartbeat CSR
         let generate_response =
             self.call("generate_heartbeat", json!({}))
@@ -652,6 +624,42 @@ impl Device {
             .ok_or_else(|| {
                 DeviceError::Protocol("Heartbeat field 'counter' is missing".to_string())
             })?;
+
+        // 1. Push Telemetry to public API if participating
+        let mut telemetry_payload: Option<serde_json::Value> = None;
+        if self.info.network_participation_enabled {
+            let telemetry_resp = self
+                .call("fetch_telemetry", json!({}))
+                .await
+                .unwrap_or(json!({ "data": [] }));
+
+            let telemetry = telemetry_resp.get("data").cloned().unwrap_or(json!([]));
+            let telemetry_signature = telemetry_resp.get("signature").and_then(|v| v.as_str()).map(|s| s.to_string());
+            let telemetry_canonical_string = telemetry_resp.get("canonical_string").and_then(|v| v.as_str()).map(|s| s.to_string());
+            let telemetry_chain_version = telemetry_resp.get("telemetry_chain_version").and_then(|v| v.as_u64()).map(|v| v as u32);
+            let telemetry_chain_tail = telemetry_resp.get("telemetry_chain_tail").and_then(|v| v.as_str()).map(|s| s.to_string());
+
+            if sdk.options.debug_logging {
+                let telemetry_count = telemetry.as_array().map(|items| items.len()).unwrap_or(0);
+                eprintln!(
+                    "[lukuid-sdk] Heartbeat sync fetched telemetry for {} ({} entries)",
+                    self.info.id, telemetry_count
+                );
+            }
+
+            let _ = sdk.telemetry(
+                None, // Always default API
+                &self.info.id,
+                counter,
+                telemetry.clone(),
+                telemetry_signature.as_deref(),
+                telemetry_canonical_string.as_deref(),
+                telemetry_chain_version,
+                telemetry_chain_tail.as_deref()
+            ).await;
+            
+            telemetry_payload = Some(telemetry);
+        }
 
         let previous_state = serde_json::json!({
             "last_sync_bucket": generate_response.get("last_sync_bucket"),
@@ -693,6 +701,7 @@ impl Device {
                 previous_state,
                 source,
                 self.info.network_participation_enabled,
+                telemetry_payload
             )
             .await
             .map_err(|error| {
