@@ -194,6 +194,10 @@ function encodeCommandRequest(frame: DeviceFrame): Uint8Array {
     const recordId = firstString(source.record_id, source.id, source.device_id);
     if (recordId) writeString(nested, 1, recordId);
     writeMessage(chunks, 3, nested);
+  } else if (action === 'get_certificate') {
+    const nested: number[] = [];
+    if (source.name) writeString(nested, 1, source.name as string);
+    writeMessage(chunks, 15, nested);
   } else if (action === 'attest') {
     const nested: number[] = [];
     const recordId = firstString(source.parent_record_id, source.record_id, source.id);
@@ -390,6 +394,13 @@ function decodeCommandResponse(payload: Uint8Array): JsonRecord | null {
         if (message === null) return null;
         const telemetry = decodeFetchTelemetryResponse(message);
         Object.assign(out, telemetry);
+        break;
+      }
+      case 19: {
+        const message = readLengthDelimited(payload, cursor, wireType);
+        if (message === null) return null;
+        const certObj = decodeGetCertificateResponse(message);
+        Object.assign(out, certObj);
         break;
       }
       default:
@@ -1426,6 +1437,20 @@ function decodeHeartbeatInitResponse(payload: Uint8Array): JsonRecord {
       case 9: assignString(payload, cursor, wireType, out, 'last_slac_serial'); break;
       default: skipField(payload, cursor, wireType); break;
     }
+  }
+  return out;
+}
+
+function decodeGetCertificateResponse(payload: Uint8Array): JsonRecord {
+  const cursor = { value: 0 };
+  const out: JsonRecord = {};
+  while (cursor.value < payload.length) {
+    const key = readVarint(payload, cursor);
+    if (key === null) break;
+    const field = key >>> 3;
+    const wireType = key & 0x07;
+    if (field === 1) assignBytes(payload, cursor, wireType, out, 'der');
+    else skipField(payload, cursor, wireType);
   }
   return out;
 }

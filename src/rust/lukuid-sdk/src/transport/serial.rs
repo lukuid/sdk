@@ -229,9 +229,9 @@ fn probe_port(port_name: &str, debug_logging: bool) -> Option<serde_json::Value>
         }
     };
 
-    // Send INFO command to check if it's a Luku device
+    // Send STATUS command to probe the lightweight quick-list identity surface.
     let frame = json!({
-        "action": "info",
+        "action": "status",
         "id": "probe",
         "opts": {}
     });
@@ -265,7 +265,7 @@ fn probe_port(port_name: &str, debug_logging: bool) -> Option<serde_json::Value>
             Ok(n) if n > 0 => {
                 let frames = decoder.feed(&buf[..n]);
                 if let Some(frame) = frames.into_iter().find(|frame| {
-                    frame.get("action").and_then(|value| value.as_str()) == Some("info")
+                    frame.get("action").and_then(|value| value.as_str()) == Some("status")
                 }) {
                     if debug_logging {
                         let device_id = frame
@@ -296,7 +296,7 @@ fn probe_port(port_name: &str, debug_logging: bool) -> Option<serde_json::Value>
 
     if debug_logging {
         eprintln!(
-            "[lukuid-sdk] Probe timed out waiting for INFO from {}",
+            "[lukuid-sdk] Probe timed out waiting for STATUS from {}",
             port_name
         );
     }

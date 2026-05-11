@@ -272,9 +272,29 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
             return cached
         }
         debugLog(options, "Requesting BLE INFO", context: ["transportId": transportId])
-        guard let infoMap = try await call(key: "info", opts: [:], timeout: 30) as? [String: Any] else {
+        guard var infoMap = try await call(key: "info", opts: [:], timeout: 30) as? [String: Any] else {
             throw NSError(domain: "lukuid", code: -4, userInfo: [NSLocalizedDescriptionKey: "Invalid INFO response"])
         }
+        
+        let certs = [
+            "attestation_dac",
+            "attestation_manufacturer",
+            "attestation_intermediate",
+            "heartbeat_slac",
+            "heartbeat",
+            "heartbeat_intermediate"
+        ]
+        for name in certs {
+            do {
+                if let certRes = try await call(key: "get_certificate", opts: ["name": name], timeout: 30) as? [String: Any],
+                   let der = certRes["der"] {
+                    infoMap["\(name)_der"] = der
+                }
+            } catch {
+                // Ignore missing certs
+            }
+        }
+        
         let parsed = try parseInfo(infoMap)
         
         let verification = verifyDeviceAttestation(parsed.attestation, revocationManager: client.revocationManager)

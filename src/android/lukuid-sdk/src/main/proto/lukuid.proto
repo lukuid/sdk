@@ -176,6 +176,14 @@ message FetchTelemetryResponse {
   optional int32 row_count = 6;
 }
 
+message GetCertificateRequest {
+  string name = 1;
+}
+
+message GetCertificateResponse {
+  bytes der = 1;
+}
+
 message CommandRequest {
   string action = 1;
   oneof payload {
@@ -191,6 +199,7 @@ message CommandRequest {
     ScanEnableRequest scan_enable = 12;
     GenerateHeartbeatRequest generate_heartbeat = 13;
     FetchTelemetryRequest fetch_telemetry = 14;
+    GetCertificateRequest get_certificate = 15;
   }
 }
 
@@ -542,6 +551,7 @@ message CommandResponse {
     HeartbeatInitResponse heartbeat_init = 14;
     StatusResponse status_response = 16;
     FetchTelemetryResponse fetch_telemetry = 17;
+    GetCertificateResponse certificate_response = 19;
   }
 
   optional bytes signature = 12;

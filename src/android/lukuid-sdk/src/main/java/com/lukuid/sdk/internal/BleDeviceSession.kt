@@ -227,7 +227,30 @@ internal class BleDeviceSession(
     override suspend fun verify(): DeviceInfo {
         return infoMutex.withLock {
             debugLog(sdkOptions, "Requesting BLE INFO for verify", mapOf("transportId" to transportId))
-            val infoData = call("info", emptyMap(), Device.DEFAULT_CALL_TIMEOUT)
+            val infoDataRaw = call("info", emptyMap(), Device.DEFAULT_CALL_TIMEOUT)
+            val infoData = if (infoDataRaw is Map<*, *>) {
+                val mutableMap = infoDataRaw.toMutableMap() as MutableMap<String, Any?>
+                val certs = listOf(
+                    "attestation_dac",
+                    "attestation_manufacturer",
+                    "attestation_intermediate",
+                    "heartbeat_slac",
+                    "heartbeat",
+                    "heartbeat_intermediate"
+                )
+                for (name in certs) {
+                    try {
+                        val certRes = call("get_certificate", mapOf("name" to name), Device.DEFAULT_CALL_TIMEOUT) as? Map<*, *>
+                        if (certRes?.containsKey("der") == true) {
+                            mutableMap["${name}_der"] = certRes["der"]
+                        }
+                    } catch (e: Exception) {
+                        // Ignore missing certs
+                    }
+                }
+                mutableMap
+            } else infoDataRaw
+
             val parsed = parseInfo(infoData)
             val verification = verifyDeviceAttestation(parsed.attestation, sdkProvider().revocationManager)
             debugLog(

@@ -2082,6 +2082,200 @@ export namespace lukuid {
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
+    /** Properties of a GetCertificateRequest. */
+    interface IGetCertificateRequest {
+
+        /** GetCertificateRequest name */
+        name?: (string|null);
+    }
+
+    /** Represents a GetCertificateRequest. */
+    class GetCertificateRequest implements IGetCertificateRequest {
+
+        /**
+         * Constructs a new GetCertificateRequest.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: lukuid.IGetCertificateRequest);
+
+        /** GetCertificateRequest name. */
+        public name: string;
+
+        /**
+         * Creates a new GetCertificateRequest instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns GetCertificateRequest instance
+         */
+        public static create(properties?: lukuid.IGetCertificateRequest): lukuid.GetCertificateRequest;
+
+        /**
+         * Encodes the specified GetCertificateRequest message. Does not implicitly {@link lukuid.GetCertificateRequest.verify|verify} messages.
+         * @param message GetCertificateRequest message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: lukuid.IGetCertificateRequest, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified GetCertificateRequest message, length delimited. Does not implicitly {@link lukuid.GetCertificateRequest.verify|verify} messages.
+         * @param message GetCertificateRequest message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: lukuid.IGetCertificateRequest, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a GetCertificateRequest message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns GetCertificateRequest
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): lukuid.GetCertificateRequest;
+
+        /**
+         * Decodes a GetCertificateRequest message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns GetCertificateRequest
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): lukuid.GetCertificateRequest;
+
+        /**
+         * Verifies a GetCertificateRequest message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a GetCertificateRequest message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns GetCertificateRequest
+         */
+        public static fromObject(object: { [k: string]: any }): lukuid.GetCertificateRequest;
+
+        /**
+         * Creates a plain object from a GetCertificateRequest message. Also converts values to other types if specified.
+         * @param message GetCertificateRequest
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: lukuid.GetCertificateRequest, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this GetCertificateRequest to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+
+        /**
+         * Gets the default type url for GetCertificateRequest
+         * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns The default type url
+         */
+        public static getTypeUrl(typeUrlPrefix?: string): string;
+    }
+
+    /** Properties of a GetCertificateResponse. */
+    interface IGetCertificateResponse {
+
+        /** GetCertificateResponse der */
+        der?: (Uint8Array|null);
+    }
+
+    /** Represents a GetCertificateResponse. */
+    class GetCertificateResponse implements IGetCertificateResponse {
+
+        /**
+         * Constructs a new GetCertificateResponse.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: lukuid.IGetCertificateResponse);
+
+        /** GetCertificateResponse der. */
+        public der: Uint8Array;
+
+        /**
+         * Creates a new GetCertificateResponse instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns GetCertificateResponse instance
+         */
+        public static create(properties?: lukuid.IGetCertificateResponse): lukuid.GetCertificateResponse;
+
+        /**
+         * Encodes the specified GetCertificateResponse message. Does not implicitly {@link lukuid.GetCertificateResponse.verify|verify} messages.
+         * @param message GetCertificateResponse message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: lukuid.IGetCertificateResponse, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified GetCertificateResponse message, length delimited. Does not implicitly {@link lukuid.GetCertificateResponse.verify|verify} messages.
+         * @param message GetCertificateResponse message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: lukuid.IGetCertificateResponse, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a GetCertificateResponse message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns GetCertificateResponse
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): lukuid.GetCertificateResponse;
+
+        /**
+         * Decodes a GetCertificateResponse message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns GetCertificateResponse
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): lukuid.GetCertificateResponse;
+
+        /**
+         * Verifies a GetCertificateResponse message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a GetCertificateResponse message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns GetCertificateResponse
+         */
+        public static fromObject(object: { [k: string]: any }): lukuid.GetCertificateResponse;
+
+        /**
+         * Creates a plain object from a GetCertificateResponse message. Also converts values to other types if specified.
+         * @param message GetCertificateResponse
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: lukuid.GetCertificateResponse, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this GetCertificateResponse to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+
+        /**
+         * Gets the default type url for GetCertificateResponse
+         * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns The default type url
+         */
+        public static getTypeUrl(typeUrlPrefix?: string): string;
+    }
+
     /** Properties of a CommandRequest. */
     interface ICommandRequest {
 
@@ -2123,6 +2317,9 @@ export namespace lukuid {
 
         /** CommandRequest fetchTelemetry */
         fetchTelemetry?: (lukuid.IFetchTelemetryRequest|null);
+
+        /** CommandRequest getCertificate */
+        getCertificate?: (lukuid.IGetCertificateRequest|null);
     }
 
     /** Represents a CommandRequest. */
@@ -2173,8 +2370,11 @@ export namespace lukuid {
         /** CommandRequest fetchTelemetry. */
         public fetchTelemetry?: (lukuid.IFetchTelemetryRequest|null);
 
+        /** CommandRequest getCertificate. */
+        public getCertificate?: (lukuid.IGetCertificateRequest|null);
+
         /** CommandRequest payload. */
-        public payload?: ("fetch"|"get"|"attest"|"config"|"otaBegin"|"otaData"|"otaDataV2"|"setAttestation"|"setHeartbeat"|"scanEnable"|"generateHeartbeat"|"fetchTelemetry");
+        public payload?: ("fetch"|"get"|"attest"|"config"|"otaBegin"|"otaData"|"otaDataV2"|"setAttestation"|"setHeartbeat"|"scanEnable"|"generateHeartbeat"|"fetchTelemetry"|"getCertificate");
 
         /**
          * Creates a new CommandRequest instance using the specified properties.
@@ -5802,6 +6002,9 @@ export namespace lukuid {
         /** CommandResponse fetchTelemetry */
         fetchTelemetry?: (lukuid.IFetchTelemetryResponse|null);
 
+        /** CommandResponse certificateResponse */
+        certificateResponse?: (lukuid.IGetCertificateResponse|null);
+
         /** CommandResponse signature */
         signature?: (Uint8Array|null);
 
@@ -5866,6 +6069,9 @@ export namespace lukuid {
         /** CommandResponse fetchTelemetry. */
         public fetchTelemetry?: (lukuid.IFetchTelemetryResponse|null);
 
+        /** CommandResponse certificateResponse. */
+        public certificateResponse?: (lukuid.IGetCertificateResponse|null);
+
         /** CommandResponse signature. */
         public signature?: (Uint8Array|null);
 
@@ -5876,7 +6082,7 @@ export namespace lukuid {
         public hasMore?: (boolean|null);
 
         /** CommandResponse payload. */
-        public payload?: ("deviceInfo"|"networkConfig"|"scanRecord"|"envRecord"|"fetchResponse"|"fullRecordResponse"|"recordBatches"|"heartbeatInit"|"statusResponse"|"fetchTelemetry");
+        public payload?: ("deviceInfo"|"networkConfig"|"scanRecord"|"envRecord"|"fetchResponse"|"fullRecordResponse"|"recordBatches"|"heartbeatInit"|"statusResponse"|"fetchTelemetry"|"certificateResponse");
 
         /**
          * Creates a new CommandResponse instance using the specified properties.

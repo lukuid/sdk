@@ -338,7 +338,28 @@ class LukuidDevice implements Device {
 
   private async fetchInfo(): Promise<DeviceInfo> {
     const connection = await this.ensureConnection();
-    const payload = await this.call('info', {});
+    const payload = await this.call('info', {}) as Record<string, unknown>;
+    
+    // Fetch certificates one by one
+    const certs = [
+      'attestation_dac',
+      'attestation_manufacturer',
+      'attestation_intermediate',
+      'heartbeat_slac',
+      'heartbeat',
+      'heartbeat_intermediate'
+    ];
+    for (const name of certs) {
+      try {
+        const certRes = await this.call('get_certificate', { name }) as Record<string, unknown>;
+        if (certRes && typeof certRes.der === 'string') {
+          payload[`${name}_der`] = certRes.der;
+        }
+      } catch (err) {
+        // Ignore errors for individual certs (might not exist)
+      }
+    }
+
     const normalized = parseInfoPayload(payload, this.descriptor, { requireAttestation: true });
     if (!normalized.attestation) {
       throw new Error('INFO response missing attestation');

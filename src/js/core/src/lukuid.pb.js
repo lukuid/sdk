@@ -5754,6 +5754,425 @@ export const lukuid = $root.lukuid = (() => {
         return FetchTelemetryResponse;
     })();
 
+    lukuid.GetCertificateRequest = (function() {
+
+        /**
+         * Properties of a GetCertificateRequest.
+         * @memberof lukuid
+         * @interface IGetCertificateRequest
+         * @property {string|null} [name] GetCertificateRequest name
+         */
+
+        /**
+         * Constructs a new GetCertificateRequest.
+         * @memberof lukuid
+         * @classdesc Represents a GetCertificateRequest.
+         * @implements IGetCertificateRequest
+         * @constructor
+         * @param {lukuid.IGetCertificateRequest=} [properties] Properties to set
+         */
+        function GetCertificateRequest(properties) {
+            if (properties)
+                for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * GetCertificateRequest name.
+         * @member {string} name
+         * @memberof lukuid.GetCertificateRequest
+         * @instance
+         */
+        GetCertificateRequest.prototype.name = "";
+
+        /**
+         * Creates a new GetCertificateRequest instance using the specified properties.
+         * @function create
+         * @memberof lukuid.GetCertificateRequest
+         * @static
+         * @param {lukuid.IGetCertificateRequest=} [properties] Properties to set
+         * @returns {lukuid.GetCertificateRequest} GetCertificateRequest instance
+         */
+        GetCertificateRequest.create = function create(properties) {
+            return new GetCertificateRequest(properties);
+        };
+
+        /**
+         * Encodes the specified GetCertificateRequest message. Does not implicitly {@link lukuid.GetCertificateRequest.verify|verify} messages.
+         * @function encode
+         * @memberof lukuid.GetCertificateRequest
+         * @static
+         * @param {lukuid.IGetCertificateRequest} message GetCertificateRequest message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        GetCertificateRequest.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.name != null && Object.hasOwnProperty.call(message, "name"))
+                writer.uint32(/* id 1, wireType 2 =*/10).string(message.name);
+            return writer;
+        };
+
+        /**
+         * Encodes the specified GetCertificateRequest message, length delimited. Does not implicitly {@link lukuid.GetCertificateRequest.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof lukuid.GetCertificateRequest
+         * @static
+         * @param {lukuid.IGetCertificateRequest} message GetCertificateRequest message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        GetCertificateRequest.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a GetCertificateRequest message from the specified reader or buffer.
+         * @function decode
+         * @memberof lukuid.GetCertificateRequest
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {lukuid.GetCertificateRequest} GetCertificateRequest
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        GetCertificateRequest.decode = function decode(reader, length, error) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lukuid.GetCertificateRequest();
+            while (reader.pos < end) {
+                let tag = reader.uint32();
+                if (tag === error)
+                    break;
+                switch (tag >>> 3) {
+                case 1: {
+                        message.name = reader.string();
+                        break;
+                    }
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes a GetCertificateRequest message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof lukuid.GetCertificateRequest
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {lukuid.GetCertificateRequest} GetCertificateRequest
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        GetCertificateRequest.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies a GetCertificateRequest message.
+         * @function verify
+         * @memberof lukuid.GetCertificateRequest
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        GetCertificateRequest.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.name != null && message.hasOwnProperty("name"))
+                if (!$util.isString(message.name))
+                    return "name: string expected";
+            return null;
+        };
+
+        /**
+         * Creates a GetCertificateRequest message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof lukuid.GetCertificateRequest
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {lukuid.GetCertificateRequest} GetCertificateRequest
+         */
+        GetCertificateRequest.fromObject = function fromObject(object) {
+            if (object instanceof $root.lukuid.GetCertificateRequest)
+                return object;
+            let message = new $root.lukuid.GetCertificateRequest();
+            if (object.name != null)
+                message.name = String(object.name);
+            return message;
+        };
+
+        /**
+         * Creates a plain object from a GetCertificateRequest message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof lukuid.GetCertificateRequest
+         * @static
+         * @param {lukuid.GetCertificateRequest} message GetCertificateRequest
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        GetCertificateRequest.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            let object = {};
+            if (options.defaults)
+                object.name = "";
+            if (message.name != null && message.hasOwnProperty("name"))
+                object.name = message.name;
+            return object;
+        };
+
+        /**
+         * Converts this GetCertificateRequest to JSON.
+         * @function toJSON
+         * @memberof lukuid.GetCertificateRequest
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        GetCertificateRequest.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        /**
+         * Gets the default type url for GetCertificateRequest
+         * @function getTypeUrl
+         * @memberof lukuid.GetCertificateRequest
+         * @static
+         * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns {string} The default type url
+         */
+        GetCertificateRequest.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+            if (typeUrlPrefix === undefined) {
+                typeUrlPrefix = "type.googleapis.com";
+            }
+            return typeUrlPrefix + "/lukuid.GetCertificateRequest";
+        };
+
+        return GetCertificateRequest;
+    })();
+
+    lukuid.GetCertificateResponse = (function() {
+
+        /**
+         * Properties of a GetCertificateResponse.
+         * @memberof lukuid
+         * @interface IGetCertificateResponse
+         * @property {Uint8Array|null} [der] GetCertificateResponse der
+         */
+
+        /**
+         * Constructs a new GetCertificateResponse.
+         * @memberof lukuid
+         * @classdesc Represents a GetCertificateResponse.
+         * @implements IGetCertificateResponse
+         * @constructor
+         * @param {lukuid.IGetCertificateResponse=} [properties] Properties to set
+         */
+        function GetCertificateResponse(properties) {
+            if (properties)
+                for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * GetCertificateResponse der.
+         * @member {Uint8Array} der
+         * @memberof lukuid.GetCertificateResponse
+         * @instance
+         */
+        GetCertificateResponse.prototype.der = $util.newBuffer([]);
+
+        /**
+         * Creates a new GetCertificateResponse instance using the specified properties.
+         * @function create
+         * @memberof lukuid.GetCertificateResponse
+         * @static
+         * @param {lukuid.IGetCertificateResponse=} [properties] Properties to set
+         * @returns {lukuid.GetCertificateResponse} GetCertificateResponse instance
+         */
+        GetCertificateResponse.create = function create(properties) {
+            return new GetCertificateResponse(properties);
+        };
+
+        /**
+         * Encodes the specified GetCertificateResponse message. Does not implicitly {@link lukuid.GetCertificateResponse.verify|verify} messages.
+         * @function encode
+         * @memberof lukuid.GetCertificateResponse
+         * @static
+         * @param {lukuid.IGetCertificateResponse} message GetCertificateResponse message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        GetCertificateResponse.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.der != null && Object.hasOwnProperty.call(message, "der"))
+                writer.uint32(/* id 1, wireType 2 =*/10).bytes(message.der);
+            return writer;
+        };
+
+        /**
+         * Encodes the specified GetCertificateResponse message, length delimited. Does not implicitly {@link lukuid.GetCertificateResponse.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof lukuid.GetCertificateResponse
+         * @static
+         * @param {lukuid.IGetCertificateResponse} message GetCertificateResponse message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        GetCertificateResponse.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a GetCertificateResponse message from the specified reader or buffer.
+         * @function decode
+         * @memberof lukuid.GetCertificateResponse
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {lukuid.GetCertificateResponse} GetCertificateResponse
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        GetCertificateResponse.decode = function decode(reader, length, error) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lukuid.GetCertificateResponse();
+            while (reader.pos < end) {
+                let tag = reader.uint32();
+                if (tag === error)
+                    break;
+                switch (tag >>> 3) {
+                case 1: {
+                        message.der = reader.bytes();
+                        break;
+                    }
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes a GetCertificateResponse message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof lukuid.GetCertificateResponse
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {lukuid.GetCertificateResponse} GetCertificateResponse
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        GetCertificateResponse.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies a GetCertificateResponse message.
+         * @function verify
+         * @memberof lukuid.GetCertificateResponse
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        GetCertificateResponse.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.der != null && message.hasOwnProperty("der"))
+                if (!(message.der && typeof message.der.length === "number" || $util.isString(message.der)))
+                    return "der: buffer expected";
+            return null;
+        };
+
+        /**
+         * Creates a GetCertificateResponse message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof lukuid.GetCertificateResponse
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {lukuid.GetCertificateResponse} GetCertificateResponse
+         */
+        GetCertificateResponse.fromObject = function fromObject(object) {
+            if (object instanceof $root.lukuid.GetCertificateResponse)
+                return object;
+            let message = new $root.lukuid.GetCertificateResponse();
+            if (object.der != null)
+                if (typeof object.der === "string")
+                    $util.base64.decode(object.der, message.der = $util.newBuffer($util.base64.length(object.der)), 0);
+                else if (object.der.length >= 0)
+                    message.der = object.der;
+            return message;
+        };
+
+        /**
+         * Creates a plain object from a GetCertificateResponse message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof lukuid.GetCertificateResponse
+         * @static
+         * @param {lukuid.GetCertificateResponse} message GetCertificateResponse
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        GetCertificateResponse.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            let object = {};
+            if (options.defaults)
+                if (options.bytes === String)
+                    object.der = "";
+                else {
+                    object.der = [];
+                    if (options.bytes !== Array)
+                        object.der = $util.newBuffer(object.der);
+                }
+            if (message.der != null && message.hasOwnProperty("der"))
+                object.der = options.bytes === String ? $util.base64.encode(message.der, 0, message.der.length) : options.bytes === Array ? Array.prototype.slice.call(message.der) : message.der;
+            return object;
+        };
+
+        /**
+         * Converts this GetCertificateResponse to JSON.
+         * @function toJSON
+         * @memberof lukuid.GetCertificateResponse
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        GetCertificateResponse.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        /**
+         * Gets the default type url for GetCertificateResponse
+         * @function getTypeUrl
+         * @memberof lukuid.GetCertificateResponse
+         * @static
+         * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns {string} The default type url
+         */
+        GetCertificateResponse.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+            if (typeUrlPrefix === undefined) {
+                typeUrlPrefix = "type.googleapis.com";
+            }
+            return typeUrlPrefix + "/lukuid.GetCertificateResponse";
+        };
+
+        return GetCertificateResponse;
+    })();
+
     lukuid.CommandRequest = (function() {
 
         /**
@@ -5773,6 +6192,7 @@ export const lukuid = $root.lukuid = (() => {
          * @property {lukuid.IScanEnableRequest|null} [scanEnable] CommandRequest scanEnable
          * @property {lukuid.IGenerateHeartbeatRequest|null} [generateHeartbeat] CommandRequest generateHeartbeat
          * @property {lukuid.IFetchTelemetryRequest|null} [fetchTelemetry] CommandRequest fetchTelemetry
+         * @property {lukuid.IGetCertificateRequest|null} [getCertificate] CommandRequest getCertificate
          */
 
         /**
@@ -5894,17 +6314,25 @@ export const lukuid = $root.lukuid = (() => {
          */
         CommandRequest.prototype.fetchTelemetry = null;
 
+        /**
+         * CommandRequest getCertificate.
+         * @member {lukuid.IGetCertificateRequest|null|undefined} getCertificate
+         * @memberof lukuid.CommandRequest
+         * @instance
+         */
+        CommandRequest.prototype.getCertificate = null;
+
         // OneOf field names bound to virtual getters and setters
         let $oneOfFields;
 
         /**
          * CommandRequest payload.
-         * @member {"fetch"|"get"|"attest"|"config"|"otaBegin"|"otaData"|"otaDataV2"|"setAttestation"|"setHeartbeat"|"scanEnable"|"generateHeartbeat"|"fetchTelemetry"|undefined} payload
+         * @member {"fetch"|"get"|"attest"|"config"|"otaBegin"|"otaData"|"otaDataV2"|"setAttestation"|"setHeartbeat"|"scanEnable"|"generateHeartbeat"|"fetchTelemetry"|"getCertificate"|undefined} payload
          * @memberof lukuid.CommandRequest
          * @instance
          */
         Object.defineProperty(CommandRequest.prototype, "payload", {
-            get: $util.oneOfGetter($oneOfFields = ["fetch", "get", "attest", "config", "otaBegin", "otaData", "otaDataV2", "setAttestation", "setHeartbeat", "scanEnable", "generateHeartbeat", "fetchTelemetry"]),
+            get: $util.oneOfGetter($oneOfFields = ["fetch", "get", "attest", "config", "otaBegin", "otaData", "otaDataV2", "setAttestation", "setHeartbeat", "scanEnable", "generateHeartbeat", "fetchTelemetry", "getCertificate"]),
             set: $util.oneOfSetter($oneOfFields)
         });
 
@@ -5958,6 +6386,8 @@ export const lukuid = $root.lukuid = (() => {
                 $root.lukuid.GenerateHeartbeatRequest.encode(message.generateHeartbeat, writer.uint32(/* id 13, wireType 2 =*/106).fork()).ldelim();
             if (message.fetchTelemetry != null && Object.hasOwnProperty.call(message, "fetchTelemetry"))
                 $root.lukuid.FetchTelemetryRequest.encode(message.fetchTelemetry, writer.uint32(/* id 14, wireType 2 =*/114).fork()).ldelim();
+            if (message.getCertificate != null && Object.hasOwnProperty.call(message, "getCertificate"))
+                $root.lukuid.GetCertificateRequest.encode(message.getCertificate, writer.uint32(/* id 15, wireType 2 =*/122).fork()).ldelim();
             return writer;
         };
 
@@ -6044,6 +6474,10 @@ export const lukuid = $root.lukuid = (() => {
                     }
                 case 14: {
                         message.fetchTelemetry = $root.lukuid.FetchTelemetryRequest.decode(reader, reader.uint32());
+                        break;
+                    }
+                case 15: {
+                        message.getCertificate = $root.lukuid.GetCertificateRequest.decode(reader, reader.uint32());
                         break;
                     }
                 default:
@@ -6203,6 +6637,16 @@ export const lukuid = $root.lukuid = (() => {
                         return "fetchTelemetry." + error;
                 }
             }
+            if (message.getCertificate != null && message.hasOwnProperty("getCertificate")) {
+                if (properties.payload === 1)
+                    return "payload: multiple values";
+                properties.payload = 1;
+                {
+                    let error = $root.lukuid.GetCertificateRequest.verify(message.getCertificate);
+                    if (error)
+                        return "getCertificate." + error;
+                }
+            }
             return null;
         };
 
@@ -6279,6 +6723,11 @@ export const lukuid = $root.lukuid = (() => {
                 if (typeof object.fetchTelemetry !== "object")
                     throw TypeError(".lukuid.CommandRequest.fetchTelemetry: object expected");
                 message.fetchTelemetry = $root.lukuid.FetchTelemetryRequest.fromObject(object.fetchTelemetry);
+            }
+            if (object.getCertificate != null) {
+                if (typeof object.getCertificate !== "object")
+                    throw TypeError(".lukuid.CommandRequest.getCertificate: object expected");
+                message.getCertificate = $root.lukuid.GetCertificateRequest.fromObject(object.getCertificate);
             }
             return message;
         };
@@ -6359,6 +6808,11 @@ export const lukuid = $root.lukuid = (() => {
                 object.fetchTelemetry = $root.lukuid.FetchTelemetryRequest.toObject(message.fetchTelemetry, options);
                 if (options.oneofs)
                     object.payload = "fetchTelemetry";
+            }
+            if (message.getCertificate != null && message.hasOwnProperty("getCertificate")) {
+                object.getCertificate = $root.lukuid.GetCertificateRequest.toObject(message.getCertificate, options);
+                if (options.oneofs)
+                    object.payload = "getCertificate";
             }
             return object;
         };
@@ -17020,6 +17474,7 @@ export const lukuid = $root.lukuid = (() => {
          * @property {lukuid.IHeartbeatInitResponse|null} [heartbeatInit] CommandResponse heartbeatInit
          * @property {lukuid.IStatusResponse|null} [statusResponse] CommandResponse statusResponse
          * @property {lukuid.IFetchTelemetryResponse|null} [fetchTelemetry] CommandResponse fetchTelemetry
+         * @property {lukuid.IGetCertificateResponse|null} [certificateResponse] CommandResponse certificateResponse
          * @property {Uint8Array|null} [signature] CommandResponse signature
          * @property {Uint8Array|null} [key] CommandResponse key
          * @property {boolean|null} [hasMore] CommandResponse hasMore
@@ -17161,6 +17616,14 @@ export const lukuid = $root.lukuid = (() => {
         CommandResponse.prototype.fetchTelemetry = null;
 
         /**
+         * CommandResponse certificateResponse.
+         * @member {lukuid.IGetCertificateResponse|null|undefined} certificateResponse
+         * @memberof lukuid.CommandResponse
+         * @instance
+         */
+        CommandResponse.prototype.certificateResponse = null;
+
+        /**
          * CommandResponse signature.
          * @member {Uint8Array|null|undefined} signature
          * @memberof lukuid.CommandResponse
@@ -17189,12 +17652,12 @@ export const lukuid = $root.lukuid = (() => {
 
         /**
          * CommandResponse payload.
-         * @member {"deviceInfo"|"networkConfig"|"scanRecord"|"envRecord"|"fetchResponse"|"fullRecordResponse"|"recordBatches"|"heartbeatInit"|"statusResponse"|"fetchTelemetry"|undefined} payload
+         * @member {"deviceInfo"|"networkConfig"|"scanRecord"|"envRecord"|"fetchResponse"|"fullRecordResponse"|"recordBatches"|"heartbeatInit"|"statusResponse"|"fetchTelemetry"|"certificateResponse"|undefined} payload
          * @memberof lukuid.CommandResponse
          * @instance
          */
         Object.defineProperty(CommandResponse.prototype, "payload", {
-            get: $util.oneOfGetter($oneOfFields = ["deviceInfo", "networkConfig", "scanRecord", "envRecord", "fetchResponse", "fullRecordResponse", "recordBatches", "heartbeatInit", "statusResponse", "fetchTelemetry"]),
+            get: $util.oneOfGetter($oneOfFields = ["deviceInfo", "networkConfig", "scanRecord", "envRecord", "fetchResponse", "fullRecordResponse", "recordBatches", "heartbeatInit", "statusResponse", "fetchTelemetry", "certificateResponse"]),
             set: $util.oneOfSetter($oneOfFields)
         });
 
@@ -17276,6 +17739,8 @@ export const lukuid = $root.lukuid = (() => {
                 $root.lukuid.FetchTelemetryResponse.encode(message.fetchTelemetry, writer.uint32(/* id 17, wireType 2 =*/138).fork()).ldelim();
             if (message.hasMore != null && Object.hasOwnProperty.call(message, "hasMore"))
                 writer.uint32(/* id 18, wireType 0 =*/144).bool(message.hasMore);
+            if (message.certificateResponse != null && Object.hasOwnProperty.call(message, "certificateResponse"))
+                $root.lukuid.GetCertificateResponse.encode(message.certificateResponse, writer.uint32(/* id 19, wireType 2 =*/154).fork()).ldelim();
             return writer;
         };
 
@@ -17370,6 +17835,10 @@ export const lukuid = $root.lukuid = (() => {
                     }
                 case 17: {
                         message.fetchTelemetry = $root.lukuid.FetchTelemetryResponse.decode(reader, reader.uint32());
+                        break;
+                    }
+                case 19: {
+                        message.certificateResponse = $root.lukuid.GetCertificateResponse.decode(reader, reader.uint32());
                         break;
                     }
                 case 12: {
@@ -17540,6 +18009,16 @@ export const lukuid = $root.lukuid = (() => {
                         return "fetchTelemetry." + error;
                 }
             }
+            if (message.certificateResponse != null && message.hasOwnProperty("certificateResponse")) {
+                if (properties.payload === 1)
+                    return "payload: multiple values";
+                properties.payload = 1;
+                {
+                    let error = $root.lukuid.GetCertificateResponse.verify(message.certificateResponse);
+                    if (error)
+                        return "certificateResponse." + error;
+                }
+            }
             if (message.signature != null && message.hasOwnProperty("signature")) {
                 properties._signature = 1;
                 if (!(message.signature && typeof message.signature.length === "number" || $util.isString(message.signature)))
@@ -17652,6 +18131,11 @@ export const lukuid = $root.lukuid = (() => {
                     throw TypeError(".lukuid.CommandResponse.fetchTelemetry: object expected");
                 message.fetchTelemetry = $root.lukuid.FetchTelemetryResponse.fromObject(object.fetchTelemetry);
             }
+            if (object.certificateResponse != null) {
+                if (typeof object.certificateResponse !== "object")
+                    throw TypeError(".lukuid.CommandResponse.certificateResponse: object expected");
+                message.certificateResponse = $root.lukuid.GetCertificateResponse.fromObject(object.certificateResponse);
+            }
             if (object.signature != null)
                 if (typeof object.signature === "string")
                     $util.base64.decode(object.signature, message.signature = $util.newBuffer($util.base64.length(object.signature)), 0);
@@ -17761,6 +18245,11 @@ export const lukuid = $root.lukuid = (() => {
                 object.hasMore = message.hasMore;
                 if (options.oneofs)
                     object._hasMore = "hasMore";
+            }
+            if (message.certificateResponse != null && message.hasOwnProperty("certificateResponse")) {
+                object.certificateResponse = $root.lukuid.GetCertificateResponse.toObject(message.certificateResponse, options);
+                if (options.oneofs)
+                    object.payload = "certificateResponse";
             }
             return object;
         };

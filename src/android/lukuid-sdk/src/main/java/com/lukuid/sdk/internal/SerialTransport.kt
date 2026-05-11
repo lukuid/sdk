@@ -360,7 +360,27 @@ internal class SerialDeviceSession(
 
     override suspend fun verify(): DeviceInfo {
         debugLog(sdkOptions, "Requesting USB serial INFO for verify", mapOf("transportId" to transportId))
-        val infoResponse = call("info", emptyMap(), Device.DEFAULT_CALL_TIMEOUT) as Map<String, Any?>
+        val rawInfoResponse = call("info", emptyMap(), Device.DEFAULT_CALL_TIMEOUT) as Map<String, Any?>
+        val infoResponse = rawInfoResponse.toMutableMap()
+        
+        val certs = listOf(
+            "attestation_dac",
+            "attestation_manufacturer",
+            "attestation_intermediate",
+            "heartbeat_slac",
+            "heartbeat",
+            "heartbeat_intermediate"
+        )
+        for (name in certs) {
+            try {
+                val certRes = call("get_certificate", mapOf("name" to name), Device.DEFAULT_CALL_TIMEOUT) as? Map<*, *>
+                if (certRes?.containsKey("der") == true) {
+                    infoResponse["${name}_der"] = certRes["der"]
+                }
+            } catch (e: Exception) {
+                // Ignore missing certs
+            }
+        }
 
         val id = infoResponse["id"] as String
         val key = serialInfoFieldAsBase64(infoResponse["key"])

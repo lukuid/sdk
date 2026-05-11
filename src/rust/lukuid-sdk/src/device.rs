@@ -440,9 +440,29 @@ impl Device {
             eprintln!("[lukuid-sdk] INFO handshake completed for {}", self.info.id);
         }
 
-        let info_obj = info_val
+        let mut info_obj = info_val
             .as_object()
-            .ok_or(DeviceError::Protocol("Invalid INFO".to_string()))?;
+            .ok_or(DeviceError::Protocol("Invalid INFO".to_string()))?
+            .clone();
+
+        let certs = [
+            "attestation_dac",
+            "attestation_manufacturer",
+            "attestation_intermediate",
+            "heartbeat_slac",
+            "heartbeat",
+            "heartbeat_intermediate"
+        ];
+        
+        for name in certs {
+            if let Ok(cert_val) = self.call("get_certificate", json!({ "name": name })).await {
+                if let Some(cert_obj) = cert_val.as_object() {
+                    if let Some(der) = cert_obj.get("der") {
+                        info_obj.insert(format!("{}_der", name), der.clone());
+                    }
+                }
+            }
+        }
 
         let id = info_obj
             .get("id")
@@ -459,7 +479,7 @@ impl Device {
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
-        let certificate_chain = assemble_certificate_chain(info_obj);
+        let certificate_chain = assemble_certificate_chain(&info_obj);
 
         let inputs = DeviceAttestationInputs {
             id: id.clone(),

@@ -153,6 +153,12 @@ fn encode_command_request(input: &Value) -> Option<Vec<u8>> {
             }
             write_message(&mut out, 3, &nested);
         }
+        "get_certificate" => {
+            if let Some(name) = first_string(source, &["name"]) {
+                write_string(&mut nested, 1, &name);
+            }
+            write_message(&mut out, 15, &nested);
+        }
         "attest" => {
             if let Some(v) = first_string(source, &["parent_record_id", "record_id", "id"]) {
                 write_string(&mut nested, 1, &v);
@@ -438,6 +444,11 @@ fn decode_command_response(bytes: &[u8]) -> Option<Value> {
                 let message = read_length_delimited(bytes, &mut cursor, wire_type)?;
                 let telemetry = decode_fetch_telemetry_response(message);
                 out.extend(telemetry);
+            }
+            19 => {
+                let message = read_length_delimited(bytes, &mut cursor, wire_type)?;
+                let cert_res = decode_get_certificate_response(message)?;
+                out.extend(cert_res);
             }
             18 => insert_bool(bytes, &mut cursor, wire_type, &mut out, "has_more")?,
             14 => {
@@ -2217,6 +2228,24 @@ fn decode_record_batch(bytes: &[u8]) -> Value {
     );
     out.insert("scan_records".to_string(), Value::Array(scan_records));
     Value::Object(out)
+}
+
+fn decode_get_certificate_response(bytes: &[u8]) -> Option<Map<String, Value>> {
+    let mut cursor = 0usize;
+    let mut out = Map::new();
+
+    while cursor < bytes.len() {
+        let key = read_varint(bytes, &mut cursor)?;
+        let field = (key >> 3) as u32;
+        let wire_type = (key & 0x07) as u8;
+
+        match field {
+            1 => insert_bytes(bytes, &mut cursor, wire_type, &mut out, "der")?,
+            _ => skip_field(bytes, &mut cursor, wire_type)?,
+        }
+    }
+
+    Some(out)
 }
 
 fn decode_fetch_telemetry_response(bytes: &[u8]) -> Map<String, Value> {
