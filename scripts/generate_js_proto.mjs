@@ -20,13 +20,19 @@ if (!protoPath) {
 }
 const jsOut = path.join(coreDir, 'src/lukuid.pb.js');
 const dtsOut = path.join(coreDir, 'src/lukuid.pb.d.ts');
+const binDir = path.join(coreDir, 'node_modules', '.bin');
 
-execFileSync('pbjs', ['-t', 'static-module', '-w', 'es6', '-o', jsOut, protoPath], {
+function resolveLocalBin(name) {
+  const candidate = path.join(binDir, process.platform === 'win32' ? `${name}.cmd` : name);
+  return existsSync(candidate) ? candidate : name;
+}
+
+execFileSync(resolveLocalBin('pbjs'), ['-t', 'static-module', '-w', 'es6', '-o', jsOut, protoPath], {
   cwd: coreDir,
   stdio: 'inherit'
 });
 
-execFileSync('pbts', ['-o', dtsOut, jsOut], {
+execFileSync(resolveLocalBin('pbts'), ['-o', dtsOut, jsOut], {
   cwd: coreDir,
   stdio: 'inherit'
 });
