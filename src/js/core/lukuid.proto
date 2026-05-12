@@ -176,6 +176,38 @@ message FetchTelemetryResponse {
   optional int32 row_count = 6;
 }
 
+
+message GetChainRequest {
+  string ref = 1;
+}
+
+message GetChainResponse {
+  bytes der = 1;
+}
+
+message HistoricalExportEntry {
+  oneof record {
+    EnvironmentRecord env = 1;
+    ScanRecord scan = 2;
+    // other future ones can go here
+  }
+  string device_id = 3;
+  bytes public_key = 4;
+  string attestation_dac_ref = 5;
+  string attestation_manufacturer_ref = 6;
+  string attestation_intermediate_ref = 7;
+  string heartbeat_slac_ref = 8;
+  string heartbeat_ref = 9;
+  string heartbeat_intermediate_ref = 10;
+  string attestation_root_fingerprint = 11;
+  string heartbeat_root_fingerprint = 12;
+}
+
+message HistoricalExportResponse {
+  repeated HistoricalExportEntry entries = 1;
+  bool has_more = 2;
+}
+
 message CommandRequest {
   string action = 1;
   oneof payload {

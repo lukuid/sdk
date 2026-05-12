@@ -1,14 +1,19 @@
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+use ed25519_dalek::{Signer, SigningKey};
 use lukuid_sdk::{LukuFile, LukuVerifyOptions};
 use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
-use ed25519_dalek::{SigningKey, Signer};
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 
 fn resolve_sample() -> PathBuf {
     let mut current = std::env::current_dir().unwrap();
     loop {
-        let candidate = current.join("samples").join("envelopes").join("dev").join("1.0.0").join("valid_envelope.json");
+        let candidate = current
+            .join("samples")
+            .join("envelopes")
+            .join("dev")
+            .join("1.0.0")
+            .join("valid_envelope.json");
         if candidate.exists() {
             return candidate;
         }
@@ -42,7 +47,7 @@ use rand_core::OsRng;
 #[test]
 fn test_verify_envelope_key_mismatch() {
     let mut envelope = get_valid_envelope();
-    
+
     let mut csprng = OsRng;
     let signing_key = SigningKey::generate(&mut csprng);
     let verifying_key = signing_key.verifying_key();
@@ -62,7 +67,10 @@ fn test_verify_envelope_key_mismatch() {
     options.trust_profile = "dev".to_string();
 
     let issues = LukuFile::verify_envelope(&envelope, options);
-    assert!(issues.iter().any(|i| i.code == "ATTESTATION_FAILED"), "Expected ATTESTATION_FAILED");
+    assert!(
+        issues.iter().any(|i| i.code == "ATTESTATION_FAILED"),
+        "Expected ATTESTATION_FAILED"
+    );
 }
 
 #[test]
@@ -76,7 +84,10 @@ fn test_verify_envelope_invalid_signature() {
     options.trust_profile = "dev".to_string();
 
     let issues = LukuFile::verify_envelope(&envelope, options);
-    assert!(issues.iter().any(|i| i.code == "RECORD_SIGNATURE_INVALID"), "Expected RECORD_SIGNATURE_INVALID");
+    assert!(
+        issues.iter().any(|i| i.code == "RECORD_SIGNATURE_INVALID"),
+        "Expected RECORD_SIGNATURE_INVALID"
+    );
 }
 
 #[test]
@@ -94,7 +105,10 @@ fn test_verify_envelope_missing_identity() {
     options.trust_profile = "dev".to_string();
 
     let issues = LukuFile::verify_envelope(&envelope, options);
-    assert!(issues.iter().any(|i| i.code == "DEVICE_IDENTITY_MISSING"), "Expected DEVICE_IDENTITY_MISSING");
+    assert!(
+        issues.iter().any(|i| i.code == "DEVICE_IDENTITY_MISSING"),
+        "Expected DEVICE_IDENTITY_MISSING"
+    );
 }
 
 #[test]
@@ -108,7 +122,10 @@ fn test_verify_envelope_invalid_dac() {
     options.trust_profile = "dev".to_string();
 
     let issues = LukuFile::verify_envelope(&envelope, options);
-    assert!(issues.iter().any(|i| i.code == "ATTESTATION_FAILED"), "Expected ATTESTATION_FAILED");
+    assert!(
+        issues.iter().any(|i| i.code == "ATTESTATION_FAILED"),
+        "Expected ATTESTATION_FAILED"
+    );
 }
 
 #[test]
@@ -122,5 +139,8 @@ fn test_verify_envelope_invalid_canonical_string() {
     options.trust_profile = "dev".to_string();
 
     let issues = LukuFile::verify_envelope(&envelope, options);
-    assert!(issues.iter().any(|i| i.code == "RECORD_SIGNATURE_INVALID"), "Expected RECORD_SIGNATURE_INVALID");
+    assert!(
+        issues.iter().any(|i| i.code == "RECORD_SIGNATURE_INVALID"),
+        "Expected RECORD_SIGNATURE_INVALID"
+    );
 }

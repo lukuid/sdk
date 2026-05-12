@@ -369,7 +369,8 @@ impl LukuFile {
         device: &LukuDeviceIdentity,
         policy: Option<&LukuPolicy>,
     ) -> Vec<LukuBlock> {
-        let native_gap_threshold_seconds = policy.and_then(|value| value.native_continuity_gap_seconds);
+        let native_gap_threshold_seconds =
+            policy.and_then(|value| value.native_continuity_gap_seconds);
         let mut blocks = Vec::new();
         let mut previous_block_hash: Option<String> = None;
         let mut current_batch: Vec<Value> = Vec::new();
@@ -377,15 +378,19 @@ impl LukuFile {
         let mut last_native_timestamp_utc: Option<u64> = None;
 
         for record in records {
-            let record_type = record.get("type").and_then(Value::as_str).unwrap_or("unknown");
+            let record_type = record
+                .get("type")
+                .and_then(Value::as_str)
+                .unwrap_or("unknown");
             let is_aux = Self::is_aux_record_type(record_type);
             let timestamp_utc = Self::record_timestamp_utc(&record);
 
             let mut should_split = false;
             if !is_aux {
-                if let (Some(last_sig), Some(previous_signature)) =
-                    (last_signature.as_deref(), Self::record_previous_signature(&record))
-                {
+                if let (Some(last_sig), Some(previous_signature)) = (
+                    last_signature.as_deref(),
+                    Self::record_previous_signature(&record),
+                ) {
                     if !previous_signature.is_empty() && previous_signature != last_sig {
                         should_split = true;
                     }
@@ -622,20 +627,38 @@ impl LukuFile {
         self.verify(options)
     }
 
-    pub fn verify_envelope(envelope: &serde_json::Value, options: LukuVerifyOptions) -> Vec<VerificationIssue> {
+    pub fn verify_envelope(
+        envelope: &serde_json::Value,
+        options: LukuVerifyOptions,
+    ) -> Vec<VerificationIssue> {
         let debug_logging = Self::debug_logging_enabled();
         let mut issues = Vec::new();
 
         let device = envelope.get("device");
-        let device_id_opt = envelope.get("device_id").and_then(|v| v.as_str())
-            .or_else(|| device.and_then(|d| d.get("device_id")).and_then(|v| v.as_str()));
-        let public_key_opt = envelope.get("public_key").and_then(|v| v.as_str())
-            .or_else(|| device.and_then(|d| d.get("public_key")).and_then(|v| v.as_str()));
-            
+        let device_id_opt = envelope
+            .get("device_id")
+            .and_then(|v| v.as_str())
+            .or_else(|| {
+                device
+                    .and_then(|d| d.get("device_id"))
+                    .and_then(|v| v.as_str())
+            });
+        let public_key_opt = envelope
+            .get("public_key")
+            .and_then(|v| v.as_str())
+            .or_else(|| {
+                device
+                    .and_then(|d| d.get("public_key"))
+                    .and_then(|v| v.as_str())
+            });
+
         let device_id = device_id_opt.unwrap_or("");
         let public_key = public_key_opt.unwrap_or("");
-        
-        let r#type = envelope.get("type").and_then(|v| v.as_str()).unwrap_or("unknown");
+
+        let r#type = envelope
+            .get("type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown");
         let is_aux_record = matches!(r#type, "attachment" | "location" | "custody");
         let payload = envelope.get("payload");
         let ctr = payload.and_then(|p| p.get("ctr")).and_then(|v| v.as_u64());
@@ -643,17 +666,34 @@ impl LukuFile {
             .and_then(|p| p.get("timestamp_utc"))
             .and_then(|v| v.as_u64())
             .or_else(|| envelope.get("timestamp_utc").and_then(|v| v.as_u64()));
-        let sig = envelope.get("signature").and_then(|v| v.as_str()).unwrap_or("");
-        let prev_record_sig = envelope.get("previous_signature").and_then(|v| v.as_str()).unwrap_or("");
-        let canonical = envelope.get("canonical_string").and_then(|v| v.as_str()).unwrap_or("");
-        let genesis_hash = payload.and_then(|p| p.get("genesis_hash")).and_then(|v| v.as_str()).unwrap_or("");
+        let sig = envelope
+            .get("signature")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let prev_record_sig = envelope
+            .get("previous_signature")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let canonical = envelope
+            .get("canonical_string")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let genesis_hash = payload
+            .and_then(|p| p.get("genesis_hash"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
 
         if device_id.is_empty() || public_key.is_empty() {
-            Self::push_issue(&mut issues, debug_logging, None, VerificationIssue {
-                code: "DEVICE_IDENTITY_MISSING".to_string(),
-                message: "Envelope is missing device_id or public_key.".to_string(),
-                criticality: Criticality::Critical,
-            });
+            Self::push_issue(
+                &mut issues,
+                debug_logging,
+                None,
+                VerificationIssue {
+                    code: "DEVICE_IDENTITY_MISSING".to_string(),
+                    message: "Envelope is missing device_id or public_key.".to_string(),
+                    criticality: Criticality::Critical,
+                },
+            );
         }
 
         if !is_aux_record {
@@ -686,17 +726,39 @@ impl LukuFile {
 
         if !options.allow_untrusted_roots {
             let identity = envelope.get("identity");
-            
-            let dac_der = envelope.get("attestation_dac_der").and_then(|v| v.as_str())
-                .or_else(|| identity.and_then(|i| i.get("dac_der")).and_then(|v| v.as_str()))
-                .or_else(|| identity.and_then(|i| i.get("attestation_dac_der")).and_then(|v| v.as_str()));
-            
-            let man_der = envelope.get("attestation_manufacturer_der").and_then(|v| v.as_str())
-                .or_else(|| identity.and_then(|i| i.get("attestation_manufacturer_der")).and_then(|v| v.as_str()));
-                
-            let int_der = envelope.get("attestation_intermediate_der").and_then(|v| v.as_str())
-                .or_else(|| identity.and_then(|i| i.get("attestation_intermediate_der")).and_then(|v| v.as_str()));
-                
+
+            let dac_der = envelope
+                .get("attestation_dac_der")
+                .and_then(|v| v.as_str())
+                .or_else(|| {
+                    identity
+                        .and_then(|i| i.get("dac_der"))
+                        .and_then(|v| v.as_str())
+                })
+                .or_else(|| {
+                    identity
+                        .and_then(|i| i.get("attestation_dac_der"))
+                        .and_then(|v| v.as_str())
+                });
+
+            let man_der = envelope
+                .get("attestation_manufacturer_der")
+                .and_then(|v| v.as_str())
+                .or_else(|| {
+                    identity
+                        .and_then(|i| i.get("attestation_manufacturer_der"))
+                        .and_then(|v| v.as_str())
+                });
+
+            let int_der = envelope
+                .get("attestation_intermediate_der")
+                .and_then(|v| v.as_str())
+                .or_else(|| {
+                    identity
+                        .and_then(|i| i.get("attestation_intermediate_der"))
+                        .and_then(|v| v.as_str())
+                });
+
             let mut attestation_chain = String::new();
             if let Some(pem) = pem_from_der_string(dac_der) {
                 attestation_chain.push_str(&pem);
@@ -707,23 +769,42 @@ impl LukuFile {
             if let Some(pem) = pem_from_der_string(int_der) {
                 attestation_chain.push_str(&pem);
             }
-            
-            let attestation_sig = envelope.get("attestation_signature").and_then(|v| v.as_str())
-                .or_else(|| identity.and_then(|i| i.get("signature")).and_then(|v| v.as_str()))
+
+            let attestation_sig = envelope
+                .get("attestation_signature")
+                .and_then(|v| v.as_str())
+                .or_else(|| {
+                    identity
+                        .and_then(|i| i.get("signature"))
+                        .and_then(|v| v.as_str())
+                })
                 .unwrap_or("");
 
             if attestation_chain.is_empty() {
-                Self::push_issue(&mut issues, debug_logging, None, VerificationIssue {
-                    code: "ATTESTATION_CHAIN_MISSING".to_string(),
-                    message: format!("Missing DAC attestation chain for device {}.", device_id),
-                    criticality: Criticality::Warning,
-                });
+                Self::push_issue(
+                    &mut issues,
+                    debug_logging,
+                    None,
+                    VerificationIssue {
+                        code: "ATTESTATION_CHAIN_MISSING".to_string(),
+                        message: format!("Missing DAC attestation chain for device {}.", device_id),
+                        criticality: Criticality::Warning,
+                    },
+                );
             } else if !is_aux_record || !attestation_sig.is_empty() {
-                let attestation_alg = envelope.get("attestation_alg").and_then(|v| v.as_str())
+                let attestation_alg = envelope
+                    .get("attestation_alg")
+                    .and_then(|v| v.as_str())
                     .or_else(|| identity.and_then(|i| i.get("alg")).and_then(|v| v.as_str()))
                     .unwrap_or("ED25519");
-                let attestation_payload_version = envelope.get("attestation_payload_version").and_then(|v| v.as_u64())
-                    .or_else(|| identity.and_then(|i| i.get("identity_version")).and_then(|v| v.as_u64()))
+                let attestation_payload_version = envelope
+                    .get("attestation_payload_version")
+                    .and_then(|v| v.as_u64())
+                    .or_else(|| {
+                        identity
+                            .and_then(|i| i.get("identity_version"))
+                            .and_then(|v| v.as_u64())
+                    })
                     .unwrap_or(1);
 
                 let inputs = crate::attestation::DeviceAttestationInputs {
@@ -731,42 +812,73 @@ impl LukuFile {
                     key: public_key.to_string(),
                     attestation_sig: attestation_sig.to_string(),
                     certificate_chain: Some(attestation_chain),
-                    created: if options.skip_certificate_temporal_checks { None } else { timestamp.map(|t| t as i64) },
+                    created: if options.skip_certificate_temporal_checks {
+                        None
+                    } else {
+                        timestamp.map(|t| t as i64)
+                    },
                     trust_profile: options.trust_profile.clone(),
                     attestation_alg: Some(attestation_alg.to_string()),
                     attestation_payload_version: Some(attestation_payload_version as u32),
                 };
                 let result = crate::attestation::verify_device_attestation(&inputs, None);
                 if !result.ok {
-                    Self::push_issue(&mut issues, debug_logging, None, VerificationIssue {
-                        code: "ATTESTATION_FAILED".to_string(),
-                        message: format!("Device {} failed DAC attestation: {}", device_id, result.reason.unwrap_or_default()),
-                        criticality: Criticality::Critical,
-                    });
+                    Self::push_issue(
+                        &mut issues,
+                        debug_logging,
+                        None,
+                        VerificationIssue {
+                            code: "ATTESTATION_FAILED".to_string(),
+                            message: format!(
+                                "Device {} failed DAC attestation: {}",
+                                device_id,
+                                result.reason.unwrap_or_default()
+                            ),
+                            criticality: Criticality::Critical,
+                        },
+                    );
                 }
             }
         }
 
         if canonical.is_empty() {
-            Self::push_issue(&mut issues, debug_logging, None, VerificationIssue {
-                code: "RECORD_CANONICAL_MISSING".to_string(),
-                message: format!("Record type {} does not include a canonical_string.", r#type),
-                criticality: Criticality::Critical,
-            });
+            Self::push_issue(
+                &mut issues,
+                debug_logging,
+                None,
+                VerificationIssue {
+                    code: "RECORD_CANONICAL_MISSING".to_string(),
+                    message: format!(
+                        "Record type {} does not include a canonical_string.",
+                        r#type
+                    ),
+                    criticality: Criticality::Critical,
+                },
+            );
         } else if sig.is_empty() {
-            Self::push_issue(&mut issues, debug_logging, None, VerificationIssue {
-                code: "RECORD_SIGNATURE_MISSING".to_string(),
-                message: format!("Record type {} is missing a signature.", r#type),
-                criticality: Criticality::Critical,
-            });
+            Self::push_issue(
+                &mut issues,
+                debug_logging,
+                None,
+                VerificationIssue {
+                    code: "RECORD_SIGNATURE_MISSING".to_string(),
+                    message: format!("Record type {} is missing a signature.", r#type),
+                    criticality: Criticality::Critical,
+                },
+            );
         } else if !public_key.is_empty() {
             let is_valid = Self::verify_detached_signature(public_key, canonical.as_bytes(), sig);
             if !is_valid {
-                Self::push_issue(&mut issues, debug_logging, None, VerificationIssue {
-                    code: "RECORD_SIGNATURE_INVALID".to_string(),
-                    message: format!("Invalid signature for record type {}.", r#type),
-                    criticality: Criticality::Critical,
-                });
+                Self::push_issue(
+                    &mut issues,
+                    debug_logging,
+                    None,
+                    VerificationIssue {
+                        code: "RECORD_SIGNATURE_INVALID".to_string(),
+                        message: format!("Invalid signature for record type {}.", r#type),
+                        criticality: Criticality::Critical,
+                    },
+                );
             }
         }
 
@@ -779,11 +891,19 @@ impl LukuFile {
                             hasher.update(content);
                             let actual_hash = format!("{:x}", hasher.finalize());
                             if actual_hash != checksum {
-                                Self::push_issue(&mut issues, debug_logging, None, VerificationIssue {
-                                    code: "ATTACHMENT_CORRUPT".to_string(),
-                                    message: format!("Attachment with hash {} is corrupt (actual hash {}).", checksum, actual_hash),
-                                    criticality: Criticality::Critical,
-                                });
+                                Self::push_issue(
+                                    &mut issues,
+                                    debug_logging,
+                                    None,
+                                    VerificationIssue {
+                                        code: "ATTACHMENT_CORRUPT".to_string(),
+                                        message: format!(
+                                            "Attachment with hash {} is corrupt (actual hash {}).",
+                                            checksum, actual_hash
+                                        ),
+                                        criticality: Criticality::Critical,
+                                    },
+                                );
                             }
                         } else {
                             Self::push_issue(&mut issues, debug_logging, None, VerificationIssue {
@@ -801,42 +921,78 @@ impl LukuFile {
             if is_aux_record {
                 let expected_payload = match r#type {
                     "attachment" => {
-                        let checksum = envelope.get("checksum").and_then(|v| v.as_str()).unwrap_or("");
-                        let merkle_root = envelope.get("merkle_root").and_then(|v| v.as_str()).unwrap_or("");
-                        let endorser_id = external_identity.get("endorser_id").and_then(|v| v.as_str()).unwrap_or("");
+                        let checksum = envelope
+                            .get("checksum")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+                        let merkle_root = envelope
+                            .get("merkle_root")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+                        let endorser_id = external_identity
+                            .get("endorser_id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
                         Some(format!("{}:{}:{}", checksum, merkle_root, endorser_id))
                     }
                     "location" => {
                         let lat = envelope.get("lat").and_then(|v| v.as_f64()).unwrap_or(0.0);
                         let lng = envelope.get("lng").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                        let endorser_id = external_identity.get("endorser_id").and_then(|v| v.as_str()).unwrap_or("");
+                        let endorser_id = external_identity
+                            .get("endorser_id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
                         Some(format!("{}:{}:{}", lat, lng, endorser_id))
                     }
                     "custody" => {
                         let payload_obj = envelope.get("payload");
-                        let event = payload_obj.and_then(|p| p.get("event")).and_then(|v| v.as_str()).unwrap_or("");
-                        let status = payload_obj.and_then(|p| p.get("status")).and_then(|v| v.as_str()).unwrap_or("");
-                        let context_ref = payload_obj.and_then(|p| p.get("context_ref")).and_then(|v| v.as_str()).unwrap_or("");
-                        let endorser_id = external_identity.get("endorser_id").and_then(|v| v.as_str()).unwrap_or("");
-                        Some(format!("{}:{}:{}:{}", event, status, context_ref, endorser_id))
+                        let event = payload_obj
+                            .and_then(|p| p.get("event"))
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+                        let status = payload_obj
+                            .and_then(|p| p.get("status"))
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+                        let context_ref = payload_obj
+                            .and_then(|p| p.get("context_ref"))
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+                        let endorser_id = external_identity
+                            .get("endorser_id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+                        Some(format!(
+                            "{}:{}:{}:{}",
+                            event, status, context_ref, endorser_id
+                        ))
                     }
                     _ => None,
                 };
-                let endorser_id = external_identity.get("endorser_id").and_then(|v| v.as_str());
-                let root_fingerprint = external_identity.get("root_fingerprint").and_then(|v| v.as_str());
+                let endorser_id = external_identity
+                    .get("endorser_id")
+                    .and_then(|v| v.as_str());
+                let root_fingerprint = external_identity
+                    .get("root_fingerprint")
+                    .and_then(|v| v.as_str());
                 let ext_signature = external_identity.get("signature").and_then(|v| v.as_str());
-                let cert_chain_der: Option<Vec<String>> = external_identity.get("cert_chain_der").and_then(|v| {
-                    let arr = v.as_array()?;
-                    let mut vec = Vec::new();
-                    for item in arr {
-                        vec.push(item.as_str()?.to_string());
-                    }
-                    Some(vec)
-                });
-                
-                if let (Some(expected), Some(endorser), Some(root_fp), Some(sig), Some(chain)) = 
-                   (expected_payload, endorser_id, root_fingerprint, ext_signature, cert_chain_der) {
-                    
+                let cert_chain_der: Option<Vec<String>> =
+                    external_identity.get("cert_chain_der").and_then(|v| {
+                        let arr = v.as_array()?;
+                        let mut vec = Vec::new();
+                        for item in arr {
+                            vec.push(item.as_str()?.to_string());
+                        }
+                        Some(vec)
+                    });
+
+                if let (Some(expected), Some(endorser), Some(root_fp), Some(sig), Some(chain)) = (
+                    expected_payload,
+                    endorser_id,
+                    root_fingerprint,
+                    ext_signature,
+                    cert_chain_der,
+                ) {
                     let inputs = crate::attestation::ExternalIdentityInputs {
                         endorser_id: endorser.to_string(),
                         root_fingerprint: root_fp.to_string(),
@@ -847,11 +1003,19 @@ impl LukuFile {
                     };
                     let result = crate::attestation::verify_external_identity(&inputs, None);
                     if !result.ok {
-                        Self::push_issue(&mut issues, debug_logging, None, VerificationIssue {
-                            code: "EXTERNAL_IDENTITY_VERIFICATION_FAILED".to_string(),
-                            message: format!("External identity verification failed: {}", result.reason.unwrap_or_default()),
-                            criticality: Criticality::Critical,
-                        });
+                        Self::push_issue(
+                            &mut issues,
+                            debug_logging,
+                            None,
+                            VerificationIssue {
+                                code: "EXTERNAL_IDENTITY_VERIFICATION_FAILED".to_string(),
+                                message: format!(
+                                    "External identity verification failed: {}",
+                                    result.reason.unwrap_or_default()
+                                ),
+                                criticality: Criticality::Critical,
+                            },
+                        );
                     }
                 }
             }
@@ -871,7 +1035,10 @@ impl LukuFile {
                 Some("archive"),
                 VerificationIssue {
                     code: "MANIFEST_VERSION_UNSUPPORTED".to_string(),
-                    message: format!("Archive manifest version {} is not supported.", self.manifest.version),
+                    message: format!(
+                        "Archive manifest version {} is not supported.",
+                        self.manifest.version
+                    ),
                     criticality: Criticality::Critical,
                 },
             );
@@ -1145,7 +1312,10 @@ impl LukuFile {
         let mut has_seen_device: HashMap<String, bool> = HashMap::new();
         let mut record_ids = HashSet::new();
 
-        let policy = options.policy.clone().or_else(|| Self::manifest_policy(&self.manifest));
+        let policy = options
+            .policy
+            .clone()
+            .or_else(|| Self::manifest_policy(&self.manifest));
         let continuity_types: HashSet<&str> = ["environment"].iter().cloned().collect();
 
         for block in &self.blocks {
@@ -1341,8 +1511,13 @@ impl LukuFile {
                         }
 
                         if options.require_continuity && continuity_types.contains(r#type) {
-                            if let Some(threshold) = policy.as_ref().and_then(|p| p.native_continuity_gap_seconds) {
-                                let device_continuity = last_continuity_times.entry(device_id.to_string()).or_insert_with(HashMap::new);
+                            if let Some(threshold) = policy
+                                .as_ref()
+                                .and_then(|p| p.native_continuity_gap_seconds)
+                            {
+                                let device_continuity = last_continuity_times
+                                    .entry(device_id.to_string())
+                                    .or_insert_with(HashMap::new);
                                 if let Some(last_env_time) = device_continuity.get(r#type) {
                                     if let Some(timestamp) = timestamp {
                                         let gap = timestamp - last_env_time;
@@ -1483,8 +1658,12 @@ impl LukuFile {
                                     debug_logging,
                                     Some(context),
                                     VerificationIssue {
-                                        code: "EXTERNAL_IDENTITY_UNSUPPORTED_RECORD_TYPE".to_string(),
-                                        message: format!("Record type {} must not carry external_identity.", r#type),
+                                        code: "EXTERNAL_IDENTITY_UNSUPPORTED_RECORD_TYPE"
+                                            .to_string(),
+                                        message: format!(
+                                            "Record type {} must not carry external_identity.",
+                                            r#type
+                                        ),
                                         criticality: Criticality::Critical,
                                     },
                                 );
@@ -1918,12 +2097,17 @@ impl LukuFile {
             }
         }
 
-        if let Some(threshold) = policy.as_ref().and_then(|p| p.native_continuity_gap_seconds) {
+        if let Some(threshold) = policy
+            .as_ref()
+            .and_then(|p| p.native_continuity_gap_seconds)
+        {
             for (block_index, block) in self.blocks.iter().enumerate() {
                 let mut last_native_timestamp_utc: Option<u64> = None;
                 for (record_index, record) in block.batch.iter().enumerate() {
-                    let record_type =
-                        record.get("type").and_then(Value::as_str).unwrap_or("unknown");
+                    let record_type = record
+                        .get("type")
+                        .and_then(Value::as_str)
+                        .unwrap_or("unknown");
                     if Self::is_aux_record_type(record_type) {
                         continue;
                     }
@@ -2466,7 +2650,15 @@ mod tests {
 
         let signing_key = ed25519_dalek::SigningKey::from_bytes(&[7u8; 32]);
 
-        LukuFile::export(records, &luku_path, identity, HashMap::new(), &signing_key, LukuExportOptions::default()).unwrap();
+        LukuFile::export(
+            records,
+            &luku_path,
+            identity,
+            HashMap::new(),
+            &signing_key,
+            LukuExportOptions::default(),
+        )
+        .unwrap();
 
         let luku = LukuFile::open(&luku_path).unwrap();
         assert_eq!(luku.manifest.version, "1.0.0");
@@ -2485,7 +2677,9 @@ mod tests {
 
         assert!(
             issues.iter().all(|issue| {
-                issue.code == "BLOCK_HASH_MISSING" || issue.code == "MANIFEST_SIGNATURE_MISSING" || issue.code == "RECORD_SIGNATURE_INVALID"
+                issue.code == "BLOCK_HASH_MISSING"
+                    || issue.code == "MANIFEST_SIGNATURE_MISSING"
+                    || issue.code == "RECORD_SIGNATURE_INVALID"
             }),
             "unexpected issues: {:?}",
             issues

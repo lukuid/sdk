@@ -16,11 +16,11 @@ pub use luku::{
 };
 pub use models::{
     AttestationItem, CheckResult, DeviceEventPayload, DeviceInfo, DiscoveredDevice,
-    HeartbeatSyncResult, LukuidSdkOptions, TransportType, SelfTestResult,
+    HeartbeatSyncResult, LukuidSdkOptions, SelfTestResult, TransportType,
 };
 pub use parser::{parse, parse_bytes, LukuItemResult, LukuParseResult};
-pub use transport::{Connection, Transport};
 use revocation::RevocationManager;
+pub use transport::{Connection, Transport};
 
 pub struct LukuidSdk {
     options: LukuidSdkOptions,
@@ -92,12 +92,10 @@ impl LukuidSdk {
             previous_state,
             source,
             network_participation_enabled,
-            telemetry
+            telemetry,
         )
         .await
     }
-
-
 
     /**
      * Fetches a signed heartbeat payload from the LukuID API using an explicit
@@ -120,9 +118,13 @@ impl LukuidSdk {
         telemetry: Option<serde_json::Value>,
     ) -> Result<serde_json::Value, reqwest::Error> {
         let clean_api_url = api_url.trim_end_matches('/');
-        if !url_utils::is_external_call_allowed(clean_api_url, self.options.disable_external_calls) {
+        if !url_utils::is_external_call_allowed(clean_api_url, self.options.disable_external_calls)
+        {
             if self.options.debug_logging {
-                eprintln!("[lukuid-sdk] External calls disabled, dropping heartbeat to {}", clean_api_url);
+                eprintln!(
+                    "[lukuid-sdk] External calls disabled, dropping heartbeat to {}",
+                    clean_api_url
+                );
             }
             return Ok(serde_json::json!({
                 "status": "dropped",
@@ -193,11 +195,16 @@ impl LukuidSdk {
         telemetry_chain_version: Option<u32>,
         telemetry_chain_tail: Option<&str>,
     ) -> Result<serde_json::Value, reqwest::Error> {
-        let base_url = api_url.unwrap_or(&self.options.api_url).trim_end_matches('/');
-        
+        let base_url = api_url
+            .unwrap_or(&self.options.api_url)
+            .trim_end_matches('/');
+
         if !url_utils::is_external_call_allowed(base_url, self.options.disable_external_calls) {
             if self.options.debug_logging {
-                eprintln!("[lukuid-sdk] External calls disabled, dropping telemetry to {}", base_url);
+                eprintln!(
+                    "[lukuid-sdk] External calls disabled, dropping telemetry to {}",
+                    base_url
+                );
             }
             return Ok(serde_json::json!({
                 "status": "dropped",
@@ -246,12 +253,7 @@ impl LukuidSdk {
             );
         }
 
-        let response = self
-            .http_client
-            .post(&url)
-            .json(&payload)
-            .send()
-            .await?;
+        let response = self.http_client.post(&url).json(&payload).send().await?;
 
         let response = response.error_for_status()?;
         let response_body: serde_json::Value = response.json().await?;
@@ -301,7 +303,7 @@ impl LukuidSdk {
 
         // 1. Ed25519 (Sign, Verify, Reject)
         {
-            use ed25519_dalek::{SigningKey, Signer, Verifier};
+            use ed25519_dalek::{Signer, SigningKey, Verifier};
             let mut seed = [0u8; 32];
             seed[0] = 1;
             let sk = SigningKey::from_bytes(&seed);
@@ -309,14 +311,14 @@ impl LukuidSdk {
             let msg = b"abc";
             let bad_msg = b"abd";
             let sig = sk.sign(msg);
-            
+
             results.push(SelfTestResult {
                 alg: "Ed25519".to_string(),
                 operation: "SIGN".to_string(),
                 passed: true,
                 id: "LUKUID-KAT-ED25519-SIGN-01".to_string(),
             });
-            
+
             let passed_verify = pk.verify(msg, &sig).is_ok();
             results.push(SelfTestResult {
                 alg: "Ed25519".to_string(),
@@ -339,13 +341,20 @@ impl LukuidSdk {
             use ring::signature::{self, EcdsaKeyPair, KeyPair};
             // Generate a random key for the consistency test
             let rng = ring::rand::SystemRandom::new();
-            let pkcs8_bytes = signature::EcdsaKeyPair::generate_pkcs8(&signature::ECDSA_P256_SHA256_FIXED_SIGNING, &rng);
-            
+            let pkcs8_bytes = signature::EcdsaKeyPair::generate_pkcs8(
+                &signature::ECDSA_P256_SHA256_FIXED_SIGNING,
+                &rng,
+            );
+
             if let Ok(pkcs8) = pkcs8_bytes {
-                if let Ok(key_pair) = EcdsaKeyPair::from_pkcs8(&signature::ECDSA_P256_SHA256_FIXED_SIGNING, pkcs8.as_ref(), &rng) {
+                if let Ok(key_pair) = EcdsaKeyPair::from_pkcs8(
+                    &signature::ECDSA_P256_SHA256_FIXED_SIGNING,
+                    pkcs8.as_ref(),
+                    &rng,
+                ) {
                     let msg = b"abc";
                     let bad_msg = b"abd";
-                    
+
                     if let Ok(sig) = key_pair.sign(&rng, msg) {
                         results.push(SelfTestResult {
                             alg: "P256".to_string(),
@@ -353,8 +362,11 @@ impl LukuidSdk {
                             passed: true,
                             id: "NIST-KAT-P256-SIGN-01".to_string(),
                         });
-                        
-                        let public_key = signature::UnparsedPublicKey::new(&signature::ECDSA_P256_SHA256_FIXED, key_pair.public_key().as_ref());
+
+                        let public_key = signature::UnparsedPublicKey::new(
+                            &signature::ECDSA_P256_SHA256_FIXED,
+                            key_pair.public_key().as_ref(),
+                        );
                         let passed_verify = public_key.verify(msg, sig.as_ref()).is_ok();
                         results.push(SelfTestResult {
                             alg: "P256".to_string(),
@@ -373,7 +385,7 @@ impl LukuidSdk {
                     }
                 }
             }
-            
+
             if results.iter().all(|r| r.alg != "P256") {
                 results.push(SelfTestResult {
                     alg: "P256".to_string(),
@@ -386,15 +398,14 @@ impl LukuidSdk {
 
         // 3. SHA-256 (FIPS 180-4 "abc")
         {
-            use sha2::{Sha256, Digest};
+            use sha2::{Digest, Sha256};
             let mut hasher = Sha256::new();
             hasher.update(b"abc");
             let result = hasher.finalize();
             let expected = [
-                0xba, 0x78, 0x16, 0xbf, 0x8f, 0x01, 0xcf, 0xea, 
-                0x41, 0x41, 0x40, 0xde, 0x5d, 0xae, 0x22, 0x23, 
-                0xb0, 0x03, 0x61, 0xa3, 0x96, 0x17, 0x7a, 0x9c, 
-                0xb4, 0x10, 0xff, 0x61, 0xf2, 0x00, 0x15, 0xad
+                0xba, 0x78, 0x16, 0xbf, 0x8f, 0x01, 0xcf, 0xea, 0x41, 0x41, 0x40, 0xde, 0x5d, 0xae,
+                0x22, 0x23, 0xb0, 0x03, 0x61, 0xa3, 0x96, 0x17, 0x7a, 0x9c, 0xb4, 0x10, 0xff, 0x61,
+                0xf2, 0x00, 0x15, 0xad,
             ];
             results.push(SelfTestResult {
                 alg: "SHA-256".to_string(),
@@ -406,17 +417,17 @@ impl LukuidSdk {
 
         // 4. ML-DSA-65 (Sign, Verify, Reject)
         {
-            use ml_dsa::{MlDsa65, KeyGen};
-            use ml_dsa::signature::{Signer, Verifier, Keypair};
-            
+            use ml_dsa::signature::{Keypair, Signer, Verifier};
+            use ml_dsa::{KeyGen, MlDsa65};
+
             let mut seed = [0u8; 32];
             seed[0] = 1;
-            
+
             let sk = MlDsa65::from_seed(&seed.into());
             let vk = sk.verifying_key();
             let msg = b"abc";
             let bad_msg = b"abd";
-            
+
             let sig = sk.sign(msg);
             results.push(SelfTestResult {
                 alg: "ML-DSA-65".to_string(),
@@ -424,7 +435,7 @@ impl LukuidSdk {
                 passed: true,
                 id: "NIST-KAT-MLDSA-SIGN-01".to_string(),
             });
-            
+
             let passed_verify = vk.verify(msg, &sig).is_ok();
             results.push(SelfTestResult {
                 alg: "ML-DSA-65".to_string(),

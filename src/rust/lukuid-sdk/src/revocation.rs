@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-use std::collections::HashSet;
-use std::sync::{Arc, RwLock};
-use std::time::{Duration, SystemTime};
+use crate::LukuidSdkOptions;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
-use crate::LukuidSdkOptions;
+use std::sync::{Arc, RwLock};
+use std::time::{Duration, SystemTime};
 use x509_parser::prelude::*;
-use sha2::{Digest, Sha256};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct CrlCache {
@@ -75,7 +75,13 @@ impl RevocationManager {
         if let Some(file_path) = self.get_cache_file() {
             let cache = CrlCache {
                 last_sync: self.last_sync_date.read().unwrap().clone(),
-                fingerprints: self.revoked_fingerprints.read().unwrap().iter().cloned().collect(),
+                fingerprints: self
+                    .revoked_fingerprints
+                    .read()
+                    .unwrap()
+                    .iter()
+                    .cloned()
+                    .collect(),
             };
             if let Ok(content) = serde_json::to_string(&cache) {
                 let _ = fs::write(file_path, content);
@@ -98,7 +104,8 @@ impl RevocationManager {
         let cache_file = self.get_cache_file();
 
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(interval_hours as u64 * 3600));
+            let mut interval =
+                tokio::time::interval(Duration::from_secs(interval_hours as u64 * 3600));
             loop {
                 tokio::select! {
                     _ = interval.tick() => {
@@ -111,14 +118,20 @@ impl RevocationManager {
     }
 
     pub async fn sync(&self) -> Result<(), Box<dyn std::error::Error>> {
-        Self::sync_internal(&self.options, &self.revoked_fingerprints, &self.last_sync_date, &self.get_cache_file()).await
+        Self::sync_internal(
+            &self.options,
+            &self.revoked_fingerprints,
+            &self.last_sync_date,
+            &self.get_cache_file(),
+        )
+        .await
     }
 
     async fn sync_internal(
         options: &LukuidSdkOptions,
         revoked_fingerprints: &Arc<RwLock<HashSet<String>>>,
         last_sync_date: &Arc<RwLock<Option<String>>>,
-        cache_file: &Option<PathBuf>
+        cache_file: &Option<PathBuf>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         if options.disable_external_calls {
             return Ok(());
@@ -146,11 +159,16 @@ impl RevocationManager {
 
             let now: DateTime<Utc> = Utc::now();
             *last_sync_date.write().unwrap() = Some(now.to_rfc3339());
-            
+
             if let Some(file_path) = cache_file {
                 let cache = CrlCache {
                     last_sync: last_sync_date.read().unwrap().clone(),
-                    fingerprints: revoked_fingerprints.read().unwrap().iter().cloned().collect(),
+                    fingerprints: revoked_fingerprints
+                        .read()
+                        .unwrap()
+                        .iter()
+                        .cloned()
+                        .collect(),
                 };
                 if let Ok(content) = serde_json::to_string(&cache) {
                     let _ = fs::write(file_path, content);
@@ -162,7 +180,10 @@ impl RevocationManager {
 
     pub fn is_revoked(&self, cert: &X509Certificate) -> bool {
         let fingerprint = self.get_fingerprint(cert);
-        self.revoked_fingerprints.read().unwrap().contains(&fingerprint.to_lowercase())
+        self.revoked_fingerprints
+            .read()
+            .unwrap()
+            .contains(&fingerprint.to_lowercase())
     }
 
     pub fn get_fingerprint(&self, cert: &X509Certificate) -> String {

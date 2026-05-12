@@ -41,6 +41,7 @@ struct PendingCommand {
     callback: CommandCallback,
     accumulated_data: Vec<Value>,
     accumulated_batches: Vec<Value>,
+    accumulated_export_entries: Vec<Value>,
     accumulated_full_records: Vec<Value>,
 }
 
@@ -290,6 +291,7 @@ impl Device {
                                 accumulated_data: Vec::new(),
                                 accumulated_batches: Vec::new(),
                                 accumulated_full_records: Vec::new(),
+                    accumulated_export_entries: Vec::new(),
                             });
                         }
 
@@ -451,9 +453,9 @@ impl Device {
             "attestation_intermediate",
             "heartbeat_slac",
             "heartbeat",
-            "heartbeat_intermediate"
+            "heartbeat_intermediate",
         ];
-        
+
         for name in certs {
             if let Ok(cert_val) = self.call("get_certificate", json!({ "name": name })).await {
                 if let Some(cert_obj) = cert_val.as_object() {
@@ -654,10 +656,22 @@ impl Device {
                 .unwrap_or(json!({ "data": [] }));
 
             let telemetry = telemetry_resp.get("data").cloned().unwrap_or(json!([]));
-            let telemetry_signature = telemetry_resp.get("signature").and_then(|v| v.as_str()).map(|s| s.to_string());
-            let telemetry_canonical_string = telemetry_resp.get("canonical_string").and_then(|v| v.as_str()).map(|s| s.to_string());
-            let telemetry_chain_version = telemetry_resp.get("telemetry_chain_version").and_then(|v| v.as_u64()).map(|v| v as u32);
-            let telemetry_chain_tail = telemetry_resp.get("telemetry_chain_tail").and_then(|v| v.as_str()).map(|s| s.to_string());
+            let telemetry_signature = telemetry_resp
+                .get("signature")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            let telemetry_canonical_string = telemetry_resp
+                .get("canonical_string")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            let telemetry_chain_version = telemetry_resp
+                .get("telemetry_chain_version")
+                .and_then(|v| v.as_u64())
+                .map(|v| v as u32);
+            let telemetry_chain_tail = telemetry_resp
+                .get("telemetry_chain_tail")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
 
             if sdk.options.debug_logging {
                 let telemetry_count = telemetry.as_array().map(|items| items.len()).unwrap_or(0);
@@ -667,17 +681,19 @@ impl Device {
                 );
             }
 
-            let _ = sdk.telemetry(
-                None, // Always default API
-                &self.info.id,
-                counter,
-                telemetry.clone(),
-                telemetry_signature.as_deref(),
-                telemetry_canonical_string.as_deref(),
-                telemetry_chain_version,
-                telemetry_chain_tail.as_deref()
-            ).await;
-            
+            let _ = sdk
+                .telemetry(
+                    None, // Always default API
+                    &self.info.id,
+                    counter,
+                    telemetry.clone(),
+                    telemetry_signature.as_deref(),
+                    telemetry_canonical_string.as_deref(),
+                    telemetry_chain_version,
+                    telemetry_chain_tail.as_deref(),
+                )
+                .await;
+
             telemetry_payload = Some(telemetry);
         }
 
@@ -721,7 +737,7 @@ impl Device {
                 previous_state,
                 source,
                 self.info.network_participation_enabled,
-                telemetry_payload
+                telemetry_payload,
             )
             .await
             .map_err(|error| {
@@ -969,6 +985,7 @@ fn process_frame(
                             p.accumulated_data,
                             p.accumulated_batches,
                             p.accumulated_full_records,
+                            p.accumulated_export_entries,
                             false,
                         ));
                     }
@@ -990,6 +1007,16 @@ fn process_frame(
                             }
                             p.accumulated_batches.extend(batches.clone());
                         }
+                        if let Some(export) = obj
+                            .get("historical_export")
+                            .and_then(|v| v.get("entries"))
+                            .and_then(|v| v.as_array())
+                        {
+                            if chunk_count == 0 {
+                                chunk_count += export.len();
+                            }
+                            p.accumulated_export_entries.extend(export.clone());
+                        }
                         if let Some(full) = obj.get("full_record_response") {
                             chunk_count += 1;
                             p.accumulated_full_records.push(full.clone());
@@ -1002,7 +1029,8 @@ fn process_frame(
                             .accumulated_data
                             .len()
                             .max(p.accumulated_batches.len())
-                            .max(p.accumulated_full_records.len());
+                            .max(p.accumulated_full_records.len())
+                            .max(p.accumulated_export_entries.len());
                         progress_map.insert(
                             "total_accumulated".to_string(),
                             Value::Number(serde_json::Number::from(total)),
@@ -1030,6 +1058,13 @@ fn process_frame(
                         {
                             p.accumulated_batches.extend(batches.clone());
                         }
+                        if let Some(export) = obj
+                            .get("historical_export")
+                            .and_then(|v| v.get("entries"))
+                            .and_then(|v| v.as_array())
+                        {
+                            p.accumulated_export_entries.extend(export.clone());
+                        }
                         if let Some(full) = obj.get("full_record_response") {
                             p.accumulated_full_records.push(full.clone());
                         }
@@ -1038,6 +1073,7 @@ fn process_frame(
                             p.accumulated_data,
                             p.accumulated_batches,
                             p.accumulated_full_records,
+                            p.accumulated_export_entries,
                             true,
                         ));
                     }
@@ -1045,7 +1081,7 @@ fn process_frame(
             }
         }
 
-        if let Some((cb, accum, accum_batches, accum_full, ok)) = pending_cb {
+        if let Some((cb, accum, accum_batches, accum_full, accum_export, ok)) = pending_cb {
             if ok {
                 let mut final_obj = obj.clone();
                 // If we accumulated arrays, or the response originally had a "data" array, return the merged array.
@@ -1060,6 +1096,12 @@ fn process_frame(
                     let mut rb = serde_json::Map::new();
                     rb.insert("batches".to_string(), Value::Array(accum_batches));
                     final_obj.insert("record_batches".to_string(), Value::Object(rb));
+                }
+
+                if !accum_export.is_empty() || obj.contains_key("historical_export") {
+                    let mut export_obj = serde_json::Map::new();
+                    export_obj.insert("entries".to_string(), Value::Array(accum_export));
+                    final_obj.insert("historical_export".to_string(), Value::Object(export_obj));
                 }
 
                 if !accum_full.is_empty() {

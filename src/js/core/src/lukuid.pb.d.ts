@@ -2276,6 +2276,469 @@ export namespace lukuid {
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
+    /** Properties of a GetChainRequest. */
+    interface IGetChainRequest {
+
+        /** GetChainRequest ref */
+        ref?: (string|null);
+    }
+
+    /** Represents a GetChainRequest. */
+    class GetChainRequest implements IGetChainRequest {
+
+        /**
+         * Constructs a new GetChainRequest.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: lukuid.IGetChainRequest);
+
+        /** GetChainRequest ref. */
+        public ref: string;
+
+        /**
+         * Creates a new GetChainRequest instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns GetChainRequest instance
+         */
+        public static create(properties?: lukuid.IGetChainRequest): lukuid.GetChainRequest;
+
+        /**
+         * Encodes the specified GetChainRequest message. Does not implicitly {@link lukuid.GetChainRequest.verify|verify} messages.
+         * @param message GetChainRequest message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: lukuid.IGetChainRequest, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified GetChainRequest message, length delimited. Does not implicitly {@link lukuid.GetChainRequest.verify|verify} messages.
+         * @param message GetChainRequest message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: lukuid.IGetChainRequest, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a GetChainRequest message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns GetChainRequest
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): lukuid.GetChainRequest;
+
+        /**
+         * Decodes a GetChainRequest message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns GetChainRequest
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): lukuid.GetChainRequest;
+
+        /**
+         * Verifies a GetChainRequest message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a GetChainRequest message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns GetChainRequest
+         */
+        public static fromObject(object: { [k: string]: any }): lukuid.GetChainRequest;
+
+        /**
+         * Creates a plain object from a GetChainRequest message. Also converts values to other types if specified.
+         * @param message GetChainRequest
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: lukuid.GetChainRequest, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this GetChainRequest to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+
+        /**
+         * Gets the default type url for GetChainRequest
+         * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns The default type url
+         */
+        public static getTypeUrl(typeUrlPrefix?: string): string;
+    }
+
+    /** Properties of a GetChainResponse. */
+    interface IGetChainResponse {
+
+        /** GetChainResponse der */
+        der?: (Uint8Array|null);
+    }
+
+    /** Represents a GetChainResponse. */
+    class GetChainResponse implements IGetChainResponse {
+
+        /**
+         * Constructs a new GetChainResponse.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: lukuid.IGetChainResponse);
+
+        /** GetChainResponse der. */
+        public der: Uint8Array;
+
+        /**
+         * Creates a new GetChainResponse instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns GetChainResponse instance
+         */
+        public static create(properties?: lukuid.IGetChainResponse): lukuid.GetChainResponse;
+
+        /**
+         * Encodes the specified GetChainResponse message. Does not implicitly {@link lukuid.GetChainResponse.verify|verify} messages.
+         * @param message GetChainResponse message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: lukuid.IGetChainResponse, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified GetChainResponse message, length delimited. Does not implicitly {@link lukuid.GetChainResponse.verify|verify} messages.
+         * @param message GetChainResponse message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: lukuid.IGetChainResponse, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a GetChainResponse message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns GetChainResponse
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): lukuid.GetChainResponse;
+
+        /**
+         * Decodes a GetChainResponse message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns GetChainResponse
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): lukuid.GetChainResponse;
+
+        /**
+         * Verifies a GetChainResponse message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a GetChainResponse message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns GetChainResponse
+         */
+        public static fromObject(object: { [k: string]: any }): lukuid.GetChainResponse;
+
+        /**
+         * Creates a plain object from a GetChainResponse message. Also converts values to other types if specified.
+         * @param message GetChainResponse
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: lukuid.GetChainResponse, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this GetChainResponse to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+
+        /**
+         * Gets the default type url for GetChainResponse
+         * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns The default type url
+         */
+        public static getTypeUrl(typeUrlPrefix?: string): string;
+    }
+
+    /** Properties of a HistoricalExportEntry. */
+    interface IHistoricalExportEntry {
+
+        /** HistoricalExportEntry env */
+        env?: (lukuid.IEnvironmentRecord|null);
+
+        /** HistoricalExportEntry scan */
+        scan?: (lukuid.IScanRecord|null);
+
+        /** HistoricalExportEntry deviceId */
+        deviceId?: (string|null);
+
+        /** HistoricalExportEntry publicKey */
+        publicKey?: (Uint8Array|null);
+
+        /** HistoricalExportEntry attestationDacRef */
+        attestationDacRef?: (string|null);
+
+        /** HistoricalExportEntry attestationManufacturerRef */
+        attestationManufacturerRef?: (string|null);
+
+        /** HistoricalExportEntry attestationIntermediateRef */
+        attestationIntermediateRef?: (string|null);
+
+        /** HistoricalExportEntry heartbeatSlacRef */
+        heartbeatSlacRef?: (string|null);
+
+        /** HistoricalExportEntry heartbeatRef */
+        heartbeatRef?: (string|null);
+
+        /** HistoricalExportEntry heartbeatIntermediateRef */
+        heartbeatIntermediateRef?: (string|null);
+
+        /** HistoricalExportEntry attestationRootFingerprint */
+        attestationRootFingerprint?: (string|null);
+
+        /** HistoricalExportEntry heartbeatRootFingerprint */
+        heartbeatRootFingerprint?: (string|null);
+    }
+
+    /** Represents a HistoricalExportEntry. */
+    class HistoricalExportEntry implements IHistoricalExportEntry {
+
+        /**
+         * Constructs a new HistoricalExportEntry.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: lukuid.IHistoricalExportEntry);
+
+        /** HistoricalExportEntry env. */
+        public env?: (lukuid.IEnvironmentRecord|null);
+
+        /** HistoricalExportEntry scan. */
+        public scan?: (lukuid.IScanRecord|null);
+
+        /** HistoricalExportEntry deviceId. */
+        public deviceId: string;
+
+        /** HistoricalExportEntry publicKey. */
+        public publicKey: Uint8Array;
+
+        /** HistoricalExportEntry attestationDacRef. */
+        public attestationDacRef: string;
+
+        /** HistoricalExportEntry attestationManufacturerRef. */
+        public attestationManufacturerRef: string;
+
+        /** HistoricalExportEntry attestationIntermediateRef. */
+        public attestationIntermediateRef: string;
+
+        /** HistoricalExportEntry heartbeatSlacRef. */
+        public heartbeatSlacRef: string;
+
+        /** HistoricalExportEntry heartbeatRef. */
+        public heartbeatRef: string;
+
+        /** HistoricalExportEntry heartbeatIntermediateRef. */
+        public heartbeatIntermediateRef: string;
+
+        /** HistoricalExportEntry attestationRootFingerprint. */
+        public attestationRootFingerprint: string;
+
+        /** HistoricalExportEntry heartbeatRootFingerprint. */
+        public heartbeatRootFingerprint: string;
+
+        /** HistoricalExportEntry record. */
+        public record?: ("env"|"scan");
+
+        /**
+         * Creates a new HistoricalExportEntry instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns HistoricalExportEntry instance
+         */
+        public static create(properties?: lukuid.IHistoricalExportEntry): lukuid.HistoricalExportEntry;
+
+        /**
+         * Encodes the specified HistoricalExportEntry message. Does not implicitly {@link lukuid.HistoricalExportEntry.verify|verify} messages.
+         * @param message HistoricalExportEntry message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: lukuid.IHistoricalExportEntry, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified HistoricalExportEntry message, length delimited. Does not implicitly {@link lukuid.HistoricalExportEntry.verify|verify} messages.
+         * @param message HistoricalExportEntry message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: lukuid.IHistoricalExportEntry, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a HistoricalExportEntry message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns HistoricalExportEntry
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): lukuid.HistoricalExportEntry;
+
+        /**
+         * Decodes a HistoricalExportEntry message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns HistoricalExportEntry
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): lukuid.HistoricalExportEntry;
+
+        /**
+         * Verifies a HistoricalExportEntry message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a HistoricalExportEntry message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns HistoricalExportEntry
+         */
+        public static fromObject(object: { [k: string]: any }): lukuid.HistoricalExportEntry;
+
+        /**
+         * Creates a plain object from a HistoricalExportEntry message. Also converts values to other types if specified.
+         * @param message HistoricalExportEntry
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: lukuid.HistoricalExportEntry, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this HistoricalExportEntry to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+
+        /**
+         * Gets the default type url for HistoricalExportEntry
+         * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns The default type url
+         */
+        public static getTypeUrl(typeUrlPrefix?: string): string;
+    }
+
+    /** Properties of a HistoricalExportResponse. */
+    interface IHistoricalExportResponse {
+
+        /** HistoricalExportResponse entries */
+        entries?: (lukuid.IHistoricalExportEntry[]|null);
+
+        /** HistoricalExportResponse hasMore */
+        hasMore?: (boolean|null);
+    }
+
+    /** Represents a HistoricalExportResponse. */
+    class HistoricalExportResponse implements IHistoricalExportResponse {
+
+        /**
+         * Constructs a new HistoricalExportResponse.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: lukuid.IHistoricalExportResponse);
+
+        /** HistoricalExportResponse entries. */
+        public entries: lukuid.IHistoricalExportEntry[];
+
+        /** HistoricalExportResponse hasMore. */
+        public hasMore: boolean;
+
+        /**
+         * Creates a new HistoricalExportResponse instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns HistoricalExportResponse instance
+         */
+        public static create(properties?: lukuid.IHistoricalExportResponse): lukuid.HistoricalExportResponse;
+
+        /**
+         * Encodes the specified HistoricalExportResponse message. Does not implicitly {@link lukuid.HistoricalExportResponse.verify|verify} messages.
+         * @param message HistoricalExportResponse message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: lukuid.IHistoricalExportResponse, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified HistoricalExportResponse message, length delimited. Does not implicitly {@link lukuid.HistoricalExportResponse.verify|verify} messages.
+         * @param message HistoricalExportResponse message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: lukuid.IHistoricalExportResponse, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a HistoricalExportResponse message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns HistoricalExportResponse
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): lukuid.HistoricalExportResponse;
+
+        /**
+         * Decodes a HistoricalExportResponse message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns HistoricalExportResponse
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): lukuid.HistoricalExportResponse;
+
+        /**
+         * Verifies a HistoricalExportResponse message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a HistoricalExportResponse message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns HistoricalExportResponse
+         */
+        public static fromObject(object: { [k: string]: any }): lukuid.HistoricalExportResponse;
+
+        /**
+         * Creates a plain object from a HistoricalExportResponse message. Also converts values to other types if specified.
+         * @param message HistoricalExportResponse
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: lukuid.HistoricalExportResponse, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this HistoricalExportResponse to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+
+        /**
+         * Gets the default type url for HistoricalExportResponse
+         * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns The default type url
+         */
+        public static getTypeUrl(typeUrlPrefix?: string): string;
+    }
+
     /** Properties of a CommandRequest. */
     interface ICommandRequest {
 
@@ -2320,6 +2783,9 @@ export namespace lukuid {
 
         /** CommandRequest getCertificate */
         getCertificate?: (lukuid.IGetCertificateRequest|null);
+
+        /** CommandRequest getChain */
+        getChain?: (lukuid.IGetChainRequest|null);
     }
 
     /** Represents a CommandRequest. */
@@ -2373,8 +2839,11 @@ export namespace lukuid {
         /** CommandRequest getCertificate. */
         public getCertificate?: (lukuid.IGetCertificateRequest|null);
 
+        /** CommandRequest getChain. */
+        public getChain?: (lukuid.IGetChainRequest|null);
+
         /** CommandRequest payload. */
-        public payload?: ("fetch"|"get"|"attest"|"config"|"otaBegin"|"otaData"|"otaDataV2"|"setAttestation"|"setHeartbeat"|"scanEnable"|"generateHeartbeat"|"fetchTelemetry"|"getCertificate");
+        public payload?: ("fetch"|"get"|"attest"|"config"|"otaBegin"|"otaData"|"otaDataV2"|"setAttestation"|"setHeartbeat"|"scanEnable"|"generateHeartbeat"|"fetchTelemetry"|"getCertificate"|"getChain");
 
         /**
          * Creates a new CommandRequest instance using the specified properties.
@@ -6005,6 +6474,12 @@ export namespace lukuid {
         /** CommandResponse certificateResponse */
         certificateResponse?: (lukuid.IGetCertificateResponse|null);
 
+        /** CommandResponse chainResponse */
+        chainResponse?: (lukuid.IGetChainResponse|null);
+
+        /** CommandResponse historicalExport */
+        historicalExport?: (lukuid.IHistoricalExportResponse|null);
+
         /** CommandResponse signature */
         signature?: (Uint8Array|null);
 
@@ -6072,6 +6547,12 @@ export namespace lukuid {
         /** CommandResponse certificateResponse. */
         public certificateResponse?: (lukuid.IGetCertificateResponse|null);
 
+        /** CommandResponse chainResponse. */
+        public chainResponse?: (lukuid.IGetChainResponse|null);
+
+        /** CommandResponse historicalExport. */
+        public historicalExport?: (lukuid.IHistoricalExportResponse|null);
+
         /** CommandResponse signature. */
         public signature?: (Uint8Array|null);
 
@@ -6082,7 +6563,7 @@ export namespace lukuid {
         public hasMore?: (boolean|null);
 
         /** CommandResponse payload. */
-        public payload?: ("deviceInfo"|"networkConfig"|"scanRecord"|"envRecord"|"fetchResponse"|"fullRecordResponse"|"recordBatches"|"heartbeatInit"|"statusResponse"|"fetchTelemetry"|"certificateResponse");
+        public payload?: ("deviceInfo"|"networkConfig"|"scanRecord"|"envRecord"|"fetchResponse"|"fullRecordResponse"|"recordBatches"|"heartbeatInit"|"statusResponse"|"fetchTelemetry"|"certificateResponse"|"chainResponse"|"historicalExport");
 
         /**
          * Creates a new CommandResponse instance using the specified properties.

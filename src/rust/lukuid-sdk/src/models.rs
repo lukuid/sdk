@@ -70,7 +70,7 @@ impl Default for LukuidSdkOptions {
     fn default() -> Self {
         let trust_profile =
             std::env::var("LUKUID_TRUST_PROFILE").unwrap_or_else(|_| "prod".to_string());
-        
+
         let disable_external_calls = std::env::var("LUKUID_DISABLE_EXTERNAL_CALLS")
             .map(|val| val == "1" || val.to_lowercase() == "true")
             .unwrap_or(false);

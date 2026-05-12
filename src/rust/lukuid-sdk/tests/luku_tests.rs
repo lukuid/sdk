@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use ed25519_dalek::{Signer, SigningKey};
-use lukuid_sdk::luku::{Criticality, LukuDeviceIdentity, LukuFile, LukuVerifyOptions, LukuExportOptions};
+use lukuid_sdk::luku::{
+    Criticality, LukuDeviceIdentity, LukuExportOptions, LukuFile, LukuVerifyOptions,
+};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -40,12 +42,20 @@ fn samples_dir() -> PathBuf {
         .canonicalize()
         .expect("SDK repo root should exist");
     for version in ["1.0.0", "1.0"] {
-        let candidate = repo_root.join("samples").join("dotluku").join("dev").join(version);
+        let candidate = repo_root
+            .join("samples")
+            .join("dotluku")
+            .join("dev")
+            .join(version);
         if candidate.exists() {
             return candidate;
         }
     }
-    repo_root.join("samples").join("dotluku").join("dev").join("1.0.0")
+    repo_root
+        .join("samples")
+        .join("dotluku")
+        .join("dev")
+        .join("1.0.0")
 }
 
 fn external_identity_fixture() -> serde_json::Value {
@@ -117,8 +127,15 @@ fn create_valid_export(temp_dir: &std::path::Path, device_id: &str) -> (LukuFile
     ];
 
     let luku_path = temp_dir.join(format!("{}.luku", device_id));
-    LukuFile::export_with_identity(records, &luku_path, identity, HashMap::new(), &signing_key, LukuExportOptions::default())
-        .unwrap();
+    LukuFile::export_with_identity(
+        records,
+        &luku_path,
+        identity,
+        HashMap::new(),
+        &signing_key,
+        LukuExportOptions::default(),
+    )
+    .unwrap();
 
     let luku = LukuFile::open(&luku_path).unwrap();
     (luku, signing_key)
@@ -204,15 +221,12 @@ fn test_luku_manifest_preserves_temporal_continuity_metadata() {
                 name: "test_policy".to_string(),
                 native_continuity_gap_seconds: Some(600),
             }),
-        }
+        },
     )
     .unwrap();
 
     let reopened = LukuFile::open(&path).unwrap();
-    assert_eq!(
-        reopened.manifest.native_continuity_gap_seconds,
-        Some(600)
-    );
+    assert_eq!(reopened.manifest.native_continuity_gap_seconds, Some(600));
     let reasons = reopened
         .manifest
         .extra
@@ -303,8 +317,10 @@ fn test_luku_verify_enforces_native_continuity_when_requested() {
         policy: None,
         require_continuity: true,
         attachments: None,
-        });
-    assert!(issues.iter().any(|issue| issue.code == "CONTINUITY_GAP_EXCEEDED"));
+    });
+    assert!(issues
+        .iter()
+        .any(|issue| issue.code == "CONTINUITY_GAP_EXCEEDED"));
 }
 
 #[test]
@@ -320,7 +336,10 @@ fn test_luku_verify_rejects_untrusted_external_identity_endorsements() {
 
     let canonical = "attachment-ext";
     let device_sig = BASE64.encode(signing_key.sign(canonical.as_bytes()).to_bytes());
-    let checksum = fixture.get("checksum").and_then(|value| value.as_str()).unwrap();
+    let checksum = fixture
+        .get("checksum")
+        .and_then(|value| value.as_str())
+        .unwrap();
     let attachment_bytes = fixture
         .get("attachment_utf8")
         .and_then(|value| value.as_str())
@@ -359,22 +378,24 @@ fn test_luku_verify_rejects_untrusted_external_identity_endorsements() {
     let trusted = luku.verify(LukuVerifyOptions {
         allow_untrusted_roots: true,
         skip_certificate_temporal_checks: true,
-        trusted_external_fingerprints: vec![
-            fixture
-                .get("root_fingerprint")
-                .and_then(|value| value.as_str())
-                .unwrap()
-                .to_string(),
-        ],
+        trusted_external_fingerprints: vec![fixture
+            .get("root_fingerprint")
+            .and_then(|value| value.as_str())
+            .unwrap()
+            .to_string()],
         trust_profile: "dev".to_string(),
         policy: None,
         require_continuity: false,
         attachments: None,
     });
-    assert!(!trusted.iter().any(|issue| issue.code == "EXTERNAL_IDENTITY_VERIFICATION_FAILED"));
+    assert!(!trusted
+        .iter()
+        .any(|issue| issue.code == "EXTERNAL_IDENTITY_VERIFICATION_FAILED"));
 
     let untrusted = luku.verify(test_options());
-    assert!(untrusted.iter().any(|issue| issue.code == "EXTERNAL_IDENTITY_VERIFICATION_FAILED"));
+    assert!(untrusted
+        .iter()
+        .any(|issue| issue.code == "EXTERNAL_IDENTITY_VERIFICATION_FAILED"));
 }
 
 // ------------------------------------------------------------------
@@ -843,19 +864,22 @@ fn test_fixtures_valid_files() {
 #[test]
 fn test_real_sample_in_memory_mutations() {
     let sample_path = samples_dir().join("first-passable-verification-sample.luku");
-    
+
     // Make sure it exists before testing
     if !sample_path.exists() {
         println!("Sample file not found, skipping test.");
         return;
     }
-    
+
     // 1. Verify the untouched file is valid
     let original_luku = LukuFile::open(&sample_path).expect("Failed to open sample .luku file");
     let options = test_options(); // uses allow_untrusted_roots
     let original_issues = original_luku.verify(options.clone());
-    
-    let criticals: Vec<_> = original_issues.iter().filter(|i| i.criticality == Criticality::Critical).collect();
+
+    let criticals: Vec<_> = original_issues
+        .iter()
+        .filter(|i| i.criticality == Criticality::Critical)
+        .collect();
     assert!(
         criticals.is_empty(),
         "Original sample file has critical issues: {:?}",
@@ -866,20 +890,33 @@ fn test_real_sample_in_memory_mutations() {
     let mut mutated_luku = LukuFile::open(&sample_path).unwrap();
     let first_block = &mut mutated_luku.blocks[0];
     let first_record = first_block.batch[0].as_object_mut().unwrap();
-    first_record.insert("signature".to_string(), serde_json::Value::String("not_base64_data!!!".to_string()));
-    
+    first_record.insert(
+        "signature".to_string(),
+        serde_json::Value::String("not_base64_data!!!".to_string()),
+    );
+
     let issues = mutated_luku.verify(options.clone());
     assert!(
-        issues.iter().any(|i| i.code == "RECORD_SIGNATURE_INVALID" || i.code == "ATTESTATION_FAILED"),
+        issues
+            .iter()
+            .any(|i| i.code == "RECORD_SIGNATURE_INVALID" || i.code == "ATTESTATION_FAILED"),
         "Failed to catch invalid signature format"
     );
 
     // 3. Mutate a record's canonical_string (wrong hash/signature mismatch)
     let mut mutated_luku = LukuFile::open(&sample_path).unwrap();
     let first_record = mutated_luku.blocks[0].batch[0].as_object_mut().unwrap();
-    let current_canonical = first_record.get("canonical_string").unwrap().as_str().unwrap().to_string();
-    first_record.insert("canonical_string".to_string(), serde_json::Value::String(format!("{}X", current_canonical)));
-    
+    let current_canonical = first_record
+        .get("canonical_string")
+        .unwrap()
+        .as_str()
+        .unwrap()
+        .to_string();
+    first_record.insert(
+        "canonical_string".to_string(),
+        serde_json::Value::String(format!("{}X", current_canonical)),
+    );
+
     let issues = mutated_luku.verify(options.clone());
     assert!(
         issues.iter().any(|i| i.code == "RECORD_SIGNATURE_INVALID"),
@@ -890,8 +927,11 @@ fn test_real_sample_in_memory_mutations() {
     if original_luku.blocks[0].batch.len() > 1 {
         let mut mutated_luku = LukuFile::open(&sample_path).unwrap();
         let second_record = mutated_luku.blocks[0].batch[1].as_object_mut().unwrap();
-        second_record.insert("previous_signature".to_string(), serde_json::Value::String("broken_link".to_string()));
-        
+        second_record.insert(
+            "previous_signature".to_string(),
+            serde_json::Value::String("broken_link".to_string()),
+        );
+
         let issues = mutated_luku.verify(options.clone());
         assert!(
             issues.iter().any(|i| i.code == "RECORD_CHAIN_BROKEN"),
@@ -905,8 +945,11 @@ fn test_real_sample_in_memory_mutations() {
         // Modify the previous_signature of the FIRST record in the SECOND block.
         // Because of our dynamic block chunking, this is a floating anchor and SHOULD NOT trigger RECORD_CHAIN_BROKEN
         let second_block_first_record = mutated_luku.blocks[1].batch[0].as_object_mut().unwrap();
-        second_block_first_record.insert("previous_signature".to_string(), serde_json::Value::String("floating_anchor_test".to_string()));
-        
+        second_block_first_record.insert(
+            "previous_signature".to_string(),
+            serde_json::Value::String("floating_anchor_test".to_string()),
+        );
+
         let issues = mutated_luku.verify(options.clone());
         // Should NOT have a RECORD_CHAIN_BROKEN issue for this specific gap between blocks
         assert!(
@@ -919,9 +962,16 @@ fn test_real_sample_in_memory_mutations() {
     if original_luku.blocks[0].batch.len() > 1 {
         let mut mutated_luku = LukuFile::open(&sample_path).unwrap();
         let second_record = mutated_luku.blocks[0].batch[1].as_object_mut().unwrap();
-        let payload = second_record.get_mut("payload").unwrap().as_object_mut().unwrap();
-        payload.insert("ctr".to_string(), serde_json::Value::Number(serde_json::Number::from(0))); // regress to 0
-        
+        let payload = second_record
+            .get_mut("payload")
+            .unwrap()
+            .as_object_mut()
+            .unwrap();
+        payload.insert(
+            "ctr".to_string(),
+            serde_json::Value::Number(serde_json::Number::from(0)),
+        ); // regress to 0
+
         let issues = mutated_luku.verify(options.clone());
         assert!(
             issues.iter().any(|i| i.code == "COUNTER_REGRESSION"),
@@ -947,8 +997,15 @@ fn test_samples_directory_files() {
         let mut strict_options = options.clone();
         strict_options.allow_untrusted_roots = false;
         let issues = luku.verify(strict_options);
-        let criticals: Vec<_> = issues.iter().filter(|i| i.criticality == Criticality::Critical).collect();
-        assert!(criticals.is_empty(), "Expected passable sample to be valid, found: {:?}", criticals);
+        let criticals: Vec<_> = issues
+            .iter()
+            .filter(|i| i.criticality == Criticality::Critical)
+            .collect();
+        assert!(
+            criticals.is_empty(),
+            "Expected passable sample to be valid, found: {:?}",
+            criticals
+        );
     }
 
     // 2. signature-mismatch.luku (Invalid)
@@ -959,7 +1016,9 @@ fn test_samples_directory_files() {
         mismatch_options.allow_untrusted_roots = false; // enforce checking
         let issues = luku.verify(mismatch_options);
         assert!(
-            issues.iter().any(|i| i.code == "ATTESTATION_FAILED" || i.code == "RECORD_SIGNATURE_INVALID" || i.code == "ATTESTATION_CHAIN_MISSING"),
+            issues.iter().any(|i| i.code == "ATTESTATION_FAILED"
+                || i.code == "RECORD_SIGNATURE_INVALID"
+                || i.code == "ATTESTATION_CHAIN_MISSING"),
             "Expected signature-mismatch.luku to fail attestation or signature checks"
         );
     }
@@ -970,7 +1029,9 @@ fn test_samples_directory_files() {
         let luku = LukuFile::open(&invalid_chain_path).unwrap();
         let issues = luku.verify(options.clone());
         assert!(
-            issues.iter().any(|i| i.code == "RECORD_CHAIN_BROKEN" || i.code == "BLOCK_HASH_MISMATCH" || i.code == "ATTESTATION_FAILED"),
+            issues.iter().any(|i| i.code == "RECORD_CHAIN_BROKEN"
+                || i.code == "BLOCK_HASH_MISMATCH"
+                || i.code == "ATTESTATION_FAILED"),
             "Expected invalid-chain.luku to fail verification"
         );
     }
@@ -978,14 +1039,16 @@ fn test_samples_directory_files() {
     // 4. Trust Profile Logic (Valid dev file rejected by test/prod profiles)
     if passable_path.exists() {
         let luku = LukuFile::open(&passable_path).unwrap();
-        
+
         // Ensure it passes with "dev"
         let mut dev_options = options.clone();
         dev_options.allow_untrusted_roots = false; // enforce checking against real roots
         dev_options.trust_profile = "dev".to_string();
         let dev_issues = luku.verify(dev_options);
         assert!(
-            !dev_issues.iter().any(|i| i.code == "ATTESTATION_FAILED" && i.message.contains("Certificate chain does not match the requested trust profile")),
+            !dev_issues.iter().any(|i| i.code == "ATTESTATION_FAILED"
+                && i.message
+                    .contains("Certificate chain does not match the requested trust profile")),
             "Expected passable sample to pass trust profile check under 'dev' profile"
         );
 
@@ -995,7 +1058,9 @@ fn test_samples_directory_files() {
         test_options.trust_profile = "test".to_string();
         let test_issues = luku.verify(test_options);
         assert!(
-            test_issues.iter().any(|i| i.code == "ATTESTATION_FAILED" && i.message.contains("Certificate chain does not match the requested trust profile")),
+            test_issues.iter().any(|i| i.code == "ATTESTATION_FAILED"
+                && i.message
+                    .contains("Certificate chain does not match the requested trust profile")),
             "Expected passable sample (dev) to fail trust profile check under 'test' profile"
         );
 
@@ -1005,7 +1070,9 @@ fn test_samples_directory_files() {
         prod_options.trust_profile = "prod".to_string();
         let prod_issues = luku.verify(prod_options);
         assert!(
-            prod_issues.iter().any(|i| i.code == "ATTESTATION_FAILED" && i.message.contains("Certificate chain does not match the requested trust profile")),
+            prod_issues.iter().any(|i| i.code == "ATTESTATION_FAILED"
+                && i.message
+                    .contains("Certificate chain does not match the requested trust profile")),
             "Expected passable sample (dev) to fail trust profile check under 'prod' profile"
         );
     }
@@ -1016,7 +1083,14 @@ fn test_lukuid_sdk_self_test() {
     let results = lukuid_sdk::LukuidSdk::self_test();
     assert!(!results.is_empty());
     for result in results {
-        println!("{} {} {} : {}", result.alg, result.operation, result.id, result.passed);
-        assert!(result.passed, "Self-test failed for {} {}", result.alg, result.operation);
+        println!(
+            "{} {} {} : {}",
+            result.alg, result.operation, result.id, result.passed
+        );
+        assert!(
+            result.passed,
+            "Self-test failed for {} {}",
+            result.alg, result.operation
+        );
     }
 }

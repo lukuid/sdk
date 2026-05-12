@@ -20,7 +20,8 @@ fn build_archive_bytes(manifest: serde_json::Value, extra_entries: Vec<(&str, &[
     let deflated = FileOptions::<()>::default().compression_method(CompressionMethod::Deflated);
 
     zip.start_file("mimetype", stored).unwrap();
-    zip.write_all(b"application/vnd.lukuid.package+zip").unwrap();
+    zip.write_all(b"application/vnd.lukuid.package+zip")
+        .unwrap();
     zip.start_file("manifest.json", deflated).unwrap();
     zip.write_all(manifest.to_string().as_bytes()).unwrap();
     zip.start_file("blocks.jsonl", deflated).unwrap();
@@ -111,16 +112,18 @@ fn flags_unsupported_manifest_versions() {
     });
     let archive = LukuFile::open_bytes(&build_archive_bytes(manifest, vec![])).unwrap();
     let issues = archive.verify(verify_options());
-    assert!(issues.iter().any(|issue| issue.code == "MANIFEST_VERSION_UNSUPPORTED"));
+    assert!(issues
+        .iter()
+        .any(|issue| issue.code == "MANIFEST_VERSION_UNSUPPORTED"));
 }
 
 #[tokio::test]
 async fn rejects_external_identity_on_unsupported_record_types() {
     let mut archive = create_valid_export("LUK-RS-HARDEN").await;
-    archive.blocks[0].batch[0]
-        .as_object_mut()
-        .unwrap()
-        .insert("external_identity".to_string(), json!({ "endorser_id": "ext-1" }));
+    archive.blocks[0].batch[0].as_object_mut().unwrap().insert(
+        "external_identity".to_string(),
+        json!({ "endorser_id": "ext-1" }),
+    );
 
     let issues = archive.verify(verify_options());
     assert!(issues

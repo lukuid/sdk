@@ -194,6 +194,10 @@ function encodeCommandRequest(frame: DeviceFrame): Uint8Array {
     const recordId = firstString(source.record_id, source.id, source.device_id);
     if (recordId) writeString(nested, 1, recordId);
     writeMessage(chunks, 3, nested);
+  } else if (action === 'get_chain') {
+    const nested: number[] = [];
+    if (source.ref) writeString(nested, 1, source.ref as string);
+    writeMessage(chunks, 16, nested);
   } else if (action === 'get_certificate') {
     const nested: number[] = [];
     if (source.name) writeString(nested, 1, source.name as string);
@@ -401,6 +405,20 @@ function decodeCommandResponse(payload: Uint8Array): JsonRecord | null {
         if (message === null) return null;
         const certObj = decodeGetCertificateResponse(message);
         Object.assign(out, certObj);
+        break;
+      }
+      case 21: {
+        const message = readLengthDelimited(payload, cursor, wireType);
+        if (message === null) return null;
+        const chainObj = decodeGetChainResponse(message);
+        Object.assign(out, chainObj);
+        break;
+      }
+      case 20: {
+        const message = readLengthDelimited(payload, cursor, wireType);
+        if (message === null) return null;
+        const exportObj = decodeHistoricalExportResponse(message);
+        Object.assign(out, exportObj);
         break;
       }
       default:
@@ -1542,4 +1560,91 @@ function decodeTelemetryValue(payload: Uint8Array): unknown {
     }
   }
   return val;
+}
+
+
+function decodeGetChainResponse(payload: Uint8Array): JsonRecord {
+  const cursor = { value: 0 };
+  const out: JsonRecord = {};
+  while (cursor.value < payload.length) {
+    const key = readVarint(payload, cursor);
+    if (key === null) break;
+    const field = key >>> 3;
+    const wireType = key & 0x07;
+    switch (field) {
+      case 1: assignBytes(payload, cursor, wireType, out, 'der'); break;
+      default: skipField(payload, cursor, wireType); break;
+    }
+  }
+  return out;
+}
+
+function decodeHistoricalExportEntry(payload: Uint8Array): JsonRecord {
+  const cursor = { value: 0 };
+  const out: JsonRecord = {};
+  while (cursor.value < payload.length) {
+    const key = readVarint(payload, cursor);
+    if (key === null) break;
+    const field = key >>> 3;
+    const wireType = key & 0x07;
+    switch (field) {
+      case 1: {
+        const message = readLengthDelimited(payload, cursor, wireType);
+        if (message) {
+          const env = decodeEnvironmentRecord(message);
+          env.type = 'environment';
+          out.record = env;
+        }
+        break;
+      }
+      case 2: {
+        const message = readLengthDelimited(payload, cursor, wireType);
+        if (message) {
+          const scan = decodeScanRecord(message);
+          scan.type = 'scan';
+          out.record = scan;
+        }
+        break;
+      }
+      case 3: assignString(payload, cursor, wireType, out, 'device_id'); break;
+      case 4: assignBytes(payload, cursor, wireType, out, 'public_key'); break;
+      case 5: assignString(payload, cursor, wireType, out, 'attestation_dac_ref'); break;
+      case 6: assignString(payload, cursor, wireType, out, 'attestation_manufacturer_ref'); break;
+      case 7: assignString(payload, cursor, wireType, out, 'attestation_intermediate_ref'); break;
+      case 8: assignString(payload, cursor, wireType, out, 'heartbeat_slac_ref'); break;
+      case 9: assignString(payload, cursor, wireType, out, 'heartbeat_ref'); break;
+      case 10: assignString(payload, cursor, wireType, out, 'heartbeat_intermediate_ref'); break;
+      case 11: assignString(payload, cursor, wireType, out, 'attestation_root_fingerprint'); break;
+      case 12: assignString(payload, cursor, wireType, out, 'heartbeat_root_fingerprint'); break;
+      default: skipField(payload, cursor, wireType); break;
+    }
+  }
+  return out;
+}
+
+function decodeHistoricalExportResponse(payload: Uint8Array): JsonRecord {
+  const cursor = { value: 0 };
+  const out: JsonRecord = { entries: [] };
+  let has_more = false;
+  while (cursor.value < payload.length) {
+    const key = readVarint(payload, cursor);
+    if (key === null) break;
+    const field = key >>> 3;
+    const wireType = key & 0x07;
+    switch (field) {
+      case 1: {
+        const message = readLengthDelimited(payload, cursor, wireType);
+        if (message) {
+          (out.entries as any[]).push(decodeHistoricalExportEntry(message));
+        }
+        break;
+      }
+      case 2:
+        has_more = readVarintField(payload, cursor, wireType) !== 0;
+        break;
+      default: skipField(payload, cursor, wireType); break;
+    }
+  }
+  out.has_more = has_more;
+  return out;
 }

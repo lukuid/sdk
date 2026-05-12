@@ -6173,6 +6173,1180 @@ export const lukuid = $root.lukuid = (() => {
         return GetCertificateResponse;
     })();
 
+    lukuid.GetChainRequest = (function() {
+
+        /**
+         * Properties of a GetChainRequest.
+         * @memberof lukuid
+         * @interface IGetChainRequest
+         * @property {string|null} [ref] GetChainRequest ref
+         */
+
+        /**
+         * Constructs a new GetChainRequest.
+         * @memberof lukuid
+         * @classdesc Represents a GetChainRequest.
+         * @implements IGetChainRequest
+         * @constructor
+         * @param {lukuid.IGetChainRequest=} [properties] Properties to set
+         */
+        function GetChainRequest(properties) {
+            if (properties)
+                for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * GetChainRequest ref.
+         * @member {string} ref
+         * @memberof lukuid.GetChainRequest
+         * @instance
+         */
+        GetChainRequest.prototype.ref = "";
+
+        /**
+         * Creates a new GetChainRequest instance using the specified properties.
+         * @function create
+         * @memberof lukuid.GetChainRequest
+         * @static
+         * @param {lukuid.IGetChainRequest=} [properties] Properties to set
+         * @returns {lukuid.GetChainRequest} GetChainRequest instance
+         */
+        GetChainRequest.create = function create(properties) {
+            return new GetChainRequest(properties);
+        };
+
+        /**
+         * Encodes the specified GetChainRequest message. Does not implicitly {@link lukuid.GetChainRequest.verify|verify} messages.
+         * @function encode
+         * @memberof lukuid.GetChainRequest
+         * @static
+         * @param {lukuid.IGetChainRequest} message GetChainRequest message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        GetChainRequest.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.ref != null && Object.hasOwnProperty.call(message, "ref"))
+                writer.uint32(/* id 1, wireType 2 =*/10).string(message.ref);
+            return writer;
+        };
+
+        /**
+         * Encodes the specified GetChainRequest message, length delimited. Does not implicitly {@link lukuid.GetChainRequest.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof lukuid.GetChainRequest
+         * @static
+         * @param {lukuid.IGetChainRequest} message GetChainRequest message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        GetChainRequest.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a GetChainRequest message from the specified reader or buffer.
+         * @function decode
+         * @memberof lukuid.GetChainRequest
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {lukuid.GetChainRequest} GetChainRequest
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        GetChainRequest.decode = function decode(reader, length, error) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lukuid.GetChainRequest();
+            while (reader.pos < end) {
+                let tag = reader.uint32();
+                if (tag === error)
+                    break;
+                switch (tag >>> 3) {
+                case 1: {
+                        message.ref = reader.string();
+                        break;
+                    }
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes a GetChainRequest message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof lukuid.GetChainRequest
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {lukuid.GetChainRequest} GetChainRequest
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        GetChainRequest.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies a GetChainRequest message.
+         * @function verify
+         * @memberof lukuid.GetChainRequest
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        GetChainRequest.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.ref != null && message.hasOwnProperty("ref"))
+                if (!$util.isString(message.ref))
+                    return "ref: string expected";
+            return null;
+        };
+
+        /**
+         * Creates a GetChainRequest message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof lukuid.GetChainRequest
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {lukuid.GetChainRequest} GetChainRequest
+         */
+        GetChainRequest.fromObject = function fromObject(object) {
+            if (object instanceof $root.lukuid.GetChainRequest)
+                return object;
+            let message = new $root.lukuid.GetChainRequest();
+            if (object.ref != null)
+                message.ref = String(object.ref);
+            return message;
+        };
+
+        /**
+         * Creates a plain object from a GetChainRequest message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof lukuid.GetChainRequest
+         * @static
+         * @param {lukuid.GetChainRequest} message GetChainRequest
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        GetChainRequest.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            let object = {};
+            if (options.defaults)
+                object.ref = "";
+            if (message.ref != null && message.hasOwnProperty("ref"))
+                object.ref = message.ref;
+            return object;
+        };
+
+        /**
+         * Converts this GetChainRequest to JSON.
+         * @function toJSON
+         * @memberof lukuid.GetChainRequest
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        GetChainRequest.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        /**
+         * Gets the default type url for GetChainRequest
+         * @function getTypeUrl
+         * @memberof lukuid.GetChainRequest
+         * @static
+         * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns {string} The default type url
+         */
+        GetChainRequest.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+            if (typeUrlPrefix === undefined) {
+                typeUrlPrefix = "type.googleapis.com";
+            }
+            return typeUrlPrefix + "/lukuid.GetChainRequest";
+        };
+
+        return GetChainRequest;
+    })();
+
+    lukuid.GetChainResponse = (function() {
+
+        /**
+         * Properties of a GetChainResponse.
+         * @memberof lukuid
+         * @interface IGetChainResponse
+         * @property {Uint8Array|null} [der] GetChainResponse der
+         */
+
+        /**
+         * Constructs a new GetChainResponse.
+         * @memberof lukuid
+         * @classdesc Represents a GetChainResponse.
+         * @implements IGetChainResponse
+         * @constructor
+         * @param {lukuid.IGetChainResponse=} [properties] Properties to set
+         */
+        function GetChainResponse(properties) {
+            if (properties)
+                for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * GetChainResponse der.
+         * @member {Uint8Array} der
+         * @memberof lukuid.GetChainResponse
+         * @instance
+         */
+        GetChainResponse.prototype.der = $util.newBuffer([]);
+
+        /**
+         * Creates a new GetChainResponse instance using the specified properties.
+         * @function create
+         * @memberof lukuid.GetChainResponse
+         * @static
+         * @param {lukuid.IGetChainResponse=} [properties] Properties to set
+         * @returns {lukuid.GetChainResponse} GetChainResponse instance
+         */
+        GetChainResponse.create = function create(properties) {
+            return new GetChainResponse(properties);
+        };
+
+        /**
+         * Encodes the specified GetChainResponse message. Does not implicitly {@link lukuid.GetChainResponse.verify|verify} messages.
+         * @function encode
+         * @memberof lukuid.GetChainResponse
+         * @static
+         * @param {lukuid.IGetChainResponse} message GetChainResponse message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        GetChainResponse.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.der != null && Object.hasOwnProperty.call(message, "der"))
+                writer.uint32(/* id 1, wireType 2 =*/10).bytes(message.der);
+            return writer;
+        };
+
+        /**
+         * Encodes the specified GetChainResponse message, length delimited. Does not implicitly {@link lukuid.GetChainResponse.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof lukuid.GetChainResponse
+         * @static
+         * @param {lukuid.IGetChainResponse} message GetChainResponse message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        GetChainResponse.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a GetChainResponse message from the specified reader or buffer.
+         * @function decode
+         * @memberof lukuid.GetChainResponse
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {lukuid.GetChainResponse} GetChainResponse
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        GetChainResponse.decode = function decode(reader, length, error) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lukuid.GetChainResponse();
+            while (reader.pos < end) {
+                let tag = reader.uint32();
+                if (tag === error)
+                    break;
+                switch (tag >>> 3) {
+                case 1: {
+                        message.der = reader.bytes();
+                        break;
+                    }
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes a GetChainResponse message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof lukuid.GetChainResponse
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {lukuid.GetChainResponse} GetChainResponse
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        GetChainResponse.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies a GetChainResponse message.
+         * @function verify
+         * @memberof lukuid.GetChainResponse
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        GetChainResponse.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.der != null && message.hasOwnProperty("der"))
+                if (!(message.der && typeof message.der.length === "number" || $util.isString(message.der)))
+                    return "der: buffer expected";
+            return null;
+        };
+
+        /**
+         * Creates a GetChainResponse message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof lukuid.GetChainResponse
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {lukuid.GetChainResponse} GetChainResponse
+         */
+        GetChainResponse.fromObject = function fromObject(object) {
+            if (object instanceof $root.lukuid.GetChainResponse)
+                return object;
+            let message = new $root.lukuid.GetChainResponse();
+            if (object.der != null)
+                if (typeof object.der === "string")
+                    $util.base64.decode(object.der, message.der = $util.newBuffer($util.base64.length(object.der)), 0);
+                else if (object.der.length >= 0)
+                    message.der = object.der;
+            return message;
+        };
+
+        /**
+         * Creates a plain object from a GetChainResponse message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof lukuid.GetChainResponse
+         * @static
+         * @param {lukuid.GetChainResponse} message GetChainResponse
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        GetChainResponse.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            let object = {};
+            if (options.defaults)
+                if (options.bytes === String)
+                    object.der = "";
+                else {
+                    object.der = [];
+                    if (options.bytes !== Array)
+                        object.der = $util.newBuffer(object.der);
+                }
+            if (message.der != null && message.hasOwnProperty("der"))
+                object.der = options.bytes === String ? $util.base64.encode(message.der, 0, message.der.length) : options.bytes === Array ? Array.prototype.slice.call(message.der) : message.der;
+            return object;
+        };
+
+        /**
+         * Converts this GetChainResponse to JSON.
+         * @function toJSON
+         * @memberof lukuid.GetChainResponse
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        GetChainResponse.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        /**
+         * Gets the default type url for GetChainResponse
+         * @function getTypeUrl
+         * @memberof lukuid.GetChainResponse
+         * @static
+         * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns {string} The default type url
+         */
+        GetChainResponse.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+            if (typeUrlPrefix === undefined) {
+                typeUrlPrefix = "type.googleapis.com";
+            }
+            return typeUrlPrefix + "/lukuid.GetChainResponse";
+        };
+
+        return GetChainResponse;
+    })();
+
+    lukuid.HistoricalExportEntry = (function() {
+
+        /**
+         * Properties of a HistoricalExportEntry.
+         * @memberof lukuid
+         * @interface IHistoricalExportEntry
+         * @property {lukuid.IEnvironmentRecord|null} [env] HistoricalExportEntry env
+         * @property {lukuid.IScanRecord|null} [scan] HistoricalExportEntry scan
+         * @property {string|null} [deviceId] HistoricalExportEntry deviceId
+         * @property {Uint8Array|null} [publicKey] HistoricalExportEntry publicKey
+         * @property {string|null} [attestationDacRef] HistoricalExportEntry attestationDacRef
+         * @property {string|null} [attestationManufacturerRef] HistoricalExportEntry attestationManufacturerRef
+         * @property {string|null} [attestationIntermediateRef] HistoricalExportEntry attestationIntermediateRef
+         * @property {string|null} [heartbeatSlacRef] HistoricalExportEntry heartbeatSlacRef
+         * @property {string|null} [heartbeatRef] HistoricalExportEntry heartbeatRef
+         * @property {string|null} [heartbeatIntermediateRef] HistoricalExportEntry heartbeatIntermediateRef
+         * @property {string|null} [attestationRootFingerprint] HistoricalExportEntry attestationRootFingerprint
+         * @property {string|null} [heartbeatRootFingerprint] HistoricalExportEntry heartbeatRootFingerprint
+         */
+
+        /**
+         * Constructs a new HistoricalExportEntry.
+         * @memberof lukuid
+         * @classdesc Represents a HistoricalExportEntry.
+         * @implements IHistoricalExportEntry
+         * @constructor
+         * @param {lukuid.IHistoricalExportEntry=} [properties] Properties to set
+         */
+        function HistoricalExportEntry(properties) {
+            if (properties)
+                for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * HistoricalExportEntry env.
+         * @member {lukuid.IEnvironmentRecord|null|undefined} env
+         * @memberof lukuid.HistoricalExportEntry
+         * @instance
+         */
+        HistoricalExportEntry.prototype.env = null;
+
+        /**
+         * HistoricalExportEntry scan.
+         * @member {lukuid.IScanRecord|null|undefined} scan
+         * @memberof lukuid.HistoricalExportEntry
+         * @instance
+         */
+        HistoricalExportEntry.prototype.scan = null;
+
+        /**
+         * HistoricalExportEntry deviceId.
+         * @member {string} deviceId
+         * @memberof lukuid.HistoricalExportEntry
+         * @instance
+         */
+        HistoricalExportEntry.prototype.deviceId = "";
+
+        /**
+         * HistoricalExportEntry publicKey.
+         * @member {Uint8Array} publicKey
+         * @memberof lukuid.HistoricalExportEntry
+         * @instance
+         */
+        HistoricalExportEntry.prototype.publicKey = $util.newBuffer([]);
+
+        /**
+         * HistoricalExportEntry attestationDacRef.
+         * @member {string} attestationDacRef
+         * @memberof lukuid.HistoricalExportEntry
+         * @instance
+         */
+        HistoricalExportEntry.prototype.attestationDacRef = "";
+
+        /**
+         * HistoricalExportEntry attestationManufacturerRef.
+         * @member {string} attestationManufacturerRef
+         * @memberof lukuid.HistoricalExportEntry
+         * @instance
+         */
+        HistoricalExportEntry.prototype.attestationManufacturerRef = "";
+
+        /**
+         * HistoricalExportEntry attestationIntermediateRef.
+         * @member {string} attestationIntermediateRef
+         * @memberof lukuid.HistoricalExportEntry
+         * @instance
+         */
+        HistoricalExportEntry.prototype.attestationIntermediateRef = "";
+
+        /**
+         * HistoricalExportEntry heartbeatSlacRef.
+         * @member {string} heartbeatSlacRef
+         * @memberof lukuid.HistoricalExportEntry
+         * @instance
+         */
+        HistoricalExportEntry.prototype.heartbeatSlacRef = "";
+
+        /**
+         * HistoricalExportEntry heartbeatRef.
+         * @member {string} heartbeatRef
+         * @memberof lukuid.HistoricalExportEntry
+         * @instance
+         */
+        HistoricalExportEntry.prototype.heartbeatRef = "";
+
+        /**
+         * HistoricalExportEntry heartbeatIntermediateRef.
+         * @member {string} heartbeatIntermediateRef
+         * @memberof lukuid.HistoricalExportEntry
+         * @instance
+         */
+        HistoricalExportEntry.prototype.heartbeatIntermediateRef = "";
+
+        /**
+         * HistoricalExportEntry attestationRootFingerprint.
+         * @member {string} attestationRootFingerprint
+         * @memberof lukuid.HistoricalExportEntry
+         * @instance
+         */
+        HistoricalExportEntry.prototype.attestationRootFingerprint = "";
+
+        /**
+         * HistoricalExportEntry heartbeatRootFingerprint.
+         * @member {string} heartbeatRootFingerprint
+         * @memberof lukuid.HistoricalExportEntry
+         * @instance
+         */
+        HistoricalExportEntry.prototype.heartbeatRootFingerprint = "";
+
+        // OneOf field names bound to virtual getters and setters
+        let $oneOfFields;
+
+        /**
+         * HistoricalExportEntry record.
+         * @member {"env"|"scan"|undefined} record
+         * @memberof lukuid.HistoricalExportEntry
+         * @instance
+         */
+        Object.defineProperty(HistoricalExportEntry.prototype, "record", {
+            get: $util.oneOfGetter($oneOfFields = ["env", "scan"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        /**
+         * Creates a new HistoricalExportEntry instance using the specified properties.
+         * @function create
+         * @memberof lukuid.HistoricalExportEntry
+         * @static
+         * @param {lukuid.IHistoricalExportEntry=} [properties] Properties to set
+         * @returns {lukuid.HistoricalExportEntry} HistoricalExportEntry instance
+         */
+        HistoricalExportEntry.create = function create(properties) {
+            return new HistoricalExportEntry(properties);
+        };
+
+        /**
+         * Encodes the specified HistoricalExportEntry message. Does not implicitly {@link lukuid.HistoricalExportEntry.verify|verify} messages.
+         * @function encode
+         * @memberof lukuid.HistoricalExportEntry
+         * @static
+         * @param {lukuid.IHistoricalExportEntry} message HistoricalExportEntry message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        HistoricalExportEntry.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.env != null && Object.hasOwnProperty.call(message, "env"))
+                $root.lukuid.EnvironmentRecord.encode(message.env, writer.uint32(/* id 1, wireType 2 =*/10).fork()).ldelim();
+            if (message.scan != null && Object.hasOwnProperty.call(message, "scan"))
+                $root.lukuid.ScanRecord.encode(message.scan, writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
+            if (message.deviceId != null && Object.hasOwnProperty.call(message, "deviceId"))
+                writer.uint32(/* id 3, wireType 2 =*/26).string(message.deviceId);
+            if (message.publicKey != null && Object.hasOwnProperty.call(message, "publicKey"))
+                writer.uint32(/* id 4, wireType 2 =*/34).bytes(message.publicKey);
+            if (message.attestationDacRef != null && Object.hasOwnProperty.call(message, "attestationDacRef"))
+                writer.uint32(/* id 5, wireType 2 =*/42).string(message.attestationDacRef);
+            if (message.attestationManufacturerRef != null && Object.hasOwnProperty.call(message, "attestationManufacturerRef"))
+                writer.uint32(/* id 6, wireType 2 =*/50).string(message.attestationManufacturerRef);
+            if (message.attestationIntermediateRef != null && Object.hasOwnProperty.call(message, "attestationIntermediateRef"))
+                writer.uint32(/* id 7, wireType 2 =*/58).string(message.attestationIntermediateRef);
+            if (message.heartbeatSlacRef != null && Object.hasOwnProperty.call(message, "heartbeatSlacRef"))
+                writer.uint32(/* id 8, wireType 2 =*/66).string(message.heartbeatSlacRef);
+            if (message.heartbeatRef != null && Object.hasOwnProperty.call(message, "heartbeatRef"))
+                writer.uint32(/* id 9, wireType 2 =*/74).string(message.heartbeatRef);
+            if (message.heartbeatIntermediateRef != null && Object.hasOwnProperty.call(message, "heartbeatIntermediateRef"))
+                writer.uint32(/* id 10, wireType 2 =*/82).string(message.heartbeatIntermediateRef);
+            if (message.attestationRootFingerprint != null && Object.hasOwnProperty.call(message, "attestationRootFingerprint"))
+                writer.uint32(/* id 11, wireType 2 =*/90).string(message.attestationRootFingerprint);
+            if (message.heartbeatRootFingerprint != null && Object.hasOwnProperty.call(message, "heartbeatRootFingerprint"))
+                writer.uint32(/* id 12, wireType 2 =*/98).string(message.heartbeatRootFingerprint);
+            return writer;
+        };
+
+        /**
+         * Encodes the specified HistoricalExportEntry message, length delimited. Does not implicitly {@link lukuid.HistoricalExportEntry.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof lukuid.HistoricalExportEntry
+         * @static
+         * @param {lukuid.IHistoricalExportEntry} message HistoricalExportEntry message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        HistoricalExportEntry.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a HistoricalExportEntry message from the specified reader or buffer.
+         * @function decode
+         * @memberof lukuid.HistoricalExportEntry
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {lukuid.HistoricalExportEntry} HistoricalExportEntry
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        HistoricalExportEntry.decode = function decode(reader, length, error) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lukuid.HistoricalExportEntry();
+            while (reader.pos < end) {
+                let tag = reader.uint32();
+                if (tag === error)
+                    break;
+                switch (tag >>> 3) {
+                case 1: {
+                        message.env = $root.lukuid.EnvironmentRecord.decode(reader, reader.uint32());
+                        break;
+                    }
+                case 2: {
+                        message.scan = $root.lukuid.ScanRecord.decode(reader, reader.uint32());
+                        break;
+                    }
+                case 3: {
+                        message.deviceId = reader.string();
+                        break;
+                    }
+                case 4: {
+                        message.publicKey = reader.bytes();
+                        break;
+                    }
+                case 5: {
+                        message.attestationDacRef = reader.string();
+                        break;
+                    }
+                case 6: {
+                        message.attestationManufacturerRef = reader.string();
+                        break;
+                    }
+                case 7: {
+                        message.attestationIntermediateRef = reader.string();
+                        break;
+                    }
+                case 8: {
+                        message.heartbeatSlacRef = reader.string();
+                        break;
+                    }
+                case 9: {
+                        message.heartbeatRef = reader.string();
+                        break;
+                    }
+                case 10: {
+                        message.heartbeatIntermediateRef = reader.string();
+                        break;
+                    }
+                case 11: {
+                        message.attestationRootFingerprint = reader.string();
+                        break;
+                    }
+                case 12: {
+                        message.heartbeatRootFingerprint = reader.string();
+                        break;
+                    }
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes a HistoricalExportEntry message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof lukuid.HistoricalExportEntry
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {lukuid.HistoricalExportEntry} HistoricalExportEntry
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        HistoricalExportEntry.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies a HistoricalExportEntry message.
+         * @function verify
+         * @memberof lukuid.HistoricalExportEntry
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        HistoricalExportEntry.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            let properties = {};
+            if (message.env != null && message.hasOwnProperty("env")) {
+                properties.record = 1;
+                {
+                    let error = $root.lukuid.EnvironmentRecord.verify(message.env);
+                    if (error)
+                        return "env." + error;
+                }
+            }
+            if (message.scan != null && message.hasOwnProperty("scan")) {
+                if (properties.record === 1)
+                    return "record: multiple values";
+                properties.record = 1;
+                {
+                    let error = $root.lukuid.ScanRecord.verify(message.scan);
+                    if (error)
+                        return "scan." + error;
+                }
+            }
+            if (message.deviceId != null && message.hasOwnProperty("deviceId"))
+                if (!$util.isString(message.deviceId))
+                    return "deviceId: string expected";
+            if (message.publicKey != null && message.hasOwnProperty("publicKey"))
+                if (!(message.publicKey && typeof message.publicKey.length === "number" || $util.isString(message.publicKey)))
+                    return "publicKey: buffer expected";
+            if (message.attestationDacRef != null && message.hasOwnProperty("attestationDacRef"))
+                if (!$util.isString(message.attestationDacRef))
+                    return "attestationDacRef: string expected";
+            if (message.attestationManufacturerRef != null && message.hasOwnProperty("attestationManufacturerRef"))
+                if (!$util.isString(message.attestationManufacturerRef))
+                    return "attestationManufacturerRef: string expected";
+            if (message.attestationIntermediateRef != null && message.hasOwnProperty("attestationIntermediateRef"))
+                if (!$util.isString(message.attestationIntermediateRef))
+                    return "attestationIntermediateRef: string expected";
+            if (message.heartbeatSlacRef != null && message.hasOwnProperty("heartbeatSlacRef"))
+                if (!$util.isString(message.heartbeatSlacRef))
+                    return "heartbeatSlacRef: string expected";
+            if (message.heartbeatRef != null && message.hasOwnProperty("heartbeatRef"))
+                if (!$util.isString(message.heartbeatRef))
+                    return "heartbeatRef: string expected";
+            if (message.heartbeatIntermediateRef != null && message.hasOwnProperty("heartbeatIntermediateRef"))
+                if (!$util.isString(message.heartbeatIntermediateRef))
+                    return "heartbeatIntermediateRef: string expected";
+            if (message.attestationRootFingerprint != null && message.hasOwnProperty("attestationRootFingerprint"))
+                if (!$util.isString(message.attestationRootFingerprint))
+                    return "attestationRootFingerprint: string expected";
+            if (message.heartbeatRootFingerprint != null && message.hasOwnProperty("heartbeatRootFingerprint"))
+                if (!$util.isString(message.heartbeatRootFingerprint))
+                    return "heartbeatRootFingerprint: string expected";
+            return null;
+        };
+
+        /**
+         * Creates a HistoricalExportEntry message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof lukuid.HistoricalExportEntry
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {lukuid.HistoricalExportEntry} HistoricalExportEntry
+         */
+        HistoricalExportEntry.fromObject = function fromObject(object) {
+            if (object instanceof $root.lukuid.HistoricalExportEntry)
+                return object;
+            let message = new $root.lukuid.HistoricalExportEntry();
+            if (object.env != null) {
+                if (typeof object.env !== "object")
+                    throw TypeError(".lukuid.HistoricalExportEntry.env: object expected");
+                message.env = $root.lukuid.EnvironmentRecord.fromObject(object.env);
+            }
+            if (object.scan != null) {
+                if (typeof object.scan !== "object")
+                    throw TypeError(".lukuid.HistoricalExportEntry.scan: object expected");
+                message.scan = $root.lukuid.ScanRecord.fromObject(object.scan);
+            }
+            if (object.deviceId != null)
+                message.deviceId = String(object.deviceId);
+            if (object.publicKey != null)
+                if (typeof object.publicKey === "string")
+                    $util.base64.decode(object.publicKey, message.publicKey = $util.newBuffer($util.base64.length(object.publicKey)), 0);
+                else if (object.publicKey.length >= 0)
+                    message.publicKey = object.publicKey;
+            if (object.attestationDacRef != null)
+                message.attestationDacRef = String(object.attestationDacRef);
+            if (object.attestationManufacturerRef != null)
+                message.attestationManufacturerRef = String(object.attestationManufacturerRef);
+            if (object.attestationIntermediateRef != null)
+                message.attestationIntermediateRef = String(object.attestationIntermediateRef);
+            if (object.heartbeatSlacRef != null)
+                message.heartbeatSlacRef = String(object.heartbeatSlacRef);
+            if (object.heartbeatRef != null)
+                message.heartbeatRef = String(object.heartbeatRef);
+            if (object.heartbeatIntermediateRef != null)
+                message.heartbeatIntermediateRef = String(object.heartbeatIntermediateRef);
+            if (object.attestationRootFingerprint != null)
+                message.attestationRootFingerprint = String(object.attestationRootFingerprint);
+            if (object.heartbeatRootFingerprint != null)
+                message.heartbeatRootFingerprint = String(object.heartbeatRootFingerprint);
+            return message;
+        };
+
+        /**
+         * Creates a plain object from a HistoricalExportEntry message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof lukuid.HistoricalExportEntry
+         * @static
+         * @param {lukuid.HistoricalExportEntry} message HistoricalExportEntry
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        HistoricalExportEntry.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            let object = {};
+            if (options.defaults) {
+                object.deviceId = "";
+                if (options.bytes === String)
+                    object.publicKey = "";
+                else {
+                    object.publicKey = [];
+                    if (options.bytes !== Array)
+                        object.publicKey = $util.newBuffer(object.publicKey);
+                }
+                object.attestationDacRef = "";
+                object.attestationManufacturerRef = "";
+                object.attestationIntermediateRef = "";
+                object.heartbeatSlacRef = "";
+                object.heartbeatRef = "";
+                object.heartbeatIntermediateRef = "";
+                object.attestationRootFingerprint = "";
+                object.heartbeatRootFingerprint = "";
+            }
+            if (message.env != null && message.hasOwnProperty("env")) {
+                object.env = $root.lukuid.EnvironmentRecord.toObject(message.env, options);
+                if (options.oneofs)
+                    object.record = "env";
+            }
+            if (message.scan != null && message.hasOwnProperty("scan")) {
+                object.scan = $root.lukuid.ScanRecord.toObject(message.scan, options);
+                if (options.oneofs)
+                    object.record = "scan";
+            }
+            if (message.deviceId != null && message.hasOwnProperty("deviceId"))
+                object.deviceId = message.deviceId;
+            if (message.publicKey != null && message.hasOwnProperty("publicKey"))
+                object.publicKey = options.bytes === String ? $util.base64.encode(message.publicKey, 0, message.publicKey.length) : options.bytes === Array ? Array.prototype.slice.call(message.publicKey) : message.publicKey;
+            if (message.attestationDacRef != null && message.hasOwnProperty("attestationDacRef"))
+                object.attestationDacRef = message.attestationDacRef;
+            if (message.attestationManufacturerRef != null && message.hasOwnProperty("attestationManufacturerRef"))
+                object.attestationManufacturerRef = message.attestationManufacturerRef;
+            if (message.attestationIntermediateRef != null && message.hasOwnProperty("attestationIntermediateRef"))
+                object.attestationIntermediateRef = message.attestationIntermediateRef;
+            if (message.heartbeatSlacRef != null && message.hasOwnProperty("heartbeatSlacRef"))
+                object.heartbeatSlacRef = message.heartbeatSlacRef;
+            if (message.heartbeatRef != null && message.hasOwnProperty("heartbeatRef"))
+                object.heartbeatRef = message.heartbeatRef;
+            if (message.heartbeatIntermediateRef != null && message.hasOwnProperty("heartbeatIntermediateRef"))
+                object.heartbeatIntermediateRef = message.heartbeatIntermediateRef;
+            if (message.attestationRootFingerprint != null && message.hasOwnProperty("attestationRootFingerprint"))
+                object.attestationRootFingerprint = message.attestationRootFingerprint;
+            if (message.heartbeatRootFingerprint != null && message.hasOwnProperty("heartbeatRootFingerprint"))
+                object.heartbeatRootFingerprint = message.heartbeatRootFingerprint;
+            return object;
+        };
+
+        /**
+         * Converts this HistoricalExportEntry to JSON.
+         * @function toJSON
+         * @memberof lukuid.HistoricalExportEntry
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        HistoricalExportEntry.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        /**
+         * Gets the default type url for HistoricalExportEntry
+         * @function getTypeUrl
+         * @memberof lukuid.HistoricalExportEntry
+         * @static
+         * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns {string} The default type url
+         */
+        HistoricalExportEntry.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+            if (typeUrlPrefix === undefined) {
+                typeUrlPrefix = "type.googleapis.com";
+            }
+            return typeUrlPrefix + "/lukuid.HistoricalExportEntry";
+        };
+
+        return HistoricalExportEntry;
+    })();
+
+    lukuid.HistoricalExportResponse = (function() {
+
+        /**
+         * Properties of a HistoricalExportResponse.
+         * @memberof lukuid
+         * @interface IHistoricalExportResponse
+         * @property {Array.<lukuid.IHistoricalExportEntry>|null} [entries] HistoricalExportResponse entries
+         * @property {boolean|null} [hasMore] HistoricalExportResponse hasMore
+         */
+
+        /**
+         * Constructs a new HistoricalExportResponse.
+         * @memberof lukuid
+         * @classdesc Represents a HistoricalExportResponse.
+         * @implements IHistoricalExportResponse
+         * @constructor
+         * @param {lukuid.IHistoricalExportResponse=} [properties] Properties to set
+         */
+        function HistoricalExportResponse(properties) {
+            this.entries = [];
+            if (properties)
+                for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * HistoricalExportResponse entries.
+         * @member {Array.<lukuid.IHistoricalExportEntry>} entries
+         * @memberof lukuid.HistoricalExportResponse
+         * @instance
+         */
+        HistoricalExportResponse.prototype.entries = $util.emptyArray;
+
+        /**
+         * HistoricalExportResponse hasMore.
+         * @member {boolean} hasMore
+         * @memberof lukuid.HistoricalExportResponse
+         * @instance
+         */
+        HistoricalExportResponse.prototype.hasMore = false;
+
+        /**
+         * Creates a new HistoricalExportResponse instance using the specified properties.
+         * @function create
+         * @memberof lukuid.HistoricalExportResponse
+         * @static
+         * @param {lukuid.IHistoricalExportResponse=} [properties] Properties to set
+         * @returns {lukuid.HistoricalExportResponse} HistoricalExportResponse instance
+         */
+        HistoricalExportResponse.create = function create(properties) {
+            return new HistoricalExportResponse(properties);
+        };
+
+        /**
+         * Encodes the specified HistoricalExportResponse message. Does not implicitly {@link lukuid.HistoricalExportResponse.verify|verify} messages.
+         * @function encode
+         * @memberof lukuid.HistoricalExportResponse
+         * @static
+         * @param {lukuid.IHistoricalExportResponse} message HistoricalExportResponse message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        HistoricalExportResponse.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.entries != null && message.entries.length)
+                for (let i = 0; i < message.entries.length; ++i)
+                    $root.lukuid.HistoricalExportEntry.encode(message.entries[i], writer.uint32(/* id 1, wireType 2 =*/10).fork()).ldelim();
+            if (message.hasMore != null && Object.hasOwnProperty.call(message, "hasMore"))
+                writer.uint32(/* id 2, wireType 0 =*/16).bool(message.hasMore);
+            return writer;
+        };
+
+        /**
+         * Encodes the specified HistoricalExportResponse message, length delimited. Does not implicitly {@link lukuid.HistoricalExportResponse.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof lukuid.HistoricalExportResponse
+         * @static
+         * @param {lukuid.IHistoricalExportResponse} message HistoricalExportResponse message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        HistoricalExportResponse.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a HistoricalExportResponse message from the specified reader or buffer.
+         * @function decode
+         * @memberof lukuid.HistoricalExportResponse
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {lukuid.HistoricalExportResponse} HistoricalExportResponse
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        HistoricalExportResponse.decode = function decode(reader, length, error) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lukuid.HistoricalExportResponse();
+            while (reader.pos < end) {
+                let tag = reader.uint32();
+                if (tag === error)
+                    break;
+                switch (tag >>> 3) {
+                case 1: {
+                        if (!(message.entries && message.entries.length))
+                            message.entries = [];
+                        message.entries.push($root.lukuid.HistoricalExportEntry.decode(reader, reader.uint32()));
+                        break;
+                    }
+                case 2: {
+                        message.hasMore = reader.bool();
+                        break;
+                    }
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes a HistoricalExportResponse message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof lukuid.HistoricalExportResponse
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {lukuid.HistoricalExportResponse} HistoricalExportResponse
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        HistoricalExportResponse.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies a HistoricalExportResponse message.
+         * @function verify
+         * @memberof lukuid.HistoricalExportResponse
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        HistoricalExportResponse.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.entries != null && message.hasOwnProperty("entries")) {
+                if (!Array.isArray(message.entries))
+                    return "entries: array expected";
+                for (let i = 0; i < message.entries.length; ++i) {
+                    let error = $root.lukuid.HistoricalExportEntry.verify(message.entries[i]);
+                    if (error)
+                        return "entries." + error;
+                }
+            }
+            if (message.hasMore != null && message.hasOwnProperty("hasMore"))
+                if (typeof message.hasMore !== "boolean")
+                    return "hasMore: boolean expected";
+            return null;
+        };
+
+        /**
+         * Creates a HistoricalExportResponse message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof lukuid.HistoricalExportResponse
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {lukuid.HistoricalExportResponse} HistoricalExportResponse
+         */
+        HistoricalExportResponse.fromObject = function fromObject(object) {
+            if (object instanceof $root.lukuid.HistoricalExportResponse)
+                return object;
+            let message = new $root.lukuid.HistoricalExportResponse();
+            if (object.entries) {
+                if (!Array.isArray(object.entries))
+                    throw TypeError(".lukuid.HistoricalExportResponse.entries: array expected");
+                message.entries = [];
+                for (let i = 0; i < object.entries.length; ++i) {
+                    if (typeof object.entries[i] !== "object")
+                        throw TypeError(".lukuid.HistoricalExportResponse.entries: object expected");
+                    message.entries[i] = $root.lukuid.HistoricalExportEntry.fromObject(object.entries[i]);
+                }
+            }
+            if (object.hasMore != null)
+                message.hasMore = Boolean(object.hasMore);
+            return message;
+        };
+
+        /**
+         * Creates a plain object from a HistoricalExportResponse message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof lukuid.HistoricalExportResponse
+         * @static
+         * @param {lukuid.HistoricalExportResponse} message HistoricalExportResponse
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        HistoricalExportResponse.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            let object = {};
+            if (options.arrays || options.defaults)
+                object.entries = [];
+            if (options.defaults)
+                object.hasMore = false;
+            if (message.entries && message.entries.length) {
+                object.entries = [];
+                for (let j = 0; j < message.entries.length; ++j)
+                    object.entries[j] = $root.lukuid.HistoricalExportEntry.toObject(message.entries[j], options);
+            }
+            if (message.hasMore != null && message.hasOwnProperty("hasMore"))
+                object.hasMore = message.hasMore;
+            return object;
+        };
+
+        /**
+         * Converts this HistoricalExportResponse to JSON.
+         * @function toJSON
+         * @memberof lukuid.HistoricalExportResponse
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        HistoricalExportResponse.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        /**
+         * Gets the default type url for HistoricalExportResponse
+         * @function getTypeUrl
+         * @memberof lukuid.HistoricalExportResponse
+         * @static
+         * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns {string} The default type url
+         */
+        HistoricalExportResponse.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+            if (typeUrlPrefix === undefined) {
+                typeUrlPrefix = "type.googleapis.com";
+            }
+            return typeUrlPrefix + "/lukuid.HistoricalExportResponse";
+        };
+
+        return HistoricalExportResponse;
+    })();
+
     lukuid.CommandRequest = (function() {
 
         /**
@@ -6193,6 +7367,7 @@ export const lukuid = $root.lukuid = (() => {
          * @property {lukuid.IGenerateHeartbeatRequest|null} [generateHeartbeat] CommandRequest generateHeartbeat
          * @property {lukuid.IFetchTelemetryRequest|null} [fetchTelemetry] CommandRequest fetchTelemetry
          * @property {lukuid.IGetCertificateRequest|null} [getCertificate] CommandRequest getCertificate
+         * @property {lukuid.IGetChainRequest|null} [getChain] CommandRequest getChain
          */
 
         /**
@@ -6322,17 +7497,25 @@ export const lukuid = $root.lukuid = (() => {
          */
         CommandRequest.prototype.getCertificate = null;
 
+        /**
+         * CommandRequest getChain.
+         * @member {lukuid.IGetChainRequest|null|undefined} getChain
+         * @memberof lukuid.CommandRequest
+         * @instance
+         */
+        CommandRequest.prototype.getChain = null;
+
         // OneOf field names bound to virtual getters and setters
         let $oneOfFields;
 
         /**
          * CommandRequest payload.
-         * @member {"fetch"|"get"|"attest"|"config"|"otaBegin"|"otaData"|"otaDataV2"|"setAttestation"|"setHeartbeat"|"scanEnable"|"generateHeartbeat"|"fetchTelemetry"|"getCertificate"|undefined} payload
+         * @member {"fetch"|"get"|"attest"|"config"|"otaBegin"|"otaData"|"otaDataV2"|"setAttestation"|"setHeartbeat"|"scanEnable"|"generateHeartbeat"|"fetchTelemetry"|"getCertificate"|"getChain"|undefined} payload
          * @memberof lukuid.CommandRequest
          * @instance
          */
         Object.defineProperty(CommandRequest.prototype, "payload", {
-            get: $util.oneOfGetter($oneOfFields = ["fetch", "get", "attest", "config", "otaBegin", "otaData", "otaDataV2", "setAttestation", "setHeartbeat", "scanEnable", "generateHeartbeat", "fetchTelemetry", "getCertificate"]),
+            get: $util.oneOfGetter($oneOfFields = ["fetch", "get", "attest", "config", "otaBegin", "otaData", "otaDataV2", "setAttestation", "setHeartbeat", "scanEnable", "generateHeartbeat", "fetchTelemetry", "getCertificate", "getChain"]),
             set: $util.oneOfSetter($oneOfFields)
         });
 
@@ -6388,6 +7571,8 @@ export const lukuid = $root.lukuid = (() => {
                 $root.lukuid.FetchTelemetryRequest.encode(message.fetchTelemetry, writer.uint32(/* id 14, wireType 2 =*/114).fork()).ldelim();
             if (message.getCertificate != null && Object.hasOwnProperty.call(message, "getCertificate"))
                 $root.lukuid.GetCertificateRequest.encode(message.getCertificate, writer.uint32(/* id 15, wireType 2 =*/122).fork()).ldelim();
+            if (message.getChain != null && Object.hasOwnProperty.call(message, "getChain"))
+                $root.lukuid.GetChainRequest.encode(message.getChain, writer.uint32(/* id 16, wireType 2 =*/130).fork()).ldelim();
             return writer;
         };
 
@@ -6478,6 +7663,10 @@ export const lukuid = $root.lukuid = (() => {
                     }
                 case 15: {
                         message.getCertificate = $root.lukuid.GetCertificateRequest.decode(reader, reader.uint32());
+                        break;
+                    }
+                case 16: {
+                        message.getChain = $root.lukuid.GetChainRequest.decode(reader, reader.uint32());
                         break;
                     }
                 default:
@@ -6647,6 +7836,16 @@ export const lukuid = $root.lukuid = (() => {
                         return "getCertificate." + error;
                 }
             }
+            if (message.getChain != null && message.hasOwnProperty("getChain")) {
+                if (properties.payload === 1)
+                    return "payload: multiple values";
+                properties.payload = 1;
+                {
+                    let error = $root.lukuid.GetChainRequest.verify(message.getChain);
+                    if (error)
+                        return "getChain." + error;
+                }
+            }
             return null;
         };
 
@@ -6728,6 +7927,11 @@ export const lukuid = $root.lukuid = (() => {
                 if (typeof object.getCertificate !== "object")
                     throw TypeError(".lukuid.CommandRequest.getCertificate: object expected");
                 message.getCertificate = $root.lukuid.GetCertificateRequest.fromObject(object.getCertificate);
+            }
+            if (object.getChain != null) {
+                if (typeof object.getChain !== "object")
+                    throw TypeError(".lukuid.CommandRequest.getChain: object expected");
+                message.getChain = $root.lukuid.GetChainRequest.fromObject(object.getChain);
             }
             return message;
         };
@@ -6813,6 +8017,11 @@ export const lukuid = $root.lukuid = (() => {
                 object.getCertificate = $root.lukuid.GetCertificateRequest.toObject(message.getCertificate, options);
                 if (options.oneofs)
                     object.payload = "getCertificate";
+            }
+            if (message.getChain != null && message.hasOwnProperty("getChain")) {
+                object.getChain = $root.lukuid.GetChainRequest.toObject(message.getChain, options);
+                if (options.oneofs)
+                    object.payload = "getChain";
             }
             return object;
         };
@@ -17475,6 +18684,8 @@ export const lukuid = $root.lukuid = (() => {
          * @property {lukuid.IStatusResponse|null} [statusResponse] CommandResponse statusResponse
          * @property {lukuid.IFetchTelemetryResponse|null} [fetchTelemetry] CommandResponse fetchTelemetry
          * @property {lukuid.IGetCertificateResponse|null} [certificateResponse] CommandResponse certificateResponse
+         * @property {lukuid.IGetChainResponse|null} [chainResponse] CommandResponse chainResponse
+         * @property {lukuid.IHistoricalExportResponse|null} [historicalExport] CommandResponse historicalExport
          * @property {Uint8Array|null} [signature] CommandResponse signature
          * @property {Uint8Array|null} [key] CommandResponse key
          * @property {boolean|null} [hasMore] CommandResponse hasMore
@@ -17624,6 +18835,22 @@ export const lukuid = $root.lukuid = (() => {
         CommandResponse.prototype.certificateResponse = null;
 
         /**
+         * CommandResponse chainResponse.
+         * @member {lukuid.IGetChainResponse|null|undefined} chainResponse
+         * @memberof lukuid.CommandResponse
+         * @instance
+         */
+        CommandResponse.prototype.chainResponse = null;
+
+        /**
+         * CommandResponse historicalExport.
+         * @member {lukuid.IHistoricalExportResponse|null|undefined} historicalExport
+         * @memberof lukuid.CommandResponse
+         * @instance
+         */
+        CommandResponse.prototype.historicalExport = null;
+
+        /**
          * CommandResponse signature.
          * @member {Uint8Array|null|undefined} signature
          * @memberof lukuid.CommandResponse
@@ -17652,12 +18879,12 @@ export const lukuid = $root.lukuid = (() => {
 
         /**
          * CommandResponse payload.
-         * @member {"deviceInfo"|"networkConfig"|"scanRecord"|"envRecord"|"fetchResponse"|"fullRecordResponse"|"recordBatches"|"heartbeatInit"|"statusResponse"|"fetchTelemetry"|"certificateResponse"|undefined} payload
+         * @member {"deviceInfo"|"networkConfig"|"scanRecord"|"envRecord"|"fetchResponse"|"fullRecordResponse"|"recordBatches"|"heartbeatInit"|"statusResponse"|"fetchTelemetry"|"certificateResponse"|"chainResponse"|"historicalExport"|undefined} payload
          * @memberof lukuid.CommandResponse
          * @instance
          */
         Object.defineProperty(CommandResponse.prototype, "payload", {
-            get: $util.oneOfGetter($oneOfFields = ["deviceInfo", "networkConfig", "scanRecord", "envRecord", "fetchResponse", "fullRecordResponse", "recordBatches", "heartbeatInit", "statusResponse", "fetchTelemetry", "certificateResponse"]),
+            get: $util.oneOfGetter($oneOfFields = ["deviceInfo", "networkConfig", "scanRecord", "envRecord", "fetchResponse", "fullRecordResponse", "recordBatches", "heartbeatInit", "statusResponse", "fetchTelemetry", "certificateResponse", "chainResponse", "historicalExport"]),
             set: $util.oneOfSetter($oneOfFields)
         });
 
@@ -17741,6 +18968,10 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 18, wireType 0 =*/144).bool(message.hasMore);
             if (message.certificateResponse != null && Object.hasOwnProperty.call(message, "certificateResponse"))
                 $root.lukuid.GetCertificateResponse.encode(message.certificateResponse, writer.uint32(/* id 19, wireType 2 =*/154).fork()).ldelim();
+            if (message.historicalExport != null && Object.hasOwnProperty.call(message, "historicalExport"))
+                $root.lukuid.HistoricalExportResponse.encode(message.historicalExport, writer.uint32(/* id 20, wireType 2 =*/162).fork()).ldelim();
+            if (message.chainResponse != null && Object.hasOwnProperty.call(message, "chainResponse"))
+                $root.lukuid.GetChainResponse.encode(message.chainResponse, writer.uint32(/* id 21, wireType 2 =*/170).fork()).ldelim();
             return writer;
         };
 
@@ -17839,6 +19070,14 @@ export const lukuid = $root.lukuid = (() => {
                     }
                 case 19: {
                         message.certificateResponse = $root.lukuid.GetCertificateResponse.decode(reader, reader.uint32());
+                        break;
+                    }
+                case 21: {
+                        message.chainResponse = $root.lukuid.GetChainResponse.decode(reader, reader.uint32());
+                        break;
+                    }
+                case 20: {
+                        message.historicalExport = $root.lukuid.HistoricalExportResponse.decode(reader, reader.uint32());
                         break;
                     }
                 case 12: {
@@ -18019,6 +19258,26 @@ export const lukuid = $root.lukuid = (() => {
                         return "certificateResponse." + error;
                 }
             }
+            if (message.chainResponse != null && message.hasOwnProperty("chainResponse")) {
+                if (properties.payload === 1)
+                    return "payload: multiple values";
+                properties.payload = 1;
+                {
+                    let error = $root.lukuid.GetChainResponse.verify(message.chainResponse);
+                    if (error)
+                        return "chainResponse." + error;
+                }
+            }
+            if (message.historicalExport != null && message.hasOwnProperty("historicalExport")) {
+                if (properties.payload === 1)
+                    return "payload: multiple values";
+                properties.payload = 1;
+                {
+                    let error = $root.lukuid.HistoricalExportResponse.verify(message.historicalExport);
+                    if (error)
+                        return "historicalExport." + error;
+                }
+            }
             if (message.signature != null && message.hasOwnProperty("signature")) {
                 properties._signature = 1;
                 if (!(message.signature && typeof message.signature.length === "number" || $util.isString(message.signature)))
@@ -18136,6 +19395,16 @@ export const lukuid = $root.lukuid = (() => {
                     throw TypeError(".lukuid.CommandResponse.certificateResponse: object expected");
                 message.certificateResponse = $root.lukuid.GetCertificateResponse.fromObject(object.certificateResponse);
             }
+            if (object.chainResponse != null) {
+                if (typeof object.chainResponse !== "object")
+                    throw TypeError(".lukuid.CommandResponse.chainResponse: object expected");
+                message.chainResponse = $root.lukuid.GetChainResponse.fromObject(object.chainResponse);
+            }
+            if (object.historicalExport != null) {
+                if (typeof object.historicalExport !== "object")
+                    throw TypeError(".lukuid.CommandResponse.historicalExport: object expected");
+                message.historicalExport = $root.lukuid.HistoricalExportResponse.fromObject(object.historicalExport);
+            }
             if (object.signature != null)
                 if (typeof object.signature === "string")
                     $util.base64.decode(object.signature, message.signature = $util.newBuffer($util.base64.length(object.signature)), 0);
@@ -18250,6 +19519,16 @@ export const lukuid = $root.lukuid = (() => {
                 object.certificateResponse = $root.lukuid.GetCertificateResponse.toObject(message.certificateResponse, options);
                 if (options.oneofs)
                     object.payload = "certificateResponse";
+            }
+            if (message.historicalExport != null && message.hasOwnProperty("historicalExport")) {
+                object.historicalExport = $root.lukuid.HistoricalExportResponse.toObject(message.historicalExport, options);
+                if (options.oneofs)
+                    object.payload = "historicalExport";
+            }
+            if (message.chainResponse != null && message.hasOwnProperty("chainResponse")) {
+                object.chainResponse = $root.lukuid.GetChainResponse.toObject(message.chainResponse, options);
+                if (options.oneofs)
+                    object.payload = "chainResponse";
             }
             return object;
         };

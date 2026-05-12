@@ -153,6 +153,12 @@ fn encode_command_request(input: &Value) -> Option<Vec<u8>> {
             }
             write_message(&mut out, 3, &nested);
         }
+        "get_chain" => {
+            if let Some(ref_val) = first_string(source, &["ref"]) {
+                write_string(&mut nested, 1, &ref_val);
+            }
+            write_message(&mut out, 16, &nested);
+        }
         "get_certificate" => {
             if let Some(name) = first_string(source, &["name"]) {
                 write_string(&mut nested, 1, &name);
@@ -449,6 +455,16 @@ fn decode_command_response(bytes: &[u8]) -> Option<Value> {
                 let message = read_length_delimited(bytes, &mut cursor, wire_type)?;
                 let cert_res = decode_get_certificate_response(message)?;
                 out.extend(cert_res);
+            }
+            21 => {
+                let message = read_length_delimited(bytes, &mut cursor, wire_type)?;
+                let chain_res = decode_get_chain_response(message)?;
+                out.extend(chain_res);
+            }
+            20 => {
+                let message = read_length_delimited(bytes, &mut cursor, wire_type)?;
+                let export = decode_historical_export_response(message)?;
+                out.extend(export);
             }
             18 => insert_bool(bytes, &mut cursor, wire_type, &mut out, "has_more")?,
             14 => {
@@ -1306,7 +1322,13 @@ fn decode_network_config_response(bytes: &[u8]) -> Option<Value> {
             )?,
             12 => insert_string(bytes, &mut cursor, wire_type, &mut out, "mqtt_ca_der")?,
             13 => insert_u32(bytes, &mut cursor, wire_type, &mut out, "upload_mode")?,
-            14 => insert_string(bytes, &mut cursor, wire_type, &mut out, "upload_destination")?,
+            14 => insert_string(
+                bytes,
+                &mut cursor,
+                wire_type,
+                &mut out,
+                "upload_destination",
+            )?,
             15 => insert_u32(bytes, &mut cursor, wire_type, &mut out, "upload_auth")?,
             16 => insert_string(bytes, &mut cursor, wire_type, &mut out, "upload_token_key")?,
             17 => insert_u32(bytes, &mut cursor, wire_type, &mut out, "upload_token_type")?,
@@ -2268,7 +2290,10 @@ fn decode_fetch_telemetry_response(bytes: &[u8]) -> Map<String, Value> {
             }
             2 => {
                 if let Some(message) = read_length_delimited(bytes, &mut cursor, wire_type) {
-                    out.insert("signature".to_string(), Value::String(BASE64.encode(message)));
+                    out.insert(
+                        "signature".to_string(),
+                        Value::String(BASE64.encode(message)),
+                    );
                 }
             }
             3 => {
@@ -2689,4 +2714,135 @@ mod tests {
             Some("env-canonical")
         );
     }
+}
+
+fn decode_get_chain_response(bytes: &[u8]) -> Option<Map<String, Value>> {
+    let mut cursor = 0usize;
+    let mut out = Map::new();
+
+    while cursor < bytes.len() {
+        let key = read_varint(bytes, &mut cursor)?;
+        let field = (key >> 3) as u32;
+        let wire_type = (key & 0x07) as u8;
+
+        match field {
+            1 => insert_bytes(bytes, &mut cursor, wire_type, &mut out, "der")?,
+            _ => skip_field(bytes, &mut cursor, wire_type)?,
+        }
+    }
+    Some(out)
+}
+
+fn decode_historical_export_entry(bytes: &[u8]) -> Option<Value> {
+    let mut cursor = 0usize;
+    let mut out = Map::new();
+
+    while cursor < bytes.len() {
+        let key = read_varint(bytes, &mut cursor)?;
+        let field = (key >> 3) as u32;
+        let wire_type = (key & 0x07) as u8;
+
+        match field {
+            1 => {
+                let message = read_length_delimited(bytes, &mut cursor, wire_type)?;
+                let mut env = decode_environment_record(message);
+                if let Value::Object(ref mut map) = env {
+                    map.insert("type".to_string(), Value::String("environment".to_string()));
+                }
+                out.insert("record".to_string(), env);
+            }
+            2 => {
+                let message = read_length_delimited(bytes, &mut cursor, wire_type)?;
+                let mut scan = decode_scan_record(message);
+                if let Value::Object(ref mut map) = scan {
+                    map.insert("type".to_string(), Value::String("scan".to_string()));
+                }
+                out.insert("record".to_string(), scan);
+            }
+            3 => insert_string(bytes, &mut cursor, wire_type, &mut out, "device_id")?,
+            4 => insert_bytes(bytes, &mut cursor, wire_type, &mut out, "public_key")?,
+            5 => insert_string(
+                bytes,
+                &mut cursor,
+                wire_type,
+                &mut out,
+                "attestation_dac_ref",
+            )?,
+            6 => insert_string(
+                bytes,
+                &mut cursor,
+                wire_type,
+                &mut out,
+                "attestation_manufacturer_ref",
+            )?,
+            7 => insert_string(
+                bytes,
+                &mut cursor,
+                wire_type,
+                &mut out,
+                "attestation_intermediate_ref",
+            )?,
+            8 => insert_string(
+                bytes,
+                &mut cursor,
+                wire_type,
+                &mut out,
+                "heartbeat_slac_ref",
+            )?,
+            9 => insert_string(bytes, &mut cursor, wire_type, &mut out, "heartbeat_ref")?,
+            10 => insert_string(
+                bytes,
+                &mut cursor,
+                wire_type,
+                &mut out,
+                "heartbeat_intermediate_ref",
+            )?,
+            11 => insert_string(
+                bytes,
+                &mut cursor,
+                wire_type,
+                &mut out,
+                "attestation_root_fingerprint",
+            )?,
+            12 => insert_string(
+                bytes,
+                &mut cursor,
+                wire_type,
+                &mut out,
+                "heartbeat_root_fingerprint",
+            )?,
+            _ => skip_field(bytes, &mut cursor, wire_type)?,
+        }
+    }
+    Some(Value::Object(out))
+}
+
+fn decode_historical_export_response(bytes: &[u8]) -> Option<Map<String, Value>> {
+    let mut cursor = 0usize;
+    let mut entries = Vec::new();
+    let mut has_more = false;
+
+    while cursor < bytes.len() {
+        let key = read_varint(bytes, &mut cursor)?;
+        let field = (key >> 3) as u32;
+        let wire_type = (key & 0x07) as u8;
+
+        match field {
+            1 => {
+                let message = read_length_delimited(bytes, &mut cursor, wire_type)?;
+                if let Some(entry) = decode_historical_export_entry(message) {
+                    entries.push(entry);
+                }
+            }
+            2 => {
+                has_more = read_varint(bytes, &mut cursor)? != 0;
+            }
+            _ => skip_field(bytes, &mut cursor, wire_type)?,
+        }
+    }
+
+    let mut out = Map::new();
+    out.insert("entries".to_string(), Value::Array(entries));
+    out.insert("has_more".to_string(), Value::Bool(has_more));
+    Some(out)
 }
