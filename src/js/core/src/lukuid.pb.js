@@ -11829,6 +11829,9 @@ export const lukuid = $root.lukuid = (() => {
          * @property {number|null} [scoreEnv] ScanPayload scoreEnv
          * @property {string|null} [metricsKeys] ScanPayload metricsKeys
          * @property {string|null} [scanVersion] ScanPayload scanVersion
+         * @property {number|null} [countryCode] ScanPayload countryCode
+         * @property {string|null} [tagPrefix] ScanPayload tagPrefix
+         * @property {string|null} [tagCountry] ScanPayload tagCountry
          */
 
         /**
@@ -12095,6 +12098,30 @@ export const lukuid = $root.lukuid = (() => {
         ScanPayload.prototype.scanVersion = "";
 
         /**
+         * ScanPayload countryCode.
+         * @member {number} countryCode
+         * @memberof lukuid.ScanPayload
+         * @instance
+         */
+        ScanPayload.prototype.countryCode = 0;
+
+        /**
+         * ScanPayload tagPrefix.
+         * @member {string} tagPrefix
+         * @memberof lukuid.ScanPayload
+         * @instance
+         */
+        ScanPayload.prototype.tagPrefix = "";
+
+        /**
+         * ScanPayload tagCountry.
+         * @member {string} tagCountry
+         * @memberof lukuid.ScanPayload
+         * @instance
+         */
+        ScanPayload.prototype.tagCountry = "";
+
+        /**
          * Creates a new ScanPayload instance using the specified properties.
          * @function create
          * @memberof lukuid.ScanPayload
@@ -12180,6 +12207,12 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 30, wireType 2 =*/242).string(message.scanVersion);
             if (message.genesisHash != null && Object.hasOwnProperty.call(message, "genesisHash"))
                 writer.uint32(/* id 31, wireType 2 =*/250).string(message.genesisHash);
+            if (message.countryCode != null && Object.hasOwnProperty.call(message, "countryCode"))
+                writer.uint32(/* id 32, wireType 0 =*/256).uint32(message.countryCode);
+            if (message.tagPrefix != null && Object.hasOwnProperty.call(message, "tagPrefix"))
+                writer.uint32(/* id 34, wireType 2 =*/274).string(message.tagPrefix);
+            if (message.tagCountry != null && Object.hasOwnProperty.call(message, "tagCountry"))
+                writer.uint32(/* id 35, wireType 2 =*/282).string(message.tagCountry);
             return writer;
         };
 
@@ -12340,6 +12373,18 @@ export const lukuid = $root.lukuid = (() => {
                         message.scanVersion = reader.string();
                         break;
                     }
+                case 32: {
+                        message.countryCode = reader.uint32();
+                        break;
+                    }
+                case 34: {
+                        message.tagPrefix = reader.string();
+                        break;
+                    }
+                case 35: {
+                        message.tagCountry = reader.string();
+                        break;
+                    }
                 default:
                     reader.skipType(tag & 7);
                     break;
@@ -12468,6 +12513,15 @@ export const lukuid = $root.lukuid = (() => {
             if (message.scanVersion != null && message.hasOwnProperty("scanVersion"))
                 if (!$util.isString(message.scanVersion))
                     return "scanVersion: string expected";
+            if (message.countryCode != null && message.hasOwnProperty("countryCode"))
+                if (!$util.isInteger(message.countryCode))
+                    return "countryCode: integer expected";
+            if (message.tagPrefix != null && message.hasOwnProperty("tagPrefix"))
+                if (!$util.isString(message.tagPrefix))
+                    return "tagPrefix: string expected";
+            if (message.tagCountry != null && message.hasOwnProperty("tagCountry"))
+                if (!$util.isString(message.tagCountry))
+                    return "tagCountry: string expected";
             return null;
         };
 
@@ -12566,6 +12620,12 @@ export const lukuid = $root.lukuid = (() => {
                 message.metricsKeys = String(object.metricsKeys);
             if (object.scanVersion != null)
                 message.scanVersion = String(object.scanVersion);
+            if (object.countryCode != null)
+                message.countryCode = object.countryCode >>> 0;
+            if (object.tagPrefix != null)
+                message.tagPrefix = String(object.tagPrefix);
+            if (object.tagCountry != null)
+                message.tagCountry = String(object.tagCountry);
             return message;
         };
 
@@ -12626,6 +12686,9 @@ export const lukuid = $root.lukuid = (() => {
                 object.metricsKeys = "";
                 object.scanVersion = "";
                 object.genesisHash = "";
+                object.countryCode = 0;
+                object.tagPrefix = "";
+                object.tagCountry = "";
             }
             if (message.ctr != null && message.hasOwnProperty("ctr"))
                 if (typeof message.ctr === "number")
@@ -12698,6 +12761,12 @@ export const lukuid = $root.lukuid = (() => {
                 object.scanVersion = message.scanVersion;
             if (message.genesisHash != null && message.hasOwnProperty("genesisHash"))
                 object.genesisHash = message.genesisHash;
+            if (message.countryCode != null && message.hasOwnProperty("countryCode"))
+                object.countryCode = message.countryCode;
+            if (message.tagPrefix != null && message.hasOwnProperty("tagPrefix"))
+                object.tagPrefix = message.tagPrefix;
+            if (message.tagCountry != null && message.hasOwnProperty("tagCountry"))
+                object.tagCountry = message.tagCountry;
             return object;
         };
 
@@ -15824,6 +15893,9 @@ export const lukuid = $root.lukuid = (() => {
          * @property {string|null} [genesisHash] EnvironmentPayload genesisHash
          * @property {number|null} [batteryPercent] EnvironmentPayload batteryPercent
          * @property {number|null} [initialTempC] EnvironmentPayload initialTempC
+         * @property {number|null} [vbus] EnvironmentPayload vbus
+         * @property {number|null} [clkVar] EnvironmentPayload clkVar
+         * @property {number|null} [drift] EnvironmentPayload drift
          */
 
         /**
@@ -15977,6 +16049,30 @@ export const lukuid = $root.lukuid = (() => {
          */
         EnvironmentPayload.prototype.initialTempC = null;
 
+        /**
+         * EnvironmentPayload vbus.
+         * @member {number} vbus
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.vbus = 0;
+
+        /**
+         * EnvironmentPayload clkVar.
+         * @member {number} clkVar
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.clkVar = 0;
+
+        /**
+         * EnvironmentPayload drift.
+         * @member {number} drift
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.drift = 0;
+
         // OneOf field names bound to virtual getters and setters
         let $oneOfFields;
 
@@ -16044,6 +16140,12 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 16, wireType 0 =*/128).uint32(message.batteryPercent);
             if (message.initialTempC != null && Object.hasOwnProperty.call(message, "initialTempC"))
                 writer.uint32(/* id 17, wireType 5 =*/141).float(message.initialTempC);
+            if (message.vbus != null && Object.hasOwnProperty.call(message, "vbus"))
+                writer.uint32(/* id 18, wireType 0 =*/144).uint32(message.vbus);
+            if (message.clkVar != null && Object.hasOwnProperty.call(message, "clkVar"))
+                writer.uint32(/* id 19, wireType 0 =*/152).uint32(message.clkVar);
+            if (message.drift != null && Object.hasOwnProperty.call(message, "drift"))
+                writer.uint32(/* id 20, wireType 0 =*/160).int32(message.drift);
             return writer;
         };
 
@@ -16148,6 +16250,18 @@ export const lukuid = $root.lukuid = (() => {
                         message.initialTempC = reader.float();
                         break;
                     }
+                case 18: {
+                        message.vbus = reader.uint32();
+                        break;
+                    }
+                case 19: {
+                        message.clkVar = reader.uint32();
+                        break;
+                    }
+                case 20: {
+                        message.drift = reader.int32();
+                        break;
+                    }
                 default:
                     reader.skipType(tag & 7);
                     break;
@@ -16239,6 +16353,15 @@ export const lukuid = $root.lukuid = (() => {
                 if (typeof message.initialTempC !== "number")
                     return "initialTempC: number expected";
             }
+            if (message.vbus != null && message.hasOwnProperty("vbus"))
+                if (!$util.isInteger(message.vbus))
+                    return "vbus: integer expected";
+            if (message.clkVar != null && message.hasOwnProperty("clkVar"))
+                if (!$util.isInteger(message.clkVar))
+                    return "clkVar: integer expected";
+            if (message.drift != null && message.hasOwnProperty("drift"))
+                if (!$util.isInteger(message.drift))
+                    return "drift: integer expected";
             return null;
         };
 
@@ -16312,6 +16435,12 @@ export const lukuid = $root.lukuid = (() => {
                 message.batteryPercent = object.batteryPercent >>> 0;
             if (object.initialTempC != null)
                 message.initialTempC = Number(object.initialTempC);
+            if (object.vbus != null)
+                message.vbus = object.vbus >>> 0;
+            if (object.clkVar != null)
+                message.clkVar = object.clkVar >>> 0;
+            if (object.drift != null)
+                message.drift = object.drift | 0;
             return message;
         };
 
@@ -16357,6 +16486,9 @@ export const lukuid = $root.lukuid = (() => {
                 object.vbusPresent = false;
                 object.genesisHash = "";
                 object.batteryPercent = 0;
+                object.vbus = 0;
+                object.clkVar = 0;
+                object.drift = 0;
             }
             if (message.ctr != null && message.hasOwnProperty("ctr"))
                 if (typeof message.ctr === "number")
@@ -16404,6 +16536,12 @@ export const lukuid = $root.lukuid = (() => {
                 if (options.oneofs)
                     object._initialTempC = "initialTempC";
             }
+            if (message.vbus != null && message.hasOwnProperty("vbus"))
+                object.vbus = message.vbus;
+            if (message.clkVar != null && message.hasOwnProperty("clkVar"))
+                object.clkVar = message.clkVar;
+            if (message.drift != null && message.hasOwnProperty("drift"))
+                object.drift = message.drift;
             return object;
         };
 

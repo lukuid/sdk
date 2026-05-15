@@ -386,6 +386,9 @@ message ScanPayload {
 
   string metrics_keys = 29;
   string scan_version = 30;
+  uint32 country_code = 32;
+  string tag_prefix = 34;
+  string tag_country = 35;
 }
 
 message DeviceInfo {
@@ -510,6 +513,9 @@ message EnvironmentPayload {
   string genesis_hash = 15;
   uint32 battery_percent = 16;
   optional float initial_temp_c = 17;
+  uint32 vbus = 18;
+  uint32 clk_var = 19;
+  int32 drift = 20;
 }
 
 message EnvironmentRecord {

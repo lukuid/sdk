@@ -4241,6 +4241,15 @@ export namespace lukuid {
 
         /** ScanPayload scanVersion */
         scanVersion?: (string|null);
+
+        /** ScanPayload countryCode */
+        countryCode?: (number|null);
+
+        /** ScanPayload tagPrefix */
+        tagPrefix?: (string|null);
+
+        /** ScanPayload tagCountry */
+        tagCountry?: (string|null);
     }
 
     /** Represents a ScanPayload. */
@@ -4344,6 +4353,15 @@ export namespace lukuid {
 
         /** ScanPayload scanVersion. */
         public scanVersion: string;
+
+        /** ScanPayload countryCode. */
+        public countryCode: number;
+
+        /** ScanPayload tagPrefix. */
+        public tagPrefix: string;
+
+        /** ScanPayload tagCountry. */
+        public tagCountry: string;
 
         /**
          * Creates a new ScanPayload instance using the specified properties.
@@ -5509,6 +5527,15 @@ export namespace lukuid {
 
         /** EnvironmentPayload initialTempC */
         initialTempC?: (number|null);
+
+        /** EnvironmentPayload vbus */
+        vbus?: (number|null);
+
+        /** EnvironmentPayload clkVar */
+        clkVar?: (number|null);
+
+        /** EnvironmentPayload drift */
+        drift?: (number|null);
     }
 
     /** Represents an EnvironmentPayload. */
@@ -5570,6 +5597,15 @@ export namespace lukuid {
 
         /** EnvironmentPayload initialTempC. */
         public initialTempC?: (number|null);
+
+        /** EnvironmentPayload vbus. */
+        public vbus: number;
+
+        /** EnvironmentPayload clkVar. */
+        public clkVar: number;
+
+        /** EnvironmentPayload drift. */
+        public drift: number;
 
         /**
          * Creates a new EnvironmentPayload instance using the specified properties.
