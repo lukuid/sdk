@@ -1164,6 +1164,9 @@ function decodeEnvironmentPayload(payload: Uint8Array): JsonRecord {
       case 12: assignBool(payload, cursor, wireType, out, 'tamper'); break;
       case 13: assignBool(payload, cursor, wireType, out, 'wake_event'); break;
       case 14: assignBool(payload, cursor, wireType, out, 'vbus_present'); break;
+      case 15: assignString(payload, cursor, wireType, out, 'genesis_hash'); break;
+      case 16: assignUint32(payload, cursor, wireType, out, 'battery_percent'); break;
+      case 17: assignFloat32(payload, cursor, wireType, out, 'initial_temp_c'); break;
       default: skipField(payload, cursor, wireType); break;
     }
   }

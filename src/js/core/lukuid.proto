@@ -176,6 +176,14 @@ message FetchTelemetryResponse {
   optional int32 row_count = 6;
 }
 
+message GetCertificateRequest {
+  string name = 1;
+}
+
+message GetCertificateResponse {
+  bytes der = 1;
+}
+
 
 message GetChainRequest {
   string ref = 1;
@@ -223,6 +231,8 @@ message CommandRequest {
     ScanEnableRequest scan_enable = 12;
     GenerateHeartbeatRequest generate_heartbeat = 13;
     FetchTelemetryRequest fetch_telemetry = 14;
+    GetCertificateRequest get_certificate = 15;
+    GetChainRequest get_chain = 16;
   }
 }
 
@@ -499,6 +509,7 @@ message EnvironmentPayload {
   bool vbus_present = 14;
   string genesis_hash = 15;
   uint32 battery_percent = 16;
+  optional float initial_temp_c = 17;
 }
 
 message EnvironmentRecord {
@@ -574,6 +585,9 @@ message CommandResponse {
     HeartbeatInitResponse heartbeat_init = 14;
     StatusResponse status_response = 16;
     FetchTelemetryResponse fetch_telemetry = 17;
+    GetCertificateResponse certificate_response = 19;
+    GetChainResponse chain_response = 21;
+    HistoricalExportResponse historical_export = 20;
   }
 
   optional bytes signature = 12;

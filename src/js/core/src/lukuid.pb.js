@@ -15823,6 +15823,7 @@ export const lukuid = $root.lukuid = (() => {
          * @property {boolean|null} [vbusPresent] EnvironmentPayload vbusPresent
          * @property {string|null} [genesisHash] EnvironmentPayload genesisHash
          * @property {number|null} [batteryPercent] EnvironmentPayload batteryPercent
+         * @property {number|null} [initialTempC] EnvironmentPayload initialTempC
          */
 
         /**
@@ -15969,6 +15970,23 @@ export const lukuid = $root.lukuid = (() => {
         EnvironmentPayload.prototype.batteryPercent = 0;
 
         /**
+         * EnvironmentPayload initialTempC.
+         * @member {number|null|undefined} initialTempC
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.initialTempC = null;
+
+        // OneOf field names bound to virtual getters and setters
+        let $oneOfFields;
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_initialTempC", {
+            get: $util.oneOfGetter($oneOfFields = ["initialTempC"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        /**
          * Creates a new EnvironmentPayload instance using the specified properties.
          * @function create
          * @memberof lukuid.EnvironmentPayload
@@ -16024,6 +16042,8 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 15, wireType 2 =*/122).string(message.genesisHash);
             if (message.batteryPercent != null && Object.hasOwnProperty.call(message, "batteryPercent"))
                 writer.uint32(/* id 16, wireType 0 =*/128).uint32(message.batteryPercent);
+            if (message.initialTempC != null && Object.hasOwnProperty.call(message, "initialTempC"))
+                writer.uint32(/* id 17, wireType 5 =*/141).float(message.initialTempC);
             return writer;
         };
 
@@ -16124,6 +16144,10 @@ export const lukuid = $root.lukuid = (() => {
                         message.batteryPercent = reader.uint32();
                         break;
                     }
+                case 17: {
+                        message.initialTempC = reader.float();
+                        break;
+                    }
                 default:
                     reader.skipType(tag & 7);
                     break;
@@ -16159,6 +16183,7 @@ export const lukuid = $root.lukuid = (() => {
         EnvironmentPayload.verify = function verify(message) {
             if (typeof message !== "object" || message === null)
                 return "object expected";
+            let properties = {};
             if (message.ctr != null && message.hasOwnProperty("ctr"))
                 if (!$util.isInteger(message.ctr) && !(message.ctr && $util.isInteger(message.ctr.low) && $util.isInteger(message.ctr.high)))
                     return "ctr: integer|Long expected";
@@ -16209,6 +16234,11 @@ export const lukuid = $root.lukuid = (() => {
             if (message.batteryPercent != null && message.hasOwnProperty("batteryPercent"))
                 if (!$util.isInteger(message.batteryPercent))
                     return "batteryPercent: integer expected";
+            if (message.initialTempC != null && message.hasOwnProperty("initialTempC")) {
+                properties._initialTempC = 1;
+                if (typeof message.initialTempC !== "number")
+                    return "initialTempC: number expected";
+            }
             return null;
         };
 
@@ -16280,6 +16310,8 @@ export const lukuid = $root.lukuid = (() => {
                 message.genesisHash = String(object.genesisHash);
             if (object.batteryPercent != null)
                 message.batteryPercent = object.batteryPercent >>> 0;
+            if (object.initialTempC != null)
+                message.initialTempC = Number(object.initialTempC);
             return message;
         };
 
@@ -16367,6 +16399,11 @@ export const lukuid = $root.lukuid = (() => {
                 object.genesisHash = message.genesisHash;
             if (message.batteryPercent != null && message.hasOwnProperty("batteryPercent"))
                 object.batteryPercent = message.batteryPercent;
+            if (message.initialTempC != null && message.hasOwnProperty("initialTempC")) {
+                object.initialTempC = options.json && !isFinite(message.initialTempC) ? String(message.initialTempC) : message.initialTempC;
+                if (options.oneofs)
+                    object._initialTempC = "initialTempC";
+            }
             return object;
         };
 

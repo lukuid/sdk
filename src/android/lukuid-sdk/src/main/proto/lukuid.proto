@@ -509,6 +509,7 @@ message EnvironmentPayload {
   bool vbus_present = 14;
   string genesis_hash = 15;
   uint32 battery_percent = 16;
+  optional float initial_temp_c = 17;
 }
 
 message EnvironmentRecord {

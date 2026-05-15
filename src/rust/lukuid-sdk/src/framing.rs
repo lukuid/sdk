@@ -250,7 +250,10 @@ fn encode_command_request(input: &Value) -> Option<Vec<u8>> {
             if let Some(v) = source.get("custom_heartbeat_url").and_then(Value::as_str) {
                 write_string(&mut nested, 13, v);
             }
-            if let Some(v) = source.get("telemetry_enabled").and_then(Value::as_bool) {
+            if let Some(v) = source
+                .get("network_participation_enabled")
+                .and_then(Value::as_bool)
+            {
                 write_bool(&mut nested, 14, v);
             }
             if let Some(v) = as_u32(source.get("upload_mode")) {
@@ -1650,6 +1653,12 @@ fn decode_environment_payload(bytes: &[u8]) -> Value {
             15 => {
                 let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "genesis_hash");
             }
+            16 => {
+                let _ = insert_u32(bytes, &mut cursor, wire_type, &mut out, "battery_percent");
+            }
+            17 => {
+                let _ = insert_f32(bytes, &mut cursor, wire_type, &mut out, "initial_temp_c");
+            }
             _ => {
                 let _ = skip_field(bytes, &mut cursor, wire_type);
             }
@@ -2713,6 +2722,47 @@ mod tests {
                 .and_then(Value::as_str),
             Some("env-canonical")
         );
+    }
+
+    #[test]
+    fn encode_config_request_includes_network_participation_flag() {
+        let encoded = encode_command_request(&json!({
+            "action": "config",
+            "opts": {
+                "network_participation_enabled": true
+            }
+        }))
+        .expect("encoded config request");
+
+        let mut cursor = 0usize;
+        let mut config_message = None;
+
+        while cursor < encoded.len() {
+            let key = read_varint(&encoded, &mut cursor).expect("top-level key");
+            let field = (key >> 3) as u32;
+            let wire_type = (key & 0x07) as u8;
+
+            match field {
+                5 => {
+                    config_message = Some(
+                        read_length_delimited(&encoded, &mut cursor, wire_type)
+                            .expect("config message")
+                            .to_vec(),
+                    );
+                }
+                _ => skip_field(&encoded, &mut cursor, wire_type).expect("skip field"),
+            }
+        }
+
+        let config_message = config_message.expect("config payload");
+        let mut config_cursor = 0usize;
+        let key = read_varint(&config_message, &mut config_cursor).expect("config field key");
+        let field = (key >> 3) as u32;
+        let wire_type = (key & 0x07) as u8;
+
+        assert_eq!(field, 14);
+        assert_eq!(wire_type, WIRE_VARINT);
+        assert_eq!(read_varint(&config_message, &mut config_cursor), Some(1));
     }
 }
 

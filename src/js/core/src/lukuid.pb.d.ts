@@ -5506,6 +5506,9 @@ export namespace lukuid {
 
         /** EnvironmentPayload batteryPercent */
         batteryPercent?: (number|null);
+
+        /** EnvironmentPayload initialTempC */
+        initialTempC?: (number|null);
     }
 
     /** Represents an EnvironmentPayload. */
@@ -5564,6 +5567,9 @@ export namespace lukuid {
 
         /** EnvironmentPayload batteryPercent. */
         public batteryPercent: number;
+
+        /** EnvironmentPayload initialTempC. */
+        public initialTempC?: (number|null);
 
         /**
          * Creates a new EnvironmentPayload instance using the specified properties.
