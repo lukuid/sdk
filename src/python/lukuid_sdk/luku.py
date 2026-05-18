@@ -18,11 +18,14 @@ from .attestation import (
     ExternalIdentityInputs,
     generate_signer,
     pem_from_der_string,
+    public_key_matches_ed25519_certificate_leaf,
     public_key_base64_from_private_key_pem,
     sign_detached,
+    validate_certificate_chain,
     verify_detached_signature,
     verify_device_attestation,
     verify_external_identity,
+    verify_payload_signature_with_public_key,
 )
 
 LUKU_MIMETYPE = "application/vnd.lukuid.package+zip"
@@ -180,6 +183,8 @@ class LukuBlock:
     heartbeat_der: str | None = None
     heartbeat_intermediate_der: str | None = None
     heartbeat_root_fingerprint: str | None = None
+    attestation_dac_signature: str | None = None
+    heartbeat_signature: str | None = None
 
     @classmethod
     def from_json(cls, value: dict[str, Any]) -> "LukuBlock":
@@ -200,6 +205,8 @@ class LukuBlock:
             heartbeat_der=value.get("heartbeat_der"),
             heartbeat_intermediate_der=value.get("heartbeat_intermediate_der"),
             heartbeat_root_fingerprint=value.get("heartbeat_root_fingerprint"),
+            attestation_dac_signature=value.get("attestation_dac_signature"),
+            heartbeat_signature=value.get("heartbeat_signature"),
         )
 
     def json_object(self) -> dict[str, Any]:
@@ -228,9 +235,14 @@ class LukuBlock:
             data["heartbeat_der"] = self.heartbeat_der
         if self.heartbeat_intermediate_der is not None:
             data["heartbeat_intermediate_der"] = self.heartbeat_intermediate_der
-        if self.heartbeat_root_fingerprint is not None:
+        if self.heartbeat_root_fingerprint:
             data["heartbeat_root_fingerprint"] = self.heartbeat_root_fingerprint
+        if self.attestation_dac_signature:
+            data["attestation_dac_signature"] = self.attestation_dac_signature
+        if self.heartbeat_signature:
+            data["heartbeat_signature"] = self.heartbeat_signature
         return data
+
 
 
 class LukuArchive:
@@ -416,7 +428,7 @@ class LukuArchive:
                         ]
                         if entry
                     )
-                attestation_sig = str(identity.get("signature", ""))
+                attestation_sig = str(identity.get("dac_signature") or "")
                 if not attestation_chain:
                     if not options.allow_untrusted_roots:
                         issues.append(_issue("ATTESTATION_CHAIN_MISSING", f"Missing DAC attestation chain for device {device_id}.", Criticality.WARNING))
@@ -435,6 +447,39 @@ class LukuArchive:
                     )
                     if not result.ok:
                         issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id} failed DAC attestation: {result.reason}", Criticality.CRITICAL))
+
+                # Heartbeat (SLAC) Verification
+                if not options.allow_untrusted_roots:
+                    from .attestation import verify_heartbeat_attestation, HeartbeatAttestationInputs
+                    
+                    heartbeat_chain = "".join(
+                        entry
+                        for entry in [
+                            pem_from_der_string(str(identity.get("slac_der") or block.heartbeat_slac_der or "")),
+                            pem_from_der_string(str(identity.get("heartbeat_der") or block.heartbeat_der or "")),
+                            pem_from_der_string(str(identity.get("heartbeat_intermediate_der") or block.heartbeat_intermediate_der or "")),
+                        ]
+                        if entry
+                    )
+                    
+                    heartbeat_sig = str(identity.get("heartbeat_signature") or "")
+                    last_sync_utc = _uint64(identity.get("last_sync_utc")) or 0
+                    
+                    if heartbeat_chain and heartbeat_sig:
+                        hb_result = verify_heartbeat_attestation(
+                            HeartbeatAttestationInputs(
+                                id=device_id,
+                                heartbeat_sig=heartbeat_sig,
+                                last_sync_utc=last_sync_utc,
+                                certificate_chain=heartbeat_chain,
+                                trust_profile=options.trust_profile,
+                            ),
+                            revocation_manager=options.revocation_manager,
+                        )
+                        if not hb_result.ok:
+                            issues.append(_issue("HEARTBEAT_VERIFICATION_FAILED", f"Device {device_id} failed SLAC heartbeat verification: {hb_result.reason}", Criticality.CRITICAL))
+                    elif heartbeat_sig:
+                        issues.append(_issue("HEARTBEAT_CHAIN_MISSING", f"Missing SLAC heartbeat chain for device {device_id}.", Criticality.WARNING))
 
                 if not canonical_string:
                     issues.append(_issue("RECORD_CANONICAL_MISSING", f"Record type {record_type} on device {device_id} does not include a canonical_string.", Criticality.WARNING if is_compat_attachment else Criticality.CRITICAL))
@@ -586,26 +631,66 @@ class LukuFile:
                 if entry
             )
             
-        attestation_sig = str(envelope.get("attestation_signature") or identity.get("signature") or "")
-
         if not attestation_chain:
             if not options.allow_untrusted_roots:
                 issues.append(_issue("ATTESTATION_CHAIN_MISSING", f"Missing DAC attestation chain for device {device_id or 'unknown'}.", Criticality.WARNING))
-        elif not is_aux or attestation_sig:
-            result = verify_device_attestation(
-                DeviceAttestationInputs(
-                    id=device_id or "unknown",
-                    key=public_key,
-                    attestation_sig=attestation_sig,
-                    certificate_chain=attestation_chain,
-                    created=None if options.skip_certificate_temporal_checks else timestamp,
-                    trust_profile=options.trust_profile,
-                    allow_untrusted_roots=options.allow_untrusted_roots,
-                ),
-                revocation_manager=options.revocation_manager
+        else:
+            result = validate_certificate_chain(
+                attestation_chain,
+                created=None if options.skip_certificate_temporal_checks else timestamp,
+                trust_profile=options.trust_profile,
+                allow_untrusted_roots=options.allow_untrusted_roots,
+                revocation_manager=options.revocation_manager,
             )
             if not result.ok:
                 issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed DAC attestation: {result.reason}", Criticality.CRITICAL))
+            elif public_key and result.certificates and not public_key_matches_ed25519_certificate_leaf(result.certificates[0], public_key):
+                issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed DAC attestation: Certificate leaf public key does not match envelope public_key", Criticality.CRITICAL))
+
+        slac = str(envelope.get("heartbeat_slac_der") or identity.get("hb_slac_der") or identity.get("heartbeat_slac_der") or "")
+        hb_man = str(envelope.get("heartbeat_der") or identity.get("hb_der") or identity.get("heartbeat_der") or "")
+        hb_int = str(envelope.get("heartbeat_intermediate_der") or identity.get("hb_intermediate_der") or identity.get("heartbeat_intermediate_der") or "")
+
+        if slac:
+            slac_chain = "".join(
+                entry
+                for entry in [
+                    pem_from_der_string(slac),
+                    pem_from_der_string(hb_man),
+                    pem_from_der_string(hb_int),
+                ]
+                if entry
+            )
+            if slac_chain:
+                chain_result = validate_certificate_chain(
+                    slac_chain,
+                    created=None if options.skip_certificate_temporal_checks else timestamp,
+                    trust_profile=options.trust_profile,
+                    allow_untrusted_roots=options.allow_untrusted_roots,
+                    revocation_manager=options.revocation_manager,
+                )
+                if not chain_result.ok:
+                    issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed SLAC (heartbeat) attestation: {chain_result.reason}", Criticality.CRITICAL))
+                elif public_key and chain_result.certificates and not public_key_matches_ed25519_certificate_leaf(chain_result.certificates[0], public_key):
+                    issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed SLAC (heartbeat) attestation: SLAC leaf public key does not match envelope public_key", Criticality.CRITICAL))
+                else:
+                    slac_signature = str(envelope.get("heartbeat_signature") or identity.get("heartbeat_signature") or "")
+                    if slac_signature:
+                        last_sync_utc = _uint64(identity.get("last_sync_utc")) or _uint64(envelope.get("last_sync_utc"))
+                        if last_sync_utc is None or last_sync_utc <= 0:
+                            issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed SLAC (heartbeat) attestation: Missing trusted heartbeat timestamp", Criticality.CRITICAL))
+                        elif timestamp is not None and last_sync_utc > timestamp:
+                            issues.append(_issue("LAST_SYNC_AFTER_RECORD", f"Device {device_id or 'unknown'} reports last_sync_utc {last_sync_utc} after record timestamp {timestamp}.", Criticality.CRITICAL))
+                        elif not chain_result.certificates or len(chain_result.certificates) < 2:
+                            issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed SLAC (heartbeat) attestation: Heartbeat authority certificate missing from chain", Criticality.CRITICAL))
+                        else:
+                            slac_result = verify_payload_signature_with_public_key(
+                                chain_result.certificates[1].public_key(),
+                                slac_signature,
+                                f"heartbeat:{device_id or 'unknown'}:{last_sync_utc}".encode("utf-8"),
+                            )
+                            if not slac_result.ok:
+                                issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed SLAC (heartbeat) attestation: {slac_result.reason}", Criticality.CRITICAL))
 
         if not canonical_string:
             issues.append(_issue("RECORD_CANONICAL_MISSING", f"Record type {record_type} does not include a canonical_string.", Criticality.CRITICAL))
@@ -908,6 +993,8 @@ class LukuFile:
             heartbeat_der=common_identity_value("heartbeat_der") or (common_certs or {}).get("heartbeat_der"),
             heartbeat_intermediate_der=common_identity_value("heartbeat_intermediate_der") or (common_certs or {}).get("heartbeat_intermediate_der"),
             heartbeat_root_fingerprint=common_identity_value("heartbeat_root_fingerprint") or (common_certs or {}).get("heartbeat_root_fingerprint"),
+            attestation_dac_signature=common_identity_value("dac_signature") or (common_certs or {}).get("dac_signature"),
+            heartbeat_signature=common_identity_value("heartbeat_signature") or (common_certs or {}).get("heartbeat_signature"),
             batch=normalized_batch,
         )
         fields = _recompute_block_fields(block)

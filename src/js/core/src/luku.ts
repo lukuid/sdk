@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
 import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js';
-import { verifyDeviceAttestation, verifyExternalIdentity } from './attestation.js';
+import {
+  verifyDeviceAttestation,
+  verifyExternalIdentity,
+  validateCertificateChain,
+  spkiMatchesEd25519PublicKey,
+  verifyPayloadSignatureWithSpki
+} from './attestation.js';
 import type { SelfTestResult } from './types.js';
 
 export const LUKU_MIMETYPE = 'application/vnd.lukuid.package+zip';
@@ -40,6 +46,8 @@ export interface LukuBlock {
   heartbeat_der?: string | null;
   heartbeat_intermediate_der?: string | null;
   heartbeat_root_fingerprint?: string | null;
+  attestation_dac_signature?: string | null;
+  heartbeat_signature?: string | null;
   batch: JsonObject[];
   batch_hash: string;
   block_canonical_string: string;
@@ -548,21 +556,18 @@ export class LukuFile {
           .join('');
       }
 
-      const attestationSignature = asString(envelope.attestation_signature) ?? asString(identity?.signature) ?? '';
-
       if (attestationChain.length === 0) {
         issues.push(issue('ATTESTATION_CHAIN_MISSING', `Missing DAC attestation chain for device ${deviceId ?? 'unknown'}.`, 'warning'));
-      } else if (!isAuxRecord || attestationSignature.length > 0) {
-        const result = await verifyDeviceAttestation({
-          id: deviceId ?? 'unknown',
-          key: publicKey ?? '',
-          attestationSig: attestationSignature,
+      } else {
+        const chainResult = await validateCertificateChain({
           certificateChain: attestationChain,
           created: skipCertificateTemporalChecks ? undefined : timestamp,
           trustProfile
         });
-        if (!result.ok) {
-          issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed DAC attestation: ${result.reason ?? 'unknown error'}`, 'critical'));
+        if (!chainResult.ok) {
+          issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed DAC attestation: ${chainResult.reason ?? 'unknown error'}`, 'critical'));
+        } else if (publicKey && chainResult.certSpkis?.[0] && !spkiMatchesEd25519PublicKey(chainResult.certSpkis[0], publicKey)) {
+          issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed DAC attestation: Certificate leaf public key does not match envelope public_key`, 'critical'));
         }
       }
 
@@ -581,17 +586,36 @@ export class LukuFile {
           .join('');
 
         if (slacChain.length > 0) {
-          const slacSignature = asString(envelope.heartbeat_signature) ?? asString(identity?.heartbeat_signature) ?? attestationSignature;
-          const slacResult = await verifyDeviceAttestation({
-            id: deviceId ?? 'unknown',
-            key: publicKey ?? '',
-            attestationSig: slacSignature,
+          const chainResult = await validateCertificateChain({
             certificateChain: slacChain,
             created: skipCertificateTemporalChecks ? undefined : timestamp,
             trustProfile
           });
-          if (!slacResult.ok) {
-            issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed SLAC (heartbeat) attestation: ${slacResult.reason ?? 'unknown error'}`, 'critical'));
+          if (!chainResult.ok) {
+            issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed SLAC (heartbeat) attestation: ${chainResult.reason ?? 'unknown error'}`, 'critical'));
+          } else if (publicKey && chainResult.certSpkis?.[0] && !spkiMatchesEd25519PublicKey(chainResult.certSpkis[0], publicKey)) {
+            issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed SLAC (heartbeat) attestation: SLAC leaf public key does not match envelope public_key`, 'critical'));
+          } else {
+            const slacSignature = asString(envelope.heartbeat_signature) ?? asString(identity?.heartbeat_signature) ?? '';
+            if (slacSignature.length > 0) {
+              const lastSyncUtc = asNumber(identity?.last_sync_utc) ?? asNumber(envelope.last_sync_utc);
+              if (lastSyncUtc === undefined || lastSyncUtc <= 0) {
+                issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed SLAC (heartbeat) attestation: Missing trusted heartbeat timestamp`, 'critical'));
+              } else if (timestamp !== undefined && lastSyncUtc > timestamp) {
+                issues.push(issue('LAST_SYNC_AFTER_RECORD', `Device ${deviceId ?? 'unknown'} reports last_sync_utc ${lastSyncUtc} after record timestamp ${timestamp}.`, 'critical'));
+              } else if (chainResult.certSpkis && chainResult.certSpkis.length > 1) {
+                const slacResult = await verifyPayloadSignatureWithSpki(
+                  chainResult.certSpkis[1],
+                  slacSignature,
+                  `heartbeat:${deviceId ?? 'unknown'}:${lastSyncUtc}`
+                );
+                if (!slacResult.ok) {
+                  issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed SLAC (heartbeat) attestation: ${slacResult.reason ?? 'unknown error'}`, 'critical'));
+                }
+              } else {
+                issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed SLAC (heartbeat) attestation: Heartbeat authority certificate missing from chain`, 'critical'));
+              }
+            }
           }
         }
       }
@@ -1162,7 +1186,7 @@ export class LukuFile {
                 .join('');
             }
           }
-          const attestationSignature = asString(identity?.signature) ?? '';
+          const attestationSignature = asString(identity?.dac_signature) ?? '';
 
           if (attestationChain.length === 0) {
             issues.push(issue('ATTESTATION_CHAIN_MISSING', `Missing DAC attestation chain for device ${deviceId}.`, 'warning'));
@@ -1177,6 +1201,49 @@ export class LukuFile {
             });
             if (!result.ok) {
               issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId} failed DAC attestation: ${result.reason ?? 'unknown error'}`, 'critical'));
+            }
+          }
+
+          // Heartbeat (SLAC) Verification
+          let heartbeatChain = [
+            pemFromDerBase64(block.heartbeat_slac_der),
+            pemFromDerBase64(block.heartbeat_der),
+            pemFromDerBase64(block.heartbeat_intermediate_der)
+          ]
+            .filter((value): value is string => Boolean(value))
+            .join('');
+
+          if (identity) {
+            const recordLevelSlac = pemFromDerBase64(asString(identity.slac_der));
+            if (recordLevelSlac) {
+              heartbeatChain = [
+                recordLevelSlac,
+                pemFromDerBase64(asString(identity.heartbeat_der)),
+                pemFromDerBase64(asString(identity.heartbeat_intermediate_der))
+              ]
+                .filter((value): value is string => Boolean(value))
+                .join('');
+            }
+          }
+
+          const heartbeatSignature = asString(identity?.heartbeat_signature) ?? '';
+          const lastSyncUtc = asNumber(identity?.last_sync_utc) ?? 0;
+
+          if (heartbeatChain.length === 0) {
+            if (heartbeatSignature.length > 0) {
+              issues.push(issue('HEARTBEAT_CHAIN_MISSING', `Missing SLAC heartbeat chain for device ${deviceId}.`, 'warning'));
+            }
+          } else if (heartbeatSignature.length > 0) {
+            const { verifyHeartbeatAttestation } = await import('./attestation.js');
+            const result = await verifyHeartbeatAttestation({
+              id: deviceId,
+              heartbeatSig: heartbeatSignature,
+              lastSyncUtc,
+              certificateChain: heartbeatChain,
+              trustProfile
+            });
+            if (!result.ok) {
+              issues.push(issue('HEARTBEAT_VERIFICATION_FAILED', `Device ${deviceId} failed SLAC heartbeat verification: ${result.reason ?? 'unknown error'}`, 'critical'));
             }
           }
         }

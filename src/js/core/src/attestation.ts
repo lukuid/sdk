@@ -18,6 +18,18 @@ export interface DeviceAttestationResult {
   reason?: string;
 }
 
+export interface CertificateChainValidationInputs {
+  certificateChain: string;
+  created?: number;
+  trustProfile?: string;
+}
+
+export interface CertificateChainValidationResult {
+  ok: boolean;
+  reason?: string;
+  certSpkis?: Uint8Array[];
+}
+
 export interface ExternalIdentityInputs {
   endorserId: string;
   rootFingerprint: string;
@@ -182,6 +194,13 @@ function decodeBase64(value: string): Uint8Array | null {
     return null;
   }
 }
+
+const ED25519_SPKI_PREFIX = Uint8Array.from([0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00]);
+const P256_SPKI_PREFIX = Uint8Array.from([
+  0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02,
+  0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x03,
+  0x42, 0x00
+]);
 
 interface ParsedCertificate {
   certDer: Uint8Array;
@@ -432,6 +451,14 @@ function getSubtleCrypto(): SubtleCrypto {
 
 import { RevocationManager } from './revocation.js';
 
+export interface HeartbeatAttestationInputs {
+  id: string;
+  heartbeatSig: string;
+  lastSyncUtc: number;
+  certificateChain?: string;
+  trustProfile?: string;
+}
+
 export async function verifyDeviceAttestation(
   inputs: DeviceAttestationInputs,
   revocationManager?: RevocationManager
@@ -441,170 +468,18 @@ export async function verifyDeviceAttestation(
   }
 
   const payloadString = `${inputs.id}:${inputs.key}`;
-  
-  // 1. Walk and Verify the Chain (if provided)
   let leafSpki: Uint8Array | null = null;
 
   if (inputs.certificateChain) {
-    try {
-      const requiredOu = (() => {
-        switch (inputs.trustProfile) {
-          case 'dev':
-            return 'lukuid-dev';
-          case 'test':
-            return 'lukuid-test';
-          case 'prod':
-          default:
-            return 'lukuid-production';
-        }
-      })();
-
-      const nodeX509Certificate = await getNodeX509CertificateConstructor();
-      if (nodeX509Certificate) {
-        const certPems = inputs.certificateChain.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [];
-        const certs = certPems.map((pem) => new nodeX509Certificate(pem));
-        if (certs.length === 0) {
-          return { ok: false, reason: 'Invalid certificate chain PEM' };
-        }
-
-        leafSpki = new Uint8Array(certs[0].publicKey.export({ format: 'der', type: 'spki' }));
-
-        const hasValidProfile = certs.slice(1).some((cert) => cert.subject.includes(requiredOu));
-        if (!hasValidProfile) {
-          return {
-            ok: false,
-            reason: `Certificate chain does not match the requested trust profile: ${inputs.trustProfile ?? 'prod'}`
-          };
-        }
-
-        // Verify signatures along the chain
-        const roots = TRUSTED_ROOT_CERTS_PEM.map((pem) => new nodeX509Certificate(pem));
-
-        for (let i = 0; i < certs.length; i++) {
-          const current = certs[i];
-          let stepVerified = false;
-
-          if (i + 1 < certs.length) {
-            const next = certs[i + 1];
-            try {
-              stepVerified = current.verify(next.publicKey);
-            } catch {
-              stepVerified = false;
-            }
-          } else {
-            for (const root of roots) {
-              try {
-                stepVerified = current.verify(root.publicKey) || root.fingerprint === current.fingerprint;
-              } catch {
-                continue;
-              }
-              if (stepVerified) break;
-            }
-          }
-
-          if (!stepVerified) {
-            return { ok: false, reason: `Certificate chain verification failed at level ${i}` };
-          }
-        }
-
-        // Revocation Check: Check every certificate in the chain (After verification)
-        if (revocationManager) {
-           const pems = inputs.certificateChain.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [];
-           for (const cert of pems) {
-              const forgeCert = forge.pki.certificateFromPem(cert);
-              if (revocationManager.isRevoked(forgeCert)) {
-                 return { ok: false, reason: 'Certificate is revoked' };
-              }
-           }
-        }
-
-        if (inputs.created) {
-          for (const cert of certs) {
-            const validFrom = Date.parse(cert.validFrom) / 1000;
-            const validTo = Date.parse(cert.validTo) / 1000;
-            if (inputs.created < validFrom || inputs.created > validTo) {
-              return { ok: false, reason: `Temporal birth check failed: created (${inputs.created}) is outside cert window [${validFrom} - ${validTo}]` };
-            }
-          }
-        }
-      } else {
-        const certs = parsePemChain(inputs.certificateChain);
-        if (certs.length === 0) {
-          return { ok: false, reason: 'Invalid certificate chain PEM' };
-        }
-
-        leafSpki = certs[0].spkiDer;
-
-        const hasValidProfile = certs.slice(1).some((cert) => cert.subjectOrganizationalUnits.includes(requiredOu));
-
-        if (!hasValidProfile) {
-          return {
-            ok: false,
-            reason: `Certificate chain does not match the requested trust profile: ${inputs.trustProfile ?? 'prod'}`
-          };
-        }
-
-        const roots = TRUSTED_ROOT_CERTS_PEM.map((pem) => parseDerCertificate(decodePemCertificate(pem)));
-
-        for (let i = 0; i < certs.length; i++) {
-          const current = certs[i];
-          let stepVerified = false;
-
-          if (i + 1 < certs.length) {
-            const next = certs[i + 1];
-            stepVerified = await verifySignatureFallback(
-              current.tbsDer,
-              current.signatureBits,
-              current.signatureAlgorithmOid,
-              next.spkiDer
-            );
-          } else {
-            for (const root of roots) {
-              const matchesFingerprint = root.certDer.length === current.certDer.length && root.certDer.every((val, index) => val === current.certDer[index]);
-              if (matchesFingerprint) {
-                stepVerified = true;
-                break;
-              }
-              stepVerified = await verifySignatureFallback(
-                current.tbsDer,
-                current.signatureBits,
-                current.signatureAlgorithmOid,
-                root.spkiDer
-              );
-              if (stepVerified) break;
-            }
-          }
-
-          if (!stepVerified) {
-            return { ok: false, reason: `Certificate chain verification failed at level ${i}` };
-          }
-        }
-
-        // Revocation Check: Check every certificate in the chain (After verification)
-        if (revocationManager) {
-           const pems = inputs.certificateChain.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [];
-           for (const cert of pems) {
-              const forgeCert = forge.pki.certificateFromPem(cert);
-              if (revocationManager.isRevoked(forgeCert)) {
-                 return { ok: false, reason: 'Certificate is revoked' };
-              }
-           }
-        }
-
-        if (inputs.created) {
-          for (const cert of certs) {
-            const validFrom = cert.validFrom;
-            const validTo = cert.validTo;
-
-            if (inputs.created < validFrom || inputs.created > validTo) {
-              return { ok: false, reason: `Temporal birth check failed: created (${inputs.created}) is outside cert window [${validFrom} - ${validTo}]` };
-            }
-          }
-        }
-      }
-    } catch (error) {
-      return { ok: false, reason: `Chain processing error: ${error instanceof Error ? error.message : String(error)}` };
+    const chainResult = await validateCertificateChain({
+      certificateChain: inputs.certificateChain,
+      created: inputs.created,
+      trustProfile: inputs.trustProfile
+    }, revocationManager);
+    if (!chainResult.ok) {
+      return { ok: false, reason: chainResult.reason ?? 'Chain processing error' };
     }
+    leafSpki = chainResult.certSpkis?.[0] ?? null;
   }
 
   // 2. Verify Signature
@@ -651,6 +526,290 @@ export async function verifyDeviceAttestation(
   }
 
   return { ok: false, reason: 'Attestation verification failed' };
+}
+
+export async function verifyHeartbeatAttestation(
+  inputs: HeartbeatAttestationInputs,
+  revocationManager?: RevocationManager
+): Promise<DeviceAttestationResult> {
+  if (inputs.heartbeatSig.trim().length === 0) {
+    return { ok: false, reason: 'Missing heartbeat signature' };
+  }
+
+  const payloadString = `heartbeat:${inputs.id}:${inputs.lastSyncUtc}`;
+  let leafSpki: Uint8Array | null = null;
+
+  if (inputs.certificateChain) {
+    const chainResult = await validateCertificateChain(
+      {
+        certificateChain: inputs.certificateChain,
+        trustProfile: inputs.trustProfile
+      },
+      revocationManager
+    );
+    if (!chainResult.ok) {
+      return { ok: false, reason: chainResult.reason ?? 'Chain processing error' };
+    }
+    leafSpki = chainResult.certSpkis?.[0] ?? null;
+  }
+
+  if (leafSpki) {
+    try {
+      const signature = decodeBase64(inputs.heartbeatSig);
+      if (!signature) return { ok: false, reason: 'Invalid signature base64' };
+
+      const subtle = getSubtleCrypto();
+      // Try Ed25519 first (typical for SLAC)
+      if (
+        leafSpki.length === ED25519_SPKI_PREFIX.length + 32 &&
+        ED25519_SPKI_PREFIX.every((value, index) => leafSpki![index] === value)
+      ) {
+        const importedKey = await subtle.importKey(
+          'spki',
+          toArrayBuffer(leafSpki),
+          { name: 'Ed25519' },
+          false,
+          ['verify']
+        );
+        const verified = await subtle.verify(
+          'Ed25519',
+          importedKey,
+          toArrayBuffer(signature),
+          toArrayBuffer(textEncoder.encode(payloadString))
+        );
+        return verified ? { ok: true } : { ok: false, reason: 'Heartbeat signature verification failed against leaf' };
+      }
+
+      // Try ML-DSA if it matches that length
+      if (signature.length === 3309) {
+        const spkiSeq = readDerElement(leafSpki, 0);
+        const algSeq = readDerElement(leafSpki, spkiSeq.contentStart);
+        const pubKeyBitString = readDerElement(leafSpki, algSeq.end);
+        const pubKeyBytes = leafSpki.slice(pubKeyBitString.contentStart + 1, pubKeyBitString.contentEnd);
+        const verified = ml_dsa65.verify(signature, textEncoder.encode(payloadString), pubKeyBytes);
+        return verified ? { ok: true } : { ok: false, reason: 'Heartbeat ML-DSA signature verification failed' };
+      }
+
+      return { ok: false, reason: 'Unsupported heartbeat public key algorithm' };
+    } catch (error) {
+      return {
+        ok: false,
+        reason: `Heartbeat verification error: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
+  return { ok: false, reason: 'Heartbeat verification failed: no leaf public key' };
+}
+
+export async function validateCertificateChain(
+  inputs: CertificateChainValidationInputs,
+  revocationManager?: RevocationManager
+): Promise<CertificateChainValidationResult> {
+  try {
+    const requiredOu = (() => {
+      switch (inputs.trustProfile) {
+        case 'dev':
+          return 'lukuid-dev';
+        case 'test':
+          return 'lukuid-test';
+        case 'prod':
+        default:
+          return 'lukuid-production';
+      }
+    })();
+
+    const nodeX509Certificate = await getNodeX509CertificateConstructor();
+    if (nodeX509Certificate) {
+      const certPems = inputs.certificateChain.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [];
+      const certs = certPems.map((pem) => new nodeX509Certificate(pem));
+      if (certs.length === 0) {
+        return { ok: false, reason: 'Invalid certificate chain PEM' };
+      }
+
+      const certSpkis = certs.map((cert) => new Uint8Array(cert.publicKey.export({ format: 'der', type: 'spki' })));
+      const hasValidProfile = certs.slice(1).some((cert) => cert.subject.includes(requiredOu));
+      if (!hasValidProfile) {
+        return {
+          ok: false,
+          reason: `Certificate chain does not match the requested trust profile: ${inputs.trustProfile ?? 'prod'}`
+        };
+      }
+
+      const roots = TRUSTED_ROOT_CERTS_PEM.map((pem) => new nodeX509Certificate(pem));
+      for (let i = 0; i < certs.length; i++) {
+        const current = certs[i];
+        let stepVerified = false;
+
+        if (i + 1 < certs.length) {
+          const next = certs[i + 1];
+          try {
+            stepVerified = current.verify(next.publicKey);
+          } catch {
+            stepVerified = false;
+          }
+        } else {
+          for (const root of roots) {
+            try {
+              stepVerified = current.verify(root.publicKey) || root.fingerprint === current.fingerprint;
+            } catch {
+              continue;
+            }
+            if (stepVerified) break;
+          }
+        }
+
+        if (!stepVerified) {
+          return { ok: false, reason: `Certificate chain verification failed at level ${i}` };
+        }
+      }
+
+      if (revocationManager) {
+        for (const cert of certPems) {
+          const forgeCert = forge.pki.certificateFromPem(cert);
+          if (revocationManager.isRevoked(forgeCert)) {
+            return { ok: false, reason: 'Certificate is revoked' };
+          }
+        }
+      }
+
+      if (inputs.created) {
+        for (const cert of certs) {
+          const validFrom = Date.parse(cert.validFrom) / 1000;
+          const validTo = Date.parse(cert.validTo) / 1000;
+          if (inputs.created < validFrom || inputs.created > validTo) {
+            return { ok: false, reason: `Temporal birth check failed: created (${inputs.created}) is outside cert window [${validFrom} - ${validTo}]` };
+          }
+        }
+      }
+
+      return { ok: true, certSpkis };
+    }
+
+    const certs = parsePemChain(inputs.certificateChain);
+    if (certs.length === 0) {
+      return { ok: false, reason: 'Invalid certificate chain PEM' };
+    }
+
+    const hasValidProfile = certs.slice(1).some((cert) => cert.subjectOrganizationalUnits.includes(requiredOu));
+    if (!hasValidProfile) {
+      return {
+        ok: false,
+        reason: `Certificate chain does not match the requested trust profile: ${inputs.trustProfile ?? 'prod'}`
+      };
+    }
+
+    const roots = TRUSTED_ROOT_CERTS_PEM.map((pem) => parseDerCertificate(decodePemCertificate(pem)));
+    for (let i = 0; i < certs.length; i++) {
+      const current = certs[i];
+      let stepVerified = false;
+
+      if (i + 1 < certs.length) {
+        const next = certs[i + 1];
+        stepVerified = await verifySignatureFallback(
+          current.tbsDer,
+          current.signatureBits,
+          current.signatureAlgorithmOid,
+          next.spkiDer
+        );
+      } else {
+        for (const root of roots) {
+          const matchesFingerprint = root.certDer.length === current.certDer.length && root.certDer.every((val, index) => val === current.certDer[index]);
+          if (matchesFingerprint) {
+            stepVerified = true;
+            break;
+          }
+          stepVerified = await verifySignatureFallback(
+            current.tbsDer,
+            current.signatureBits,
+            current.signatureAlgorithmOid,
+            root.spkiDer
+          );
+          if (stepVerified) break;
+        }
+      }
+
+      if (!stepVerified) {
+        return { ok: false, reason: `Certificate chain verification failed at level ${i}` };
+      }
+    }
+
+    if (revocationManager) {
+      const pems = inputs.certificateChain.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [];
+      for (const cert of pems) {
+        const forgeCert = forge.pki.certificateFromPem(cert);
+        if (revocationManager.isRevoked(forgeCert)) {
+          return { ok: false, reason: 'Certificate is revoked' };
+        }
+      }
+    }
+
+    if (inputs.created) {
+      for (const cert of certs) {
+        if (inputs.created < cert.validFrom || inputs.created > cert.validTo) {
+          return { ok: false, reason: `Temporal birth check failed: created (${inputs.created}) is outside cert window [${cert.validFrom} - ${cert.validTo}]` };
+        }
+      }
+    }
+
+    return { ok: true, certSpkis: certs.map((cert) => cert.spkiDer) };
+  } catch (error) {
+    return { ok: false, reason: `Chain processing error: ${error instanceof Error ? error.message : String(error)}` };
+  }
+}
+
+export function spkiMatchesEd25519PublicKey(spkiDer: Uint8Array, publicKeyBase64: string): boolean {
+  const expected = decodeBase64(publicKeyBase64);
+  if (!expected || expected.length !== 32) {
+    return false;
+  }
+  if (spkiDer.length !== ED25519_SPKI_PREFIX.length + expected.length) {
+    return false;
+  }
+  for (let index = 0; index < ED25519_SPKI_PREFIX.length; index += 1) {
+    if (spkiDer[index] !== ED25519_SPKI_PREFIX[index]) {
+      return false;
+    }
+  }
+  for (let index = 0; index < expected.length; index += 1) {
+    if (spkiDer[ED25519_SPKI_PREFIX.length + index] !== expected[index]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export async function verifyPayloadSignatureWithSpki(
+  spkiDer: Uint8Array,
+  signatureBase64: string,
+  payloadString: string
+): Promise<DeviceAttestationResult> {
+  const signature = decodeBase64(signatureBase64);
+  if (!signature) {
+    return { ok: false, reason: 'Invalid signature base64' };
+  }
+
+  const subtle = getSubtleCrypto();
+  const payloadBytes = textEncoder.encode(payloadString);
+
+  try {
+    if (spkiDer.length === ED25519_SPKI_PREFIX.length + 32 && ED25519_SPKI_PREFIX.every((value, index) => spkiDer[index] === value)) {
+      const importedKey = await subtle.importKey('spki', toArrayBuffer(spkiDer), { name: 'Ed25519' }, false, ['verify']);
+      const verified = await subtle.verify('Ed25519', importedKey, toArrayBuffer(signature), toArrayBuffer(payloadBytes));
+      return verified ? { ok: true } : { ok: false, reason: 'Signature verification failed against authority certificate' };
+    }
+
+    if (spkiDer.length === P256_SPKI_PREFIX.length + 65 && P256_SPKI_PREFIX.every((value, index) => spkiDer[index] === value)) {
+      const importedKey = await subtle.importKey('spki', toArrayBuffer(spkiDer), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+      const rawSignature = derToRawEcSignature(signature, 32);
+      const verified = await subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, importedKey, toArrayBuffer(rawSignature), toArrayBuffer(payloadBytes));
+      return verified ? { ok: true } : { ok: false, reason: 'Signature verification failed against authority certificate' };
+    }
+  } catch (error) {
+    return { ok: false, reason: `Leaf verification error: ${error instanceof Error ? error.message : String(error)}` };
+  }
+
+  return { ok: false, reason: 'Unsupported certificate public key algorithm' };
 }
 
 export async function verifyExternalIdentity(

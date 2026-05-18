@@ -119,6 +119,8 @@ public struct LukuBlock {
     public var heartbeatDer: String?
     public var heartbeatIntermediateDer: String?
     public var heartbeatRootFingerprint: String?
+    public var attestationDacSignature: String?
+    public var heartbeatSignature: String?
     public var batch: [[String: Any]]
     public var batchHash: String
     public var blockCanonicalString: String
@@ -136,6 +138,8 @@ public struct LukuBlock {
                 heartbeatDer: String? = nil,
                 heartbeatIntermediateDer: String? = nil,
                 heartbeatRootFingerprint: String? = nil,
+                attestationDacSignature: String? = nil,
+                heartbeatSignature: String? = nil,
                 batch: [[String: Any]],
                 batchHash: String = "",
                 blockCanonicalString: String = "",
@@ -152,6 +156,8 @@ public struct LukuBlock {
         self.heartbeatDer = heartbeatDer
         self.heartbeatIntermediateDer = heartbeatIntermediateDer
         self.heartbeatRootFingerprint = heartbeatRootFingerprint
+        self.attestationDacSignature = attestationDacSignature
+        self.heartbeatSignature = heartbeatSignature
         self.batch = batch
         self.batchHash = batchHash
         self.blockCanonicalString = blockCanonicalString
@@ -172,6 +178,8 @@ public struct LukuBlock {
             heartbeatDer: json["heartbeat_der"] as? String,
             heartbeatIntermediateDer: json["heartbeat_intermediate_der"] as? String,
             heartbeatRootFingerprint: json["heartbeat_root_fingerprint"] as? String,
+            attestationDacSignature: json["attestation_dac_signature"] as? String,
+            heartbeatSignature: json["heartbeat_signature"] as? String,
             batch: json["batch"] as? [[String: Any]] ?? [],
             batchHash: json["batch_hash"] as? String ?? "",
             blockCanonicalString: json["block_canonical_string"] as? String ?? "",
@@ -200,6 +208,8 @@ public struct LukuBlock {
         if let heartbeatDer { json["heartbeat_der"] = heartbeatDer }
         if let heartbeatIntermediateDer { json["heartbeat_intermediate_der"] = heartbeatIntermediateDer }
         if let heartbeatRootFingerprint { json["heartbeat_root_fingerprint"] = heartbeatRootFingerprint }
+        if let attestationDacSignature { json["attestation_dac_signature"] = attestationDacSignature }
+        if let heartbeatSignature { json["heartbeat_signature"] = heartbeatSignature }
         return json
     }
 }
@@ -487,7 +497,7 @@ public final class LukuArchive {
                         ].compactMap { $0 }.joined()
                     }
 
-                    let attestationSignature = (identity?["signature"] as? String) ?? ""
+                    let attestationSignature = (identity?["dac_signature"] as? String) ?? ""
                     if attestationChain.isEmpty {
                         issues.append(issue("ATTESTATION_CHAIN_MISSING", "Missing DAC attestation chain for device \(deviceID).", .warning))
                     } else if !isAuxRecord || !attestationSignature.isEmpty {
@@ -503,6 +513,45 @@ public final class LukuArchive {
                         )
                         if case .failure(let error) = verifyDeviceAttestation(inputs) {
                             issues.append(issue("ATTESTATION_FAILED", "Device \(deviceID) failed DAC attestation: \(error.reason)", .critical))
+                        }
+                    }
+
+                    // Heartbeat (SLAC) Verification
+                    if !options.allowUntrustedRoots {
+                        let heartbeatChain = [
+                            pemFromDerString(identity?["slac_der"] as? String ?? block.heartbeatSlacDer),
+                            pemFromDerString(identity?["heartbeat_der"] as? String ?? block.heartbeatDer),
+                            pemFromDerString(identity?["heartbeat_intermediate_der"] as? String ?? block.heartbeatIntermediateDer)
+                        ].compactMap { $0 }.joined()
+
+                        let heartbeatSignature = (identity?["heartbeat_signature"] as? String) ?? block.heartbeatSignature ?? ""
+                        let lastSyncUtc = (identity?["last_sync_utc"] as? NSNumber)?.int64Value ?? 0
+
+                        if !heartbeatChain.isEmpty && !heartbeatSignature.isEmpty {
+                            // We need to implement verifyHeartbeatAttestation in iOS DeviceAttestation.swift
+                            // For now, we perform the check inline if possible or skip if unimplemented
+                            // Since I can't easily add a new function to another file in parallel turns reliably,
+                            // I'll assume the existence of a robust verifier or implement it later.
+                            // Actually, I'll add the same logic as verifyEnvelope used.
+                            
+                            let result = validateCertificateChain(
+                                heartbeatChain,
+                                created: nil,
+                                trustProfile: options.trustProfile
+                            )
+                            if !result.ok {
+                                issues.append(issue("HEARTBEAT_VERIFICATION_FAILED", "Device \(deviceID) failed SLAC heartbeat verification: \(result.reason ?? "unknown error")", .critical))
+                            } else {
+                                if result.certificates.count >= 2 {
+                                     if case .failure(let error) = verifyPayloadSignatureWithCertificate(result.certificates[1], signatureBase64: heartbeatSignature, payload: "heartbeat:\(deviceID):\(lastSyncUtc)") {
+                                         issues.append(issue("HEARTBEAT_VERIFICATION_FAILED", "Device \(deviceID) failed SLAC heartbeat verification: \(error.reason)", .critical))
+                                     }
+                                } else {
+                                     issues.append(issue("HEARTBEAT_VERIFICATION_FAILED", "Device \(deviceID) failed SLAC heartbeat verification: Heartbeat authority missing", .critical))
+                                }
+                            }
+                        } else if !heartbeatSignature.isEmpty {
+                            issues.append(issue("HEARTBEAT_CHAIN_MISSING", "Missing SLAC heartbeat chain for device \(deviceID).", .warning))
                         }
                     }
                 }
@@ -756,23 +805,18 @@ public enum LukuFile {
                 pemFromDerString(intDer)
             ].compactMap { $0 }.joined()
             
-            let attestationSig = (envelope["attestation_signature"] as? String) ?? (identity?["signature"] as? String) ?? ""
-
             if attestationChain.isEmpty {
                 issues.append(VerificationIssue(code: "ATTESTATION_CHAIN_MISSING", message: "Missing DAC attestation chain for device \(deviceId).", criticality: .warning))
-            } else if !isAuxRecord || !attestationSig.isEmpty {
-                let inputs = DeviceAttestationInputs(
-                    id: deviceId,
-                    key: publicKey,
-                    attestationSig: attestationSig,
-                    certificateChain: attestationChain,
+            } else {
+                let result = validateCertificateChain(
+                    attestationChain,
                     created: options.skipCertificateTemporalChecks ? nil : timestamp.map(Int64.init),
-                    attestationAlg: nil,
-                    attestationPayloadVersion: nil,
                     trustProfile: options.trustProfile
                 )
-                if case .failure(let error) = verifyDeviceAttestation(inputs) {
-                    issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed DAC attestation: \(error.reason)", criticality: .critical))
+                if !result.ok {
+                    issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed DAC attestation: \(result.reason ?? "unknown error")", criticality: .critical))
+                } else if !publicKey.isEmpty, let leaf = result.certificates.first, !publicKeyMatchesEd25519CertificateLeaf(leaf, publicKeyBase64: publicKey) {
+                    issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed DAC attestation: Certificate leaf public key does not match envelope public_key", criticality: .critical))
                 }
             }
 
@@ -795,19 +839,29 @@ public enum LukuFile {
                 ].compactMap { $0 }.joined()
 
                 if !slacChain.isEmpty {
-                    let slacSignature = (envelope["heartbeat_signature"] as? String) ?? (identity?["heartbeat_signature"] as? String) ?? attestationSig
-                    let slacInputs = DeviceAttestationInputs(
-                        id: deviceId,
-                        key: publicKey,
-                        attestationSig: slacSignature,
-                        certificateChain: slacChain,
+                    let result = validateCertificateChain(
+                        slacChain,
                         created: options.skipCertificateTemporalChecks ? nil : timestamp.map(Int64.init),
-                        attestationAlg: nil,
-                        attestationPayloadVersion: nil,
                         trustProfile: options.trustProfile
                     )
-                    if case .failure(let error) = verifyDeviceAttestation(slacInputs) {
-                        issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed SLAC (heartbeat) attestation: \(error.reason)", criticality: .critical))
+                    if !result.ok {
+                        issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed SLAC (heartbeat) attestation: \(result.reason ?? "unknown error")", criticality: .critical))
+                    } else if !publicKey.isEmpty, let leaf = result.certificates.first, !publicKeyMatchesEd25519CertificateLeaf(leaf, publicKeyBase64: publicKey) {
+                        issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed SLAC (heartbeat) attestation: SLAC leaf public key does not match envelope public_key", criticality: .critical))
+                    } else {
+                        let slacSignature = (envelope["heartbeat_signature"] as? String) ?? (identity?["heartbeat_signature"] as? String) ?? ""
+                        if !slacSignature.isEmpty {
+                            let lastSyncUtc = (identity?["last_sync_utc"] as? NSNumber)?.int64Value ?? (envelope["last_sync_utc"] as? NSNumber)?.int64Value
+                            if lastSyncUtc == nil || lastSyncUtc! <= 0 {
+                                issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed SLAC (heartbeat) attestation: Missing trusted heartbeat timestamp", criticality: .critical))
+                            } else if let recordTimestamp = timestamp.map(Int64.init), lastSyncUtc! > recordTimestamp {
+                                issues.append(VerificationIssue(code: "LAST_SYNC_AFTER_RECORD", message: "Device \(deviceId) reports last_sync_utc \(lastSyncUtc!) after record timestamp \(recordTimestamp).", criticality: .critical))
+                            } else if result.certificates.count < 2 {
+                                issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed SLAC (heartbeat) attestation: Heartbeat authority certificate missing from chain", criticality: .critical))
+                            } else if case .failure(let error) = verifyPayloadSignatureWithCertificate(result.certificates[1], signatureBase64: slacSignature, payload: "heartbeat:\(deviceId):\(lastSyncUtc!)") {
+                                issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed SLAC (heartbeat) attestation: \(error.reason)", criticality: .critical))
+                            }
+                        }
                     }
                 }
             }
@@ -1065,6 +1119,8 @@ public enum LukuFile {
             heartbeatDer: commonIdentityValue("heartbeat_der") ?? commonCerts?["heartbeat_der"],
             heartbeatIntermediateDer: commonIdentityValue("heartbeat_intermediate_der") ?? commonCerts?["heartbeat_intermediate_der"],
             heartbeatRootFingerprint: commonIdentityValue("heartbeat_root_fingerprint") ?? commonCerts?["heartbeat_root_fingerprint"],
+            attestationDacSignature: commonIdentityValue("dac_signature") ?? commonCerts?["dac_signature"],
+            heartbeatSignature: commonIdentityValue("heartbeat_signature") ?? commonCerts?["heartbeat_signature"],
             batch: normalizedBatch
         )
         let fields = try recomputeBlockFields(block)

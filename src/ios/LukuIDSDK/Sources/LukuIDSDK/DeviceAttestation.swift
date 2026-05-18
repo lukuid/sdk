@@ -42,6 +42,12 @@ struct ExternalIdentityInputs {
     let trustedFingerprints: [String]
 }
 
+struct CertificateChainValidationResult {
+    let ok: Bool
+    let reason: String?
+    let certificates: [SecCertificate]
+}
+
 // Trusted Root Certificates (PEM)
 private let TRUSTED_ROOT_CERTS_PEM = [
     """
@@ -184,94 +190,16 @@ func verifyDeviceAttestation(_ inputs: DeviceAttestationInputs, revocationManage
     var leafPublicKeyData: Data? = nil
     
     if let chainPEM = inputs.certificateChain {
-        let certs = parsePEMChain(chainPEM)
-        guard !certs.isEmpty else {
-            return .failure(DeviceTrustError(id: inputs.id, reason: "Invalid certificate chain", attemptedKeyIds: []))
+        let chainResult = validateCertificateChain(
+            chainPEM,
+            created: inputs.created,
+            trustProfile: inputs.trustProfile,
+            revocationManager: revocationManager
+        )
+        guard chainResult.ok else {
+            return .failure(DeviceTrustError(id: inputs.id, reason: chainResult.reason ?? "Invalid certificate chain", attemptedKeyIds: []))
         }
-        
-        leafPublicKeyData = extractRawPublicKey(from: certs[0])
-        
-        let requiredOU: String
-        switch inputs.trustProfile {
-        case "dev":
-            requiredOU = "lukuid-dev"
-        case "test":
-            requiredOU = "lukuid-test"
-        default:
-            requiredOU = "lukuid-production"
-        }
-
-        let hasValidProfile = certs.dropFirst().contains { certificate in
-            certificateSubjectValues(certificate).contains(requiredOU)
-        }
-        if !hasValidProfile {
-            return .failure(DeviceTrustError(
-                id: inputs.id,
-                reason: "Certificate chain does not match the requested trust profile: \(inputs.trustProfile)",
-                attemptedKeyIds: []
-            ))
-        }
-
-        // 1.07 MANDATORY: Verify signatures along the chain
-        for i in 0..<certs.count {
-            let current = certs[i]
-            guard let certData = SecCertificateCopyData(current) as Data? else {
-                return .failure(DeviceTrustError(id: inputs.id, reason: "Failed to read certificate data at level \(i)", attemptedKeyIds: []))
-            }
-            
-            let fields: (tbs: Data, algorithm: Data, signature: Data)
-            do {
-                fields = try ASN1Parser.extractCertificateFields(certData)
-            } catch {
-                return .failure(DeviceTrustError(id: inputs.id, reason: "Failed to parse certificate fields at level \(i): \(error)", attemptedKeyIds: []))
-            }
-            
-            var verified = false
-            if i + 1 < certs.count {
-                let next = certs[i+1]
-                if let nextPub = extractRawPublicKey(from: next) {
-                    verified = verifySignatureRobust(signature: fields.signature, tbs: fields.tbs, publicKey: nextPub)
-                }
-            } else {
-                for (_, rootPEM) in TRUSTED_ROOT_CERTS_PEM.enumerated() {
-                    let rootCerts = parsePEMChain(rootPEM)
-                    if let root = rootCerts.first, let rootPub = extractRawPublicKey(from: root) {
-                        if verifySignatureRobust(signature: fields.signature, tbs: fields.tbs, publicKey: rootPub) {
-                            verified = true
-                            break
-                        }
-                    }
-                }
-            }
-            
-            if !verified {
-                return .failure(DeviceTrustError(id: inputs.id, reason: "Signature verification failed at chain level \(i)", attemptedKeyIds: []))
-            }
-        }
-
-        // Revocation Check: Check every certificate in the chain (After verification)
-        if let rm = revocationManager {
-            for cert in certs {
-                if rm.isRevoked(certificate: cert) {
-                    let fp = extractRawPublicKey(from: cert).map { sha256Hex($0) } ?? "unknown"
-                    return .failure(DeviceTrustError(id: inputs.id, reason: "Certificate is revoked: \(fp)", attemptedKeyIds: []))
-                }
-            }
-        }
-
-        // 1.1 MANDATORY: Temporal Birth Check
-        if let createdTs = inputs.created {
-            for cert in certs {
-                if !verifyTemporalBirth(cert, created: createdTs) {
-                    let range = certificateValidity(cert)
-                    return .failure(DeviceTrustError(
-                        id: inputs.id,
-                        reason: "Temporal birth check failed: created (\(createdTs)) is outside cert window [\(range.validFrom) - \(range.validTo)]",
-                        attemptedKeyIds: []
-                    ))
-                }
-            }
-        }
+        leafPublicKeyData = chainResult.certificates.first.flatMap { extractRawPublicKey(from: $0) }
     }
 
     if let leafPub = leafPublicKeyData {
@@ -291,6 +219,119 @@ func verifyDeviceAttestation(_ inputs: DeviceAttestationInputs, revocationManage
     }
 
     return .failure(DeviceTrustError(id: inputs.id, reason: "Attestation verification failed", attemptedKeyIds: []))
+}
+
+func validateCertificateChain(
+    _ chainPEM: String,
+    created: Int64?,
+    trustProfile: String,
+    revocationManager: RevocationManager? = nil
+) -> CertificateChainValidationResult {
+    let certs = parsePEMChain(chainPEM)
+    guard !certs.isEmpty else {
+        return CertificateChainValidationResult(ok: false, reason: "Invalid certificate chain", certificates: [])
+    }
+
+    let requiredOU: String
+    switch trustProfile {
+    case "dev":
+        requiredOU = "lukuid-dev"
+    case "test":
+        requiredOU = "lukuid-test"
+    default:
+        requiredOU = "lukuid-production"
+    }
+
+    let hasValidProfile = certs.dropFirst().contains { certificate in
+        certificateSubjectValues(certificate).contains(requiredOU)
+    }
+    if !hasValidProfile {
+        return CertificateChainValidationResult(ok: false, reason: "Certificate chain does not match the requested trust profile: \(trustProfile)", certificates: [])
+    }
+
+    for i in 0..<certs.count {
+        let current = certs[i]
+        guard let certData = SecCertificateCopyData(current) as Data? else {
+            return CertificateChainValidationResult(ok: false, reason: "Failed to read certificate data at level \(i)", certificates: [])
+        }
+
+        let fields: (tbs: Data, algorithm: Data, signature: Data)
+        do {
+            fields = try ASN1Parser.extractCertificateFields(certData)
+        } catch {
+            return CertificateChainValidationResult(ok: false, reason: "Failed to parse certificate fields at level \(i): \(error)", certificates: [])
+        }
+
+        var verified = false
+        if i + 1 < certs.count {
+            let next = certs[i + 1]
+            if let nextPub = extractRawPublicKey(from: next) {
+                verified = verifySignatureRobust(signature: fields.signature, tbs: fields.tbs, publicKey: nextPub)
+            }
+        } else {
+            for rootPEM in TRUSTED_ROOT_CERTS_PEM {
+                let rootCerts = parsePEMChain(rootPEM)
+                if let root = rootCerts.first, let rootPub = extractRawPublicKey(from: root) {
+                    if verifySignatureRobust(signature: fields.signature, tbs: fields.tbs, publicKey: rootPub) {
+                        verified = true
+                        break
+                    }
+                }
+            }
+        }
+
+        if !verified {
+            return CertificateChainValidationResult(ok: false, reason: "Signature verification failed at chain level \(i)", certificates: [])
+        }
+    }
+
+    if let rm = revocationManager {
+        for cert in certs {
+            if rm.isRevoked(certificate: cert) {
+                let fp = extractRawPublicKey(from: cert).map { sha256Hex($0) } ?? "unknown"
+                return CertificateChainValidationResult(ok: false, reason: "Certificate is revoked: \(fp)", certificates: [])
+            }
+        }
+    }
+
+    if let createdTs = created {
+        for cert in certs {
+            if !verifyTemporalBirth(cert, created: createdTs) {
+                let range = certificateValidity(cert)
+                return CertificateChainValidationResult(
+                    ok: false,
+                    reason: "Temporal birth check failed: created (\(createdTs)) is outside cert window [\(range.validFrom) - \(range.validTo)]",
+                    certificates: []
+                )
+            }
+        }
+    }
+
+    return CertificateChainValidationResult(ok: true, reason: nil, certificates: certs)
+}
+
+func publicKeyMatchesEd25519CertificateLeaf(_ certificate: SecCertificate, publicKeyBase64: String) -> Bool {
+    guard let expected = Data(base64Encoded: publicKeyBase64),
+          let actual = extractRawPublicKey(from: certificate) else {
+        return false
+    }
+    return actual.count == 32 && actual == expected
+}
+
+func verifyPayloadSignatureWithCertificate(
+    _ certificate: SecCertificate,
+    signatureBase64: String,
+    payload: String
+) -> Result<Void, DeviceTrustError> {
+    guard let signature = Data(base64Encoded: signatureBase64),
+          let publicKey = extractRawPublicKey(from: certificate) else {
+        return .failure(DeviceTrustError(id: "", reason: "signature is not valid base64", attemptedKeyIds: []))
+    }
+
+    if verifySignatureRobust(signature: signature, tbs: Data(payload.utf8), publicKey: publicKey) {
+        return .success(())
+    }
+    return .failure(DeviceTrustError(id: "", reason: "Signature verification failed against certificate public key", attemptedKeyIds: []))
 }
 
 func verifyExternalIdentity(_ inputs: ExternalIdentityInputs, revocationManager: RevocationManager? = nil) -> Result<Void, DeviceTrustError> {

@@ -339,6 +339,8 @@ final class LukuCodec {
             dict["heartbeat_intermediate_der"] = info.heartbeatIntermediateDer
             dict["heartbeat_root_fingerprint"] = info.heartbeatRootFingerprint
             dict["signature"] = info.signature
+            dict["dac_signature"] = info.dacSignature
+            dict["heartbeat_signature"] = info.heartbeatSignature
             dict["key"] = info.key
         case .networkConfig(let config):
             dict["wifi_ssid"] = config.wifiSsid
@@ -400,6 +402,12 @@ final class LukuCodec {
             dict["has_attestation"] = status.hasAttestation_p
             dict["has_heartbeat"] = status.hasHeartbeat_p
             dict["needs_sync"] = status.needsSync
+        case .certificateResponse(_):
+            break
+        case .chainResponse(_):
+            break
+        case .historicalExport(_):
+            break
         case .none:
             break
         }
@@ -644,6 +652,8 @@ final class LukuCodec {
             "slac_serial": identity.slacSerial,
             "last_sync_utc": identity.lastSyncUtc,
             "signature": identity.signature,
+            "dac_signature": identity.dacSignature,
+            "heartbeat_signature": identity.heartbeatSignature,
             "dac_der": identity.dacDer,
             "slac_der": identity.slacDer
         ]

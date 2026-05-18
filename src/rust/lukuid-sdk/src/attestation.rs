@@ -24,6 +24,13 @@ pub struct VerificationResult {
     pub reason: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CertificateChainValidationResult {
+    pub ok: bool,
+    pub reason: Option<String>,
+    pub cert_public_keys: Option<Vec<Vec<u8>>>,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ExternalIdentityInputs {
     pub endorser_id: String,
@@ -156,6 +163,15 @@ DxQWGRk=
 
 use crate::revocation::RevocationManager;
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct HeartbeatAttestationInputs {
+    pub id: String,
+    pub heartbeat_sig: String,
+    pub last_sync_utc: i64,
+    pub certificate_chain: Option<String>,
+    pub trust_profile: String,
+}
+
 pub fn verify_device_attestation(
     inputs: &DeviceAttestationInputs,
     revocation_manager: Option<&RevocationManager>,
@@ -176,112 +192,16 @@ pub fn verify_device_attestation(
     let mut leaf_pubkey_bytes: Option<Vec<u8>> = None;
 
     if let Some(chain_pem) = &inputs.certificate_chain {
-        let pems: Vec<_> = x509_parser::pem::Pem::iter_from_buffer(chain_pem.as_bytes())
-            .filter_map(|r| r.ok())
-            .collect();
-
-        let certs: Vec<_> = pems.iter().filter_map(|p| p.parse_x509().ok()).collect();
-
-        if certs.is_empty() {
+        let chain_result =
+            validate_certificate_chain(chain_pem, inputs.created, &inputs.trust_profile, revocation_manager);
+        if !chain_result.ok {
             return VerificationResult {
                 ok: false,
-                reason: Some("Invalid certificate chain".to_string()),
+                reason: chain_result.reason,
             };
         }
-
-        leaf_pubkey_bytes = Some(certs[0].public_key().subject_public_key.data.to_vec());
-        let required_ou = match inputs.trust_profile.as_str() {
-            "dev" => "lukuid-dev",
-            "test" => "lukuid-test",
-            _ => "lukuid-production",
-        };
-
-        let has_valid_profile = certs
-            .iter()
-            .skip(1)
-            .any(|cert| cert.subject().to_string().contains(required_ou));
-
-        if !has_valid_profile {
-            return VerificationResult {
-                ok: false,
-                reason: Some(format!(
-                    "Certificate chain does not match the requested trust profile: {}",
-                    inputs.trust_profile
-                )),
-            };
-        }
-
-        for i in 0..certs.len() {
-            let current = &certs[i];
-            let mut verified = false;
-
-            if i + 1 < certs.len() {
-                let next = &certs[i + 1];
-                verified = verify_signature_robust(
-                    current.signature_value.as_ref(),
-                    current.tbs_certificate.as_ref(),
-                    &next.public_key().subject_public_key.data,
-                );
-            } else {
-                for root_pem in TRUSTED_ROOT_CERTS_PEM {
-                    if let Some(p) = x509_parser::pem::Pem::iter_from_buffer(root_pem.as_bytes())
-                        .filter_map(|r| r.ok())
-                        .next()
-                    {
-                        if let Ok(root_cert) = p.parse_x509() {
-                            if verify_signature_robust(
-                                current.signature_value.as_ref(),
-                                current.tbs_certificate.as_ref(),
-                                &root_cert.public_key().subject_public_key.data,
-                            ) {
-                                verified = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-
-            if !verified {
-                return VerificationResult {
-                    ok: false,
-                    reason: Some(format!(
-                        "Signature verification failed at chain level {}",
-                        i
-                    )),
-                };
-            }
-        }
-
-        // Revocation Check: Check every certificate in the chain (After verification)
-        if let Some(rm) = revocation_manager {
-            for cert in &certs {
-                if rm.is_revoked(cert) {
-                    return VerificationResult {
-                        ok: false,
-                        reason: Some(format!(
-                            "Certificate is revoked: {}",
-                            rm.get_fingerprint(cert)
-                        )),
-                    };
-                }
-            }
-        }
-
-        if let Some(created_ts) = inputs.created {
-            for cert in &certs {
-                let valid_from = cert.validity().not_before.timestamp();
-                let valid_to = cert.validity().not_after.timestamp();
-                if created_ts < valid_from || created_ts > valid_to {
-                    return VerificationResult {
-                        ok: false,
-                        reason: Some(format!(
-                            "Temporal birth check failed: created ({}) is outside cert window",
-                            created_ts
-                        )),
-                    };
-                }
-            }
+        if let Some(cert_public_keys) = chain_result.cert_public_keys {
+            leaf_pubkey_bytes = cert_public_keys.first().cloned();
         }
     }
 
@@ -317,6 +237,220 @@ pub fn verify_device_attestation(
     VerificationResult {
         ok: false,
         reason: Some("Attestation verification failed".to_string()),
+    }
+}
+
+pub fn verify_heartbeat_attestation(
+    inputs: &HeartbeatAttestationInputs,
+    revocation_manager: Option<&RevocationManager>,
+) -> VerificationResult {
+    let signature_bytes = match BASE64.decode(inputs.heartbeat_sig.trim()) {
+        Ok(bytes) => bytes,
+        Err(_) => {
+            return VerificationResult {
+                ok: false,
+                reason: Some("heartbeat_sig is not valid base64".to_string()),
+            }
+        }
+    };
+
+    let payload_string = format!("heartbeat:{}:{}", inputs.id, inputs.last_sync_utc);
+    let payload = payload_string.as_bytes();
+
+    let mut leaf_pubkey_bytes: Option<Vec<u8>> = None;
+
+    if let Some(chain_pem) = &inputs.certificate_chain {
+        // We use a looser temporal check for heartbeats as they are short-lived
+        let chain_result = validate_certificate_chain(
+            chain_pem,
+            None,
+            &inputs.trust_profile,
+            revocation_manager,
+        );
+        if !chain_result.ok {
+            return VerificationResult {
+                ok: false,
+                reason: chain_result.reason,
+            };
+        }
+        if let Some(cert_public_keys) = chain_result.cert_public_keys {
+            leaf_pubkey_bytes = cert_public_keys.first().cloned();
+        }
+    }
+
+    if let Some(pubkey) = leaf_pubkey_bytes {
+        if verify_signature_robust(&signature_bytes, payload, &pubkey) {
+            return VerificationResult {
+                ok: true,
+                reason: None,
+            };
+        }
+    }
+
+    VerificationResult {
+        ok: false,
+        reason: Some("Heartbeat verification failed".to_string()),
+    }
+}
+
+pub fn validate_certificate_chain(
+    chain_pem: &str,
+    created: Option<i64>,
+    trust_profile: &str,
+    revocation_manager: Option<&RevocationManager>,
+) -> CertificateChainValidationResult {
+    let pems: Vec<_> = x509_parser::pem::Pem::iter_from_buffer(chain_pem.as_bytes())
+        .filter_map(|r| r.ok())
+        .collect();
+
+    let certs: Vec<_> = pems.iter().filter_map(|p| p.parse_x509().ok()).collect();
+
+    if certs.is_empty() {
+        return CertificateChainValidationResult {
+            ok: false,
+            reason: Some("Invalid certificate chain".to_string()),
+            cert_public_keys: None,
+        };
+    }
+
+    let required_ou = match trust_profile {
+        "dev" => "lukuid-dev",
+        "test" => "lukuid-test",
+        _ => "lukuid-production",
+    };
+
+    let has_valid_profile = certs
+        .iter()
+        .skip(1)
+        .any(|cert| cert.subject().to_string().contains(required_ou));
+
+    if !has_valid_profile {
+        return CertificateChainValidationResult {
+            ok: false,
+            reason: Some(format!(
+                "Certificate chain does not match the requested trust profile: {}",
+                trust_profile
+            )),
+            cert_public_keys: None,
+        };
+    }
+
+    for i in 0..certs.len() {
+        let current = &certs[i];
+        let mut verified = false;
+
+        if i + 1 < certs.len() {
+            let next = &certs[i + 1];
+            verified = verify_signature_robust(
+                current.signature_value.as_ref(),
+                current.tbs_certificate.as_ref(),
+                &next.public_key().subject_public_key.data,
+            );
+        } else {
+            for root_pem in TRUSTED_ROOT_CERTS_PEM {
+                if let Some(p) = x509_parser::pem::Pem::iter_from_buffer(root_pem.as_bytes())
+                    .filter_map(|r| r.ok())
+                    .next()
+                {
+                    if let Ok(root_cert) = p.parse_x509() {
+                        if verify_signature_robust(
+                            current.signature_value.as_ref(),
+                            current.tbs_certificate.as_ref(),
+                            &root_cert.public_key().subject_public_key.data,
+                        ) {
+                            verified = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if !verified {
+            return CertificateChainValidationResult {
+                ok: false,
+                reason: Some(format!("Signature verification failed at chain level {}", i)),
+                cert_public_keys: None,
+            };
+        }
+    }
+
+    if let Some(rm) = revocation_manager {
+        for cert in &certs {
+            if rm.is_revoked(cert) {
+                return CertificateChainValidationResult {
+                    ok: false,
+                    reason: Some(format!("Certificate is revoked: {}", rm.get_fingerprint(cert))),
+                    cert_public_keys: None,
+                };
+            }
+        }
+    }
+
+    if let Some(created_ts) = created {
+        for cert in &certs {
+            let valid_from = cert.validity().not_before.timestamp();
+            let valid_to = cert.validity().not_after.timestamp();
+            if created_ts < valid_from || created_ts > valid_to {
+                return CertificateChainValidationResult {
+                    ok: false,
+                    reason: Some(format!(
+                        "Temporal birth check failed: created ({}) is outside cert window",
+                        created_ts
+                    )),
+                    cert_public_keys: None,
+                };
+            }
+        }
+    }
+
+    let cert_public_keys = certs
+        .iter()
+        .map(|cert| cert.public_key().subject_public_key.data.to_vec())
+        .collect();
+
+    CertificateChainValidationResult {
+        ok: true,
+        reason: None,
+        cert_public_keys: Some(cert_public_keys),
+    }
+}
+
+pub fn public_key_matches_ed25519_certificate_leaf(
+    certificate_public_key: &[u8],
+    public_key_base64: &str,
+) -> bool {
+    match BASE64.decode(public_key_base64.trim()) {
+        Ok(decoded) => decoded.len() == 32 && decoded == certificate_public_key,
+        Err(_) => false,
+    }
+}
+
+pub fn verify_payload_signature_with_public_key(
+    certificate_public_key: &[u8],
+    signature_base64: &str,
+    payload: &[u8],
+) -> VerificationResult {
+    let signature_bytes = match BASE64.decode(signature_base64.trim()) {
+        Ok(bytes) => bytes,
+        Err(_) => {
+            return VerificationResult {
+                ok: false,
+                reason: Some("signature is not valid base64".to_string()),
+            }
+        }
+    };
+
+    if verify_signature_robust(&signature_bytes, payload, certificate_public_key) {
+        VerificationResult {
+            ok: true,
+            reason: None,
+        }
+    } else {
+        VerificationResult {
+            ok: false,
+            reason: Some("Signature verification failed against certificate public key".to_string()),
+        }
     }
 }
 

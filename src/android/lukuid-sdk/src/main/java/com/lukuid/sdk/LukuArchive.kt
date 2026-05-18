@@ -104,6 +104,8 @@ data class LukuBlock(
     var heartbeatDer: String? = null,
     var heartbeatIntermediateDer: String? = null,
     var heartbeatRootFingerprint: String? = null,
+    var attestationDacSignature: String? = null,
+    var heartbeatSignature: String? = null,
     val batch: MutableList<JSONObject>,
     var batchHash: String = "",
     var blockCanonicalString: String = "",
@@ -125,6 +127,8 @@ data class LukuBlock(
         if (heartbeatDer != null) json.put("heartbeat_der", heartbeatDer)
         if (heartbeatIntermediateDer != null) json.put("heartbeat_intermediate_der", heartbeatIntermediateDer)
         if (heartbeatRootFingerprint != null) json.put("heartbeat_root_fingerprint", heartbeatRootFingerprint)
+        if (attestationDacSignature != null) json.put("attestation_dac_signature", attestationDacSignature)
+        if (heartbeatSignature != null) json.put("heartbeat_signature", heartbeatSignature)
         json.put("batch", JSONArray().apply { batch.forEach { put(JSONObject(it.toString())) } })
         json.put("batch_hash", batchHash)
         json.put("block_canonical_string", blockCanonicalString)
@@ -152,6 +156,8 @@ data class LukuBlock(
                 heartbeatDer = json.optString("heartbeat_der").ifBlank { null },
                 heartbeatIntermediateDer = json.optString("heartbeat_intermediate_der").ifBlank { null },
                 heartbeatRootFingerprint = json.optString("heartbeat_root_fingerprint").ifBlank { null },
+                attestationDacSignature = json.optString("attestation_dac_signature").ifBlank { null },
+                heartbeatSignature = json.optString("heartbeat_signature").ifBlank { null },
                 batch = batch,
                 batchHash = json.optString("batch_hash"),
                 blockCanonicalString = json.optString("block_canonical_string"),
@@ -373,7 +379,7 @@ class LukuArchive private constructor(
                         ).filterNotNull().joinToString("")
                     }
 
-                    val attestationSignature = identity?.optString("signature").orEmpty()
+                    val attestationSignature = identity?.optString("dac_signature")?.takeIf { it.isNotBlank() }.orEmpty()
                     if (attestationChain.isBlank()) {
                         issues += VerificationIssue("ATTESTATION_CHAIN_MISSING", "Missing DAC attestation chain for device $deviceId.", Criticality.WARNING)
                     } else if (!isAux || attestationSignature.isNotBlank()) {
@@ -389,6 +395,36 @@ class LukuArchive private constructor(
                         )
                         if (!result.ok) {
                             issues += VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed DAC attestation: ${result.reason ?: "unknown"}", Criticality.CRITICAL)
+                        }
+                    }
+
+                    // Heartbeat (SLAC) Verification
+                    if (!options.allowUntrustedRoots) {
+                        val heartbeatChain = listOf(
+                            pemFromDerString(identity?.optString("slac_der")?.takeIf { it.isNotBlank() } ?: block.heartbeatSlacDer),
+                            pemFromDerString(identity?.optString("heartbeat_der")?.takeIf { it.isNotBlank() } ?: block.heartbeatDer),
+                            pemFromDerString(identity?.optString("heartbeat_intermediate_der")?.takeIf { it.isNotBlank() } ?: block.heartbeatIntermediateDer)
+                        ).filterNotNull().joinToString("")
+
+                        val heartbeatSignature = identity?.optString("heartbeat_signature")?.takeIf { it.isNotBlank() }
+                            ?: block.heartbeatSignature?.takeIf { it.isNotBlank() }
+                        val lastSyncUtc = identity?.optLong("last_sync_utc") ?: 0L
+
+                        if (heartbeatChain.isNotBlank() && !heartbeatSignature.isNullOrBlank()) {
+                            val hbResult = com.lukuid.sdk.internal.verifyHeartbeatAttestation(
+                                com.lukuid.sdk.internal.HeartbeatAttestationInput(
+                                    id = deviceId,
+                                    heartbeatSig = heartbeatSignature,
+                                    lastSyncUtc = lastSyncUtc,
+                                    certificateChain = heartbeatChain,
+                                    trustProfile = options.trustProfile
+                                )
+                            )
+                            if (!hbResult.ok) {
+                                issues += VerificationIssue("HEARTBEAT_VERIFICATION_FAILED", "Device $deviceId failed SLAC heartbeat verification: ${hbResult.reason ?: "unknown"}", Criticality.CRITICAL)
+                            }
+                        } else if (!heartbeatSignature.isNullOrBlank()) {
+                            issues += VerificationIssue("HEARTBEAT_CHAIN_MISSING", "Missing SLAC heartbeat chain for device $deviceId.", Criticality.WARNING)
                         }
                     }
                 }
@@ -711,6 +747,8 @@ class LukuArchive private constructor(
                 heartbeatDer = commonValue("identity", "heartbeat_der") ?: commonCerts?.get("heartbeat_der"),
                 heartbeatIntermediateDer = commonValue("identity", "heartbeat_intermediate_der") ?: commonCerts?.get("heartbeat_intermediate_der"),
                 heartbeatRootFingerprint = commonValue("identity", "heartbeat_root_fingerprint") ?: commonCerts?.get("heartbeat_root_fingerprint"),
+                attestationDacSignature = commonValue("identity", "dac_signature") ?: commonCerts?.get("dac_signature"),
+                heartbeatSignature = commonValue("identity", "heartbeat_signature") ?: commonCerts?.get("heartbeat_signature"),
                 batch = normalizedBatch
             )
             val recomputed = recomputeBlockFields(block)

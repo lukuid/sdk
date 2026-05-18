@@ -28,9 +28,25 @@ class DeviceAttestationInputs:
 
 
 @dataclass(slots=True)
+class HeartbeatAttestationInputs:
+    id: str
+    heartbeat_sig: str
+    last_sync_utc: int
+    certificate_chain: str | None = None
+    trust_profile: str = os.environ.get("LUKUID_TRUST_PROFILE", "prod")
+
+
+@dataclass(slots=True)
 class VerificationResult:
     ok: bool
     reason: str | None = None
+
+
+@dataclass(slots=True)
+class CertificateChainValidationResult:
+    ok: bool
+    reason: str | None = None
+    certificates: list[x509.Certificate] | None = None
 
 
 @dataclass(slots=True)
@@ -194,94 +210,27 @@ def verify_device_attestation(
         return VerificationResult(False, "attestationSig is not valid base64")
 
     payload = f"{inputs.id}:{inputs.key}".encode("utf-8")
-    leaf_public_key_pem: str | None = None
+    leaf_public_key: object | None = None
 
     if inputs.certificate_chain:
-        certs_pem = _CERT_PATTERN.findall(inputs.certificate_chain)
-        if not certs_pem:
-            return VerificationResult(False, "Invalid certificate chain PEM")
+        chain_result = validate_certificate_chain(
+            inputs.certificate_chain,
+            created=inputs.created,
+            trust_profile=inputs.trust_profile,
+            allow_untrusted_roots=inputs.allow_untrusted_roots,
+            revocation_manager=revocation_manager,
+        )
+        if not chain_result.ok:
+            return VerificationResult(False, chain_result.reason)
+        certificates = chain_result.certificates or []
+        if certificates:
+            try:
+                leaf_public_key = certificates[0].public_key()
+            except Exception:
+                leaf_public_key = None
 
-        try:
-            certs = [x509.load_pem_x509_certificate(p.encode("utf-8")) for p in certs_pem]
-
-            leaf_meta = _certificate_metadata(certs_pem[0])
-
-            leaf_public_key_pem = leaf_meta["public_key_pem"]
-
-        except Exception as exc:
-            return VerificationResult(False, f"Chain processing error: {exc}")
-
-        required_ou = {
-            "dev": "lukuid-dev",
-            "test": "lukuid-test",
-            "prod": "lukuid-production",
-        }.get(inputs.trust_profile, "lukuid-production")
-
-        has_valid_profile = False
-        try:
-            for cert_pem in certs_pem[1:]:
-                subject = _certificate_metadata(cert_pem)["subject"]
-                if required_ou in subject:
-                    has_valid_profile = True
-                    break
-        except Exception as exc:
-            return VerificationResult(False, f"Chain processing error: {exc}")
-
-        if not has_valid_profile:
-            return VerificationResult(
-                False,
-                f"Certificate chain does not match the requested trust profile: {inputs.trust_profile}",
-            )
-
-        # Enforce full end-to-end PQC chain-signature validation.
-        for i in range(len(certs_pem)):
-            cert_pem = certs_pem[i]
-            verified = False
-            if i + 1 < len(certs_pem):
-                next_cert_pem = certs_pem[i+1]
-                next_meta = _certificate_metadata(next_cert_pem)
-                next_pub_pem = next_meta["public_key_pem"]
-                if _verify_cert_signature(cert_pem, next_pub_pem, next_cert_pem):
-                    verified = True
-            else:
-                for root_pem in TRUSTED_ROOT_CERTS_PEM:
-                    try:
-                        root_meta = _certificate_metadata(root_pem)
-                        if _verify_cert_signature(cert_pem, root_meta["public_key_pem"], root_pem):
-                            verified = True
-                            break
-                    except Exception:
-                        continue
-            
-            if not verified:
-                if i + 1 == len(certs) and inputs.allow_untrusted_roots:
-                    # Only bypass if we are at the top of the chain (the root anchor)
-                    verified = True
-
-            if not verified:
-                return VerificationResult(False, f"Signature verification failed at chain level {i}")
-
-            # Revocation Check: Check every certificate in the chain (After verification)
-            if revocation_manager:
-                for cert in certs:
-                    if revocation_manager.is_revoked(cert):
-                        return VerificationResult(False, f"Certificate is revoked: {revocation_manager.get_fingerprint(cert)}")
-
-            if inputs.created:
-                try:
-                    for cert_obj in certs:
-                        valid_from = int(cert_obj.not_valid_before_utc.timestamp())
-                        valid_to = int(cert_obj.not_valid_after_utc.timestamp())
-                        if inputs.created < valid_from or inputs.created > valid_to:
-                            return VerificationResult(
-                                False,
-                                f"Temporal birth check failed: created ({inputs.created}) is outside cert window [{valid_from} - {valid_to}]",
-                            )
-                except Exception as exc:
-                    return VerificationResult(False, f"Chain processing error: {exc}")
-
-    if leaf_public_key_pem is not None:
-        if _verify_signature_with_pem(leaf_public_key_pem, payload, signature_bytes):
+    if leaf_public_key is not None:
+        if _verify_signature_with_public_key(leaf_public_key, payload, signature_bytes):
             return VerificationResult(True)
         return VerificationResult(False, "Attestation verification failed against leaf")
 
@@ -294,6 +243,156 @@ def verify_device_attestation(
             continue
 
     return VerificationResult(False, "Attestation verification failed")
+
+
+def verify_heartbeat_attestation(
+    inputs: HeartbeatAttestationInputs,
+    revocation_manager: RevocationManager | None = None
+) -> VerificationResult:
+    if not inputs.heartbeat_sig:
+        return VerificationResult(False, "heartbeat_sig missing")
+
+    try:
+        signature_bytes = base64.b64decode(inputs.heartbeat_sig, validate=True)
+    except Exception:
+        return VerificationResult(False, "heartbeat_sig is not valid base64")
+
+    payload = f"heartbeat:{inputs.id}:{inputs.last_sync_utc}".encode("utf-8")
+    leaf_public_key: object | None = None
+
+    if inputs.certificate_chain:
+        chain_result = validate_certificate_chain(
+            inputs.certificate_chain,
+            created=None,
+            trust_profile=inputs.trust_profile,
+            revocation_manager=revocation_manager,
+        )
+        if not chain_result.ok:
+            return VerificationResult(False, chain_result.reason)
+        certificates = chain_result.certificates or []
+        if certificates:
+            try:
+                leaf_public_key = certificates[0].public_key()
+            except Exception:
+                leaf_public_key = None
+
+    if leaf_public_key is not None:
+        if _verify_signature_with_public_key(leaf_public_key, payload, signature_bytes):
+            return VerificationResult(True)
+        return VerificationResult(False, "Heartbeat verification failed against leaf")
+
+    return VerificationResult(False, "Heartbeat verification failed: no leaf public key")
+
+
+def validate_certificate_chain(
+    certificate_chain: str,
+    *,
+    created: int | None,
+    trust_profile: str,
+    allow_untrusted_roots: bool = False,
+    revocation_manager: RevocationManager | None = None,
+) -> CertificateChainValidationResult:
+    certs_pem = _CERT_PATTERN.findall(certificate_chain)
+    if not certs_pem:
+        return CertificateChainValidationResult(False, "Invalid certificate chain PEM")
+
+    try:
+        certs = [x509.load_pem_x509_certificate(p.encode("utf-8")) for p in certs_pem]
+    except Exception as exc:
+        return CertificateChainValidationResult(False, f"Chain processing error: {exc}")
+
+    required_ou = {
+        "dev": "lukuid-dev",
+        "test": "lukuid-test",
+        "prod": "lukuid-production",
+    }.get(trust_profile, "lukuid-production")
+
+    try:
+        has_valid_profile = any(
+            required_ou in _certificate_metadata(cert_pem, include_pubkey=False)["subject"]
+            for cert_pem in certs_pem[1:]
+        )
+    except Exception as exc:
+        return CertificateChainValidationResult(False, f"Chain processing error: {exc}")
+
+    if not has_valid_profile:
+        return CertificateChainValidationResult(
+            False,
+            f"Certificate chain does not match the requested trust profile: {trust_profile}",
+        )
+
+    for index, cert_pem in enumerate(certs_pem):
+        verified = False
+        if index + 1 < len(certs_pem):
+            issuer_pem = certs_pem[index + 1]
+            issuer_meta = _certificate_metadata(issuer_pem)
+            if _verify_cert_signature(cert_pem, issuer_meta["public_key_pem"], issuer_pem):
+                verified = True
+        else:
+            for root_pem in TRUSTED_ROOT_CERTS_PEM:
+                try:
+                    root_meta = _certificate_metadata(root_pem)
+                    if _verify_cert_signature(cert_pem, root_meta["public_key_pem"], root_pem):
+                        verified = True
+                        break
+                except Exception:
+                    continue
+
+        if not verified and index + 1 == len(certs_pem) and allow_untrusted_roots:
+            verified = True
+
+        if not verified:
+            return CertificateChainValidationResult(False, f"Signature verification failed at chain level {index}")
+
+    if revocation_manager:
+        for cert in certs:
+            if revocation_manager.is_revoked(cert):
+                return CertificateChainValidationResult(False, f"Certificate is revoked: {revocation_manager.get_fingerprint(cert)}")
+
+    if created is not None:
+        try:
+            for cert in certs:
+                valid_from = int(cert.not_valid_before_utc.timestamp())
+                valid_to = int(cert.not_valid_after_utc.timestamp())
+                if created < valid_from or created > valid_to:
+                    return CertificateChainValidationResult(
+                        False,
+                        f"Temporal birth check failed: created ({created}) is outside cert window [{valid_from} - {valid_to}]",
+                    )
+        except Exception as exc:
+            return CertificateChainValidationResult(False, f"Chain processing error: {exc}")
+
+    return CertificateChainValidationResult(True, certificates=certs)
+
+
+def public_key_matches_ed25519_certificate_leaf(certificate: x509.Certificate, public_key_base64: str) -> bool:
+    try:
+        expected = base64.b64decode(public_key_base64, validate=True)
+        public_key = certificate.public_key()
+        if not isinstance(public_key, ed25519.Ed25519PublicKey):
+            return False
+        actual = public_key.public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+        return actual == expected
+    except Exception:
+        return False
+
+
+def verify_payload_signature_with_public_key(
+    public_key: object,
+    signature_base64: str,
+    payload: bytes,
+) -> VerificationResult:
+    try:
+        signature = base64.b64decode(signature_base64, validate=True)
+    except Exception:
+        return VerificationResult(False, "signature is not valid base64")
+
+    if _verify_signature_with_public_key(public_key, payload, signature):
+        return VerificationResult(True)
+    return VerificationResult(False, "Signature verification failed against certificate public key")
 
 
 def verify_detached_signature(public_key_base64: str, payload: bytes, signature_base64: str) -> bool:

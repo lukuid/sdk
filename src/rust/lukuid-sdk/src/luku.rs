@@ -51,6 +51,10 @@ pub struct LukuBlock {
     pub heartbeat_intermediate_der: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub heartbeat_root_fingerprint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub attestation_dac_signature: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub heartbeat_signature: Option<String>,
     pub batch: Vec<Value>,
     #[serde(default)]
     pub batch_hash: String,
@@ -770,16 +774,6 @@ impl LukuFile {
                 attestation_chain.push_str(&pem);
             }
 
-            let attestation_sig = envelope
-                .get("attestation_signature")
-                .and_then(|v| v.as_str())
-                .or_else(|| {
-                    identity
-                        .and_then(|i| i.get("signature"))
-                        .and_then(|v| v.as_str())
-                })
-                .unwrap_or("");
-
             if attestation_chain.is_empty() {
                 Self::push_issue(
                     &mut issues,
@@ -791,37 +785,17 @@ impl LukuFile {
                         criticality: Criticality::Warning,
                     },
                 );
-            } else if !is_aux_record || !attestation_sig.is_empty() {
-                let attestation_alg = envelope
-                    .get("attestation_alg")
-                    .and_then(|v| v.as_str())
-                    .or_else(|| identity.and_then(|i| i.get("alg")).and_then(|v| v.as_str()))
-                    .unwrap_or("ED25519");
-                let attestation_payload_version = envelope
-                    .get("attestation_payload_version")
-                    .and_then(|v| v.as_u64())
-                    .or_else(|| {
-                        identity
-                            .and_then(|i| i.get("identity_version"))
-                            .and_then(|v| v.as_u64())
-                    })
-                    .unwrap_or(1);
-
-                let inputs = crate::attestation::DeviceAttestationInputs {
-                    id: device_id.to_string(),
-                    key: public_key.to_string(),
-                    attestation_sig: attestation_sig.to_string(),
-                    certificate_chain: Some(attestation_chain),
-                    created: if options.skip_certificate_temporal_checks {
+            } else {
+                let result = crate::attestation::validate_certificate_chain(
+                    &attestation_chain,
+                    if options.skip_certificate_temporal_checks {
                         None
                     } else {
                         timestamp.map(|t| t as i64)
                     },
-                    trust_profile: options.trust_profile.clone(),
-                    attestation_alg: Some(attestation_alg.to_string()),
-                    attestation_payload_version: Some(attestation_payload_version as u32),
-                };
-                let result = crate::attestation::verify_device_attestation(&inputs, None);
+                    &options.trust_profile,
+                    None,
+                );
                 if !result.ok {
                     Self::push_issue(
                         &mut issues,
@@ -837,6 +811,220 @@ impl LukuFile {
                             criticality: Criticality::Critical,
                         },
                     );
+                } else if !public_key.is_empty() {
+                    if let Some(cert_public_keys) = &result.cert_public_keys {
+                        if let Some(leaf_public_key) = cert_public_keys.first() {
+                            if !crate::attestation::public_key_matches_ed25519_certificate_leaf(
+                                leaf_public_key,
+                                public_key,
+                            ) {
+                                Self::push_issue(
+                                    &mut issues,
+                                    debug_logging,
+                                    None,
+                                    VerificationIssue {
+                                        code: "ATTESTATION_FAILED".to_string(),
+                                        message: format!(
+                                            "Device {} failed DAC attestation: Certificate leaf public key does not match envelope public_key",
+                                            device_id
+                                        ),
+                                        criticality: Criticality::Critical,
+                                    },
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
+            let slac_der = envelope
+                .get("heartbeat_slac_der")
+                .and_then(|v| v.as_str())
+                .or_else(|| {
+                    identity
+                        .and_then(|i| i.get("hb_slac_der"))
+                        .and_then(|v| v.as_str())
+                })
+                .or_else(|| {
+                    identity
+                        .and_then(|i| i.get("heartbeat_slac_der"))
+                        .and_then(|v| v.as_str())
+                });
+            let hb_man_der = envelope
+                .get("heartbeat_der")
+                .and_then(|v| v.as_str())
+                .or_else(|| identity.and_then(|i| i.get("hb_der")).and_then(|v| v.as_str()))
+                .or_else(|| {
+                    identity
+                        .and_then(|i| i.get("heartbeat_der"))
+                        .and_then(|v| v.as_str())
+                });
+            let hb_int_der = envelope
+                .get("heartbeat_intermediate_der")
+                .and_then(|v| v.as_str())
+                .or_else(|| {
+                    identity
+                        .and_then(|i| i.get("hb_intermediate_der"))
+                        .and_then(|v| v.as_str())
+                })
+                .or_else(|| {
+                    identity
+                        .and_then(|i| i.get("heartbeat_intermediate_der"))
+                        .and_then(|v| v.as_str())
+                });
+
+            if let Some(slac_der) = slac_der {
+                let mut slac_chain = String::new();
+                if let Some(pem) = pem_from_der_string(Some(slac_der)) {
+                    slac_chain.push_str(&pem);
+                }
+                if let Some(pem) = pem_from_der_string(hb_man_der) {
+                    slac_chain.push_str(&pem);
+                }
+                if let Some(pem) = pem_from_der_string(hb_int_der) {
+                    slac_chain.push_str(&pem);
+                }
+
+                if !slac_chain.is_empty() {
+                    let result = crate::attestation::validate_certificate_chain(
+                        &slac_chain,
+                        if options.skip_certificate_temporal_checks {
+                            None
+                        } else {
+                            timestamp.map(|t| t as i64)
+                        },
+                        &options.trust_profile,
+                        None,
+                    );
+                    if !result.ok {
+                        Self::push_issue(
+                            &mut issues,
+                            debug_logging,
+                            None,
+                            VerificationIssue {
+                                code: "ATTESTATION_FAILED".to_string(),
+                                message: format!(
+                                    "Device {} failed SLAC (heartbeat) attestation: {}",
+                                    device_id,
+                                    result.reason.unwrap_or_default()
+                                ),
+                                criticality: Criticality::Critical,
+                            },
+                        );
+                    } else if !public_key.is_empty() {
+                        if let Some(cert_public_keys) = &result.cert_public_keys {
+                            if let Some(leaf_public_key) = cert_public_keys.first() {
+                                if !crate::attestation::public_key_matches_ed25519_certificate_leaf(
+                                    leaf_public_key,
+                                    public_key,
+                                ) {
+                                    Self::push_issue(
+                                        &mut issues,
+                                        debug_logging,
+                                        None,
+                                        VerificationIssue {
+                                            code: "ATTESTATION_FAILED".to_string(),
+                                            message: format!(
+                                                "Device {} failed SLAC (heartbeat) attestation: SLAC leaf public key does not match envelope public_key",
+                                                device_id
+                                            ),
+                                            criticality: Criticality::Critical,
+                                        },
+                                    );
+                                } else {
+                                    let slac_signature = envelope
+                                        .get("heartbeat_signature")
+                                        .and_then(|v| v.as_str())
+                                        .or_else(|| {
+                                            identity
+                                                .and_then(|i| i.get("heartbeat_signature"))
+                                                .and_then(|v| v.as_str())
+                                        })
+                                        .unwrap_or("");
+                                    if !slac_signature.is_empty() {
+                                        let last_sync_utc = identity
+                                            .and_then(|i| i.get("last_sync_utc"))
+                                            .and_then(|v| v.as_i64())
+                                            .or_else(|| envelope.get("last_sync_utc").and_then(|v| v.as_i64()));
+                                        if last_sync_utc.is_none() || last_sync_utc.unwrap_or_default() <= 0 {
+                                            Self::push_issue(
+                                                &mut issues,
+                                                debug_logging,
+                                                None,
+                                                VerificationIssue {
+                                                    code: "ATTESTATION_FAILED".to_string(),
+                                                    message: format!(
+                                                        "Device {} failed SLAC (heartbeat) attestation: Missing trusted heartbeat timestamp",
+                                                        device_id
+                                                    ),
+                                                    criticality: Criticality::Critical,
+                                                },
+                                            );
+                                        } else if let (Some(record_ts), Some(last_sync_utc)) =
+                                            (timestamp, last_sync_utc)
+                                        {
+                                            if last_sync_utc > 0 && last_sync_utc as u64 > record_ts {
+                                                Self::push_issue(
+                                                    &mut issues,
+                                                    debug_logging,
+                                                    None,
+                                                    VerificationIssue {
+                                                        code: "LAST_SYNC_AFTER_RECORD".to_string(),
+                                                        message: format!(
+                                                            "Device {} reports last_sync_utc {} after record timestamp {}.",
+                                                            device_id, last_sync_utc, record_ts
+                                                        ),
+                                                        criticality: Criticality::Critical,
+                                                    },
+                                                );
+                                            } else if cert_public_keys.len() < 2 {
+                                                Self::push_issue(
+                                                    &mut issues,
+                                                    debug_logging,
+                                                    None,
+                                                    VerificationIssue {
+                                                        code: "ATTESTATION_FAILED".to_string(),
+                                                        message: format!(
+                                                            "Device {} failed SLAC (heartbeat) attestation: Heartbeat authority certificate missing from chain",
+                                                            device_id
+                                                        ),
+                                                        criticality: Criticality::Critical,
+                                                    },
+                                                );
+                                            } else {
+                                                let heartbeat_result =
+                                                    crate::attestation::verify_payload_signature_with_public_key(
+                                                        &cert_public_keys[1],
+                                                        slac_signature,
+                                                        format!(
+                                                            "heartbeat:{}:{}",
+                                                            device_id, last_sync_utc
+                                                        )
+                                                        .as_bytes(),
+                                                    );
+                                                if !heartbeat_result.ok {
+                                                    Self::push_issue(
+                                                        &mut issues,
+                                                        debug_logging,
+                                                        None,
+                                                        VerificationIssue {
+                                                            code: "ATTESTATION_FAILED".to_string(),
+                                                            message: format!(
+                                                                "Device {} failed SLAC (heartbeat) attestation: {}",
+                                                                device_id,
+                                                                heartbeat_result.reason.unwrap_or_default()
+                                                            ),
+                                                            criticality: Criticality::Critical,
+                                                        },
+                                                    );
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1575,7 +1763,7 @@ impl LukuFile {
 
                         let attestation_sig = record
                             .get("identity")
-                            .and_then(|i| i.get("signature"))
+                            .and_then(|i| i.get("dac_signature"))
                             .and_then(|v| v.as_str())
                             .unwrap_or("");
 
@@ -1632,6 +1820,105 @@ impl LukuFile {
                                         code: "ATTESTATION_FAILED".to_string(),
                                         message: format!(
                                             "Device {} failed DAC attestation: {}",
+                                            device_id,
+                                            result.reason.unwrap_or_default()
+                                        ),
+                                        criticality: Criticality::Critical,
+                                    },
+                                );
+                            }
+                        }
+                    }
+
+                    // Heartbeat (SLAC) Verification
+                    if !options.allow_untrusted_roots {
+                        use crate::attestation::{
+                            verify_heartbeat_attestation, HeartbeatAttestationInputs,
+                        };
+
+                        let mut slac_chain = block_slac_chain.clone();
+                        // Support record-level certificates if they exist
+                        if let Some(identity) = record.get("identity") {
+                            if let Some(slac_der) = identity.get("slac_der").and_then(|v| v.as_str())
+                            {
+                                slac_chain.clear();
+                                if let Some(pem) = pem_from_der_string(Some(&slac_der.to_string())) {
+                                    slac_chain.push_str(&pem);
+                                }
+                                if let Some(h_der) = identity
+                                    .get("heartbeat_der")
+                                    .and_then(|v| v.as_str())
+                                {
+                                    if let Some(pem) = pem_from_der_string(Some(&h_der.to_string()))
+                                    {
+                                        slac_chain.push_str(&pem);
+                                    }
+                                }
+                                if let Some(i_der) = identity
+                                    .get("heartbeat_intermediate_der")
+                                    .and_then(|v| v.as_str())
+                                {
+                                    if let Some(pem) = pem_from_der_string(Some(&i_der.to_string()))
+                                    {
+                                        slac_chain.push_str(&pem);
+                                    }
+                                }
+                            }
+                        }
+
+                        let heartbeat_sig = record
+                            .get("identity")
+                            .and_then(|i| i.get("heartbeat_signature"))
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+
+                        let last_sync_utc = record
+                            .get("identity")
+                            .and_then(|i| i.get("last_sync_utc"))
+                            .and_then(|v| v.as_i64())
+                            .unwrap_or(0);
+
+                        if slac_chain.is_empty() {
+                            if !heartbeat_sig.is_empty() {
+                                Self::push_issue(
+                                    &mut issues,
+                                    debug_logging,
+                                    Some(record_context.as_str()),
+                                    VerificationIssue {
+                                        code: "HEARTBEAT_CHAIN_MISSING".to_string(),
+                                        message: format!(
+                                            "Missing SLAC heartbeat chain for device {}.",
+                                            device_id
+                                        ),
+                                        criticality: Criticality::Warning,
+                                    },
+                                );
+                            }
+                        } else if !heartbeat_sig.is_empty() {
+                            let inputs = HeartbeatAttestationInputs {
+                                id: device_id.to_string(),
+                                heartbeat_sig: heartbeat_sig.to_string(),
+                                last_sync_utc,
+                                certificate_chain: Some(slac_chain),
+                                trust_profile: options.trust_profile.clone(),
+                            };
+
+                            let result = verify_heartbeat_attestation(&inputs, None);
+                            if !result.ok {
+                                if debug_logging {
+                                    Self::debug_log(format!(
+                                        "{record_context} heartbeat_check reason={}",
+                                        result.reason.clone().unwrap_or_default()
+                                    ));
+                                }
+                                Self::push_issue(
+                                    &mut issues,
+                                    debug_logging,
+                                    Some(record_context.as_str()),
+                                    VerificationIssue {
+                                        code: "HEARTBEAT_VERIFICATION_FAILED".to_string(),
+                                        message: format!(
+                                            "Device {} failed SLAC heartbeat verification: {}",
                                             device_id,
                                             result.reason.unwrap_or_default()
                                         ),
@@ -2322,6 +2609,26 @@ impl LukuFile {
                     .cloned()
             }),
             heartbeat_root_fingerprint,
+            attestation_dac_signature: common_record_value(&batch, |record| {
+                record
+                    .get("identity")
+                    .and_then(|identity| identity.get("dac_signature"))
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+            })
+            .or_else(|| {
+                common_certs
+                    .and_then(|c| c.get("dac_signature"))
+                    .cloned()
+            }),
+            heartbeat_signature: common_record_value(&batch, |record| {
+                record
+                    .get("identity")
+                    .and_then(|identity| identity.get("heartbeat_signature"))
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+            })
+            .or_else(|| common_certs.and_then(|c| c.get("heartbeat_signature")).cloned()),
             batch,
             batch_hash,
             block_canonical_string,

@@ -25,9 +25,23 @@ internal data class DeviceAttestationInput(
     val trustProfile: String? = "prod"
 )
 
+internal data class HeartbeatAttestationInput(
+    val id: String,
+    val heartbeatSig: String,
+    val lastSyncUtc: Long,
+    val certificateChain: String? = null,
+    val trustProfile: String? = "prod"
+)
+
 internal data class VerificationResult(
     val ok: Boolean,
     val reason: String?
+)
+
+internal data class CertificateChainValidationResult(
+    val ok: Boolean,
+    val reason: String?,
+    val certificates: List<X509Certificate> = emptyList()
 )
 
 internal data class ExternalIdentityInput(
@@ -177,117 +191,19 @@ internal fun verifyDeviceAttestation(input: DeviceAttestationInput, revocationMa
 
     val payloadString = "${input.id}:${input.key}"
     val payload = payloadString.toByteArray(StandardCharsets.UTF_8)
-    
     var leafPublicKey: PublicKey? = null
-    
+
     if (!input.certificateChain.isNullOrEmpty()) {
-        try {
-            val cf = CertificateFactory.getInstance("X.509", BouncyCastleProvider.PROVIDER_NAME)
-            val certs = cf.generateCertificates(ByteArrayInputStream(input.certificateChain.toByteArray()))
-                .filterIsInstance<X509Certificate>()
-            
-            println("DEBUG CERTS: size=${certs.size}")
-            
-            if (certs.isEmpty()) {
-                return VerificationResult(false, "Invalid certificate chain")
-            }
-            
-            leafPublicKey = certs[0].publicKey
-
-            // 1.05 Revocation Check: Check every certificate in the chain
-            if (revocationManager != null) {
-                for (cert in certs) {
-                    if (revocationManager.isRevoked(cert)) {
-                        return VerificationResult(false, "Certificate is revoked: ${sha256Hex(extractRawPublicKey(cert.publicKey))}")
-                    }
-                }
-            }
-
-            val requiredOu = when (input.trustProfile) {
-                "dev" -> "lukuid-dev"
-                "test" -> "lukuid-test"
-                else -> "lukuid-production"
-            }
-
-            val hasValidProfile = certs.drop(1).any { cert ->
-                cert.subjectX500Principal.name.contains(requiredOu)
-            }
-            if (!hasValidProfile) {
-                return VerificationResult(false, "Certificate chain does not match the requested trust profile: ${input.trustProfile ?: "prod"}")
-            }
-            
-            // 1.07 MANDATORY: Verify signatures along the chain
-            for (i in 0 until certs.size) {
-                val current = certs[i]
-                var verified = false
-                
-                if (i + 1 < certs.size) {
-                    val next = certs[i + 1]
-                    verified = try {
-                        val alg = when {
-                            current.sigAlgName.contains("ECDSA", ignoreCase = true) -> "SHA256withECDSA"
-                            current.sigAlgName == "1.2.840.10045.4.3.2" -> "SHA256withECDSA"
-                            current.sigAlgName == "2.16.840.1.101.3.4.3.18" -> "ML-DSA"
-                            current.sigAlgName == "1.3.101.112" -> "Ed25519"
-                            else -> current.sigAlgName
-                        }
-                        val sig = Signature.getInstance(alg, BouncyCastleProvider.PROVIDER_NAME)
-                        sig.initVerify(next.publicKey)
-                        sig.update(current.tbsCertificate)
-                        sig.verify(current.signature)
-                    } catch (e: Exception) { 
-                        e.printStackTrace()
-                        false 
-                    }
-                } else {
-                    for (rootPem in TRUSTED_ROOT_CERTS_PEM) {
-                        verified = try {
-                            val root = cf.generateCertificate(ByteArrayInputStream(rootPem.trimIndent().trim().toByteArray())) as X509Certificate
-                            val alg = when {
-                                current.sigAlgName.contains("ECDSA", ignoreCase = true) -> "SHA256withECDSA"
-                                current.sigAlgName == "1.2.840.10045.4.3.2" -> "SHA256withECDSA"
-                                current.sigAlgName == "2.16.840.1.101.3.4.3.18" -> "ML-DSA"
-                                current.sigAlgName == "1.3.101.112" -> "Ed25519"
-                                else -> current.sigAlgName
-                            }
-                            val sig = Signature.getInstance(alg, BouncyCastleProvider.PROVIDER_NAME)
-                            sig.initVerify(root.publicKey)
-                            sig.update(current.tbsCertificate)
-                            sig.verify(current.signature)
-                            } catch (e: Exception) { 
-                            e.printStackTrace()
-                            false 
-                            }
-                        if (verified) break
-                    }
-                }
-                
-                if (!verified) {
-                    return VerificationResult(false, "Signature verification failed at level $i")
-                }
-                }
-
-                // Revocation Check: Check every certificate in the chain (After verification)
-                if (revocationManager != null) {
-                for (cert in certs) {
-                    if (revocationManager.isRevoked(cert)) {
-                        return VerificationResult(false, "Certificate is revoked: ${sha256Hex(extractRawPublicKey(cert.publicKey))}")
-                    }
-                }
-                }
-
-                if (input.created != null) {
-
-                val leaf = certs[0]
-                val validFrom = leaf.notBefore.time / 1000
-                val validTo = leaf.notAfter.time / 1000
-                if (input.created < validFrom || input.created > validTo) {
-                    return VerificationResult(false, "Temporal birth check failed: created (${input.created}) is outside cert window [$validFrom - $validTo]")
-                }
-            }
-        } catch (e: Exception) {
-            return VerificationResult(false, "Chain processing error: ${e.message}")
+        val chainResult = validateCertificateChain(
+            input.certificateChain,
+            input.created,
+            input.trustProfile ?: "prod",
+            revocationManager
+        )
+        if (!chainResult.ok) {
+            return VerificationResult(false, chainResult.reason)
         }
+        leafPublicKey = chainResult.certificates.firstOrNull()?.publicKey
     }
 
     if (leafPublicKey != null) {
@@ -312,6 +228,183 @@ internal fun verifyDeviceAttestation(input: DeviceAttestationInput, revocationMa
     }
     
     return VerificationResult(false, "Attestation verification failed")
+}
+
+internal fun verifyHeartbeatAttestation(input: HeartbeatAttestationInput, revocationManager: RevocationManager? = null): VerificationResult {
+    if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+        Security.insertProviderAt(BouncyCastleProvider(), 1)
+    }
+
+    if (input.heartbeatSig.isEmpty()) {
+        return VerificationResult(false, "heartbeatSig missing")
+    }
+
+    val signatureBytes = decodeBase64(input.heartbeatSig)
+        ?: return VerificationResult(false, "heartbeatSig is not valid base64")
+
+    val payloadString = "heartbeat:${input.id}:${input.lastSyncUtc}"
+    val payload = payloadString.toByteArray(StandardCharsets.UTF_8)
+    var leafPublicKey: PublicKey? = null
+
+    if (!input.certificateChain.isNullOrEmpty()) {
+        val chainResult = validateCertificateChain(
+            input.certificateChain,
+            null,
+            input.trustProfile ?: "prod",
+            revocationManager
+        )
+        if (!chainResult.ok) {
+            return VerificationResult(false, chainResult.reason)
+        }
+        leafPublicKey = chainResult.certificates.firstOrNull()?.publicKey
+    }
+
+    if (leafPublicKey != null) {
+        try {
+            val rawPublicKey = extractRawPublicKey(leafPublicKey)
+            val algorithm = when {
+                rawPublicKey.size == 32 -> "Ed25519"
+                signatureBytes.size == 3309 -> "ML-DSA"
+                else -> "SHA256withECDSA"
+            }
+            val sig = Signature.getInstance(algorithm, BouncyCastleProvider.PROVIDER_NAME)
+            sig.initVerify(leafPublicKey)
+            sig.update(payload)
+            if (sig.verify(signatureBytes)) return VerificationResult(true, null)
+        } catch (e: Exception) {
+            return VerificationResult(false, "Heartbeat verification failed: ${e.message}")
+        }
+    }
+
+    return VerificationResult(false, "Heartbeat verification failed: no leaf public key")
+}
+
+internal fun validateCertificateChain(
+    certificateChain: String,
+    created: Long?,
+    trustProfile: String,
+    revocationManager: RevocationManager? = null
+): CertificateChainValidationResult {
+    if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+        Security.insertProviderAt(BouncyCastleProvider(), 1)
+    }
+
+    return try {
+        val cf = CertificateFactory.getInstance("X.509", BouncyCastleProvider.PROVIDER_NAME)
+        val certs = cf.generateCertificates(ByteArrayInputStream(certificateChain.toByteArray()))
+            .filterIsInstance<X509Certificate>()
+
+        if (certs.isEmpty()) {
+            return CertificateChainValidationResult(false, "Invalid certificate chain")
+        }
+
+        if (revocationManager != null) {
+            for (cert in certs) {
+                if (revocationManager.isRevoked(cert)) {
+                    return CertificateChainValidationResult(false, "Certificate is revoked: ${sha256Hex(extractRawPublicKey(cert.publicKey))}")
+                }
+            }
+        }
+
+        val requiredOu = when (trustProfile) {
+            "dev" -> "lukuid-dev"
+            "test" -> "lukuid-test"
+            else -> "lukuid-production"
+        }
+
+        val hasValidProfile = certs.drop(1).any { cert ->
+            cert.subjectX500Principal.name.contains(requiredOu)
+        }
+        if (!hasValidProfile) {
+            return CertificateChainValidationResult(false, "Certificate chain does not match the requested trust profile: $trustProfile")
+        }
+
+        for (i in certs.indices) {
+            val current = certs[i]
+            var verified = false
+
+            if (i + 1 < certs.size) {
+                val next = certs[i + 1]
+                verified = verifyCertificateSignature(current, next.publicKey)
+            } else {
+                for (rootPem in TRUSTED_ROOT_CERTS_PEM) {
+                    verified = try {
+                        val root = cf.generateCertificate(ByteArrayInputStream(rootPem.trimIndent().trim().toByteArray())) as X509Certificate
+                        verifyCertificateSignature(current, root.publicKey)
+                    } catch (_: Exception) {
+                        false
+                    }
+                    if (verified) break
+                }
+            }
+
+            if (!verified) {
+                return CertificateChainValidationResult(false, "Signature verification failed at level $i")
+            }
+        }
+
+        if (created != null) {
+            for (cert in certs) {
+                val validFrom = cert.notBefore.time / 1000
+                val validTo = cert.notAfter.time / 1000
+                if (created < validFrom || created > validTo) {
+                    return CertificateChainValidationResult(false, "Temporal birth check failed: created ($created) is outside cert window [$validFrom - $validTo]")
+                }
+            }
+        }
+
+        CertificateChainValidationResult(true, null, certs)
+    } catch (e: Exception) {
+        CertificateChainValidationResult(false, "Chain processing error: ${e.message}")
+    }
+}
+
+internal fun publicKeyMatchesEd25519CertificateLeaf(certificate: X509Certificate, publicKeyBase64: String): Boolean {
+    val expected = decodeBase64(publicKeyBase64) ?: return false
+    val actual = extractRawPublicKey(certificate.publicKey)
+    return actual.size == 32 && actual.contentEquals(expected)
+}
+
+internal fun verifyPayloadSignatureWithPublicKey(publicKey: PublicKey, signatureBase64: String, payload: String): VerificationResult {
+    if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+        Security.insertProviderAt(BouncyCastleProvider(), 1)
+    }
+
+    val signatureBytes = decodeBase64(signatureBase64)
+        ?: return VerificationResult(false, "signature is not valid base64")
+
+    return try {
+        val rawPublicKey = extractRawPublicKey(publicKey)
+        val algorithm = when {
+            rawPublicKey.size == 32 -> "Ed25519"
+            else -> "SHA256withECDSA"
+        }
+        val sig = Signature.getInstance(algorithm, BouncyCastleProvider.PROVIDER_NAME)
+        sig.initVerify(publicKey)
+        sig.update(payload.toByteArray(StandardCharsets.UTF_8))
+        if (sig.verify(signatureBytes)) VerificationResult(true, null)
+        else VerificationResult(false, "Signature verification failed against certificate public key")
+    } catch (e: Exception) {
+        VerificationResult(false, "Signature verification failed against certificate public key")
+    }
+}
+
+private fun verifyCertificateSignature(certificate: X509Certificate, issuerPublicKey: PublicKey): Boolean {
+    return try {
+        val alg = when {
+            certificate.sigAlgName.contains("ECDSA", ignoreCase = true) -> "SHA256withECDSA"
+            certificate.sigAlgName == "1.2.840.10045.4.3.2" -> "SHA256withECDSA"
+            certificate.sigAlgName == "2.16.840.1.101.3.4.3.18" -> "ML-DSA"
+            certificate.sigAlgName == "1.3.101.112" -> "Ed25519"
+            else -> certificate.sigAlgName
+        }
+        val sig = Signature.getInstance(alg, BouncyCastleProvider.PROVIDER_NAME)
+        sig.initVerify(issuerPublicKey)
+        sig.update(certificate.tbsCertificate)
+        sig.verify(certificate.signature)
+    } catch (_: Exception) {
+        false
+    }
 }
 
 internal fun verifyExternalIdentity(input: ExternalIdentityInput, revocationManager: RevocationManager? = null): VerificationResult {

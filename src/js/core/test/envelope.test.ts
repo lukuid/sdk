@@ -127,6 +127,34 @@ describe('LukuFile.verifyEnvelope', () => {
     assert.ok(issues.some(i => i.code === 'ATTESTATION_FAILED'), 'Expected ATTESTATION_FAILED');
   });
 
+  it('should allow a valid envelope when DAC detached signature is absent but the cert chain still binds the device key', async () => {
+    const envelope = await getValidEnvelope();
+    delete (envelope.identity as JsonObject).signature;
+    delete envelope.attestation_signature;
+
+    const issues = await runWithBrowserCrypto(() => LukuFile.verifyEnvelope(envelope, {
+      allowUntrustedRoots: false,
+      skipCertificateTemporalChecks: true,
+      trustProfile: 'dev'
+    }));
+    assert.equal(issues.length, 0, `Should have no issues, but found: ${JSON.stringify(issues)}`);
+  });
+
+  it('should fail if a heartbeat signature is present without a trusted heartbeat timestamp', async () => {
+    const envelope = await getValidEnvelope();
+    envelope.heartbeat_signature = (envelope.identity as JsonObject).signature as string;
+
+    const issues = await runWithBrowserCrypto(() => LukuFile.verifyEnvelope(envelope, {
+      allowUntrustedRoots: false,
+      skipCertificateTemporalChecks: true,
+      trustProfile: 'dev'
+    }));
+    assert.ok(
+      issues.some(i => i.code === 'ATTESTATION_FAILED' && i.message.includes('Missing trusted heartbeat timestamp')),
+      `Expected heartbeat timestamp failure, got: ${JSON.stringify(issues)}`
+    );
+  });
+
   it('should fail if canonical string is tampered', async () => {
     const envelope = await getValidEnvelope();
     envelope.canonical_string = 'tampered:canonical:string';

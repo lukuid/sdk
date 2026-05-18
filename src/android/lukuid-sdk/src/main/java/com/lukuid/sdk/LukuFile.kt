@@ -3,6 +3,9 @@ package com.lukuid.sdk
 
 import com.lukuid.sdk.internal.DeviceAttestationInput
 import com.lukuid.sdk.internal.JsonUtils
+import com.lukuid.sdk.internal.publicKeyMatchesEd25519CertificateLeaf
+import com.lukuid.sdk.internal.validateCertificateChain
+import com.lukuid.sdk.internal.verifyPayloadSignatureWithPublicKey
 import com.lukuid.sdk.internal.verifyDeviceAttestation
 import org.json.JSONArray
 import org.json.JSONObject
@@ -160,23 +163,18 @@ object LukuFile {
                 intDer?.let { pemFromDerBase64(it) }
             ).joinToString("")
             
-            val attestationSig = envelope.optString("attestation_signature").takeIf { it.isNotEmpty() }
-                ?: identity?.optString("signature") ?: ""
-
             if (attestationChain.isEmpty()) {
                 issues.add(VerificationIssue("ATTESTATION_CHAIN_MISSING", "Missing DAC attestation chain for device $deviceId.", Criticality.WARNING))
-            } else if (!isAuxRecord || attestationSig.isNotEmpty()) {
-                val input = DeviceAttestationInput(
-                    id = deviceId,
-                    key = publicKey,
-                    attestationSig = attestationSig,
-                    certificateChain = attestationChain,
-                    created = if (options.skipCertificateTemporalChecks) null else timestamp,
-                    trustProfile = options.trustProfile
+            } else {
+                val result = validateCertificateChain(
+                    attestationChain,
+                    if (options.skipCertificateTemporalChecks) null else timestamp,
+                    options.trustProfile
                 )
-                val result = verifyDeviceAttestation(input)
                 if (!result.ok) {
                     issues.add(VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed DAC attestation: ${result.reason}", Criticality.CRITICAL))
+                } else if (publicKey.isNotEmpty() && result.certificates.isNotEmpty() && !publicKeyMatchesEd25519CertificateLeaf(result.certificates[0], publicKey)) {
+                    issues.add(VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed DAC attestation: Certificate leaf public key does not match envelope public_key", Criticality.CRITICAL))
                 }
             }
 
@@ -199,20 +197,39 @@ object LukuFile {
                 ).joinToString("")
 
                 if (slacChain.isNotEmpty()) {
+                    val chainResult = validateCertificateChain(
+                        slacChain,
+                        if (options.skipCertificateTemporalChecks) null else timestamp,
+                        options.trustProfile
+                    )
                     val slacSignature = envelope.optString("heartbeat_signature").takeIf { it.isNotEmpty() }
                         ?: identity?.optString("heartbeat_signature")?.takeIf { it.isNotEmpty() }
-                        ?: attestationSig
-                        
-                    val slacResult = verifyDeviceAttestation(DeviceAttestationInput(
-                        id = deviceId,
-                        key = publicKey,
-                        attestationSig = slacSignature,
-                        certificateChain = slacChain,
-                        created = if (options.skipCertificateTemporalChecks) null else timestamp,
-                        trustProfile = options.trustProfile
-                    ))
-                    if (!slacResult.ok) {
-                        issues.add(VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed SLAC (heartbeat) attestation: ${slacResult.reason}", Criticality.CRITICAL))
+                    if (!chainResult.ok) {
+                        issues.add(VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed SLAC (heartbeat) attestation: ${chainResult.reason}", Criticality.CRITICAL))
+                    } else if (publicKey.isNotEmpty() && chainResult.certificates.isNotEmpty() && !publicKeyMatchesEd25519CertificateLeaf(chainResult.certificates[0], publicKey)) {
+                        issues.add(VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed SLAC (heartbeat) attestation: SLAC leaf public key does not match envelope public_key", Criticality.CRITICAL))
+                    } else if (!slacSignature.isNullOrEmpty()) {
+                        val lastSyncUtc = when {
+                            identity?.has("last_sync_utc") == true -> identity.optLong("last_sync_utc")
+                            envelope.has("last_sync_utc") -> envelope.optLong("last_sync_utc")
+                            else -> null
+                        }
+                        if (lastSyncUtc == null || lastSyncUtc <= 0L) {
+                            issues.add(VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed SLAC (heartbeat) attestation: Missing trusted heartbeat timestamp", Criticality.CRITICAL))
+                        } else if (timestamp != null && lastSyncUtc > timestamp) {
+                            issues.add(VerificationIssue("LAST_SYNC_AFTER_RECORD", "Device $deviceId reports last_sync_utc $lastSyncUtc after record timestamp $timestamp.", Criticality.CRITICAL))
+                        } else if (chainResult.certificates.size < 2) {
+                            issues.add(VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed SLAC (heartbeat) attestation: Heartbeat authority certificate missing from chain", Criticality.CRITICAL))
+                        } else {
+                            val slacResult = verifyPayloadSignatureWithPublicKey(
+                                chainResult.certificates[1].publicKey,
+                                slacSignature,
+                                "heartbeat:$deviceId:$lastSyncUtc"
+                            )
+                            if (!slacResult.ok) {
+                                issues.add(VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed SLAC (heartbeat) attestation: ${slacResult.reason}", Criticality.CRITICAL))
+                            }
+                        }
                     }
                 }
             }
