@@ -4,6 +4,9 @@
   "description": "Shared primitives for the Lukuid JS SDK.",
   "private": false,
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
