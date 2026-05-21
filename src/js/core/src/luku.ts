@@ -569,7 +569,7 @@ export class LukuFile {
       } else {
         const attestationResult = await verifyDeviceAttestation({
           id: deviceId ?? 'unknown',
-          key: publicKey,
+          key: publicKey ?? '',
           attestationSig: attestationSignature,
           certificateChain: attestationChain,
           created: skipCertificateTemporalChecks ? undefined : timestamp,
