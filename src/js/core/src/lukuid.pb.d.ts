@@ -3813,8 +3813,8 @@ export namespace lukuid {
         /** EnvironmentRecordMin humidityPct */
         humidityPct?: (lukuid.IMetricValue|null);
 
-        /** EnvironmentRecordMin vocIndex */
-        vocIndex?: (lukuid.IMetricValue|null);
+        /** EnvironmentRecordMin vocRaw */
+        vocRaw?: (lukuid.IMetricValue|null);
 
         /** EnvironmentRecordMin tamper */
         tamper?: (boolean|null);
@@ -3824,6 +3824,9 @@ export namespace lukuid {
 
         /** EnvironmentRecordMin vbusPresent */
         vbusPresent?: (boolean|null);
+
+        /** EnvironmentRecordMin vocIndex */
+        vocIndex?: (lukuid.IMetricValue|null);
     }
 
     /** Represents an EnvironmentRecordMin. */
@@ -3853,8 +3856,8 @@ export namespace lukuid {
         /** EnvironmentRecordMin humidityPct. */
         public humidityPct?: (lukuid.IMetricValue|null);
 
-        /** EnvironmentRecordMin vocIndex. */
-        public vocIndex?: (lukuid.IMetricValue|null);
+        /** EnvironmentRecordMin vocRaw. */
+        public vocRaw?: (lukuid.IMetricValue|null);
 
         /** EnvironmentRecordMin tamper. */
         public tamper: boolean;
@@ -3864,6 +3867,9 @@ export namespace lukuid {
 
         /** EnvironmentRecordMin vbusPresent. */
         public vbusPresent: boolean;
+
+        /** EnvironmentRecordMin vocIndex. */
+        public vocIndex?: (lukuid.IMetricValue|null);
 
         /**
          * Creates a new EnvironmentRecordMin instance using the specified properties.
@@ -4662,9 +4668,6 @@ export namespace lukuid {
         /** Identity lastSyncUtc */
         lastSyncUtc?: (number|Long|null);
 
-        /** Identity signature */
-        signature?: (Uint8Array|null);
-
         /** Identity dacDer */
         dacDer?: (Uint8Array|null);
 
@@ -4691,6 +4694,12 @@ export namespace lukuid {
 
         /** Identity alg */
         alg?: (string|null);
+
+        /** Identity dacSignature */
+        dacSignature?: (Uint8Array|null);
+
+        /** Identity heartbeatSignature */
+        heartbeatSignature?: (Uint8Array|null);
     }
 
     /** Represents an Identity. */
@@ -4713,9 +4722,6 @@ export namespace lukuid {
 
         /** Identity lastSyncUtc. */
         public lastSyncUtc: (number|Long);
-
-        /** Identity signature. */
-        public signature: Uint8Array;
 
         /** Identity dacDer. */
         public dacDer: Uint8Array;
@@ -4743,6 +4749,12 @@ export namespace lukuid {
 
         /** Identity alg. */
         public alg: string;
+
+        /** Identity dacSignature. */
+        public dacSignature: Uint8Array;
+
+        /** Identity heartbeatSignature. */
+        public heartbeatSignature: Uint8Array;
 
         /**
          * Creates a new Identity instance using the specified properties.
@@ -5504,8 +5516,8 @@ export namespace lukuid {
         /** EnvironmentPayload pressureHpa */
         pressureHpa?: (number|null);
 
-        /** EnvironmentPayload vocIndex */
-        vocIndex?: (number|null);
+        /** EnvironmentPayload vocRaw */
+        vocRaw?: (number|null);
 
         /** EnvironmentPayload accelG */
         accelG?: (lukuid.EnvironmentPayload.IAccel|null);
@@ -5536,6 +5548,9 @@ export namespace lukuid {
 
         /** EnvironmentPayload drift */
         drift?: (number|null);
+
+        /** EnvironmentPayload vocIndex */
+        vocIndex?: (number|null);
     }
 
     /** Represents an EnvironmentPayload. */
@@ -5574,8 +5589,8 @@ export namespace lukuid {
         /** EnvironmentPayload pressureHpa. */
         public pressureHpa: number;
 
-        /** EnvironmentPayload vocIndex. */
-        public vocIndex: number;
+        /** EnvironmentPayload vocRaw. */
+        public vocRaw: number;
 
         /** EnvironmentPayload accelG. */
         public accelG?: (lukuid.EnvironmentPayload.IAccel|null);
@@ -5606,6 +5621,9 @@ export namespace lukuid {
 
         /** EnvironmentPayload drift. */
         public drift: number;
+
+        /** EnvironmentPayload vocIndex. */
+        public vocIndex: number;
 
         /**
          * Creates a new EnvironmentPayload instance using the specified properties.

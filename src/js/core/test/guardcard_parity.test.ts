@@ -54,7 +54,7 @@ async function runWithBrowserCrypto<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 describe('GuardCard Envelope Parity', () => {
-  it('accepts a cert-bound DAC envelope with no detached attestation signature fields', async () => {
+  it('fails when DAC detached attestation signature fields are missing', async () => {
     const envelope = await getValidEnvelope();
     const identity = envelope.identity as JsonObject;
     delete envelope.attestation_signature;
@@ -66,7 +66,10 @@ describe('GuardCard Envelope Parity', () => {
       trustProfile: 'dev'
     }));
 
-    assert.equal(issues.length, 0, `Expected no issues, got: ${JSON.stringify(issues)}`);
+    assert.ok(
+      issues.some((issue) => issue.code === 'ATTESTATION_FAILED' && issue.message.includes('attestationSig missing')),
+      `Expected attestationSig missing failure, got: ${JSON.stringify(issues)}`
+    );
   });
 
   it('fails when a heartbeat signature is present without a trusted heartbeat timestamp', async () => {

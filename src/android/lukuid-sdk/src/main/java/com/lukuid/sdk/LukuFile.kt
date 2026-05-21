@@ -163,18 +163,27 @@ object LukuFile {
                 intDer?.let { pemFromDerBase64(it) }
             ).joinToString("")
             
+            val attestationSignature = envelope.optString("attestation_dac_signature").takeIf { it.isNotEmpty() }
+                ?: identity?.optString("dac_signature")?.takeIf { it.isNotEmpty() }
+                ?: identity?.optString("signature")?.takeIf { it.isNotEmpty() }
+
             if (attestationChain.isEmpty()) {
                 issues.add(VerificationIssue("ATTESTATION_CHAIN_MISSING", "Missing DAC attestation chain for device $deviceId.", Criticality.WARNING))
+            } else if (attestationSignature.isNullOrEmpty()) {
+                issues.add(VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed DAC attestation: attestationSig missing", Criticality.CRITICAL))
             } else {
-                val result = validateCertificateChain(
-                    attestationChain,
-                    if (options.skipCertificateTemporalChecks) null else timestamp,
-                    options.trustProfile
+                val result = verifyDeviceAttestation(
+                    DeviceAttestationInput(
+                        id = deviceId,
+                        key = publicKey,
+                        attestationSig = attestationSignature,
+                        certificateChain = attestationChain,
+                        created = if (options.skipCertificateTemporalChecks) null else timestamp,
+                        trustProfile = options.trustProfile
+                    )
                 )
                 if (!result.ok) {
                     issues.add(VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed DAC attestation: ${result.reason}", Criticality.CRITICAL))
-                } else if (publicKey.isNotEmpty() && result.certificates.isNotEmpty() && !publicKeyMatchesEd25519CertificateLeaf(result.certificates[0], publicKey)) {
-                    issues.add(VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed DAC attestation: Certificate leaf public key does not match envelope public_key", Criticality.CRITICAL))
                 }
             }
 

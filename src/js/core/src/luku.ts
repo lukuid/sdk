@@ -556,18 +556,27 @@ export class LukuFile {
           .join('');
       }
 
+      const attestationSignature =
+        asString(envelope.attestation_dac_signature) ??
+        asString(identity?.dac_signature) ??
+        asString(identity?.signature) ??
+        '';
+
       if (attestationChain.length === 0) {
         issues.push(issue('ATTESTATION_CHAIN_MISSING', `Missing DAC attestation chain for device ${deviceId ?? 'unknown'}.`, 'warning'));
+      } else if (attestationSignature.length === 0) {
+        issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed DAC attestation: attestationSig missing`, 'critical'));
       } else {
-        const chainResult = await validateCertificateChain({
+        const attestationResult = await verifyDeviceAttestation({
+          id: deviceId ?? 'unknown',
+          key: publicKey,
+          attestationSig: attestationSignature,
           certificateChain: attestationChain,
           created: skipCertificateTemporalChecks ? undefined : timestamp,
           trustProfile
         });
-        if (!chainResult.ok) {
-          issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed DAC attestation: ${chainResult.reason ?? 'unknown error'}`, 'critical'));
-        } else if (publicKey && chainResult.certSpkis?.[0] && !spkiMatchesEd25519PublicKey(chainResult.certSpkis[0], publicKey)) {
-          issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed DAC attestation: Certificate leaf public key does not match envelope public_key`, 'critical'));
+        if (!attestationResult.ok) {
+          issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed DAC attestation: ${attestationResult.reason ?? 'unknown error'}`, 'critical'));
         }
       }
 

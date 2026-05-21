@@ -1471,14 +1471,14 @@ struct LukuIDEnvironmentRecordMin: @unchecked Sendable {
   /// Clears the value of `humidityPct`. Subsequent reads from it will return its default value.
   mutating func clearHumidityPct() {_uniqueStorage()._humidityPct = nil}
 
-  var vocIndex: LukuIDMetricValue {
-    get {_storage._vocIndex ?? LukuIDMetricValue()}
-    set {_uniqueStorage()._vocIndex = newValue}
+  var vocRaw: LukuIDMetricValue {
+    get {_storage._vocRaw ?? LukuIDMetricValue()}
+    set {_uniqueStorage()._vocRaw = newValue}
   }
-  /// Returns true if `vocIndex` has been explicitly set.
-  var hasVocIndex: Bool {_storage._vocIndex != nil}
-  /// Clears the value of `vocIndex`. Subsequent reads from it will return its default value.
-  mutating func clearVocIndex() {_uniqueStorage()._vocIndex = nil}
+  /// Returns true if `vocRaw` has been explicitly set.
+  var hasVocRaw: Bool {_storage._vocRaw != nil}
+  /// Clears the value of `vocRaw`. Subsequent reads from it will return its default value.
+  mutating func clearVocRaw() {_uniqueStorage()._vocRaw = nil}
 
   var tamper: Bool {
     get {_storage._tamper}
@@ -1494,6 +1494,15 @@ struct LukuIDEnvironmentRecordMin: @unchecked Sendable {
     get {_storage._vbusPresent}
     set {_uniqueStorage()._vbusPresent = newValue}
   }
+
+  var vocIndex: LukuIDMetricValue {
+    get {_storage._vocIndex ?? LukuIDMetricValue()}
+    set {_uniqueStorage()._vocIndex = newValue}
+  }
+  /// Returns true if `vocIndex` has been explicitly set.
+  var hasVocIndex: Bool {_storage._vocIndex != nil}
+  /// Clears the value of `vocIndex`. Subsequent reads from it will return its default value.
+  mutating func clearVocIndex() {_uniqueStorage()._vocIndex = nil}
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1708,6 +1717,21 @@ struct LukuIDScanPayload: @unchecked Sendable {
     set {_uniqueStorage()._scanVersion = newValue}
   }
 
+  var countryCode: UInt32 {
+    get {_storage._countryCode}
+    set {_uniqueStorage()._countryCode = newValue}
+  }
+
+  var tagPrefix: String {
+    get {_storage._tagPrefix}
+    set {_uniqueStorage()._tagPrefix = newValue}
+  }
+
+  var tagCountry: String {
+    get {_storage._tagCountry}
+    set {_uniqueStorage()._tagCountry = newValue}
+  }
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -1756,8 +1780,6 @@ struct LukuIDIdentity: Sendable {
 
   var lastSyncUtc: Int64 = 0
 
-  var signature: Data = Data()
-
   var dacDer: Data = Data()
 
   var slacDer: Data = Data()
@@ -1775,6 +1797,10 @@ struct LukuIDIdentity: Sendable {
   var heartbeatRootFingerprint: String = String()
 
   var alg: String = String()
+
+  var dacSignature: Data = Data()
+
+  var heartbeatSignature: Data = Data()
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2096,9 +2122,9 @@ struct LukuIDEnvironmentPayload: @unchecked Sendable {
     set {_uniqueStorage()._pressureHpa = newValue}
   }
 
-  var vocIndex: UInt32 {
-    get {_storage._vocIndex}
-    set {_uniqueStorage()._vocIndex = newValue}
+  var vocRaw: UInt32 {
+    get {_storage._vocRaw}
+    set {_uniqueStorage()._vocRaw = newValue}
   }
 
   var accelG: LukuIDEnvironmentPayload.Accel {
@@ -2143,6 +2169,26 @@ struct LukuIDEnvironmentPayload: @unchecked Sendable {
   var hasInitialTempC: Bool {_storage._initialTempC != nil}
   /// Clears the value of `initialTempC`. Subsequent reads from it will return its default value.
   mutating func clearInitialTempC() {_uniqueStorage()._initialTempC = nil}
+
+  var vbus: UInt32 {
+    get {_storage._vbus}
+    set {_uniqueStorage()._vbus = newValue}
+  }
+
+  var clkVar: UInt32 {
+    get {_storage._clkVar}
+    set {_uniqueStorage()._clkVar = newValue}
+  }
+
+  var drift: Int32 {
+    get {_storage._drift}
+    set {_uniqueStorage()._drift = newValue}
+  }
+
+  var vocIndex: UInt32 {
+    get {_storage._vocIndex}
+    set {_uniqueStorage()._vocIndex = newValue}
+  }
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -4729,7 +4775,7 @@ extension LukuIDScanRecordMin: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension LukuIDEnvironmentRecordMin: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".EnvironmentRecordMin"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}version\0\u{3}record_id\0\u{3}timestamp_utc\0\u{1}lux\0\u{3}temp_c\0\u{3}humidity_pct\0\u{3}voc_index\0\u{1}tamper\0\u{3}wake_event\0\u{3}vbus_present\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}version\0\u{3}record_id\0\u{3}timestamp_utc\0\u{1}lux\0\u{3}temp_c\0\u{3}humidity_pct\0\u{3}voc_raw\0\u{1}tamper\0\u{3}wake_event\0\u{3}vbus_present\0\u{3}voc_index\0")
 
   fileprivate class _StorageClass {
     var _version: String = String()
@@ -4738,10 +4784,11 @@ extension LukuIDEnvironmentRecordMin: SwiftProtobuf.Message, SwiftProtobuf._Mess
     var _lux: LukuIDMetricValue? = nil
     var _tempC: LukuIDMetricValue? = nil
     var _humidityPct: LukuIDMetricValue? = nil
-    var _vocIndex: LukuIDMetricValue? = nil
+    var _vocRaw: LukuIDMetricValue? = nil
     var _tamper: Bool = false
     var _wakeEvent: Bool = false
     var _vbusPresent: Bool = false
+    var _vocIndex: LukuIDMetricValue? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -4758,10 +4805,11 @@ extension LukuIDEnvironmentRecordMin: SwiftProtobuf.Message, SwiftProtobuf._Mess
       _lux = source._lux
       _tempC = source._tempC
       _humidityPct = source._humidityPct
-      _vocIndex = source._vocIndex
+      _vocRaw = source._vocRaw
       _tamper = source._tamper
       _wakeEvent = source._wakeEvent
       _vbusPresent = source._vbusPresent
+      _vocIndex = source._vocIndex
     }
   }
 
@@ -4786,10 +4834,11 @@ extension LukuIDEnvironmentRecordMin: SwiftProtobuf.Message, SwiftProtobuf._Mess
         case 4: try { try decoder.decodeSingularMessageField(value: &_storage._lux) }()
         case 5: try { try decoder.decodeSingularMessageField(value: &_storage._tempC) }()
         case 6: try { try decoder.decodeSingularMessageField(value: &_storage._humidityPct) }()
-        case 7: try { try decoder.decodeSingularMessageField(value: &_storage._vocIndex) }()
+        case 7: try { try decoder.decodeSingularMessageField(value: &_storage._vocRaw) }()
         case 8: try { try decoder.decodeSingularBoolField(value: &_storage._tamper) }()
         case 9: try { try decoder.decodeSingularBoolField(value: &_storage._wakeEvent) }()
         case 10: try { try decoder.decodeSingularBoolField(value: &_storage._vbusPresent) }()
+        case 11: try { try decoder.decodeSingularMessageField(value: &_storage._vocIndex) }()
         default: break
         }
       }
@@ -4820,7 +4869,7 @@ extension LukuIDEnvironmentRecordMin: SwiftProtobuf.Message, SwiftProtobuf._Mess
       try { if let v = _storage._humidityPct {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
       } }()
-      try { if let v = _storage._vocIndex {
+      try { if let v = _storage._vocRaw {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
       } }()
       if _storage._tamper != false {
@@ -4832,6 +4881,9 @@ extension LukuIDEnvironmentRecordMin: SwiftProtobuf.Message, SwiftProtobuf._Mess
       if _storage._vbusPresent != false {
         try visitor.visitSingularBoolField(value: _storage._vbusPresent, fieldNumber: 10)
       }
+      try { if let v = _storage._vocIndex {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4847,10 +4899,11 @@ extension LukuIDEnvironmentRecordMin: SwiftProtobuf.Message, SwiftProtobuf._Mess
         if _storage._lux != rhs_storage._lux {return false}
         if _storage._tempC != rhs_storage._tempC {return false}
         if _storage._humidityPct != rhs_storage._humidityPct {return false}
-        if _storage._vocIndex != rhs_storage._vocIndex {return false}
+        if _storage._vocRaw != rhs_storage._vocRaw {return false}
         if _storage._tamper != rhs_storage._tamper {return false}
         if _storage._wakeEvent != rhs_storage._wakeEvent {return false}
         if _storage._vbusPresent != rhs_storage._vbusPresent {return false}
+        if _storage._vocIndex != rhs_storage._vocIndex {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -4959,7 +5012,7 @@ extension LukuIDFetchResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension LukuIDScanPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ScanPayload"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ctr\0\u{1}id\0\u{3}timestamp_utc\0\u{3}uptime_us\0\u{3}temperature_c\0\u{1}nonce\0\u{1}firmware\0\u{1}tmp\0\u{1}hum\0\u{1}rssi\0\u{1}jit\0\u{1}lat\0\u{1}dur\0\u{3}v_sag\0\u{3}v_avg\0\u{3}p_cnt\0\u{3}avg_dur\0\u{3}sc_sync\0\u{3}up_time_m\0\u{3}v_drop\0\u{3}rssi_std\0\u{1}vbus\0\u{3}clk_var\0\u{1}drift\0\u{3}hdx_histo_csv\0\u{3}score_bio\0\u{3}score_auth\0\u{3}score_env\0\u{3}metrics_keys\0\u{3}scan_version\0\u{3}genesis_hash\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ctr\0\u{1}id\0\u{3}timestamp_utc\0\u{3}uptime_us\0\u{3}temperature_c\0\u{1}nonce\0\u{1}firmware\0\u{1}tmp\0\u{1}hum\0\u{1}rssi\0\u{1}jit\0\u{1}lat\0\u{1}dur\0\u{3}v_sag\0\u{3}v_avg\0\u{3}p_cnt\0\u{3}avg_dur\0\u{3}sc_sync\0\u{3}up_time_m\0\u{3}v_drop\0\u{3}rssi_std\0\u{1}vbus\0\u{3}clk_var\0\u{1}drift\0\u{3}hdx_histo_csv\0\u{3}score_bio\0\u{3}score_auth\0\u{3}score_env\0\u{3}metrics_keys\0\u{3}scan_version\0\u{3}genesis_hash\0\u{3}country_code\0\u{4}\u{2}tag_prefix\0\u{3}tag_country\0")
 
   fileprivate class _StorageClass {
     var _ctr: UInt64 = 0
@@ -4993,6 +5046,9 @@ extension LukuIDScanPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
     var _scoreEnv: UInt32 = 0
     var _metricsKeys: String = String()
     var _scanVersion: String = String()
+    var _countryCode: UInt32 = 0
+    var _tagPrefix: String = String()
+    var _tagCountry: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5034,6 +5090,9 @@ extension LukuIDScanPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
       _scoreEnv = source._scoreEnv
       _metricsKeys = source._metricsKeys
       _scanVersion = source._scanVersion
+      _countryCode = source._countryCode
+      _tagPrefix = source._tagPrefix
+      _tagCountry = source._tagCountry
     }
   }
 
@@ -5083,6 +5142,9 @@ extension LukuIDScanPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
         case 29: try { try decoder.decodeSingularStringField(value: &_storage._metricsKeys) }()
         case 30: try { try decoder.decodeSingularStringField(value: &_storage._scanVersion) }()
         case 31: try { try decoder.decodeSingularStringField(value: &_storage._genesisHash) }()
+        case 32: try { try decoder.decodeSingularUInt32Field(value: &_storage._countryCode) }()
+        case 34: try { try decoder.decodeSingularStringField(value: &_storage._tagPrefix) }()
+        case 35: try { try decoder.decodeSingularStringField(value: &_storage._tagCountry) }()
         default: break
         }
       }
@@ -5184,6 +5246,15 @@ extension LukuIDScanPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
       if !_storage._genesisHash.isEmpty {
         try visitor.visitSingularStringField(value: _storage._genesisHash, fieldNumber: 31)
       }
+      if _storage._countryCode != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._countryCode, fieldNumber: 32)
+      }
+      if !_storage._tagPrefix.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._tagPrefix, fieldNumber: 34)
+      }
+      if !_storage._tagCountry.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._tagCountry, fieldNumber: 35)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -5224,6 +5295,9 @@ extension LukuIDScanPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
         if _storage._scoreEnv != rhs_storage._scoreEnv {return false}
         if _storage._metricsKeys != rhs_storage._metricsKeys {return false}
         if _storage._scanVersion != rhs_storage._scanVersion {return false}
+        if _storage._countryCode != rhs_storage._countryCode {return false}
+        if _storage._tagPrefix != rhs_storage._tagPrefix {return false}
+        if _storage._tagCountry != rhs_storage._tagCountry {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -5305,7 +5379,7 @@ extension LukuIDManufacturerInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension LukuIDIdentity: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".Identity"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}identity_version\0\u{3}dac_serial\0\u{3}slac_serial\0\u{3}last_sync_utc\0\u{1}signature\0\u{3}dac_der\0\u{3}slac_der\0\u{3}attestation_manufacturer_der\0\u{3}attestation_intermediate_der\0\u{3}attestation_root_fingerprint\0\u{3}heartbeat_der\0\u{3}heartbeat_intermediate_der\0\u{3}heartbeat_root_fingerprint\0\u{1}alg\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}identity_version\0\u{3}dac_serial\0\u{3}slac_serial\0\u{3}last_sync_utc\0\u{4}\u{2}dac_der\0\u{3}slac_der\0\u{3}attestation_manufacturer_der\0\u{3}attestation_intermediate_der\0\u{3}attestation_root_fingerprint\0\u{3}heartbeat_der\0\u{3}heartbeat_intermediate_der\0\u{3}heartbeat_root_fingerprint\0\u{1}alg\0\u{3}dac_signature\0\u{3}heartbeat_signature\0\u{c}\u{5}\u{1}")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5317,7 +5391,6 @@ extension LukuIDIdentity: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
       case 2: try { try decoder.decodeSingularStringField(value: &self.dacSerial) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.slacSerial) }()
       case 4: try { try decoder.decodeSingularInt64Field(value: &self.lastSyncUtc) }()
-      case 5: try { try decoder.decodeSingularBytesField(value: &self.signature) }()
       case 6: try { try decoder.decodeSingularBytesField(value: &self.dacDer) }()
       case 7: try { try decoder.decodeSingularBytesField(value: &self.slacDer) }()
       case 8: try { try decoder.decodeSingularBytesField(value: &self.attestationManufacturerDer) }()
@@ -5327,6 +5400,8 @@ extension LukuIDIdentity: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
       case 12: try { try decoder.decodeSingularBytesField(value: &self.heartbeatIntermediateDer) }()
       case 13: try { try decoder.decodeSingularStringField(value: &self.heartbeatRootFingerprint) }()
       case 14: try { try decoder.decodeSingularStringField(value: &self.alg) }()
+      case 15: try { try decoder.decodeSingularBytesField(value: &self.dacSignature) }()
+      case 16: try { try decoder.decodeSingularBytesField(value: &self.heartbeatSignature) }()
       default: break
       }
     }
@@ -5344,9 +5419,6 @@ extension LukuIDIdentity: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     }
     if self.lastSyncUtc != 0 {
       try visitor.visitSingularInt64Field(value: self.lastSyncUtc, fieldNumber: 4)
-    }
-    if !self.signature.isEmpty {
-      try visitor.visitSingularBytesField(value: self.signature, fieldNumber: 5)
     }
     if !self.dacDer.isEmpty {
       try visitor.visitSingularBytesField(value: self.dacDer, fieldNumber: 6)
@@ -5375,6 +5447,12 @@ extension LukuIDIdentity: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     if !self.alg.isEmpty {
       try visitor.visitSingularStringField(value: self.alg, fieldNumber: 14)
     }
+    if !self.dacSignature.isEmpty {
+      try visitor.visitSingularBytesField(value: self.dacSignature, fieldNumber: 15)
+    }
+    if !self.heartbeatSignature.isEmpty {
+      try visitor.visitSingularBytesField(value: self.heartbeatSignature, fieldNumber: 16)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -5383,7 +5461,6 @@ extension LukuIDIdentity: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     if lhs.dacSerial != rhs.dacSerial {return false}
     if lhs.slacSerial != rhs.slacSerial {return false}
     if lhs.lastSyncUtc != rhs.lastSyncUtc {return false}
-    if lhs.signature != rhs.signature {return false}
     if lhs.dacDer != rhs.dacDer {return false}
     if lhs.slacDer != rhs.slacDer {return false}
     if lhs.attestationManufacturerDer != rhs.attestationManufacturerDer {return false}
@@ -5393,6 +5470,8 @@ extension LukuIDIdentity: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     if lhs.heartbeatIntermediateDer != rhs.heartbeatIntermediateDer {return false}
     if lhs.heartbeatRootFingerprint != rhs.heartbeatRootFingerprint {return false}
     if lhs.alg != rhs.alg {return false}
+    if lhs.dacSignature != rhs.dacSignature {return false}
+    if lhs.heartbeatSignature != rhs.heartbeatSignature {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -5884,7 +5963,7 @@ extension LukuIDScanRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
 
 extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".EnvironmentPayload"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ctr\0\u{3}timestamp_utc\0\u{3}uptime_us\0\u{1}nonce\0\u{1}firmware\0\u{1}lux\0\u{3}temp_c\0\u{3}humidity_pct\0\u{3}pressure_hpa\0\u{3}voc_index\0\u{3}accel_g\0\u{1}tamper\0\u{3}wake_event\0\u{3}vbus_present\0\u{3}genesis_hash\0\u{3}battery_percent\0\u{3}initial_temp_c\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ctr\0\u{3}timestamp_utc\0\u{3}uptime_us\0\u{1}nonce\0\u{1}firmware\0\u{1}lux\0\u{3}temp_c\0\u{3}humidity_pct\0\u{3}pressure_hpa\0\u{3}voc_raw\0\u{3}accel_g\0\u{1}tamper\0\u{3}wake_event\0\u{3}vbus_present\0\u{3}genesis_hash\0\u{3}battery_percent\0\u{3}initial_temp_c\0\u{1}vbus\0\u{3}clk_var\0\u{1}drift\0\u{3}voc_index\0")
 
   fileprivate class _StorageClass {
     var _ctr: UInt64 = 0
@@ -5896,7 +5975,7 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
     var _tempC: Float = 0
     var _humidityPct: Float = 0
     var _pressureHpa: Float = 0
-    var _vocIndex: UInt32 = 0
+    var _vocRaw: UInt32 = 0
     var _accelG: LukuIDEnvironmentPayload.Accel? = nil
     var _tamper: Bool = false
     var _wakeEvent: Bool = false
@@ -5904,6 +5983,10 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
     var _genesisHash: String = String()
     var _batteryPercent: UInt32 = 0
     var _initialTempC: Float? = nil
+    var _vbus: UInt32 = 0
+    var _clkVar: UInt32 = 0
+    var _drift: Int32 = 0
+    var _vocIndex: UInt32 = 0
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5923,7 +6006,7 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
       _tempC = source._tempC
       _humidityPct = source._humidityPct
       _pressureHpa = source._pressureHpa
-      _vocIndex = source._vocIndex
+      _vocRaw = source._vocRaw
       _accelG = source._accelG
       _tamper = source._tamper
       _wakeEvent = source._wakeEvent
@@ -5931,6 +6014,10 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
       _genesisHash = source._genesisHash
       _batteryPercent = source._batteryPercent
       _initialTempC = source._initialTempC
+      _vbus = source._vbus
+      _clkVar = source._clkVar
+      _drift = source._drift
+      _vocIndex = source._vocIndex
     }
   }
 
@@ -5958,7 +6045,7 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
         case 7: try { try decoder.decodeSingularFloatField(value: &_storage._tempC) }()
         case 8: try { try decoder.decodeSingularFloatField(value: &_storage._humidityPct) }()
         case 9: try { try decoder.decodeSingularFloatField(value: &_storage._pressureHpa) }()
-        case 10: try { try decoder.decodeSingularUInt32Field(value: &_storage._vocIndex) }()
+        case 10: try { try decoder.decodeSingularUInt32Field(value: &_storage._vocRaw) }()
         case 11: try { try decoder.decodeSingularMessageField(value: &_storage._accelG) }()
         case 12: try { try decoder.decodeSingularBoolField(value: &_storage._tamper) }()
         case 13: try { try decoder.decodeSingularBoolField(value: &_storage._wakeEvent) }()
@@ -5966,6 +6053,10 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
         case 15: try { try decoder.decodeSingularStringField(value: &_storage._genesisHash) }()
         case 16: try { try decoder.decodeSingularUInt32Field(value: &_storage._batteryPercent) }()
         case 17: try { try decoder.decodeSingularFloatField(value: &_storage._initialTempC) }()
+        case 18: try { try decoder.decodeSingularUInt32Field(value: &_storage._vbus) }()
+        case 19: try { try decoder.decodeSingularUInt32Field(value: &_storage._clkVar) }()
+        case 20: try { try decoder.decodeSingularInt32Field(value: &_storage._drift) }()
+        case 21: try { try decoder.decodeSingularUInt32Field(value: &_storage._vocIndex) }()
         default: break
         }
       }
@@ -6005,8 +6096,8 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
       if _storage._pressureHpa.bitPattern != 0 {
         try visitor.visitSingularFloatField(value: _storage._pressureHpa, fieldNumber: 9)
       }
-      if _storage._vocIndex != 0 {
-        try visitor.visitSingularUInt32Field(value: _storage._vocIndex, fieldNumber: 10)
+      if _storage._vocRaw != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._vocRaw, fieldNumber: 10)
       }
       try { if let v = _storage._accelG {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
@@ -6029,6 +6120,18 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
       try { if let v = _storage._initialTempC {
         try visitor.visitSingularFloatField(value: v, fieldNumber: 17)
       } }()
+      if _storage._vbus != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._vbus, fieldNumber: 18)
+      }
+      if _storage._clkVar != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._clkVar, fieldNumber: 19)
+      }
+      if _storage._drift != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._drift, fieldNumber: 20)
+      }
+      if _storage._vocIndex != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._vocIndex, fieldNumber: 21)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -6047,7 +6150,7 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
         if _storage._tempC != rhs_storage._tempC {return false}
         if _storage._humidityPct != rhs_storage._humidityPct {return false}
         if _storage._pressureHpa != rhs_storage._pressureHpa {return false}
-        if _storage._vocIndex != rhs_storage._vocIndex {return false}
+        if _storage._vocRaw != rhs_storage._vocRaw {return false}
         if _storage._accelG != rhs_storage._accelG {return false}
         if _storage._tamper != rhs_storage._tamper {return false}
         if _storage._wakeEvent != rhs_storage._wakeEvent {return false}
@@ -6055,6 +6158,10 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
         if _storage._genesisHash != rhs_storage._genesisHash {return false}
         if _storage._batteryPercent != rhs_storage._batteryPercent {return false}
         if _storage._initialTempC != rhs_storage._initialTempC {return false}
+        if _storage._vbus != rhs_storage._vbus {return false}
+        if _storage._clkVar != rhs_storage._clkVar {return false}
+        if _storage._drift != rhs_storage._drift {return false}
+        if _storage._vocIndex != rhs_storage._vocIndex {return false}
         return true
       }
       if !storagesAreEqual {return false}

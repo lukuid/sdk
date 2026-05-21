@@ -127,7 +127,7 @@ describe('LukuFile.verifyEnvelope', () => {
     assert.ok(issues.some(i => i.code === 'ATTESTATION_FAILED'), 'Expected ATTESTATION_FAILED');
   });
 
-  it('should allow a valid envelope when DAC detached signature is absent but the cert chain still binds the device key', async () => {
+  it('should fail when DAC detached signature is absent even if the cert chain still binds the device key', async () => {
     const envelope = await getValidEnvelope();
     delete (envelope.identity as JsonObject).signature;
     delete envelope.attestation_signature;
@@ -137,7 +137,10 @@ describe('LukuFile.verifyEnvelope', () => {
       skipCertificateTemporalChecks: true,
       trustProfile: 'dev'
     }));
-    assert.equal(issues.length, 0, `Should have no issues, but found: ${JSON.stringify(issues)}`);
+    assert.ok(
+      issues.some(i => i.code === 'ATTESTATION_FAILED' && i.message.includes('attestationSig missing')),
+      `Expected attestationSig missing failure, got: ${JSON.stringify(issues)}`
+    );
   });
 
   it('should fail if a heartbeat signature is present without a trusted heartbeat timestamp', async () => {

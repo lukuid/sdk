@@ -332,10 +332,11 @@ message EnvironmentRecordMin {
   MetricValue lux = 4;
   MetricValue temp_c = 5;
   MetricValue humidity_pct = 6;
-  MetricValue voc_index = 7;
+  MetricValue voc_raw = 7;
   bool tamper = 8;
   bool wake_event = 9;
   bool vbus_present = 10;
+  MetricValue voc_index = 11;
 }
 
 message DataEntry {
@@ -406,7 +407,7 @@ message Identity {
   string dac_serial = 2;
   string slac_serial = 3;
   int64 last_sync_utc = 4;
-  bytes signature = 5;
+  reserved 5; // Previously legacy signature
   bytes dac_der = 6;
   bytes slac_der = 7;
 
@@ -417,6 +418,8 @@ message Identity {
   bytes heartbeat_intermediate_der = 12;
   string heartbeat_root_fingerprint = 13;
   string alg = 14;
+  bytes dac_signature = 15;
+  bytes heartbeat_signature = 16;
 }
 
 message Attachment {
@@ -499,7 +502,7 @@ message EnvironmentPayload {
   float temp_c = 7;
   float humidity_pct = 8;
   float pressure_hpa = 9;
-  uint32 voc_index = 10;
+  uint32 voc_raw = 10;
 
   message Accel {
     float x = 1;
@@ -516,6 +519,7 @@ message EnvironmentPayload {
   uint32 vbus = 18;
   uint32 clk_var = 19;
   int32 drift = 20;
+  uint32 voc_index = 21;
 }
 
 message EnvironmentRecord {

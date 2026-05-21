@@ -344,9 +344,11 @@ internal class LukuCodec(
                     "lux" to metricValueToMap(entry.environmentMin.lux),
                     "temp_c" to metricValueToMap(entry.environmentMin.tempC),
                     "humidity_pct" to metricValueToMap(entry.environmentMin.humidityPct),
+                    "voc_raw" to metricValueToMap(entry.environmentMin.vocRaw),
                     "voc_index" to metricValueToMap(entry.environmentMin.vocIndex),
                     "tamper" to entry.environmentMin.tamper,
-                    "wake_event" to entry.environmentMin.wakeEvent
+                    "wake_event" to entry.environmentMin.wakeEvent,
+                    "vbus_present" to entry.environmentMin.vbusPresent
                 )
             )
             else -> mapOf("type" to "unknown")
@@ -409,14 +411,37 @@ internal class LukuCodec(
         map["event_id"] = record.eventId
         map["signature"] = record.signature
         map["previous_signature"] = record.previousSignature
+        map["canonical_string"] = record.canonicalString
         if (record.hasPayload()) {
             val p = record.payload
-            map["payload"] = mapOf(
+            val payload = mutableMapOf<String, Any?>(
                 "ctr" to p.ctr,
                 "timestamp_utc" to p.timestampUtc,
                 "uptime_us" to p.uptimeUs,
-                "nonce" to p.nonce
+                "nonce" to p.nonce,
+                "firmware" to p.firmware,
+                "lux" to p.lux,
+                "temp_c" to p.tempC,
+                "humidity_pct" to p.humidityPct,
+                "pressure_hpa" to p.pressureHpa,
+                "voc_raw" to p.vocRaw,
+                "voc_index" to p.vocIndex,
+                "tamper" to p.tamper,
+                "wake_event" to p.wakeEvent,
+                "vbus_present" to p.vbusPresent,
+                "battery_percent" to p.batteryPercent
             )
+            if (p.hasInitialTempC()) {
+                payload["initial_temp_c"] = p.initialTempC
+            }
+            if (p.hasAccelG()) {
+                payload["accel_g"] = mapOf(
+                    "x" to p.accelG.x,
+                    "y" to p.accelG.y,
+                    "z" to p.accelG.z
+                )
+            }
+            map["payload"] = payload
         }
         if (record.hasIdentity()) {
             map["identity"] = identityToMap(record.identity)
@@ -430,7 +455,8 @@ internal class LukuCodec(
             "dac_serial" to identity.dacSerial,
             "slac_serial" to identity.slacSerial,
             "last_sync_utc" to identity.lastSyncUtc,
-            "signature" to identity.signature,
+            "dac_signature" to identity.dacSignature.toByteArray(),
+            "heartbeat_signature" to identity.heartbeatSignature.toByteArray(),
             "attestation_dac_der" to identity.dacDer.toByteArray(),
             "slac_der" to identity.slacDer.toByteArray()
         )

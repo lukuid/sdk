@@ -33,13 +33,16 @@ def verify(envelope: dict):
 
 
 class TestGuardCardParity(unittest.TestCase):
-    def test_dac_chain_still_binds_device_without_detached_signature_fields(self):
+    def test_missing_detached_dac_signature_fails(self):
         envelope = get_valid_envelope()
         envelope.pop("attestation_signature", None)
         envelope["identity"].pop("signature", None)
 
         issues = verify(envelope)
-        self.assertFalse(issues, f"Expected no issues, got: {issues}")
+        self.assertTrue(
+            any(i.code == "ATTESTATION_FAILED" and "attestationSig missing" in i.message for i in issues),
+            f"Expected attestationSig missing failure, got: {issues}"
+        )
 
     def test_heartbeat_signature_requires_trusted_heartbeat_timestamp(self):
         envelope = get_valid_envelope()

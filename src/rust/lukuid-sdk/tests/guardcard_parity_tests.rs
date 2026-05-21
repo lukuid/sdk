@@ -37,7 +37,7 @@ fn verify(envelope: &Value) -> Vec<lukuid_sdk::VerificationIssue> {
 }
 
 #[test]
-fn test_dac_chain_still_binds_device_without_detached_signature_fields() {
+fn test_missing_detached_dac_signature_fails() {
     let mut envelope = get_valid_envelope();
     if let Some(object) = envelope.as_object_mut() {
         object.remove("attestation_signature");
@@ -47,7 +47,11 @@ fn test_dac_chain_still_binds_device_without_detached_signature_fields() {
     }
 
     let issues = verify(&envelope);
-    assert!(issues.is_empty(), "Expected no issues, got: {:?}", issues);
+    assert!(
+        issues.iter().any(|issue| issue.code == "ATTESTATION_FAILED" && issue.message.contains("attestationSig missing")),
+        "Expected attestationSig missing failure, got: {:?}",
+        issues
+    );
 }
 
 #[test]

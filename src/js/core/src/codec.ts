@@ -600,7 +600,7 @@ function decodeEnvironmentRecordMin(payload: Uint8Array): JsonRecord {
         assignMetricValue(payload, cursor, wireType, out, 'humidity_pct');
         break;
       case 7:
-        assignMetricValue(payload, cursor, wireType, out, 'voc_index');
+        assignMetricValue(payload, cursor, wireType, out, 'voc_raw');
         break;
       case 8:
         assignBool(payload, cursor, wireType, out, 'tamper');
@@ -610,6 +610,9 @@ function decodeEnvironmentRecordMin(payload: Uint8Array): JsonRecord {
         break;
       case 10:
         assignBool(payload, cursor, wireType, out, 'vbus_present');
+        break;
+      case 11:
+        assignMetricValue(payload, cursor, wireType, out, 'voc_index');
         break;
       default:
         if (!skipField(payload, cursor, wireType)) {
@@ -1141,7 +1144,7 @@ function decodeEnvironmentPayload(payload: Uint8Array): JsonRecord {
       case 7: assignFloat32(payload, cursor, wireType, out, 'temp_c'); break;
       case 8: assignFloat32(payload, cursor, wireType, out, 'humidity_pct'); break;
       case 9: assignFloat32(payload, cursor, wireType, out, 'pressure_hpa'); break;
-      case 10: assignUint32(payload, cursor, wireType, out, 'voc_index'); break;
+      case 10: assignUint32(payload, cursor, wireType, out, 'voc_raw'); break;
       case 11: {
         const message = readLengthDelimited(payload, cursor, wireType);
         if (message) {
@@ -1167,6 +1170,10 @@ function decodeEnvironmentPayload(payload: Uint8Array): JsonRecord {
       case 15: assignString(payload, cursor, wireType, out, 'genesis_hash'); break;
       case 16: assignUint32(payload, cursor, wireType, out, 'battery_percent'); break;
       case 17: assignFloat32(payload, cursor, wireType, out, 'initial_temp_c'); break;
+      case 18: assignUint32(payload, cursor, wireType, out, 'vbus'); break;
+      case 19: assignUint32(payload, cursor, wireType, out, 'clk_var'); break;
+      case 20: assignInt32(payload, cursor, wireType, out, 'drift'); break;
+      case 21: assignUint32(payload, cursor, wireType, out, 'voc_index'); break;
       default: skipField(payload, cursor, wireType); break;
     }
   }

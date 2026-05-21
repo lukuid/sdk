@@ -631,21 +631,33 @@ class LukuFile:
                 if entry
             )
             
+        attestation_sig = str(
+            envelope.get("attestation_dac_signature")
+            or identity.get("dac_signature")
+            or identity.get("signature")
+            or ""
+        )
+
         if not attestation_chain:
             if not options.allow_untrusted_roots:
                 issues.append(_issue("ATTESTATION_CHAIN_MISSING", f"Missing DAC attestation chain for device {device_id or 'unknown'}.", Criticality.WARNING))
+        elif not attestation_sig:
+            issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed DAC attestation: attestationSig missing", Criticality.CRITICAL))
         else:
-            result = validate_certificate_chain(
-                attestation_chain,
-                created=None if options.skip_certificate_temporal_checks else timestamp,
-                trust_profile=options.trust_profile,
-                allow_untrusted_roots=options.allow_untrusted_roots,
+            result = verify_device_attestation(
+                DeviceAttestationInputs(
+                    id=device_id or "unknown",
+                    key=public_key,
+                    attestation_sig=attestation_sig,
+                    certificate_chain=attestation_chain,
+                    created=None if options.skip_certificate_temporal_checks else timestamp,
+                    trust_profile=options.trust_profile,
+                    allow_untrusted_roots=options.allow_untrusted_roots,
+                ),
                 revocation_manager=options.revocation_manager,
             )
             if not result.ok:
                 issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed DAC attestation: {result.reason}", Criticality.CRITICAL))
-            elif public_key and result.certificates and not public_key_matches_ed25519_certificate_leaf(result.certificates[0], public_key):
-                issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed DAC attestation: Certificate leaf public key does not match envelope public_key", Criticality.CRITICAL))
 
         slac = str(envelope.get("heartbeat_slac_der") or identity.get("hb_slac_der") or identity.get("heartbeat_slac_der") or "")
         hb_man = str(envelope.get("heartbeat_der") or identity.get("hb_der") or identity.get("heartbeat_der") or "")

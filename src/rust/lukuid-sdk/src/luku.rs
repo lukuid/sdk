@@ -774,6 +774,13 @@ impl LukuFile {
                 attestation_chain.push_str(&pem);
             }
 
+            let attestation_sig = envelope
+                .get("attestation_dac_signature")
+                .and_then(|v| v.as_str())
+                .or_else(|| identity.and_then(|i| i.get("dac_signature")).and_then(|v| v.as_str()))
+                .or_else(|| identity.and_then(|i| i.get("signature")).and_then(|v| v.as_str()))
+                .unwrap_or("");
+
             if attestation_chain.is_empty() {
                 Self::push_issue(
                     &mut issues,
@@ -785,15 +792,36 @@ impl LukuFile {
                         criticality: Criticality::Warning,
                     },
                 );
-            } else {
-                let result = crate::attestation::validate_certificate_chain(
-                    &attestation_chain,
-                    if options.skip_certificate_temporal_checks {
-                        None
-                    } else {
-                        timestamp.map(|t| t as i64)
+            } else if attestation_sig.is_empty() {
+                Self::push_issue(
+                    &mut issues,
+                    debug_logging,
+                    None,
+                    VerificationIssue {
+                        code: "ATTESTATION_FAILED".to_string(),
+                        message: format!(
+                            "Device {} failed DAC attestation: attestationSig missing",
+                            device_id
+                        ),
+                        criticality: Criticality::Critical,
                     },
-                    &options.trust_profile,
+                );
+            } else {
+                let result = crate::attestation::verify_device_attestation(
+                    &crate::attestation::DeviceAttestationInputs {
+                        id: device_id.to_string(),
+                        key: public_key.to_string(),
+                        attestation_sig: attestation_sig.to_string(),
+                        certificate_chain: Some(attestation_chain.clone()),
+                        created: if options.skip_certificate_temporal_checks {
+                            None
+                        } else {
+                            timestamp.map(|t| t as i64)
+                        },
+                        attestation_alg: None,
+                        attestation_payload_version: None,
+                        trust_profile: options.trust_profile.clone(),
+                    },
                     None,
                 );
                 if !result.ok {
@@ -811,29 +839,6 @@ impl LukuFile {
                             criticality: Criticality::Critical,
                         },
                     );
-                } else if !public_key.is_empty() {
-                    if let Some(cert_public_keys) = &result.cert_public_keys {
-                        if let Some(leaf_public_key) = cert_public_keys.first() {
-                            if !crate::attestation::public_key_matches_ed25519_certificate_leaf(
-                                leaf_public_key,
-                                public_key,
-                            ) {
-                                Self::push_issue(
-                                    &mut issues,
-                                    debug_logging,
-                                    None,
-                                    VerificationIssue {
-                                        code: "ATTESTATION_FAILED".to_string(),
-                                        message: format!(
-                                            "Device {} failed DAC attestation: Certificate leaf public key does not match envelope public_key",
-                                            device_id
-                                        ),
-                                        criticality: Criticality::Critical,
-                                    },
-                                );
-                            }
-                        }
-                    }
                 }
             }
 

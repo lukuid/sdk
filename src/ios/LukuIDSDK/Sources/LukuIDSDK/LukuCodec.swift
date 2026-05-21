@@ -339,8 +339,6 @@ final class LukuCodec {
             dict["heartbeat_intermediate_der"] = info.heartbeatIntermediateDer
             dict["heartbeat_root_fingerprint"] = info.heartbeatRootFingerprint
             dict["signature"] = info.signature
-            dict["dac_signature"] = info.dacSignature
-            dict["heartbeat_signature"] = info.heartbeatSignature
             dict["key"] = info.key
         case .networkConfig(let config):
             dict["wifi_ssid"] = config.wifiSsid
@@ -513,6 +511,7 @@ final class LukuCodec {
                     "lux": mapMetricValue(envMin.lux) as Any,
                     "temp_c": mapMetricValue(envMin.tempC) as Any,
                     "humidity_pct": mapMetricValue(envMin.humidityPct) as Any,
+                    "voc_raw": mapMetricValue(envMin.vocRaw) as Any,
                     "voc_index": mapMetricValue(envMin.vocIndex) as Any,
                     "tamper": envMin.tamper,
                     "wake_event": envMin.wakeEvent,
@@ -648,13 +647,20 @@ final class LukuCodec {
 
     private func mapIdentity(_ identity: LukuIDIdentity) -> [String: Any] {
         return [
+            "identity_version": identity.identityVersion,
             "dac_serial": identity.dacSerial,
             "slac_serial": identity.slacSerial,
             "last_sync_utc": identity.lastSyncUtc,
-            "signature": identity.signature,
             "dac_signature": identity.dacSignature,
             "heartbeat_signature": identity.heartbeatSignature,
             "dac_der": identity.dacDer,
+            "attestation_manufacturer_der": identity.attestationManufacturerDer,
+            "attestation_intermediate_der": identity.attestationIntermediateDer,
+            "attestation_root_fingerprint": identity.attestationRootFingerprint,
+            "heartbeat_der": identity.heartbeatDer,
+            "heartbeat_intermediate_der": identity.heartbeatIntermediateDer,
+            "heartbeat_root_fingerprint": identity.heartbeatRootFingerprint,
+            "alg": identity.alg,
             "slac_der": identity.slacDer
         ]
     }
@@ -665,6 +671,7 @@ final class LukuCodec {
         dict["event_id"] = record.eventID
         dict["signature"] = record.signature
         dict["previous_signature"] = record.previousSignature
+        dict["canonical_string"] = record.canonicalString
         dict["payload"] = mapEnvPayload(record.payload)
         dict["device"] = mapDeviceInfo(record.device)
         dict["attachments"] = record.attachments.map { mapAttachment($0) }
@@ -683,16 +690,24 @@ final class LukuCodec {
         dict["temp_c"] = payload.tempC
         dict["humidity_pct"] = payload.humidityPct
         dict["pressure_hpa"] = payload.pressureHpa
+        dict["voc_raw"] = payload.vocRaw
         dict["voc_index"] = payload.vocIndex
         dict["tamper"] = payload.tamper
         dict["wake_event"] = payload.wakeEvent
         dict["vbus_present"] = payload.vbusPresent
+        dict["battery_percent"] = payload.batteryPercent
+        dict["vbus"] = payload.vbus
+        dict["clk_var"] = payload.clkVar
+        dict["drift"] = payload.drift
         if payload.hasAccelG {
             dict["accel_g"] = [
                 "x": payload.accelG.x,
                 "y": payload.accelG.y,
                 "z": payload.accelG.z
             ]
+        }
+        if payload.hasInitialTempC {
+            dict["initial_temp_c"] = payload.initialTempC
         }
         return dict
     }

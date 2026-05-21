@@ -24,14 +24,17 @@ class GuardCardParityTest {
     }
 
     @Test
-    fun testDacChainStillBindsDeviceWithoutDetachedSignatureFields() {
+    fun testMissingDetachedDacSignatureFails() {
         val json = JSONObject(getValidEnvelopeStr())
         json.remove("attestation_signature")
         json.getJSONObject("identity").remove("signature")
 
         val issues = verify(json)
         val summary = issues.joinToString { "${it.code}:${it.message}" }
-        assertTrue("Expected no issues, got $summary", issues.isEmpty())
+        assertTrue(
+            "Expected attestationSig missing failure, got $summary",
+            issues.any { it.code == "ATTESTATION_FAILED" && it.message.contains("attestationSig missing") }
+        )
     }
 
     @Test

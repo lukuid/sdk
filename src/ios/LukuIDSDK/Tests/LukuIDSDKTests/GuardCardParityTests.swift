@@ -36,7 +36,7 @@ final class GuardCardParityTests: XCTestCase {
         )
     }
 
-    func testDacChainStillBindsDeviceWithoutDetachedSignatureFields() {
+    func testMissingDetachedDacSignatureFails() {
         var envelope = getValidEnvelope()
         envelope.removeValue(forKey: "attestation_signature")
         if var identity = envelope["identity"] as? [String: Any] {
@@ -45,7 +45,10 @@ final class GuardCardParityTests: XCTestCase {
         }
 
         let issues = verify(envelope)
-        XCTAssertTrue(issues.isEmpty, "Expected no issues, got \(issues)")
+        XCTAssertTrue(
+            issues.contains { $0.code == "ATTESTATION_FAILED" && $0.message.contains("attestationSig missing") },
+            "Expected attestationSig missing failure, got \(issues)"
+        )
     }
 
     func testHeartbeatSignatureRequiresTrustedHeartbeatTimestamp() {

@@ -10867,10 +10867,11 @@ export const lukuid = $root.lukuid = (() => {
          * @property {lukuid.IMetricValue|null} [lux] EnvironmentRecordMin lux
          * @property {lukuid.IMetricValue|null} [tempC] EnvironmentRecordMin tempC
          * @property {lukuid.IMetricValue|null} [humidityPct] EnvironmentRecordMin humidityPct
-         * @property {lukuid.IMetricValue|null} [vocIndex] EnvironmentRecordMin vocIndex
+         * @property {lukuid.IMetricValue|null} [vocRaw] EnvironmentRecordMin vocRaw
          * @property {boolean|null} [tamper] EnvironmentRecordMin tamper
          * @property {boolean|null} [wakeEvent] EnvironmentRecordMin wakeEvent
          * @property {boolean|null} [vbusPresent] EnvironmentRecordMin vbusPresent
+         * @property {lukuid.IMetricValue|null} [vocIndex] EnvironmentRecordMin vocIndex
          */
 
         /**
@@ -10937,12 +10938,12 @@ export const lukuid = $root.lukuid = (() => {
         EnvironmentRecordMin.prototype.humidityPct = null;
 
         /**
-         * EnvironmentRecordMin vocIndex.
-         * @member {lukuid.IMetricValue|null|undefined} vocIndex
+         * EnvironmentRecordMin vocRaw.
+         * @member {lukuid.IMetricValue|null|undefined} vocRaw
          * @memberof lukuid.EnvironmentRecordMin
          * @instance
          */
-        EnvironmentRecordMin.prototype.vocIndex = null;
+        EnvironmentRecordMin.prototype.vocRaw = null;
 
         /**
          * EnvironmentRecordMin tamper.
@@ -10967,6 +10968,14 @@ export const lukuid = $root.lukuid = (() => {
          * @instance
          */
         EnvironmentRecordMin.prototype.vbusPresent = false;
+
+        /**
+         * EnvironmentRecordMin vocIndex.
+         * @member {lukuid.IMetricValue|null|undefined} vocIndex
+         * @memberof lukuid.EnvironmentRecordMin
+         * @instance
+         */
+        EnvironmentRecordMin.prototype.vocIndex = null;
 
         /**
          * Creates a new EnvironmentRecordMin instance using the specified properties.
@@ -11004,14 +11013,16 @@ export const lukuid = $root.lukuid = (() => {
                 $root.lukuid.MetricValue.encode(message.tempC, writer.uint32(/* id 5, wireType 2 =*/42).fork()).ldelim();
             if (message.humidityPct != null && Object.hasOwnProperty.call(message, "humidityPct"))
                 $root.lukuid.MetricValue.encode(message.humidityPct, writer.uint32(/* id 6, wireType 2 =*/50).fork()).ldelim();
-            if (message.vocIndex != null && Object.hasOwnProperty.call(message, "vocIndex"))
-                $root.lukuid.MetricValue.encode(message.vocIndex, writer.uint32(/* id 7, wireType 2 =*/58).fork()).ldelim();
+            if (message.vocRaw != null && Object.hasOwnProperty.call(message, "vocRaw"))
+                $root.lukuid.MetricValue.encode(message.vocRaw, writer.uint32(/* id 7, wireType 2 =*/58).fork()).ldelim();
             if (message.tamper != null && Object.hasOwnProperty.call(message, "tamper"))
                 writer.uint32(/* id 8, wireType 0 =*/64).bool(message.tamper);
             if (message.wakeEvent != null && Object.hasOwnProperty.call(message, "wakeEvent"))
                 writer.uint32(/* id 9, wireType 0 =*/72).bool(message.wakeEvent);
             if (message.vbusPresent != null && Object.hasOwnProperty.call(message, "vbusPresent"))
                 writer.uint32(/* id 10, wireType 0 =*/80).bool(message.vbusPresent);
+            if (message.vocIndex != null && Object.hasOwnProperty.call(message, "vocIndex"))
+                $root.lukuid.MetricValue.encode(message.vocIndex, writer.uint32(/* id 11, wireType 2 =*/90).fork()).ldelim();
             return writer;
         };
 
@@ -11073,7 +11084,7 @@ export const lukuid = $root.lukuid = (() => {
                         break;
                     }
                 case 7: {
-                        message.vocIndex = $root.lukuid.MetricValue.decode(reader, reader.uint32());
+                        message.vocRaw = $root.lukuid.MetricValue.decode(reader, reader.uint32());
                         break;
                     }
                 case 8: {
@@ -11086,6 +11097,10 @@ export const lukuid = $root.lukuid = (() => {
                     }
                 case 10: {
                         message.vbusPresent = reader.bool();
+                        break;
+                    }
+                case 11: {
+                        message.vocIndex = $root.lukuid.MetricValue.decode(reader, reader.uint32());
                         break;
                     }
                 default:
@@ -11147,10 +11162,10 @@ export const lukuid = $root.lukuid = (() => {
                 if (error)
                     return "humidityPct." + error;
             }
-            if (message.vocIndex != null && message.hasOwnProperty("vocIndex")) {
-                let error = $root.lukuid.MetricValue.verify(message.vocIndex);
+            if (message.vocRaw != null && message.hasOwnProperty("vocRaw")) {
+                let error = $root.lukuid.MetricValue.verify(message.vocRaw);
                 if (error)
-                    return "vocIndex." + error;
+                    return "vocRaw." + error;
             }
             if (message.tamper != null && message.hasOwnProperty("tamper"))
                 if (typeof message.tamper !== "boolean")
@@ -11161,6 +11176,11 @@ export const lukuid = $root.lukuid = (() => {
             if (message.vbusPresent != null && message.hasOwnProperty("vbusPresent"))
                 if (typeof message.vbusPresent !== "boolean")
                     return "vbusPresent: boolean expected";
+            if (message.vocIndex != null && message.hasOwnProperty("vocIndex")) {
+                let error = $root.lukuid.MetricValue.verify(message.vocIndex);
+                if (error)
+                    return "vocIndex." + error;
+            }
             return null;
         };
 
@@ -11204,10 +11224,10 @@ export const lukuid = $root.lukuid = (() => {
                     throw TypeError(".lukuid.EnvironmentRecordMin.humidityPct: object expected");
                 message.humidityPct = $root.lukuid.MetricValue.fromObject(object.humidityPct);
             }
-            if (object.vocIndex != null) {
-                if (typeof object.vocIndex !== "object")
-                    throw TypeError(".lukuid.EnvironmentRecordMin.vocIndex: object expected");
-                message.vocIndex = $root.lukuid.MetricValue.fromObject(object.vocIndex);
+            if (object.vocRaw != null) {
+                if (typeof object.vocRaw !== "object")
+                    throw TypeError(".lukuid.EnvironmentRecordMin.vocRaw: object expected");
+                message.vocRaw = $root.lukuid.MetricValue.fromObject(object.vocRaw);
             }
             if (object.tamper != null)
                 message.tamper = Boolean(object.tamper);
@@ -11215,6 +11235,11 @@ export const lukuid = $root.lukuid = (() => {
                 message.wakeEvent = Boolean(object.wakeEvent);
             if (object.vbusPresent != null)
                 message.vbusPresent = Boolean(object.vbusPresent);
+            if (object.vocIndex != null) {
+                if (typeof object.vocIndex !== "object")
+                    throw TypeError(".lukuid.EnvironmentRecordMin.vocIndex: object expected");
+                message.vocIndex = $root.lukuid.MetricValue.fromObject(object.vocIndex);
+            }
             return message;
         };
 
@@ -11242,10 +11267,11 @@ export const lukuid = $root.lukuid = (() => {
                 object.lux = null;
                 object.tempC = null;
                 object.humidityPct = null;
-                object.vocIndex = null;
+                object.vocRaw = null;
                 object.tamper = false;
                 object.wakeEvent = false;
                 object.vbusPresent = false;
+                object.vocIndex = null;
             }
             if (message.version != null && message.hasOwnProperty("version"))
                 object.version = message.version;
@@ -11262,14 +11288,16 @@ export const lukuid = $root.lukuid = (() => {
                 object.tempC = $root.lukuid.MetricValue.toObject(message.tempC, options);
             if (message.humidityPct != null && message.hasOwnProperty("humidityPct"))
                 object.humidityPct = $root.lukuid.MetricValue.toObject(message.humidityPct, options);
-            if (message.vocIndex != null && message.hasOwnProperty("vocIndex"))
-                object.vocIndex = $root.lukuid.MetricValue.toObject(message.vocIndex, options);
+            if (message.vocRaw != null && message.hasOwnProperty("vocRaw"))
+                object.vocRaw = $root.lukuid.MetricValue.toObject(message.vocRaw, options);
             if (message.tamper != null && message.hasOwnProperty("tamper"))
                 object.tamper = message.tamper;
             if (message.wakeEvent != null && message.hasOwnProperty("wakeEvent"))
                 object.wakeEvent = message.wakeEvent;
             if (message.vbusPresent != null && message.hasOwnProperty("vbusPresent"))
                 object.vbusPresent = message.vbusPresent;
+            if (message.vocIndex != null && message.hasOwnProperty("vocIndex"))
+                object.vocIndex = $root.lukuid.MetricValue.toObject(message.vocIndex, options);
             return object;
         };
 
@@ -13294,7 +13322,6 @@ export const lukuid = $root.lukuid = (() => {
          * @property {string|null} [dacSerial] Identity dacSerial
          * @property {string|null} [slacSerial] Identity slacSerial
          * @property {number|Long|null} [lastSyncUtc] Identity lastSyncUtc
-         * @property {Uint8Array|null} [signature] Identity signature
          * @property {Uint8Array|null} [dacDer] Identity dacDer
          * @property {Uint8Array|null} [slacDer] Identity slacDer
          * @property {Uint8Array|null} [attestationManufacturerDer] Identity attestationManufacturerDer
@@ -13304,6 +13331,8 @@ export const lukuid = $root.lukuid = (() => {
          * @property {Uint8Array|null} [heartbeatIntermediateDer] Identity heartbeatIntermediateDer
          * @property {string|null} [heartbeatRootFingerprint] Identity heartbeatRootFingerprint
          * @property {string|null} [alg] Identity alg
+         * @property {Uint8Array|null} [dacSignature] Identity dacSignature
+         * @property {Uint8Array|null} [heartbeatSignature] Identity heartbeatSignature
          */
 
         /**
@@ -13352,14 +13381,6 @@ export const lukuid = $root.lukuid = (() => {
          * @instance
          */
         Identity.prototype.lastSyncUtc = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
-
-        /**
-         * Identity signature.
-         * @member {Uint8Array} signature
-         * @memberof lukuid.Identity
-         * @instance
-         */
-        Identity.prototype.signature = $util.newBuffer([]);
 
         /**
          * Identity dacDer.
@@ -13434,6 +13455,22 @@ export const lukuid = $root.lukuid = (() => {
         Identity.prototype.alg = "";
 
         /**
+         * Identity dacSignature.
+         * @member {Uint8Array} dacSignature
+         * @memberof lukuid.Identity
+         * @instance
+         */
+        Identity.prototype.dacSignature = $util.newBuffer([]);
+
+        /**
+         * Identity heartbeatSignature.
+         * @member {Uint8Array} heartbeatSignature
+         * @memberof lukuid.Identity
+         * @instance
+         */
+        Identity.prototype.heartbeatSignature = $util.newBuffer([]);
+
+        /**
          * Creates a new Identity instance using the specified properties.
          * @function create
          * @memberof lukuid.Identity
@@ -13465,8 +13502,6 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 3, wireType 2 =*/26).string(message.slacSerial);
             if (message.lastSyncUtc != null && Object.hasOwnProperty.call(message, "lastSyncUtc"))
                 writer.uint32(/* id 4, wireType 0 =*/32).int64(message.lastSyncUtc);
-            if (message.signature != null && Object.hasOwnProperty.call(message, "signature"))
-                writer.uint32(/* id 5, wireType 2 =*/42).bytes(message.signature);
             if (message.dacDer != null && Object.hasOwnProperty.call(message, "dacDer"))
                 writer.uint32(/* id 6, wireType 2 =*/50).bytes(message.dacDer);
             if (message.slacDer != null && Object.hasOwnProperty.call(message, "slacDer"))
@@ -13485,6 +13520,10 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 13, wireType 2 =*/106).string(message.heartbeatRootFingerprint);
             if (message.alg != null && Object.hasOwnProperty.call(message, "alg"))
                 writer.uint32(/* id 14, wireType 2 =*/114).string(message.alg);
+            if (message.dacSignature != null && Object.hasOwnProperty.call(message, "dacSignature"))
+                writer.uint32(/* id 15, wireType 2 =*/122).bytes(message.dacSignature);
+            if (message.heartbeatSignature != null && Object.hasOwnProperty.call(message, "heartbeatSignature"))
+                writer.uint32(/* id 16, wireType 2 =*/130).bytes(message.heartbeatSignature);
             return writer;
         };
 
@@ -13537,10 +13576,6 @@ export const lukuid = $root.lukuid = (() => {
                         message.lastSyncUtc = reader.int64();
                         break;
                     }
-                case 5: {
-                        message.signature = reader.bytes();
-                        break;
-                    }
                 case 6: {
                         message.dacDer = reader.bytes();
                         break;
@@ -13575,6 +13610,14 @@ export const lukuid = $root.lukuid = (() => {
                     }
                 case 14: {
                         message.alg = reader.string();
+                        break;
+                    }
+                case 15: {
+                        message.dacSignature = reader.bytes();
+                        break;
+                    }
+                case 16: {
+                        message.heartbeatSignature = reader.bytes();
                         break;
                     }
                 default:
@@ -13624,9 +13667,6 @@ export const lukuid = $root.lukuid = (() => {
             if (message.lastSyncUtc != null && message.hasOwnProperty("lastSyncUtc"))
                 if (!$util.isInteger(message.lastSyncUtc) && !(message.lastSyncUtc && $util.isInteger(message.lastSyncUtc.low) && $util.isInteger(message.lastSyncUtc.high)))
                     return "lastSyncUtc: integer|Long expected";
-            if (message.signature != null && message.hasOwnProperty("signature"))
-                if (!(message.signature && typeof message.signature.length === "number" || $util.isString(message.signature)))
-                    return "signature: buffer expected";
             if (message.dacDer != null && message.hasOwnProperty("dacDer"))
                 if (!(message.dacDer && typeof message.dacDer.length === "number" || $util.isString(message.dacDer)))
                     return "dacDer: buffer expected";
@@ -13654,6 +13694,12 @@ export const lukuid = $root.lukuid = (() => {
             if (message.alg != null && message.hasOwnProperty("alg"))
                 if (!$util.isString(message.alg))
                     return "alg: string expected";
+            if (message.dacSignature != null && message.hasOwnProperty("dacSignature"))
+                if (!(message.dacSignature && typeof message.dacSignature.length === "number" || $util.isString(message.dacSignature)))
+                    return "dacSignature: buffer expected";
+            if (message.heartbeatSignature != null && message.hasOwnProperty("heartbeatSignature"))
+                if (!(message.heartbeatSignature && typeof message.heartbeatSignature.length === "number" || $util.isString(message.heartbeatSignature)))
+                    return "heartbeatSignature: buffer expected";
             return null;
         };
 
@@ -13691,11 +13737,6 @@ export const lukuid = $root.lukuid = (() => {
                     message.lastSyncUtc = object.lastSyncUtc;
                 else if (typeof object.lastSyncUtc === "object")
                     message.lastSyncUtc = new $util.LongBits(object.lastSyncUtc.low >>> 0, object.lastSyncUtc.high >>> 0).toNumber();
-            if (object.signature != null)
-                if (typeof object.signature === "string")
-                    $util.base64.decode(object.signature, message.signature = $util.newBuffer($util.base64.length(object.signature)), 0);
-                else if (object.signature.length >= 0)
-                    message.signature = object.signature;
             if (object.dacDer != null)
                 if (typeof object.dacDer === "string")
                     $util.base64.decode(object.dacDer, message.dacDer = $util.newBuffer($util.base64.length(object.dacDer)), 0);
@@ -13732,6 +13773,16 @@ export const lukuid = $root.lukuid = (() => {
                 message.heartbeatRootFingerprint = String(object.heartbeatRootFingerprint);
             if (object.alg != null)
                 message.alg = String(object.alg);
+            if (object.dacSignature != null)
+                if (typeof object.dacSignature === "string")
+                    $util.base64.decode(object.dacSignature, message.dacSignature = $util.newBuffer($util.base64.length(object.dacSignature)), 0);
+                else if (object.dacSignature.length >= 0)
+                    message.dacSignature = object.dacSignature;
+            if (object.heartbeatSignature != null)
+                if (typeof object.heartbeatSignature === "string")
+                    $util.base64.decode(object.heartbeatSignature, message.heartbeatSignature = $util.newBuffer($util.base64.length(object.heartbeatSignature)), 0);
+                else if (object.heartbeatSignature.length >= 0)
+                    message.heartbeatSignature = object.heartbeatSignature;
             return message;
         };
 
@@ -13761,13 +13812,6 @@ export const lukuid = $root.lukuid = (() => {
                     object.lastSyncUtc = options.longs === String ? long.toString() : options.longs === Number ? long.toNumber() : long;
                 } else
                     object.lastSyncUtc = options.longs === String ? "0" : 0;
-                if (options.bytes === String)
-                    object.signature = "";
-                else {
-                    object.signature = [];
-                    if (options.bytes !== Array)
-                        object.signature = $util.newBuffer(object.signature);
-                }
                 if (options.bytes === String)
                     object.dacDer = "";
                 else {
@@ -13813,6 +13857,20 @@ export const lukuid = $root.lukuid = (() => {
                 }
                 object.heartbeatRootFingerprint = "";
                 object.alg = "";
+                if (options.bytes === String)
+                    object.dacSignature = "";
+                else {
+                    object.dacSignature = [];
+                    if (options.bytes !== Array)
+                        object.dacSignature = $util.newBuffer(object.dacSignature);
+                }
+                if (options.bytes === String)
+                    object.heartbeatSignature = "";
+                else {
+                    object.heartbeatSignature = [];
+                    if (options.bytes !== Array)
+                        object.heartbeatSignature = $util.newBuffer(object.heartbeatSignature);
+                }
             }
             if (message.identityVersion != null && message.hasOwnProperty("identityVersion"))
                 if (typeof message.identityVersion === "number")
@@ -13828,8 +13886,6 @@ export const lukuid = $root.lukuid = (() => {
                     object.lastSyncUtc = options.longs === String ? String(message.lastSyncUtc) : message.lastSyncUtc;
                 else
                     object.lastSyncUtc = options.longs === String ? $util.Long.prototype.toString.call(message.lastSyncUtc) : options.longs === Number ? new $util.LongBits(message.lastSyncUtc.low >>> 0, message.lastSyncUtc.high >>> 0).toNumber() : message.lastSyncUtc;
-            if (message.signature != null && message.hasOwnProperty("signature"))
-                object.signature = options.bytes === String ? $util.base64.encode(message.signature, 0, message.signature.length) : options.bytes === Array ? Array.prototype.slice.call(message.signature) : message.signature;
             if (message.dacDer != null && message.hasOwnProperty("dacDer"))
                 object.dacDer = options.bytes === String ? $util.base64.encode(message.dacDer, 0, message.dacDer.length) : options.bytes === Array ? Array.prototype.slice.call(message.dacDer) : message.dacDer;
             if (message.slacDer != null && message.hasOwnProperty("slacDer"))
@@ -13848,6 +13904,10 @@ export const lukuid = $root.lukuid = (() => {
                 object.heartbeatRootFingerprint = message.heartbeatRootFingerprint;
             if (message.alg != null && message.hasOwnProperty("alg"))
                 object.alg = message.alg;
+            if (message.dacSignature != null && message.hasOwnProperty("dacSignature"))
+                object.dacSignature = options.bytes === String ? $util.base64.encode(message.dacSignature, 0, message.dacSignature.length) : options.bytes === Array ? Array.prototype.slice.call(message.dacSignature) : message.dacSignature;
+            if (message.heartbeatSignature != null && message.hasOwnProperty("heartbeatSignature"))
+                object.heartbeatSignature = options.bytes === String ? $util.base64.encode(message.heartbeatSignature, 0, message.heartbeatSignature.length) : options.bytes === Array ? Array.prototype.slice.call(message.heartbeatSignature) : message.heartbeatSignature;
             return object;
         };
 
@@ -15885,7 +15945,7 @@ export const lukuid = $root.lukuid = (() => {
          * @property {number|null} [tempC] EnvironmentPayload tempC
          * @property {number|null} [humidityPct] EnvironmentPayload humidityPct
          * @property {number|null} [pressureHpa] EnvironmentPayload pressureHpa
-         * @property {number|null} [vocIndex] EnvironmentPayload vocIndex
+         * @property {number|null} [vocRaw] EnvironmentPayload vocRaw
          * @property {lukuid.EnvironmentPayload.IAccel|null} [accelG] EnvironmentPayload accelG
          * @property {boolean|null} [tamper] EnvironmentPayload tamper
          * @property {boolean|null} [wakeEvent] EnvironmentPayload wakeEvent
@@ -15896,6 +15956,7 @@ export const lukuid = $root.lukuid = (() => {
          * @property {number|null} [vbus] EnvironmentPayload vbus
          * @property {number|null} [clkVar] EnvironmentPayload clkVar
          * @property {number|null} [drift] EnvironmentPayload drift
+         * @property {number|null} [vocIndex] EnvironmentPayload vocIndex
          */
 
         /**
@@ -15986,12 +16047,12 @@ export const lukuid = $root.lukuid = (() => {
         EnvironmentPayload.prototype.pressureHpa = 0;
 
         /**
-         * EnvironmentPayload vocIndex.
-         * @member {number} vocIndex
+         * EnvironmentPayload vocRaw.
+         * @member {number} vocRaw
          * @memberof lukuid.EnvironmentPayload
          * @instance
          */
-        EnvironmentPayload.prototype.vocIndex = 0;
+        EnvironmentPayload.prototype.vocRaw = 0;
 
         /**
          * EnvironmentPayload accelG.
@@ -16073,6 +16134,14 @@ export const lukuid = $root.lukuid = (() => {
          */
         EnvironmentPayload.prototype.drift = 0;
 
+        /**
+         * EnvironmentPayload vocIndex.
+         * @member {number} vocIndex
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.vocIndex = 0;
+
         // OneOf field names bound to virtual getters and setters
         let $oneOfFields;
 
@@ -16124,8 +16193,8 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 8, wireType 5 =*/69).float(message.humidityPct);
             if (message.pressureHpa != null && Object.hasOwnProperty.call(message, "pressureHpa"))
                 writer.uint32(/* id 9, wireType 5 =*/77).float(message.pressureHpa);
-            if (message.vocIndex != null && Object.hasOwnProperty.call(message, "vocIndex"))
-                writer.uint32(/* id 10, wireType 0 =*/80).uint32(message.vocIndex);
+            if (message.vocRaw != null && Object.hasOwnProperty.call(message, "vocRaw"))
+                writer.uint32(/* id 10, wireType 0 =*/80).uint32(message.vocRaw);
             if (message.accelG != null && Object.hasOwnProperty.call(message, "accelG"))
                 $root.lukuid.EnvironmentPayload.Accel.encode(message.accelG, writer.uint32(/* id 11, wireType 2 =*/90).fork()).ldelim();
             if (message.tamper != null && Object.hasOwnProperty.call(message, "tamper"))
@@ -16146,6 +16215,8 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 19, wireType 0 =*/152).uint32(message.clkVar);
             if (message.drift != null && Object.hasOwnProperty.call(message, "drift"))
                 writer.uint32(/* id 20, wireType 0 =*/160).int32(message.drift);
+            if (message.vocIndex != null && Object.hasOwnProperty.call(message, "vocIndex"))
+                writer.uint32(/* id 21, wireType 0 =*/168).uint32(message.vocIndex);
             return writer;
         };
 
@@ -16219,7 +16290,7 @@ export const lukuid = $root.lukuid = (() => {
                         break;
                     }
                 case 10: {
-                        message.vocIndex = reader.uint32();
+                        message.vocRaw = reader.uint32();
                         break;
                     }
                 case 11: {
@@ -16260,6 +16331,10 @@ export const lukuid = $root.lukuid = (() => {
                     }
                 case 20: {
                         message.drift = reader.int32();
+                        break;
+                    }
+                case 21: {
+                        message.vocIndex = reader.uint32();
                         break;
                     }
                 default:
@@ -16325,9 +16400,9 @@ export const lukuid = $root.lukuid = (() => {
             if (message.pressureHpa != null && message.hasOwnProperty("pressureHpa"))
                 if (typeof message.pressureHpa !== "number")
                     return "pressureHpa: number expected";
-            if (message.vocIndex != null && message.hasOwnProperty("vocIndex"))
-                if (!$util.isInteger(message.vocIndex))
-                    return "vocIndex: integer expected";
+            if (message.vocRaw != null && message.hasOwnProperty("vocRaw"))
+                if (!$util.isInteger(message.vocRaw))
+                    return "vocRaw: integer expected";
             if (message.accelG != null && message.hasOwnProperty("accelG")) {
                 let error = $root.lukuid.EnvironmentPayload.Accel.verify(message.accelG);
                 if (error)
@@ -16362,6 +16437,9 @@ export const lukuid = $root.lukuid = (() => {
             if (message.drift != null && message.hasOwnProperty("drift"))
                 if (!$util.isInteger(message.drift))
                     return "drift: integer expected";
+            if (message.vocIndex != null && message.hasOwnProperty("vocIndex"))
+                if (!$util.isInteger(message.vocIndex))
+                    return "vocIndex: integer expected";
             return null;
         };
 
@@ -16416,8 +16494,8 @@ export const lukuid = $root.lukuid = (() => {
                 message.humidityPct = Number(object.humidityPct);
             if (object.pressureHpa != null)
                 message.pressureHpa = Number(object.pressureHpa);
-            if (object.vocIndex != null)
-                message.vocIndex = object.vocIndex >>> 0;
+            if (object.vocRaw != null)
+                message.vocRaw = object.vocRaw >>> 0;
             if (object.accelG != null) {
                 if (typeof object.accelG !== "object")
                     throw TypeError(".lukuid.EnvironmentPayload.accelG: object expected");
@@ -16441,6 +16519,8 @@ export const lukuid = $root.lukuid = (() => {
                 message.clkVar = object.clkVar >>> 0;
             if (object.drift != null)
                 message.drift = object.drift | 0;
+            if (object.vocIndex != null)
+                message.vocIndex = object.vocIndex >>> 0;
             return message;
         };
 
@@ -16479,7 +16559,7 @@ export const lukuid = $root.lukuid = (() => {
                 object.tempC = 0;
                 object.humidityPct = 0;
                 object.pressureHpa = 0;
-                object.vocIndex = 0;
+                object.vocRaw = 0;
                 object.accelG = null;
                 object.tamper = false;
                 object.wakeEvent = false;
@@ -16489,6 +16569,7 @@ export const lukuid = $root.lukuid = (() => {
                 object.vbus = 0;
                 object.clkVar = 0;
                 object.drift = 0;
+                object.vocIndex = 0;
             }
             if (message.ctr != null && message.hasOwnProperty("ctr"))
                 if (typeof message.ctr === "number")
@@ -16517,8 +16598,8 @@ export const lukuid = $root.lukuid = (() => {
                 object.humidityPct = options.json && !isFinite(message.humidityPct) ? String(message.humidityPct) : message.humidityPct;
             if (message.pressureHpa != null && message.hasOwnProperty("pressureHpa"))
                 object.pressureHpa = options.json && !isFinite(message.pressureHpa) ? String(message.pressureHpa) : message.pressureHpa;
-            if (message.vocIndex != null && message.hasOwnProperty("vocIndex"))
-                object.vocIndex = message.vocIndex;
+            if (message.vocRaw != null && message.hasOwnProperty("vocRaw"))
+                object.vocRaw = message.vocRaw;
             if (message.accelG != null && message.hasOwnProperty("accelG"))
                 object.accelG = $root.lukuid.EnvironmentPayload.Accel.toObject(message.accelG, options);
             if (message.tamper != null && message.hasOwnProperty("tamper"))
@@ -16542,6 +16623,8 @@ export const lukuid = $root.lukuid = (() => {
                 object.clkVar = message.clkVar;
             if (message.drift != null && message.hasOwnProperty("drift"))
                 object.drift = message.drift;
+            if (message.vocIndex != null && message.hasOwnProperty("vocIndex"))
+                object.vocIndex = message.vocIndex;
             return object;
         };
 

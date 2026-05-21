@@ -805,18 +805,29 @@ public enum LukuFile {
                 pemFromDerString(intDer)
             ].compactMap { $0 }.joined()
             
+            let attestationSignature = (envelope["attestation_dac_signature"] as? String)
+                ?? (identity?["dac_signature"] as? String)
+                ?? (identity?["signature"] as? String)
+
             if attestationChain.isEmpty {
                 issues.append(VerificationIssue(code: "ATTESTATION_CHAIN_MISSING", message: "Missing DAC attestation chain for device \(deviceId).", criticality: .warning))
+            } else if attestationSignature?.isEmpty != false {
+                issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed DAC attestation: attestationSig missing", criticality: .critical))
             } else {
-                let result = validateCertificateChain(
-                    attestationChain,
-                    created: options.skipCertificateTemporalChecks ? nil : timestamp.map(Int64.init),
-                    trustProfile: options.trustProfile
+                let result = verifyDeviceAttestation(
+                    DeviceAttestationInputs(
+                        id: deviceId,
+                        key: publicKey,
+                        attestationSig: attestationSignature ?? "",
+                        certificateChain: attestationChain,
+                        created: options.skipCertificateTemporalChecks ? nil : timestamp.map(Int64.init),
+                        attestationAlg: nil,
+                        attestationPayloadVersion: nil,
+                        trustProfile: options.trustProfile
+                    )
                 )
-                if !result.ok {
-                    issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed DAC attestation: \(result.reason ?? "unknown error")", criticality: .critical))
-                } else if !publicKey.isEmpty, let leaf = result.certificates.first, !publicKeyMatchesEd25519CertificateLeaf(leaf, publicKeyBase64: publicKey) {
-                    issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed DAC attestation: Certificate leaf public key does not match envelope public_key", criticality: .critical))
+                if case .failure(let error) = result {
+                    issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed DAC attestation: \(error.reason)", criticality: .critical))
                 }
             }
 

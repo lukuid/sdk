@@ -713,7 +713,7 @@ fn decode_environment_record_min(bytes: &[u8]) -> Value {
                 }
             }
             7 => {
-                if insert_metric_value(bytes, &mut cursor, wire_type, &mut out, "voc_index")
+                if insert_metric_value(bytes, &mut cursor, wire_type, &mut out, "voc_raw")
                     .is_none()
                 {
                     cursor = bytes.len();
@@ -731,6 +731,13 @@ fn decode_environment_record_min(bytes: &[u8]) -> Value {
             }
             10 => {
                 if insert_bool(bytes, &mut cursor, wire_type, &mut out, "vbus_present").is_none() {
+                    cursor = bytes.len();
+                }
+            }
+            11 => {
+                if insert_metric_value(bytes, &mut cursor, wire_type, &mut out, "voc_index")
+                    .is_none()
+                {
                     cursor = bytes.len();
                 }
             }
@@ -889,6 +896,18 @@ fn insert_i64(
     key: &str,
 ) -> Option<()> {
     let value = read_i64_field(bytes, cursor, wire_type)?;
+    out.insert(key.to_string(), Value::Number(Number::from(value)));
+    Some(())
+}
+
+fn insert_i32(
+    bytes: &[u8],
+    cursor: &mut usize,
+    wire_type: u8,
+    out: &mut Map<String, Value>,
+    key: &str,
+) -> Option<()> {
+    let value = read_i64_field(bytes, cursor, wire_type)? as i32;
     out.insert(key.to_string(), Value::Number(Number::from(value)));
     Some(())
 }
@@ -1610,7 +1629,7 @@ fn decode_environment_payload(bytes: &[u8]) -> Value {
                 let _ = insert_f32(bytes, &mut cursor, wire_type, &mut out, "pressure_hpa");
             }
             10 => {
-                let _ = insert_u32(bytes, &mut cursor, wire_type, &mut out, "voc_index");
+                let _ = insert_u32(bytes, &mut cursor, wire_type, &mut out, "voc_raw");
             }
             11 => {
                 if let Some(message) = read_length_delimited(bytes, &mut cursor, wire_type) {
@@ -1658,6 +1677,18 @@ fn decode_environment_payload(bytes: &[u8]) -> Value {
             }
             17 => {
                 let _ = insert_f32(bytes, &mut cursor, wire_type, &mut out, "initial_temp_c");
+            }
+            18 => {
+                let _ = insert_u32(bytes, &mut cursor, wire_type, &mut out, "vbus");
+            }
+            19 => {
+                let _ = insert_u32(bytes, &mut cursor, wire_type, &mut out, "clk_var");
+            }
+            20 => {
+                let _ = insert_i32(bytes, &mut cursor, wire_type, &mut out, "drift");
+            }
+            21 => {
+                let _ = insert_u32(bytes, &mut cursor, wire_type, &mut out, "voc_index");
             }
             _ => {
                 let _ = skip_field(bytes, &mut cursor, wire_type);
