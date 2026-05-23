@@ -326,7 +326,7 @@ internal class LukuCodec(
                 "type" to "scan_min",
                 "record" to mapOf(
                     "version" to entry.scanMin.version,
-                    "record_id" to entry.scanMin.recordId,
+                    "record_id" to entry.scanMin.id,
                     "timestamp_utc" to entry.scanMin.timestampUtc,
                     "tag_id" to entry.scanMin.tagId,
                     "score_bio" to entry.scanMin.scoreBio,
@@ -339,7 +339,7 @@ internal class LukuCodec(
                 "type" to "environment_min",
                 "record" to mapOf(
                     "version" to entry.environmentMin.version,
-                    "record_id" to entry.environmentMin.recordId,
+                    "record_id" to entry.environmentMin.id,
                     "timestamp_utc" to entry.environmentMin.timestampUtc,
                     "lux" to metricValueToMap(entry.environmentMin.lux),
                     "temp_c" to metricValueToMap(entry.environmentMin.tempC),
@@ -357,7 +357,7 @@ internal class LukuCodec(
 
     private fun fullRecordToMap(full: LukuIDProto.FullRecordResponse): Map<String, Any?> {
         val out = mutableMapOf<String, Any?>()
-        out["record_id"] = full.recordId
+        out["record_id"] = full.id
         when (full.fullRecordCase) {
             LukuIDProto.FullRecordResponse.FullRecordCase.SCAN_FULL -> {
                 out["view"] = "animalreader_detail"
@@ -375,7 +375,7 @@ internal class LukuCodec(
     private fun scanRecordToMap(record: LukuIDProto.ScanRecord): Map<String, Any?> {
         val map = mutableMapOf<String, Any?>()
         map["version"] = record.version
-        map["scan_id"] = record.scanId
+        map["scan_id"] = record.id
         map["signature"] = record.signature
         map["previous_signature"] = record.previousSignature
         if (record.hasPayload()) {
@@ -408,7 +408,7 @@ internal class LukuCodec(
     private fun envRecordToMap(record: LukuIDProto.EnvironmentRecord): Map<String, Any?> {
         val map = mutableMapOf<String, Any?>()
         map["version"] = record.version
-        map["event_id"] = record.eventId
+        map["event_id"] = record.id
         map["signature"] = record.signature
         map["previous_signature"] = record.previousSignature
         map["canonical_string"] = record.canonicalString
@@ -511,13 +511,13 @@ internal class LukuCodec(
                 }
                 "get" -> {
                     val get = LukuIDProto.GetRecordRequest.newBuilder()
-                    (asString("record_id") ?: asString("id") ?: asString("device_id"))?.let { get.recordId = it }
+                    (asString("record_id") ?: asString("id") ?: asString("device_id"))?.let { get.id = it }
                     builder.get = get.build()
                 }
                 "attest" -> {
                     val attest = LukuIDProto.AttestRequest.newBuilder()
                     (asString("parent_record_id") ?: asString("record_id") ?: asString("id"))?.let {
-                        attest.parentRecordId = it
+                        attest.parentId = it
                     }
                     asBytes("signature")?.let { attest.signature = it }
                     asString("checksum")?.let { attest.checksum = it }
@@ -528,7 +528,7 @@ internal class LukuCodec(
                     asDouble("lng")?.let { attest.lng = it }
                     asString("content")?.let { attest.content = it }
                     asString("merkle_root")?.let { attest.merkleRoot = it }
-                    asString("custody_id")?.let { attest.custodyId = it }
+                    asString("custody_id")?.let { attest.id = it }
                     asString("event")?.let { attest.event = it }
                     asString("status")?.let { attest.status = it }
                     asString("context_ref")?.let { attest.contextRef = it }

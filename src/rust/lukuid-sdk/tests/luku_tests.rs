@@ -354,7 +354,7 @@ fn test_luku_verify_rejects_untrusted_external_identity_endorsements() {
     LukuFile::export_with_identity(
         vec![json!({
             "type": "attachment",
-            "attachment_id": "ATT-EXT-1",
+            "id": "ATT-EXT-1",
             "signature": device_sig,
             "previous_signature": "",
             "canonical_string": canonical,
@@ -572,7 +572,7 @@ fn test_luku_verify_attested_attachment_does_not_advance_device_chain() {
     let records = vec![
         json!({
             "type": "scan",
-            "scan_id": "SCAN-ATTEST-1",
+            "id": "SCAN-ATTEST-1",
             "device_id": device_id,
             "public_key": pub_b64.clone(),
             "signature": scan_sig,
@@ -586,7 +586,7 @@ fn test_luku_verify_attested_attachment_does_not_advance_device_chain() {
         }),
         json!({
             "type": "attachment",
-            "attachment_id": "ATT-ATTEST-1",
+            "id": "ATT-ATTEST-1",
             "parent_record_id": "SCAN-ATTEST-1",
             "device_id": device_id,
             "public_key": device.public_key.clone(),
@@ -600,7 +600,7 @@ fn test_luku_verify_attested_attachment_does_not_advance_device_chain() {
         }),
         json!({
             "type": "environment",
-            "event_id": "ENV-ATTEST-1",
+            "id": "ENV-ATTEST-1",
             "device_id": device_id,
             "public_key": device.public_key,
             "signature": env_sig,
@@ -668,7 +668,7 @@ fn test_luku_verify_attested_custody_does_not_advance_device_chain() {
     let records = vec![
         json!({
             "type": "scan",
-            "scan_id": "SCAN-CUSTODY-1",
+            "id": "SCAN-CUSTODY-1",
             "device_id": device_id,
             "public_key": pub_b64.clone(),
             "signature": scan_sig,
@@ -682,7 +682,7 @@ fn test_luku_verify_attested_custody_does_not_advance_device_chain() {
         }),
         json!({
             "type": "custody",
-            "custody_id": "CUSTODY-1",
+            "id": "CUSTODY-1",
             "parent_record_id": "SCAN-CUSTODY-1",
             "device_id": device_id,
             "public_key": pub_b64.clone(),
@@ -698,7 +698,7 @@ fn test_luku_verify_attested_custody_does_not_advance_device_chain() {
         }),
         json!({
             "type": "environment",
-            "event_id": "ENV-CUSTODY-1",
+            "id": "ENV-CUSTODY-1",
             "device_id": device_id,
             "public_key": device.public_key.clone(),
             "signature": env_sig,

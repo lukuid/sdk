@@ -16,6 +16,7 @@ from typing import Any
 from .attestation import (
     DeviceAttestationInputs,
     ExternalIdentityInputs,
+    HeartbeatAttestationInputs,
     generate_signer,
     pem_from_der_string,
     public_key_matches_ed25519_certificate_leaf,
@@ -24,8 +25,8 @@ from .attestation import (
     validate_certificate_chain,
     verify_detached_signature,
     verify_device_attestation,
+    verify_heartbeat_attestation,
     verify_external_identity,
-    verify_payload_signature_with_public_key,
 )
 
 LUKU_MIMETYPE = "application/vnd.lukuid.package+zip"
@@ -355,7 +356,7 @@ class LukuArchive:
         record_ids: set[str] = set()
         for block in self.blocks:
             for record in block.batch:
-                for key in ["scan_id", "event_id", "attachment_id", "custody_id", "location_id"]:
+                for key in ["id"]:
                     value = record.get(key)
                     if isinstance(value, str) and value:
                         record_ids.add(value)
@@ -428,7 +429,9 @@ class LukuArchive:
                         ]
                         if entry
                     )
-                attestation_sig = str(identity.get("dac_signature") or "")
+                attestation_sig = str(identity.get("dac_signature") or identity.get("signature") or "")
+                record_ctr = _record_counter(record)
+                attestation_record_id = _record_attestation_id(record)
                 if not attestation_chain:
                     if not options.allow_untrusted_roots:
                         issues.append(_issue("ATTESTATION_CHAIN_MISSING", f"Missing DAC attestation chain for device {device_id}.", Criticality.WARNING))
@@ -438,6 +441,8 @@ class LukuArchive:
                             id=device_id,
                             key=public_key,
                             attestation_sig=attestation_sig,
+                            ctr=record_ctr,
+                            record_id=attestation_record_id,
                             certificate_chain=attestation_chain,
                             created=None if options.skip_certificate_temporal_checks else timestamp,
                             trust_profile=options.trust_profile,
@@ -450,8 +455,6 @@ class LukuArchive:
 
                 # Heartbeat (SLAC) Verification
                 if not options.allow_untrusted_roots:
-                    from .attestation import verify_heartbeat_attestation, HeartbeatAttestationInputs
-                    
                     heartbeat_chain = "".join(
                         entry
                         for entry in [
@@ -471,6 +474,8 @@ class LukuArchive:
                                 id=device_id,
                                 heartbeat_sig=heartbeat_sig,
                                 last_sync_utc=last_sync_utc,
+                                ctr=record_ctr,
+                                record_id=attestation_record_id,
                                 certificate_chain=heartbeat_chain,
                                 trust_profile=options.trust_profile,
                             ),
@@ -495,7 +500,7 @@ class LukuArchive:
                 if not is_aux and timestamp is not None:
                     last_times[device_id] = timestamp
 
-                parent_record_id = record.get("parent_record_id")
+                parent_record_id = record.get("parent_id") or record.get("parent_record_id")
                 if is_aux and isinstance(parent_record_id, str) and parent_record_id and parent_record_id not in record_ids:
                     issues.append(_issue("PARENT_RECORD_MISSING", f"Record type {record_type} references missing parent {parent_record_id}.", Criticality.CRITICAL))
 
@@ -603,7 +608,8 @@ class LukuFile:
         signature = str(envelope.get("signature", ""))
         canonical_string = str(envelope.get("canonical_string", ""))
         timestamp = _uint64(payload.get("timestamp_utc")) or _uint64(envelope.get("timestamp_utc"))
-        counter = _uint64(payload.get("ctr"))
+        counter = _record_counter(envelope)
+        attestation_record_id = _record_attestation_id(envelope)
         genesis_hash = str(payload.get("genesis_hash", ""))
         previous_signature = str(envelope.get("previous_signature", ""))
 
@@ -649,6 +655,8 @@ class LukuFile:
                     id=device_id or "unknown",
                     key=public_key,
                     attestation_sig=attestation_sig,
+                    ctr=counter,
+                    record_id=attestation_record_id,
                     certificate_chain=attestation_chain,
                     created=None if options.skip_certificate_temporal_checks else timestamp,
                     trust_profile=options.trust_profile,
@@ -693,13 +701,18 @@ class LukuFile:
                             issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed SLAC (heartbeat) attestation: Missing trusted heartbeat timestamp", Criticality.CRITICAL))
                         elif timestamp is not None and last_sync_utc > timestamp:
                             issues.append(_issue("LAST_SYNC_AFTER_RECORD", f"Device {device_id or 'unknown'} reports last_sync_utc {last_sync_utc} after record timestamp {timestamp}.", Criticality.CRITICAL))
-                        elif not chain_result.certificates or len(chain_result.certificates) < 2:
-                            issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed SLAC (heartbeat) attestation: Heartbeat authority certificate missing from chain", Criticality.CRITICAL))
                         else:
-                            slac_result = verify_payload_signature_with_public_key(
-                                chain_result.certificates[1].public_key(),
-                                slac_signature,
-                                f"heartbeat:{device_id or 'unknown'}:{last_sync_utc}".encode("utf-8"),
+                            slac_result = verify_heartbeat_attestation(
+                                HeartbeatAttestationInputs(
+                                    id=device_id or "unknown",
+                                    heartbeat_sig=slac_signature,
+                                    last_sync_utc=last_sync_utc,
+                                    ctr=counter,
+                                    record_id=attestation_record_id,
+                                    certificate_chain=slac_chain,
+                                    trust_profile=options.trust_profile,
+                                ),
+                                revocation_manager=options.revocation_manager,
                             )
                             if not slac_result.ok:
                                 issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed SLAC (heartbeat) attestation: {slac_result.reason}", Criticality.CRITICAL))
@@ -1204,6 +1217,19 @@ def _uint64(value: Any) -> int | None:
 def _record_timestamp(record: dict[str, Any]) -> int | None:
     payload = record.get("payload") if isinstance(record.get("payload"), dict) else {}
     return _uint64(payload.get("timestamp_utc")) or _uint64(record.get("timestamp_utc")) or _uint64(record.get("timestamp"))
+
+
+def _record_counter(record: dict[str, Any]) -> int | None:
+    payload = record.get("payload") if isinstance(record.get("payload"), dict) else {}
+    return _uint64(payload.get("ctr")) or _uint64(record.get("ctr"))
+
+
+def _record_attestation_id(record: dict[str, Any]) -> str | None:
+    for key in ('id',):
+        value = record.get(key)
+        if isinstance(value, str) and value:
+            return value
+    return None
 
 
 def _is_aux_record_type(record_type: str) -> bool:

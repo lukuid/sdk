@@ -413,7 +413,7 @@ public final class LukuArchive {
         var recordIDs = Set<String>()
         for block in blocks {
             for record in block.batch {
-                for key in ["scan_id", "event_id", "attachment_id", "custody_id", "location_id"] {
+                for key in ["id"] {
                     if let value = record[key] as? String, !value.isEmpty {
                         recordIDs.insert(value)
                     }
@@ -497,14 +497,18 @@ public final class LukuArchive {
                         ].compactMap { $0 }.joined()
                     }
 
-                    let attestationSignature = (identity?["dac_signature"] as? String) ?? ""
+                    let attestationSignature = (identity?["dac_signature"] as? String)
+                        ?? (identity?["signature"] as? String)
+                        ?? ""
                     if attestationChain.isEmpty {
                         issues.append(issue("ATTESTATION_CHAIN_MISSING", "Missing DAC attestation chain for device \(deviceID).", .warning))
                     } else if !isAuxRecord || !attestationSignature.isEmpty {
-                        let inputs = DeviceAttestationInputs(
-                            id: deviceID,
+                        let attestationRecordId = (record["id"] as? String)
+                        let inputs = DeviceAttestationInputs(                            id: deviceID,
                             key: publicKey,
                             attestationSig: attestationSignature,
+                            ctr: counter,
+                            recordID: attestationRecordId,
                             certificateChain: attestationChain,
                             created: options.skipCertificateTemporalChecks ? nil : timestamp.map(Int64.init),
                             attestationAlg: nil,
@@ -528,27 +532,19 @@ public final class LukuArchive {
                         let lastSyncUtc = (identity?["last_sync_utc"] as? NSNumber)?.int64Value ?? 0
 
                         if !heartbeatChain.isEmpty && !heartbeatSignature.isEmpty {
-                            // We need to implement verifyHeartbeatAttestation in iOS DeviceAttestation.swift
-                            // For now, we perform the check inline if possible or skip if unimplemented
-                            // Since I can't easily add a new function to another file in parallel turns reliably,
-                            // I'll assume the existence of a robust verifier or implement it later.
-                            // Actually, I'll add the same logic as verifyEnvelope used.
-                            
-                            let result = validateCertificateChain(
-                                heartbeatChain,
-                                created: nil,
-                                trustProfile: options.trustProfile
-                            )
-                            if !result.ok {
-                                issues.append(issue("HEARTBEAT_VERIFICATION_FAILED", "Device \(deviceID) failed SLAC heartbeat verification: \(result.reason ?? "unknown error")", .critical))
-                            } else {
-                                if result.certificates.count >= 2 {
-                                     if case .failure(let error) = verifyPayloadSignatureWithCertificate(result.certificates[1], signatureBase64: heartbeatSignature, payload: "heartbeat:\(deviceID):\(lastSyncUtc)") {
-                                         issues.append(issue("HEARTBEAT_VERIFICATION_FAILED", "Device \(deviceID) failed SLAC heartbeat verification: \(error.reason)", .critical))
-                                     }
-                                } else {
-                                     issues.append(issue("HEARTBEAT_VERIFICATION_FAILED", "Device \(deviceID) failed SLAC heartbeat verification: Heartbeat authority missing", .critical))
-                                }
+                            let attestationRecordId = (record["id"] as? String)
+                            if case .failure(let error) = verifyHeartbeatAttestation(
+                                HeartbeatAttestationInputs(
+                                    id: deviceID,
+                                    heartbeatSig: heartbeatSignature,
+                                    lastSyncUtc: lastSyncUtc,
+                                    ctr: counter,
+                                    recordID: attestationRecordId,
+                                    certificateChain: heartbeatChain,
+                                    trustProfile: options.trustProfile
+                                )
+                            ) {
+                                issues.append(issue("HEARTBEAT_VERIFICATION_FAILED", "Device \(deviceID) failed SLAC heartbeat verification: \(error.reason)", .critical))
                             }
                         } else if !heartbeatSignature.isEmpty {
                             issues.append(issue("HEARTBEAT_CHAIN_MISSING", "Missing SLAC heartbeat chain for device \(deviceID).", .warning))
@@ -575,7 +571,7 @@ public final class LukuArchive {
                 }
 
                 if isAuxRecord,
-                   let parentRecordID = record["parent_record_id"] as? String,
+                   let parentRecordID = (record["parent_id"] as? String) ?? (record["parent_record_id"] as? String),
                    !parentRecordID.isEmpty,
                    !recordIDs.contains(parentRecordID) {
                     issues.append(issue("PARENT_RECORD_MISSING", "Record type \(recordType) references missing parent \(parentRecordID).", .critical))
@@ -775,6 +771,7 @@ public enum LukuFile {
         let timestamp = (payload["timestamp_utc"] as? NSNumber)?.uint64Value 
             ?? (envelope["timestamp_utc"] as? NSNumber)?.uint64Value
         let counter = (payload["ctr"] as? NSNumber)?.uint64Value
+        let attestationRecordId = (envelope["id"] as? String)
         let genesisHash = payload["genesis_hash"] as? String ?? ""
         let previousSignature = envelope["previous_signature"] as? String ?? ""
 
@@ -819,6 +816,8 @@ public enum LukuFile {
                         id: deviceId,
                         key: publicKey,
                         attestationSig: attestationSignature ?? "",
+                        ctr: counter,
+                        recordID: attestationRecordId,
                         certificateChain: attestationChain,
                         created: options.skipCertificateTemporalChecks ? nil : timestamp.map(Int64.init),
                         attestationAlg: nil,
@@ -867,10 +866,21 @@ public enum LukuFile {
                                 issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed SLAC (heartbeat) attestation: Missing trusted heartbeat timestamp", criticality: .critical))
                             } else if let recordTimestamp = timestamp.map(Int64.init), lastSyncUtc! > recordTimestamp {
                                 issues.append(VerificationIssue(code: "LAST_SYNC_AFTER_RECORD", message: "Device \(deviceId) reports last_sync_utc \(lastSyncUtc!) after record timestamp \(recordTimestamp).", criticality: .critical))
-                            } else if result.certificates.count < 2 {
-                                issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed SLAC (heartbeat) attestation: Heartbeat authority certificate missing from chain", criticality: .critical))
-                            } else if case .failure(let error) = verifyPayloadSignatureWithCertificate(result.certificates[1], signatureBase64: slacSignature, payload: "heartbeat:\(deviceId):\(lastSyncUtc!)") {
-                                issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed SLAC (heartbeat) attestation: \(error.reason)", criticality: .critical))
+                            } else {
+                                let attestationRecordId = (envelope["id"] as? String)
+                                if case .failure(let error) = verifyHeartbeatAttestation(
+                                    HeartbeatAttestationInputs(
+                                        id: deviceId,
+                                        heartbeatSig: slacSignature,
+                                        lastSyncUtc: lastSyncUtc!,
+                                        ctr: counter,
+                                        recordID: attestationRecordId,
+                                        certificateChain: slacChain,
+                                        trustProfile: options.trustProfile
+                                    )
+                                ) {
+                                    issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed SLAC (heartbeat) attestation: \(error.reason)", criticality: .critical))
+                                }
                             }
                         }
                     }

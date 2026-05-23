@@ -11,6 +11,8 @@ pub struct DeviceAttestationInputs {
     pub id: String,
     pub key: String,
     pub attestation_sig: String,
+    pub ctr: Option<u64>,
+    pub record_id: Option<String>,
     pub certificate_chain: Option<String>,
     pub created: Option<i64>,
     pub attestation_alg: Option<String>,
@@ -168,8 +170,33 @@ pub struct HeartbeatAttestationInputs {
     pub id: String,
     pub heartbeat_sig: String,
     pub last_sync_utc: i64,
+    pub ctr: Option<u64>,
+    pub record_id: Option<String>,
     pub certificate_chain: Option<String>,
     pub trust_profile: String,
+}
+
+pub fn build_record_attestation_payload(id: &str, key: &str, ctr: Option<u64>, record_id: Option<&str>) -> String {
+    match (ctr, record_id) {
+        (Some(ctr), Some(record_id)) if !record_id.is_empty() => {
+            format!("attestation:{}:{}:{}:{}", id, key, ctr, record_id)
+        }
+        _ => format!("{}:{}", id, key),
+    }
+}
+
+pub fn build_record_heartbeat_payload(
+    id: &str,
+    last_sync_utc: i64,
+    ctr: Option<u64>,
+    record_id: Option<&str>,
+) -> String {
+    match (ctr, record_id) {
+        (Some(ctr), Some(record_id)) if !record_id.is_empty() => {
+            format!("heartbeat:{}:{}:{}:{}", id, last_sync_utc, ctr, record_id)
+        }
+        _ => format!("heartbeat:{}:{}", id, last_sync_utc),
+    }
 }
 
 pub fn verify_device_attestation(
@@ -186,8 +213,15 @@ pub fn verify_device_attestation(
         }
     };
 
-    let payload_string = format!("{}:{}", inputs.id, inputs.key);
-    let payload = payload_string.as_bytes();
+    let payload_candidates = [
+        build_record_attestation_payload(
+            &inputs.id,
+            &inputs.key,
+            inputs.ctr,
+            inputs.record_id.as_deref(),
+        ),
+        format!("{}:{}", inputs.id, inputs.key),
+    ];
 
     let mut leaf_pubkey_bytes: Option<Vec<u8>> = None;
 
@@ -206,11 +240,13 @@ pub fn verify_device_attestation(
     }
 
     if let Some(pubkey) = leaf_pubkey_bytes {
-        if verify_signature_robust(&signature_bytes, payload, &pubkey) {
-            return VerificationResult {
-                ok: true,
-                reason: None,
-            };
+        for payload in payload_candidates.iter() {
+            if verify_signature_robust(&signature_bytes, payload.as_bytes(), &pubkey) {
+                return VerificationResult {
+                    ok: true,
+                    reason: None,
+                };
+            }
         }
     } else {
         for root_pem in TRUSTED_ROOT_CERTS_PEM {
@@ -219,15 +255,17 @@ pub fn verify_device_attestation(
                 .next()
             {
                 if let Ok(root_cert) = p.parse_x509() {
-                    if verify_signature_robust(
-                        &signature_bytes,
-                        payload,
-                        &root_cert.public_key().subject_public_key.data,
-                    ) {
-                        return VerificationResult {
-                            ok: true,
-                            reason: None,
-                        };
+                    for payload in payload_candidates.iter() {
+                        if verify_signature_robust(
+                            &signature_bytes,
+                            payload.as_bytes(),
+                            &root_cert.public_key().subject_public_key.data,
+                        ) {
+                            return VerificationResult {
+                                ok: true,
+                                reason: None,
+                            };
+                        }
                     }
                 }
             }
@@ -254,10 +292,18 @@ pub fn verify_heartbeat_attestation(
         }
     };
 
-    let payload_string = format!("heartbeat:{}:{}", inputs.id, inputs.last_sync_utc);
-    let payload = payload_string.as_bytes();
+    let payload_candidates = [
+        build_record_heartbeat_payload(
+            &inputs.id,
+            inputs.last_sync_utc,
+            inputs.ctr,
+            inputs.record_id.as_deref(),
+        ),
+        format!("heartbeat:{}:{}", inputs.id, inputs.last_sync_utc),
+    ];
 
     let mut leaf_pubkey_bytes: Option<Vec<u8>> = None;
+    let mut authority_pubkey_bytes: Option<Vec<u8>> = None;
 
     if let Some(chain_pem) = &inputs.certificate_chain {
         // We use a looser temporal check for heartbeats as they are short-lived
@@ -275,11 +321,24 @@ pub fn verify_heartbeat_attestation(
         }
         if let Some(cert_public_keys) = chain_result.cert_public_keys {
             leaf_pubkey_bytes = cert_public_keys.first().cloned();
+            authority_pubkey_bytes = cert_public_keys.get(1).cloned();
         }
     }
 
     if let Some(pubkey) = leaf_pubkey_bytes {
-        if verify_signature_robust(&signature_bytes, payload, &pubkey) {
+        for payload in payload_candidates.iter() {
+            if verify_signature_robust(&signature_bytes, payload.as_bytes(), &pubkey) {
+                return VerificationResult {
+                    ok: true,
+                    reason: None,
+                };
+            }
+        }
+    }
+
+    if let Some(pubkey) = authority_pubkey_bytes {
+        let legacy_payload = format!("heartbeat:{}:{}", inputs.id, inputs.last_sync_utc);
+        if verify_signature_robust(&signature_bytes, legacy_payload.as_bytes(), &pubkey) {
             return VerificationResult {
                 ok: true,
                 reason: None,

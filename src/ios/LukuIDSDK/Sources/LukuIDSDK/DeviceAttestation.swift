@@ -8,6 +8,8 @@ struct DeviceAttestationInputs {
     let id: String
     let key: String
     let attestationSig: String
+    let ctr: UInt64?
+    let recordID: String?
     let certificateChain: String?
     let created: Int64?
     let attestationAlg: String?
@@ -17,6 +19,8 @@ struct DeviceAttestationInputs {
     init(id: String,
          key: String,
          attestationSig: String,
+         ctr: UInt64? = nil,
+         recordID: String? = nil,
          certificateChain: String?,
          created: Int64?,
          attestationAlg: String?,
@@ -25,12 +29,38 @@ struct DeviceAttestationInputs {
         self.id = id
         self.key = key
         self.attestationSig = attestationSig
+        self.ctr = ctr
+        self.recordID = recordID
         self.certificateChain = certificateChain
         self.created = created
         self.attestationAlg = attestationAlg
         self.attestationPayloadVersion = attestationPayloadVersion
         self.trustProfile = trustProfile
     }
+}
+
+struct HeartbeatAttestationInputs {
+    let id: String
+    let heartbeatSig: String
+    let lastSyncUtc: Int64
+    let ctr: UInt64?
+    let recordID: String?
+    let certificateChain: String?
+    let trustProfile: String
+}
+
+func buildRecordAttestationPayload(id: String, key: String, ctr: UInt64? = nil, recordID: String? = nil) -> String {
+    if let ctr, let recordID, !recordID.isEmpty {
+        return "attestation:\(id):\(key):\(ctr):\(recordID)"
+    }
+    return "\(id):\(key)"
+}
+
+func buildRecordHeartbeatPayload(id: String, lastSyncUtc: Int64, ctr: UInt64? = nil, recordID: String? = nil) -> String {
+    if let ctr, let recordID, !recordID.isEmpty {
+        return "heartbeat:\(id):\(lastSyncUtc):\(ctr):\(recordID)"
+    }
+    return "heartbeat:\(id):\(lastSyncUtc)"
 }
 
 struct ExternalIdentityInputs {
@@ -182,10 +212,10 @@ func verifyDeviceAttestation(_ inputs: DeviceAttestationInputs, revocationManage
         return .failure(DeviceTrustError(id: inputs.id, reason: "attestationSig is not valid base64", attemptedKeyIds: []))
     }
     
-    let payloadString = "\(inputs.id):\(inputs.key)"
-    guard let payload = payloadString.data(using: .utf8) else {
-         return .failure(DeviceTrustError(id: inputs.id, reason: "Failed to encode payload", attemptedKeyIds: []))
-    }
+    let payloadStrings = Array(Set([
+        buildRecordAttestationPayload(id: inputs.id, key: inputs.key, ctr: inputs.ctr, recordID: inputs.recordID),
+        "\(inputs.id):\(inputs.key)"
+    ]))
 
     var leafPublicKeyData: Data? = nil
     
@@ -203,22 +233,77 @@ func verifyDeviceAttestation(_ inputs: DeviceAttestationInputs, revocationManage
     }
 
     if let leafPub = leafPublicKeyData {
-        if verifySignatureRobust(signature: signatureData, tbs: payload, publicKey: leafPub) {
-            return .success(())
+        for payloadString in payloadStrings {
+            guard let payload = payloadString.data(using: .utf8) else { continue }
+            if verifySignatureRobust(signature: signatureData, tbs: payload, publicKey: leafPub) {
+                return .success(())
+            }
         }
     } else {
         // Fallback to legacy behavior
         for rootPEM in TRUSTED_ROOT_CERTS_PEM {
             let rootCerts = parsePEMChain(rootPEM)
             if let root = rootCerts.first, let rootPub = extractRawPublicKey(from: root) {
-                if verifySignatureRobust(signature: signatureData, tbs: payload, publicKey: rootPub) {
-                    return .success(())
+                for payloadString in payloadStrings {
+                    guard let payload = payloadString.data(using: .utf8) else { continue }
+                    if verifySignatureRobust(signature: signatureData, tbs: payload, publicKey: rootPub) {
+                        return .success(())
+                    }
                 }
             }
         }
     }
 
     return .failure(DeviceTrustError(id: inputs.id, reason: "Attestation verification failed", attemptedKeyIds: []))
+}
+
+func verifyHeartbeatAttestation(_ inputs: HeartbeatAttestationInputs, revocationManager: RevocationManager? = nil) -> Result<Void, DeviceTrustError> {
+    if inputs.heartbeatSig.isEmpty {
+        return .failure(DeviceTrustError(id: inputs.id, reason: "heartbeatSig missing", attemptedKeyIds: []))
+    }
+
+    guard let signatureData = Data(base64Encoded: inputs.heartbeatSig) else {
+        return .failure(DeviceTrustError(id: inputs.id, reason: "heartbeatSig is not valid base64", attemptedKeyIds: []))
+    }
+
+    let payloadStrings = Array(Set([
+        buildRecordHeartbeatPayload(id: inputs.id, lastSyncUtc: inputs.lastSyncUtc, ctr: inputs.ctr, recordID: inputs.recordID),
+        "heartbeat:\(inputs.id):\(inputs.lastSyncUtc)"
+    ]))
+
+    var leafPublicKeyData: Data? = nil
+    var authorityPublicKeyData: Data? = nil
+
+    if let chainPEM = inputs.certificateChain {
+        let chainResult = validateCertificateChain(
+            chainPEM,
+            created: nil,
+            trustProfile: inputs.trustProfile,
+            revocationManager: revocationManager
+        )
+        guard chainResult.ok else {
+            return .failure(DeviceTrustError(id: inputs.id, reason: chainResult.reason ?? "Invalid certificate chain", attemptedKeyIds: []))
+        }
+        leafPublicKeyData = chainResult.certificates.first.flatMap { extractRawPublicKey(from: $0) }
+        authorityPublicKeyData = chainResult.certificates.dropFirst().first.flatMap { extractRawPublicKey(from: $0) }
+    }
+
+    if let leafPub = leafPublicKeyData {
+        for payloadString in payloadStrings {
+            guard let payload = payloadString.data(using: .utf8) else { continue }
+            if verifySignatureRobust(signature: signatureData, tbs: payload, publicKey: leafPub) {
+                return .success(())
+            }
+        }
+    }
+
+    if let authorityPub = authorityPublicKeyData,
+       let payload = "heartbeat:\(inputs.id):\(inputs.lastSyncUtc)".data(using: .utf8),
+       verifySignatureRobust(signature: signatureData, tbs: payload, publicKey: authorityPub) {
+        return .success(())
+    }
+
+    return .failure(DeviceTrustError(id: inputs.id, reason: "Heartbeat verification failed", attemptedKeyIds: []))
 }
 
 func validateCertificateChain(

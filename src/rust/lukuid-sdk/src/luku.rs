@@ -554,13 +554,14 @@ impl LukuFile {
 
     fn debug_record_id(record: &Value) -> String {
         for key in [
+            "id",
             "scan_id",
             "event_id",
             "custody_id",
             "attachment_id",
             "location_id",
+            "parent_id",
             "parent_record_id",
-            "id",
         ] {
             if let Some(value) = record.get(key).and_then(Value::as_str) {
                 return value.to_string();
@@ -666,6 +667,10 @@ impl LukuFile {
         let is_aux_record = matches!(r#type, "attachment" | "location" | "custody");
         let payload = envelope.get("payload");
         let ctr = payload.and_then(|p| p.get("ctr")).and_then(|v| v.as_u64());
+        let attestation_record_id = envelope
+            .get("id")
+            .and_then(|v| v.as_str())
+            ;
         let timestamp = payload
             .and_then(|p| p.get("timestamp_utc"))
             .and_then(|v| v.as_u64())
@@ -812,6 +817,8 @@ impl LukuFile {
                         id: device_id.to_string(),
                         key: public_key.to_string(),
                         attestation_sig: attestation_sig.to_string(),
+                        ctr,
+                        record_id: attestation_record_id.map(|value| value.to_string()),
                         certificate_chain: Some(attestation_chain.clone()),
                         created: if options.skip_certificate_temporal_checks {
                             None
@@ -982,30 +989,19 @@ impl LukuFile {
                                                         criticality: Criticality::Critical,
                                                     },
                                                 );
-                                            } else if cert_public_keys.len() < 2 {
-                                                Self::push_issue(
-                                                    &mut issues,
-                                                    debug_logging,
-                                                    None,
-                                                    VerificationIssue {
-                                                        code: "ATTESTATION_FAILED".to_string(),
-                                                        message: format!(
-                                                            "Device {} failed SLAC (heartbeat) attestation: Heartbeat authority certificate missing from chain",
-                                                            device_id
-                                                        ),
-                                                        criticality: Criticality::Critical,
-                                                    },
-                                                );
                                             } else {
                                                 let heartbeat_result =
-                                                    crate::attestation::verify_payload_signature_with_public_key(
-                                                        &cert_public_keys[1],
-                                                        slac_signature,
-                                                        format!(
-                                                            "heartbeat:{}:{}",
-                                                            device_id, last_sync_utc
-                                                        )
-                                                        .as_bytes(),
+                                                    crate::attestation::verify_heartbeat_attestation(
+                                                        &crate::attestation::HeartbeatAttestationInputs {
+                                                            id: device_id.to_string(),
+                                                            heartbeat_sig: slac_signature.to_string(),
+                                                            last_sync_utc,
+                                                            ctr,
+                                                            record_id: attestation_record_id.map(|value| value.to_string()),
+                                                            certificate_chain: Some(slac_chain.clone()),
+                                                            trust_profile: options.trust_profile.clone(),
+                                                        },
+                                                        None,
                                                     );
                                                 if !heartbeat_result.ok {
                                                     Self::push_issue(
@@ -1513,7 +1509,7 @@ impl LukuFile {
 
         for block in &self.blocks {
             for record in &block.batch {
-                for key in ["scan_id", "event_id", "attachment_id", "custody_id"] {
+                for key in ["id", "scan_id", "event_id", "attachment_id", "custody_id"] {
                     if let Some(value) = record.get(key).and_then(|v| v.as_str()) {
                         record_ids.insert(value.to_string());
                     }
@@ -1769,6 +1765,11 @@ impl LukuFile {
                         let attestation_sig = record
                             .get("identity")
                             .and_then(|i| i.get("dac_signature"))
+                            .or_else(|| {
+                                record
+                                    .get("identity")
+                                    .and_then(|i| i.get("signature"))
+                            })
                             .and_then(|v| v.as_str())
                             .unwrap_or("");
 
@@ -1787,10 +1788,18 @@ impl LukuFile {
                                 },
                             );
                         } else if !is_aux_record || !attestation_sig.is_empty() {
+                            let record_attestation_id = record
+                                .get("event_id")
+                                .and_then(|v| v.as_str())
+                                .or_else(|| record.get("scan_id").and_then(|v| v.as_str()))
+                                .or_else(|| record.get("attachment_id").and_then(|v| v.as_str()))
+                                .or_else(|| record.get("record_id").and_then(|v| v.as_str()));
                             let inputs = DeviceAttestationInputs {
                                 id: device_id.to_string(),
                                 key: public_key.to_string(),
                                 attestation_sig: attestation_sig.to_string(),
+                                ctr,
+                                record_id: record_attestation_id.map(|value| value.to_string()),
                                 certificate_chain: Some(dac_chain),
                                 created: if options.skip_certificate_temporal_checks {
                                     None
@@ -1900,10 +1909,18 @@ impl LukuFile {
                                 );
                             }
                         } else if !heartbeat_sig.is_empty() {
+                            let record_attestation_id = record
+                                .get("event_id")
+                                .and_then(|v| v.as_str())
+                                .or_else(|| record.get("scan_id").and_then(|v| v.as_str()))
+                                .or_else(|| record.get("attachment_id").and_then(|v| v.as_str()))
+                                .or_else(|| record.get("record_id").and_then(|v| v.as_str()));
                             let inputs = HeartbeatAttestationInputs {
                                 id: device_id.to_string(),
                                 heartbeat_sig: heartbeat_sig.to_string(),
                                 last_sync_utc,
+                                ctr,
+                                record_id: record_attestation_id.map(|value| value.to_string()),
                                 certificate_chain: Some(slac_chain),
                                 trust_profile: options.trust_profile.clone(),
                             };

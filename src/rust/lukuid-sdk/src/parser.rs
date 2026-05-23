@@ -52,10 +52,6 @@ fn parse_luku_file(luku: &LukuFile) -> LukuParseResult {
                 .unwrap_or_default()
                 .to_string();
             let record_id = [
-                "scan_id",
-                "event_id",
-                "attachment_id",
-                "custody_id",
                 "parent_record_id",
             ]
             .iter()

@@ -334,7 +334,7 @@ describe('LukuFile', () => {
     const archive = await LukuFile.exportWithIdentity(
       [{
         type: 'attachment',
-        attachment_id: 'ATT-EXT-1',
+        id: 'ATT-EXT-1',
         signature: await signCanonical(signer.signer.privateKey, 'attachment-ext'),
         previous_signature: '',
         canonical_string: 'attachment-ext',
@@ -441,7 +441,7 @@ describe('LukuFile', () => {
       [
         {
           type: 'scan',
-          scan_id: 'SCAN-ATTEST-1',
+          id: 'SCAN-ATTEST-1',
           device_id: deviceId,
           public_key: signer.publicKeyBase64,
           signature: scanSig,
@@ -451,7 +451,7 @@ describe('LukuFile', () => {
         },
         {
           type: 'attachment',
-          attachment_id: 'ATT-ATTEST-1',
+          id: 'ATT-ATTEST-1',
           parent_record_id: 'SCAN-ATTEST-1',
           device_id: deviceId,
           public_key: signer.publicKeyBase64,
@@ -465,7 +465,7 @@ describe('LukuFile', () => {
         },
         {
           type: 'environment',
-          event_id: 'ENV-ATTEST-1',
+          id: 'ENV-ATTEST-1',
           device_id: deviceId,
           public_key: signer.publicKeyBase64,
           signature: await signCanonical(signer.signer.privateKey, envCanonical),
@@ -509,7 +509,7 @@ describe('LukuFile', () => {
       [
         {
           type: 'scan',
-          scan_id: 'SCAN-CUSTODY-1',
+          id: 'SCAN-CUSTODY-1',
           device_id: deviceId,
           public_key: signer.publicKeyBase64,
           signature: scanSig,
@@ -519,7 +519,7 @@ describe('LukuFile', () => {
         },
         {
           type: 'custody',
-          custody_id: 'CUSTODY-1',
+          id: 'CUSTODY-1',
           parent_record_id: 'SCAN-CUSTODY-1',
           device_id: deviceId,
           public_key: signer.publicKeyBase64,
@@ -531,7 +531,7 @@ describe('LukuFile', () => {
         },
         {
           type: 'environment',
-          event_id: 'ENV-CUSTODY-1',
+          id: 'ENV-CUSTODY-1',
           device_id: deviceId,
           public_key: signer.publicKeyBase64,
           signature: await signCanonical(signer.signer.privateKey, envCanonical),

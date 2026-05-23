@@ -196,7 +196,7 @@ fn encode_command_request(input: &Value) -> Option<Vec<u8>> {
             if let Some(v) = source.get("merkle_root").and_then(Value::as_str) {
                 write_string(&mut nested, 11, v);
             }
-            if let Some(v) = source.get("custody_id").and_then(Value::as_str) {
+            if let Some(v) = source.get("id").and_then(Value::as_str) {
                 write_string(&mut nested, 12, v);
             }
             if let Some(v) = source.get("event").and_then(Value::as_str) {
@@ -1392,7 +1392,7 @@ fn decode_scan_record(bytes: &[u8]) -> Value {
                 let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "version");
             }
             2 => {
-                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "scan_id");
+                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "id");
             }
             3 => {
                 let _ = insert_bytes(bytes, &mut cursor, wire_type, &mut out, "signature");
@@ -1533,7 +1533,7 @@ fn decode_environment_record(bytes: &[u8]) -> Value {
                 let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "version");
             }
             2 => {
-                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "event_id");
+                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "id");
             }
             3 => {
                 let _ = insert_bytes(bytes, &mut cursor, wire_type, &mut out, "signature");
@@ -1954,7 +1954,7 @@ fn decode_attachment_record(bytes: &[u8]) -> Value {
                 let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "version");
             }
             2 => {
-                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "attachment_id");
+                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "id");
             }
             3 => {
                 let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "parent_record_id");
@@ -2007,7 +2007,7 @@ fn decode_attachment_record(bytes: &[u8]) -> Value {
                 }
             }
             18 => {
-                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "custody_id");
+                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "id");
             }
             19 => {
                 if let Some(raw) = read_length_delimited(bytes, &mut cursor, wire_type) {
@@ -2482,7 +2482,7 @@ mod tests {
             "opts": {
                 "parent_record_id": "SCAN-1",
                 "type": "custody",
-                "custody_id": "CUST-1",
+                "id": "CUST-1",
                 "event": "handoff",
                 "status": "received",
                 "context_ref": "shipment-123"
@@ -2562,7 +2562,7 @@ mod tests {
 
         assert_eq!(decoded.get("type").and_then(Value::as_str), Some("custody"));
         assert_eq!(
-            decoded.get("custody_id").and_then(Value::as_str),
+            decoded.get("id").and_then(Value::as_str),
             Some("CUST-1")
         );
         assert_eq!(

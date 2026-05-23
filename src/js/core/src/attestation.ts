@@ -6,6 +6,8 @@ export interface DeviceAttestationInputs {
   id: string;
   key: string;
   attestationSig: string;
+  ctr?: number;
+  recordId?: string;
   certificateChain?: string;
   created?: number; // Unix timestamp
   attestationAlg?: string;
@@ -455,8 +457,24 @@ export interface HeartbeatAttestationInputs {
   id: string;
   heartbeatSig: string;
   lastSyncUtc: number;
+  ctr?: number;
+  recordId?: string;
   certificateChain?: string;
   trustProfile?: string;
+}
+
+export function buildRecordAttestationPayload(id: string, key: string, ctr?: number, recordId?: string): string {
+  if (ctr !== undefined && recordId) {
+    return `attestation:${id}:${key}:${ctr}:${recordId}`;
+  }
+  return `${id}:${key}`;
+}
+
+export function buildRecordHeartbeatPayload(id: string, lastSyncUtc: number, ctr?: number, recordId?: string): string {
+  if (ctr !== undefined && recordId) {
+    return `heartbeat:${id}:${lastSyncUtc}:${ctr}:${recordId}`;
+  }
+  return `heartbeat:${id}:${lastSyncUtc}`;
 }
 
 export async function verifyDeviceAttestation(
@@ -467,7 +485,10 @@ export async function verifyDeviceAttestation(
     return { ok: false, reason: 'Missing signature' };
   }
 
-  const payloadString = `${inputs.id}:${inputs.key}`;
+  const payloadCandidates = [
+    buildRecordAttestationPayload(inputs.id, inputs.key, inputs.ctr, inputs.recordId),
+    `${inputs.id}:${inputs.key}`
+  ].filter((value, index, values) => values.indexOf(value) === index);
   let leafSpki: Uint8Array | null = null;
 
   if (inputs.certificateChain) {
@@ -489,10 +510,13 @@ export async function verifyDeviceAttestation(
       if (!signature) return { ok: false, reason: 'Invalid signature base64' };
       const subtle = getSubtleCrypto();
       const importedKey = await subtle.importKey('spki', toArrayBuffer(leafSpki), { name: 'Ed25519' }, false, ['verify']);
-      const verified = await subtle.verify('Ed25519', importedKey, toArrayBuffer(signature), toArrayBuffer(textEncoder.encode(payloadString)));
-      return verified
-        ? { ok: true }
-        : { ok: false, reason: 'Signature verification failed against leaf' };
+      for (const payloadString of payloadCandidates) {
+        const verified = await subtle.verify('Ed25519', importedKey, toArrayBuffer(signature), toArrayBuffer(textEncoder.encode(payloadString)));
+        if (verified) {
+          return { ok: true };
+        }
+      }
+      return { ok: false, reason: 'Signature verification failed against leaf' };
     } catch (error) {
       return { ok: false, reason: `Leaf verification error: ${error instanceof Error ? error.message : String(error)}` };
     }
@@ -501,8 +525,6 @@ export async function verifyDeviceAttestation(
     const subtle = getSubtleCrypto();
     const signature = decodeBase64(inputs.attestationSig);
     if (!signature) return { ok: false, reason: 'Invalid signature base64' };
-    const payload = toArrayBuffer(textEncoder.encode(payloadString));
-
     for (const rootPem of TRUSTED_ROOT_CERTS_PEM) {
       try {
         const root = forge.pki.certificateFromPem(rootPem);
@@ -518,8 +540,11 @@ export async function verifyDeviceAttestation(
           ['verify']
         );
 
-        if (await subtle.verify({ name: 'Ed25519' }, importedKey, toArrayBuffer(signature), payload)) {
-          return { ok: true };
+        for (const payloadString of payloadCandidates) {
+          const payload = toArrayBuffer(textEncoder.encode(payloadString));
+          if (await subtle.verify({ name: 'Ed25519' }, importedKey, toArrayBuffer(signature), payload)) {
+            return { ok: true };
+          }
         }
       } catch { continue; }
     }
@@ -536,8 +561,12 @@ export async function verifyHeartbeatAttestation(
     return { ok: false, reason: 'Missing heartbeat signature' };
   }
 
-  const payloadString = `heartbeat:${inputs.id}:${inputs.lastSyncUtc}`;
+  const payloadCandidates = [
+    buildRecordHeartbeatPayload(inputs.id, inputs.lastSyncUtc, inputs.ctr, inputs.recordId),
+    `heartbeat:${inputs.id}:${inputs.lastSyncUtc}`
+  ].filter((value, index, values) => values.indexOf(value) === index);
   let leafSpki: Uint8Array | null = null;
+  let authoritySpki: Uint8Array | null = null;
 
   if (inputs.certificateChain) {
     const chainResult = await validateCertificateChain(
@@ -551,9 +580,10 @@ export async function verifyHeartbeatAttestation(
       return { ok: false, reason: chainResult.reason ?? 'Chain processing error' };
     }
     leafSpki = chainResult.certSpkis?.[0] ?? null;
+    authoritySpki = chainResult.certSpkis?.[1] ?? null;
   }
 
-  if (leafSpki) {
+  const verifyAgainstSpki = async (spki: Uint8Array, payloadString: string): Promise<DeviceAttestationResult> => {
     try {
       const signature = decodeBase64(inputs.heartbeatSig);
       if (!signature) return { ok: false, reason: 'Invalid signature base64' };
@@ -561,12 +591,12 @@ export async function verifyHeartbeatAttestation(
       const subtle = getSubtleCrypto();
       // Try Ed25519 first (typical for SLAC)
       if (
-        leafSpki.length === ED25519_SPKI_PREFIX.length + 32 &&
-        ED25519_SPKI_PREFIX.every((value, index) => leafSpki![index] === value)
+        spki.length === ED25519_SPKI_PREFIX.length + 32 &&
+        ED25519_SPKI_PREFIX.every((value, index) => spki[index] === value)
       ) {
         const importedKey = await subtle.importKey(
           'spki',
-          toArrayBuffer(leafSpki),
+          toArrayBuffer(spki),
           { name: 'Ed25519' },
           false,
           ['verify']
@@ -577,15 +607,15 @@ export async function verifyHeartbeatAttestation(
           toArrayBuffer(signature),
           toArrayBuffer(textEncoder.encode(payloadString))
         );
-        return verified ? { ok: true } : { ok: false, reason: 'Heartbeat signature verification failed against leaf' };
+        return verified ? { ok: true } : { ok: false, reason: 'Heartbeat signature verification failed against certificate key' };
       }
 
       // Try ML-DSA if it matches that length
       if (signature.length === 3309) {
-        const spkiSeq = readDerElement(leafSpki, 0);
-        const algSeq = readDerElement(leafSpki, spkiSeq.contentStart);
-        const pubKeyBitString = readDerElement(leafSpki, algSeq.end);
-        const pubKeyBytes = leafSpki.slice(pubKeyBitString.contentStart + 1, pubKeyBitString.contentEnd);
+        const spkiSeq = readDerElement(spki, 0);
+        const algSeq = readDerElement(spki, spkiSeq.contentStart);
+        const pubKeyBitString = readDerElement(spki, algSeq.end);
+        const pubKeyBytes = spki.slice(pubKeyBitString.contentStart + 1, pubKeyBitString.contentEnd);
         const verified = ml_dsa65.verify(signature, textEncoder.encode(payloadString), pubKeyBytes);
         return verified ? { ok: true } : { ok: false, reason: 'Heartbeat ML-DSA signature verification failed' };
       }
@@ -597,6 +627,19 @@ export async function verifyHeartbeatAttestation(
         reason: `Heartbeat verification error: ${error instanceof Error ? error.message : String(error)}`
       };
     }
+  };
+
+  if (leafSpki) {
+    for (const payloadString of payloadCandidates) {
+      const result = await verifyAgainstSpki(leafSpki, payloadString);
+      if (result.ok) {
+        return result;
+      }
+    }
+  }
+
+  if (authoritySpki) {
+    return verifyAgainstSpki(authoritySpki, `heartbeat:${inputs.id}:${inputs.lastSyncUtc}`);
   }
 
   return { ok: false, reason: 'Heartbeat verification failed: no leaf public key' };

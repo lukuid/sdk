@@ -46,7 +46,7 @@ final class GuardCardVocTests: XCTestCase {
 
         let envelope: [String: Any] = [
             "type": "environment",
-            "event_id": "ENV-VOC-1",
+            "id": "ENV-VOC-1",
             "device_id": "GC-TEST-1",
             "public_key": publicKeyBase64,
             "signature": signature,

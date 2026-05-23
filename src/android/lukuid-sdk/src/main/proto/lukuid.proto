@@ -66,11 +66,11 @@ message FetchRequest {
 }
 
 message GetRecordRequest {
-  string record_id = 1;
+  string id = 1;
 }
 
 message AttestRequest {
-  string parent_record_id = 1;
+  string parent_id = 1;
   bytes signature = 2;
   string checksum = 3;
   reserved 4;
@@ -81,7 +81,7 @@ message AttestRequest {
   double lng = 9;
   string content = 10;
   string merkle_root = 11;
-  string custody_id = 12;
+  string id = 12;
   string event = 13;
   string status = 14;
   string context_ref = 15;
@@ -312,12 +312,12 @@ message NetworkConfigResponse {
 message RecordMeta {
   int64 timestamp_utc = 1;
   uint32 device_id = 2;
-  string record_id = 3;
+  string id = 3;
 }
 
 message ScanRecordMin {
   string version = 1;
-  string record_id = 2;
+  string id = 2;
   int64 timestamp_utc = 3;
   string tag_id = 4;
   uint32 score_bio = 5;
@@ -327,7 +327,7 @@ message ScanRecordMin {
 
 message EnvironmentRecordMin {
   string version = 1;
-  string record_id = 2;
+  string id = 2;
   int64 timestamp_utc = 3;
   MetricValue lux = 4;
   MetricValue temp_c = 5;
@@ -449,8 +449,8 @@ message ExternalIdentity {
 
 message AttachmentRecord {
   string version = 1;
-  string attachment_id = 2;
-  string parent_record_id = 3;
+  string id = 2;
+  string parent_id = 3;
   bytes signature = 4;
   bytes parent_signature = 5;
   
@@ -469,7 +469,6 @@ message AttachmentRecord {
   string alg = 16;
   
   ExternalIdentity external_identity = 17;
-  string custody_id = 18;
   string event = 19;
   string canonical_string = 20;
   string status = 21;
@@ -478,7 +477,7 @@ message AttachmentRecord {
 
 message ScanRecord {
   string version = 1;
-  string scan_id = 2;
+  string id = 2;
   bytes signature = 3;
   bytes previous_signature = 4;
   string canonical_string = 5;
@@ -524,7 +523,7 @@ message EnvironmentPayload {
 
 message EnvironmentRecord {
   string version = 1;
-  string event_id = 2;
+  string id = 2;
   bytes signature = 3;
   bytes previous_signature = 4;
   string canonical_string = 5;
@@ -557,7 +556,7 @@ message RecordBatches {
 }
 
 message FullRecordResponse {
-  string record_id = 1;
+  string id = 1;
 
   oneof full_record {
     ScanRecord scan_full = 2;

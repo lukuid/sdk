@@ -487,6 +487,8 @@ impl Device {
             id: id.clone(),
             key: key.clone(),
             attestation_sig,
+            ctr: None,
+            record_id: None,
             certificate_chain,
             created: None,
             attestation_alg: info_obj

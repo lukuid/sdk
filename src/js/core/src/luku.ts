@@ -3,10 +3,10 @@ import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
 import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js';
 import {
   verifyDeviceAttestation,
+  verifyHeartbeatAttestation,
   verifyExternalIdentity,
   validateCertificateChain,
-  spkiMatchesEd25519PublicKey,
-  verifyPayloadSignatureWithSpki
+  spkiMatchesEd25519PublicKey
 } from './attestation.js';
 import type { SelfTestResult } from './types.js';
 
@@ -326,7 +326,7 @@ function pemFromDerBase64(value: string | undefined | null): string | null {
 }
 
 function debugRecordId(record: JsonObject): string {
-  for (const key of ['scan_id', 'event_id', 'custody_id', 'attachment_id', 'location_id', 'parent_record_id', 'id']) {
+  for (const key of ['id', 'parent_id', 'parent_record_id']) {
     const topLevel = asString(record[key]);
     if (topLevel) {
       return topLevel;
@@ -352,6 +352,16 @@ function recordTimestampUtc(record: JsonObject): number | undefined {
   return asNumber(asJsonObject(record.payload)?.timestamp_utc)
     ?? asNumber(record.timestamp_utc)
     ?? asNumber(record.timestamp);
+}
+
+function recordCounter(record: JsonObject): number | undefined {
+  return asNumber(asJsonObject(record.payload)?.ctr)
+    ?? asNumber(record.ctr);
+}
+
+function recordAttestationId(record: JsonObject): string | undefined {
+  return asString(record.id)
+    ;
 }
 
 function manifestPolicy(manifest: LukuManifest): LukuPolicy | undefined {
@@ -526,7 +536,8 @@ export class LukuFile {
     const signature = asString(envelope.signature) ?? '';
     const canonicalStringValue = asString(envelope.canonical_string) ?? '';
     const timestamp = recordTimestampUtc(envelope);
-    const counter = asNumber(payload.ctr);
+    const counter = recordCounter(envelope);
+    const attestationRecordId = recordAttestationId(envelope);
     const genesisHash = asString(payload.genesis_hash) ?? '';
     const previousSignature = asString(envelope.previous_signature) ?? '';
 
@@ -571,6 +582,8 @@ export class LukuFile {
           id: deviceId ?? 'unknown',
           key: publicKey ?? '',
           attestationSig: attestationSignature,
+          ctr: counter,
+          recordId: attestationRecordId,
           certificateChain: attestationChain,
           created: skipCertificateTemporalChecks ? undefined : timestamp,
           trustProfile
@@ -612,17 +625,19 @@ export class LukuFile {
                 issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed SLAC (heartbeat) attestation: Missing trusted heartbeat timestamp`, 'critical'));
               } else if (timestamp !== undefined && lastSyncUtc > timestamp) {
                 issues.push(issue('LAST_SYNC_AFTER_RECORD', `Device ${deviceId ?? 'unknown'} reports last_sync_utc ${lastSyncUtc} after record timestamp ${timestamp}.`, 'critical'));
-              } else if (chainResult.certSpkis && chainResult.certSpkis.length > 1) {
-                const slacResult = await verifyPayloadSignatureWithSpki(
-                  chainResult.certSpkis[1],
-                  slacSignature,
-                  `heartbeat:${deviceId ?? 'unknown'}:${lastSyncUtc}`
-                );
+              } else {
+                const slacResult = await verifyHeartbeatAttestation({
+                  id: deviceId ?? 'unknown',
+                  heartbeatSig: slacSignature,
+                  lastSyncUtc,
+                  ctr: counter,
+                  recordId: attestationRecordId,
+                  certificateChain: slacChain,
+                  trustProfile
+                });
                 if (!slacResult.ok) {
                   issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed SLAC (heartbeat) attestation: ${slacResult.reason ?? 'unknown error'}`, 'critical'));
                 }
-              } else {
-                issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed SLAC (heartbeat) attestation: Heartbeat authority certificate missing from chain`, 'critical'));
               }
             }
           }
@@ -1098,7 +1113,7 @@ export class LukuFile {
     const recordIds = new Set<string>();
     for (const block of this.blocks) {
       for (const record of block.batch) {
-        for (const key of ['scan_id', 'event_id', 'attachment_id', 'custody_id', 'location_id']) {
+        for (const key of ['id']) {
           const value = asString(record[key]);
           if (value) {
             recordIds.add(value);
@@ -1138,6 +1153,7 @@ export class LukuFile {
         const canonicalStringValue = asString(record.canonical_string) ?? '';
         const timestamp = asNumber(payload?.timestamp_utc) ?? asNumber(record.timestamp_utc);
         const counter = asNumber(payload?.ctr);
+        const attestationRecordId = recordAttestationId(record);
         const genesisHash = asString(payload?.genesis_hash) ?? '';
 
         if (!isAuxRecord && !seenDevices.has(deviceId)) {
@@ -1195,7 +1211,10 @@ export class LukuFile {
                 .join('');
             }
           }
-          const attestationSignature = asString(identity?.dac_signature) ?? '';
+          const attestationSignature =
+            asString(identity?.dac_signature) ??
+            asString(identity?.signature) ??
+            '';
 
           if (attestationChain.length === 0) {
             issues.push(issue('ATTESTATION_CHAIN_MISSING', `Missing DAC attestation chain for device ${deviceId}.`, 'warning'));
@@ -1204,6 +1223,8 @@ export class LukuFile {
               id: deviceId,
               key: publicKey,
               attestationSig: attestationSignature,
+              ctr: counter,
+              recordId: attestationRecordId,
               certificateChain: attestationChain,
               created: skipCertificateTemporalChecks ? undefined : timestamp,
               trustProfile
@@ -1243,11 +1264,12 @@ export class LukuFile {
               issues.push(issue('HEARTBEAT_CHAIN_MISSING', `Missing SLAC heartbeat chain for device ${deviceId}.`, 'warning'));
             }
           } else if (heartbeatSignature.length > 0) {
-            const { verifyHeartbeatAttestation } = await import('./attestation.js');
             const result = await verifyHeartbeatAttestation({
               id: deviceId,
               heartbeatSig: heartbeatSignature,
               lastSyncUtc,
+              ctr: counter,
+              recordId: attestationRecordId,
               certificateChain: heartbeatChain,
               trustProfile
             });
@@ -1279,7 +1301,7 @@ export class LukuFile {
         }
 
         if (isAuxRecord) {
-          const parentRecordId = asString(record.parent_record_id);
+          const parentRecordId = asString(record.parent_id) ?? asString(record.parent_record_id);
           if (parentRecordId && !recordIds.has(parentRecordId)) {
             issues.push(issue('PARENT_RECORD_MISSING', `Record type ${recordType} references missing parent ${parentRecordId}.`, 'critical'));
           }

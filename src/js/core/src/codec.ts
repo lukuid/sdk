@@ -542,7 +542,7 @@ function decodeScanRecordMin(payload: Uint8Array): JsonRecord {
         assignString(payload, cursor, wireType, out, 'version');
         break;
       case 2:
-        assignString(payload, cursor, wireType, out, 'record_id');
+        assignString(payload, cursor, wireType, out, 'id');
         break;
       case 3:
         assignInt64(payload, cursor, wireType, out, 'timestamp_utc');
@@ -585,7 +585,7 @@ function decodeEnvironmentRecordMin(payload: Uint8Array): JsonRecord {
         assignString(payload, cursor, wireType, out, 'version');
         break;
       case 2:
-        assignString(payload, cursor, wireType, out, 'record_id');
+        assignString(payload, cursor, wireType, out, 'id');
         break;
       case 3:
         assignInt64(payload, cursor, wireType, out, 'timestamp_utc');
@@ -1093,7 +1093,7 @@ function decodeEnvironmentRecord(payload: Uint8Array): JsonRecord {
     const wireType = key & 0x07;
     switch (field) {
       case 1: assignString(payload, cursor, wireType, out, 'version'); break;
-      case 2: assignString(payload, cursor, wireType, out, 'event_id'); break;
+      case 2: assignString(payload, cursor, wireType, out, 'id'); break;
       case 3: assignBytes(payload, cursor, wireType, out, 'signature'); break;
       case 4: assignBytes(payload, cursor, wireType, out, 'previous_signature'); break;
       case 5: assignString(payload, cursor, wireType, out, 'canonical_string'); break;
@@ -1305,7 +1305,7 @@ function decodeScanRecord(payload: Uint8Array): JsonRecord {
     const wireType = key & 0x07;
     switch (field) {
       case 1: assignString(payload, cursor, wireType, out, 'version'); break;
-      case 2: assignString(payload, cursor, wireType, out, 'scan_id'); break;
+      case 2: assignString(payload, cursor, wireType, out, 'id'); break;
       case 3: assignBytes(payload, cursor, wireType, out, 'signature'); break;
       case 4: assignBytes(payload, cursor, wireType, out, 'previous_signature'); break;
       case 5: assignString(payload, cursor, wireType, out, 'canonical_string'); break;
@@ -1414,7 +1414,7 @@ function decodeFullRecordResponse(payload: Uint8Array): JsonRecord {
     const field = key >>> 3;
     const wireType = key & 0x07;
     switch (field) {
-      case 1: assignString(payload, cursor, wireType, out, 'record_id'); break;
+      case 1: assignString(payload, cursor, wireType, out, 'id'); break;
       case 2: {
         const message = readLengthDelimited(payload, cursor, wireType);
         if (message) out.scan_full = decodeScanRecord(message);

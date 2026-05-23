@@ -292,7 +292,7 @@ final class LukuArchiveTests: XCTestCase {
         let archive = try LukuFile.exportWithIdentity(
             records: [[
                 "type": "attachment",
-                "attachment_id": "ATT-EXT-1",
+                "id": "ATT-EXT-1",
                 "signature": try signCanonical(signer.privateKey, canonical: "attachment-ext"),
                 "previous_signature": "",
                 "canonical_string": "attachment-ext",
@@ -398,7 +398,7 @@ final class LukuArchiveTests: XCTestCase {
             batch: [
                 [
                     "type": "scan",
-                    "scan_id": "SCAN-ATTEST-1",
+                    "id": "SCAN-ATTEST-1",
                     "device_id": deviceID,
                     "public_key": signer.publicKeyBase64,
                     "signature": scanSig,
@@ -412,7 +412,7 @@ final class LukuArchiveTests: XCTestCase {
                 ],
                 [
                     "type": "attachment",
-                    "attachment_id": "ATT-ATTEST-1",
+                    "id": "ATT-ATTEST-1",
                     "parent_record_id": "SCAN-ATTEST-1",
                     "device_id": deviceID,
                     "public_key": signer.publicKeyBase64,
@@ -426,7 +426,7 @@ final class LukuArchiveTests: XCTestCase {
                 ],
                 [
                     "type": "environment",
-                    "event_id": "ENV-ATTEST-1",
+                    "id": "ENV-ATTEST-1",
                     "device_id": deviceID,
                     "public_key": signer.publicKeyBase64,
                     "signature": try signCanonical(signer.privateKey, canonical: envCanonical),
@@ -470,7 +470,7 @@ final class LukuArchiveTests: XCTestCase {
             batch: [
                 [
                     "type": "scan",
-                    "scan_id": "SCAN-CUSTODY-1",
+                    "id": "SCAN-CUSTODY-1",
                     "device_id": deviceID,
                     "public_key": signer.publicKeyBase64,
                     "signature": scanSig,
@@ -484,7 +484,7 @@ final class LukuArchiveTests: XCTestCase {
                 ],
                 [
                     "type": "custody",
-                    "custody_id": "CUSTODY-1",
+                    "id": "CUSTODY-1",
                     "parent_record_id": "SCAN-CUSTODY-1",
                     "device_id": deviceID,
                     "public_key": signer.publicKeyBase64,
@@ -500,7 +500,7 @@ final class LukuArchiveTests: XCTestCase {
                 ],
                 [
                     "type": "environment",
-                    "event_id": "ENV-CUSTODY-1",
+                    "id": "ENV-CUSTODY-1",
                     "device_id": deviceID,
                     "public_key": signer.publicKeyBase64,
                     "signature": try signCanonical(signer.privateKey, canonical: envCanonical),

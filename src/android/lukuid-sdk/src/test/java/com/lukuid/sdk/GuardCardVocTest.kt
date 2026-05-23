@@ -25,7 +25,7 @@ class GuardCardVocTest {
             .build()
         val envRecord = LukuIDProto.EnvironmentRecord.newBuilder()
             .setVersion("1.0.0")
-            .setEventId("ENV-VOC-1")
+            .setId("ENV-VOC-1")
             .setCanonicalString("env-voc-canonical")
             .setPayload(payload)
             .build()

@@ -19,6 +19,8 @@ class DeviceAttestationInputs:
     id: str
     key: str
     attestation_sig: str
+    ctr: int | None = None
+    record_id: str | None = None
     certificate_chain: str | None = None
     created: int | None = None
     attestation_alg: str | None = None
@@ -32,6 +34,8 @@ class HeartbeatAttestationInputs:
     id: str
     heartbeat_sig: str
     last_sync_utc: int
+    ctr: int | None = None
+    record_id: str | None = None
     certificate_chain: str | None = None
     trust_profile: str = os.environ.get("LUKUID_TRUST_PROFILE", "prod")
 
@@ -57,6 +61,18 @@ class ExternalIdentityInputs:
     signature: str
     expected_payload: str
     trusted_fingerprints: list[str]
+
+
+def build_record_attestation_payload(id: str, key: str, ctr: int | None = None, record_id: str | None = None) -> bytes:
+    if ctr is not None and record_id:
+        return f"attestation:{id}:{key}:{ctr}:{record_id}".encode("utf-8")
+    return f"{id}:{key}".encode("utf-8")
+
+
+def build_record_heartbeat_payload(id: str, last_sync_utc: int, ctr: int | None = None, record_id: str | None = None) -> bytes:
+    if ctr is not None and record_id:
+        return f"heartbeat:{id}:{last_sync_utc}:{ctr}:{record_id}".encode("utf-8")
+    return f"heartbeat:{id}:{last_sync_utc}".encode("utf-8")
 
 
 # Trusted Root Certificates (PEM)
@@ -209,7 +225,10 @@ def verify_device_attestation(
     except Exception:
         return VerificationResult(False, "attestationSig is not valid base64")
 
-    payload = f"{inputs.id}:{inputs.key}".encode("utf-8")
+    payloads = [
+        build_record_attestation_payload(inputs.id, inputs.key, inputs.ctr, inputs.record_id),
+        f"{inputs.id}:{inputs.key}".encode("utf-8"),
+    ]
     leaf_public_key: object | None = None
 
     if inputs.certificate_chain:
@@ -230,15 +249,17 @@ def verify_device_attestation(
                 leaf_public_key = None
 
     if leaf_public_key is not None:
-        if _verify_signature_with_public_key(leaf_public_key, payload, signature_bytes):
-            return VerificationResult(True)
+        for payload in payloads:
+            if _verify_signature_with_public_key(leaf_public_key, payload, signature_bytes):
+                return VerificationResult(True)
         return VerificationResult(False, "Attestation verification failed against leaf")
 
     for root_pem in TRUSTED_ROOT_CERTS_PEM:
         try:
             root_meta = _certificate_metadata(root_pem)
-            if _verify_signature_with_pem(root_meta["public_key_pem"], payload, signature_bytes):
-                return VerificationResult(True)
+            for payload in payloads:
+                if _verify_signature_with_pem(root_meta["public_key_pem"], payload, signature_bytes):
+                    return VerificationResult(True)
         except Exception:
             continue
 
@@ -257,8 +278,12 @@ def verify_heartbeat_attestation(
     except Exception:
         return VerificationResult(False, "heartbeat_sig is not valid base64")
 
-    payload = f"heartbeat:{inputs.id}:{inputs.last_sync_utc}".encode("utf-8")
+    payloads = [
+        build_record_heartbeat_payload(inputs.id, inputs.last_sync_utc, inputs.ctr, inputs.record_id),
+        f"heartbeat:{inputs.id}:{inputs.last_sync_utc}".encode("utf-8"),
+    ]
     leaf_public_key: object | None = None
+    authority_public_key: object | None = None
 
     if inputs.certificate_chain:
         chain_result = validate_certificate_chain(
@@ -275,11 +300,22 @@ def verify_heartbeat_attestation(
                 leaf_public_key = certificates[0].public_key()
             except Exception:
                 leaf_public_key = None
+        if len(certificates) > 1:
+            try:
+                authority_public_key = certificates[1].public_key()
+            except Exception:
+                authority_public_key = None
 
     if leaf_public_key is not None:
-        if _verify_signature_with_public_key(leaf_public_key, payload, signature_bytes):
-            return VerificationResult(True)
+        for payload in payloads:
+            if _verify_signature_with_public_key(leaf_public_key, payload, signature_bytes):
+                return VerificationResult(True)
         return VerificationResult(False, "Heartbeat verification failed against leaf")
+
+    if authority_public_key is not None:
+        legacy_payload = f"heartbeat:{inputs.id}:{inputs.last_sync_utc}".encode("utf-8")
+        if _verify_signature_with_public_key(authority_public_key, legacy_payload, signature_bytes):
+            return VerificationResult(True)
 
     return VerificationResult(False, "Heartbeat verification failed: no leaf public key")
 

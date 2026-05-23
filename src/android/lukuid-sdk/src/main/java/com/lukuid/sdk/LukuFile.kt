@@ -2,11 +2,12 @@
 package com.lukuid.sdk
 
 import com.lukuid.sdk.internal.DeviceAttestationInput
+import com.lukuid.sdk.internal.HeartbeatAttestationInput
 import com.lukuid.sdk.internal.JsonUtils
 import com.lukuid.sdk.internal.publicKeyMatchesEd25519CertificateLeaf
 import com.lukuid.sdk.internal.validateCertificateChain
-import com.lukuid.sdk.internal.verifyPayloadSignatureWithPublicKey
 import com.lukuid.sdk.internal.verifyDeviceAttestation
+import com.lukuid.sdk.internal.verifyHeartbeatAttestation
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
@@ -125,6 +126,12 @@ object LukuFile {
         val recordType = envelope.optString("type", "unknown")
         val isAuxRecord = recordType == "attachment" || recordType == "location" || recordType == "custody"
         val payload = envelope.optJSONObject("payload") ?: JSONObject()
+        val recordCtr = payload.optLong("ctr").takeIf { payload.has("ctr") }
+            ?: envelope.optLong("ctr").takeIf { envelope.has("ctr") }
+        val attestationRecordId = envelope.optString("event_id").ifBlank { null }
+            ?: envelope.optString("scan_id").ifBlank { null }
+            ?: envelope.optString("attachment_id").ifBlank { null }
+            ?: envelope.optString("record_id").ifBlank { null }
         
         val device = envelope.optJSONObject("device")
         val deviceId = envelope.optString("device_id").takeIf { it.isNotEmpty() } ?: device?.optString("device_id") ?: ""
@@ -177,6 +184,8 @@ object LukuFile {
                         id = deviceId,
                         key = publicKey,
                         attestationSig = attestationSignature,
+                        ctr = recordCtr,
+                        recordId = attestationRecordId,
                         certificateChain = attestationChain,
                         created = if (options.skipCertificateTemporalChecks) null else timestamp,
                         trustProfile = options.trustProfile
@@ -227,13 +236,17 @@ object LukuFile {
                             issues.add(VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed SLAC (heartbeat) attestation: Missing trusted heartbeat timestamp", Criticality.CRITICAL))
                         } else if (timestamp != null && lastSyncUtc > timestamp) {
                             issues.add(VerificationIssue("LAST_SYNC_AFTER_RECORD", "Device $deviceId reports last_sync_utc $lastSyncUtc after record timestamp $timestamp.", Criticality.CRITICAL))
-                        } else if (chainResult.certificates.size < 2) {
-                            issues.add(VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed SLAC (heartbeat) attestation: Heartbeat authority certificate missing from chain", Criticality.CRITICAL))
                         } else {
-                            val slacResult = verifyPayloadSignatureWithPublicKey(
-                                chainResult.certificates[1].publicKey,
-                                slacSignature,
-                                "heartbeat:$deviceId:$lastSyncUtc"
+                            val slacResult = verifyHeartbeatAttestation(
+                                HeartbeatAttestationInput(
+                                    id = deviceId,
+                                    heartbeatSig = slacSignature,
+                                    lastSyncUtc = lastSyncUtc,
+                                    ctr = recordCtr,
+                                    recordId = attestationRecordId,
+                                    certificateChain = slacChain,
+                                    trustProfile = options.trustProfile
+                                )
                             )
                             if (!slacResult.ok) {
                                 issues.add(VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed SLAC (heartbeat) attestation: ${slacResult.reason}", Criticality.CRITICAL))

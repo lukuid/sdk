@@ -296,7 +296,7 @@ class LukuArchive private constructor(
         val recordIds = mutableSetOf<String>()
         for (block in blocks) {
             for (record in block.batch) {
-                for (key in listOf("scan_id", "event_id", "attachment_id", "custody_id", "location_id")) {
+                for (key in listOf("id")) {
                     record.optString(key).takeIf { it.isNotBlank() }?.let(recordIds::add)
                 }
             }
@@ -330,6 +330,11 @@ class LukuArchive private constructor(
                 val canonicalString = record.optString("canonical_string")
                 val timestamp = payload?.optLong("timestamp_utc") ?: record.optLong("timestamp_utc").takeIf { record.has("timestamp_utc") }
                 val counter = payload?.optLong("ctr")?.takeIf { payload.has("ctr") }
+                val attestationRecordId = record.optString("id").ifBlank { null }
+                    ?: record.optString("event_id").ifBlank { null }
+                    ?: record.optString("scan_id").ifBlank { null }
+                    ?: record.optString("attachment_id").ifBlank { null }
+                    ?: record.optString("record_id").ifBlank { null }
                 val genesisHash = payload?.optString("genesis_hash").orEmpty()
 
                 if (!isAux && seenDevices.add(deviceId) && counter == 0L && genesisHash.isNotBlank() && previousSignature != genesisHash) {
@@ -379,7 +384,9 @@ class LukuArchive private constructor(
                         ).filterNotNull().joinToString("")
                     }
 
-                    val attestationSignature = identity?.optString("dac_signature")?.takeIf { it.isNotBlank() }.orEmpty()
+                    val attestationSignature = identity?.optString("dac_signature")?.takeIf { it.isNotBlank() }
+                        ?: identity?.optString("signature")?.takeIf { it.isNotBlank() }
+                        ?: ""
                     if (attestationChain.isBlank()) {
                         issues += VerificationIssue("ATTESTATION_CHAIN_MISSING", "Missing DAC attestation chain for device $deviceId.", Criticality.WARNING)
                     } else if (!isAux || attestationSignature.isNotBlank()) {
@@ -388,6 +395,8 @@ class LukuArchive private constructor(
                                 id = deviceId,
                                 key = publicKey,
                                 attestationSig = attestationSignature,
+                                ctr = counter,
+                                recordId = attestationRecordId,
                                 certificateChain = attestationChain,
                                 created = if (options.skipCertificateTemporalChecks) null else timestamp,
                                 trustProfile = options.trustProfile
@@ -416,6 +425,8 @@ class LukuArchive private constructor(
                                     id = deviceId,
                                     heartbeatSig = heartbeatSignature,
                                     lastSyncUtc = lastSyncUtc,
+                                    ctr = counter,
+                                    recordId = attestationRecordId,
                                     certificateChain = heartbeatChain,
                                     trustProfile = options.trustProfile
                                 )
@@ -442,7 +453,8 @@ class LukuArchive private constructor(
                 if (!isAux && timestamp != null) lastTimes[deviceId] = timestamp
 
                 if (isAux) {
-                    record.optString("parent_record_id").takeIf { it.isNotBlank() && it !in recordIds }?.let { parentId ->
+                    val parentId = record.optString("parent_id").ifBlank { null } ?: record.optString("parent_record_id").ifBlank { null }
+                    if (parentId != null && parentId !in recordIds) {
                         issues += VerificationIssue("PARENT_RECORD_MISSING", "Record type $recordType references missing parent $parentId.", Criticality.CRITICAL)
                     }
                 }

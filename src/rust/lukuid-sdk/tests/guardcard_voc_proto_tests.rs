@@ -102,7 +102,7 @@ fn test_verify_envelope_accepts_new_voc_canonical_and_rejects_old_format() {
 
     let envelope = json!({
         "type": "environment",
-        "event_id": "ENV-VOC-1",
+ "id": "...",
         "device_id": "GC-TEST-1",
         "public_key": public_key,
         "signature": signature,

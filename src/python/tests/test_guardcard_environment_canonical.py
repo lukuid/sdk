@@ -26,7 +26,7 @@ class TestGuardCardEnvironmentCanonical(unittest.TestCase):
 
         envelope = {
             "type": "environment",
-            "event_id": "ENV-VOC-1",
+ "id": "...",
             "device_id": "GC-TEST-1",
             "public_key": public_key_base64,
             "signature": signature,

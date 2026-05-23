@@ -18,6 +18,8 @@ internal data class DeviceAttestationInput(
     val id: String,
     val key: String,
     val attestationSig: String,
+    val ctr: Long? = null,
+    val recordId: String? = null,
     val certificateChain: String? = null,
     val created: Long? = null,
     val attestationAlg: String? = null,
@@ -29,9 +31,27 @@ internal data class HeartbeatAttestationInput(
     val id: String,
     val heartbeatSig: String,
     val lastSyncUtc: Long,
+    val ctr: Long? = null,
+    val recordId: String? = null,
     val certificateChain: String? = null,
     val trustProfile: String? = "prod"
 )
+
+internal fun buildRecordAttestationPayload(id: String, key: String, ctr: Long? = null, recordId: String? = null): String {
+    return if (ctr != null && !recordId.isNullOrBlank()) {
+        "attestation:$id:$key:$ctr:$recordId"
+    } else {
+        "$id:$key"
+    }
+}
+
+internal fun buildRecordHeartbeatPayload(id: String, lastSyncUtc: Long, ctr: Long? = null, recordId: String? = null): String {
+    return if (ctr != null && !recordId.isNullOrBlank()) {
+        "heartbeat:$id:$lastSyncUtc:$ctr:$recordId"
+    } else {
+        "heartbeat:$id:$lastSyncUtc"
+    }
+}
 
 internal data class VerificationResult(
     val ok: Boolean,
@@ -189,8 +209,10 @@ internal fun verifyDeviceAttestation(input: DeviceAttestationInput, revocationMa
     val signatureBytes = decodeBase64(input.attestationSig)
         ?: return VerificationResult(false, "attestationSig is not valid base64")
 
-    val payloadString = "${input.id}:${input.key}"
-    val payload = payloadString.toByteArray(StandardCharsets.UTF_8)
+    val payloads = linkedSetOf(
+        buildRecordAttestationPayload(input.id, input.key, input.ctr, input.recordId),
+        "${input.id}:${input.key}"
+    ).toList()
     var leafPublicKey: PublicKey? = null
 
     if (!input.certificateChain.isNullOrEmpty()) {
@@ -208,10 +230,12 @@ internal fun verifyDeviceAttestation(input: DeviceAttestationInput, revocationMa
 
     if (leafPublicKey != null) {
         try {
-            val sig = Signature.getInstance("Ed25519", BouncyCastleProvider.PROVIDER_NAME)
-            sig.initVerify(leafPublicKey)
-            sig.update(payload)
-            if (sig.verify(signatureBytes)) return VerificationResult(true, null)
+            for (payloadString in payloads) {
+                val sig = Signature.getInstance("Ed25519", BouncyCastleProvider.PROVIDER_NAME)
+                sig.initVerify(leafPublicKey)
+                sig.update(payloadString.toByteArray(StandardCharsets.UTF_8))
+                if (sig.verify(signatureBytes)) return VerificationResult(true, null)
+            }
         } catch (e: Exception) { /* Try fallback */ }
     }
     
@@ -220,10 +244,12 @@ internal fun verifyDeviceAttestation(input: DeviceAttestationInput, revocationMa
         try {
             val cf = CertificateFactory.getInstance("X.509", BouncyCastleProvider.PROVIDER_NAME)
             val root = cf.generateCertificate(ByteArrayInputStream(rootPem.toByteArray())) as X509Certificate
-            val sig = Signature.getInstance("Ed25519", BouncyCastleProvider.PROVIDER_NAME)
-            sig.initVerify(root.publicKey)
-            sig.update(payload)
-            if (sig.verify(signatureBytes)) return VerificationResult(true, null)
+            for (payloadString in payloads) {
+                val sig = Signature.getInstance("Ed25519", BouncyCastleProvider.PROVIDER_NAME)
+                sig.initVerify(root.publicKey)
+                sig.update(payloadString.toByteArray(StandardCharsets.UTF_8))
+                if (sig.verify(signatureBytes)) return VerificationResult(true, null)
+            }
         } catch (e: Exception) { continue }
     }
     
@@ -242,9 +268,12 @@ internal fun verifyHeartbeatAttestation(input: HeartbeatAttestationInput, revoca
     val signatureBytes = decodeBase64(input.heartbeatSig)
         ?: return VerificationResult(false, "heartbeatSig is not valid base64")
 
-    val payloadString = "heartbeat:${input.id}:${input.lastSyncUtc}"
-    val payload = payloadString.toByteArray(StandardCharsets.UTF_8)
+    val payloads = linkedSetOf(
+        buildRecordHeartbeatPayload(input.id, input.lastSyncUtc, input.ctr, input.recordId),
+        "heartbeat:${input.id}:${input.lastSyncUtc}"
+    ).toList()
     var leafPublicKey: PublicKey? = null
+    var authorityPublicKey: PublicKey? = null
 
     if (!input.certificateChain.isNullOrEmpty()) {
         val chainResult = validateCertificateChain(
@@ -257,19 +286,33 @@ internal fun verifyHeartbeatAttestation(input: HeartbeatAttestationInput, revoca
             return VerificationResult(false, chainResult.reason)
         }
         leafPublicKey = chainResult.certificates.firstOrNull()?.publicKey
+        authorityPublicKey = chainResult.certificates.getOrNull(1)?.publicKey
     }
 
     if (leafPublicKey != null) {
         try {
-            val rawPublicKey = extractRawPublicKey(leafPublicKey)
-            val algorithm = when {
-                rawPublicKey.size == 32 -> "Ed25519"
-                signatureBytes.size == 3309 -> "ML-DSA"
-                else -> "SHA256withECDSA"
+            for (payloadString in payloads) {
+                val rawPublicKey = extractRawPublicKey(leafPublicKey)
+                val algorithm = when {
+                    rawPublicKey.size == 32 -> "Ed25519"
+                    signatureBytes.size == 3309 -> "ML-DSA"
+                    else -> "SHA256withECDSA"
+                }
+                val sig = Signature.getInstance(algorithm, BouncyCastleProvider.PROVIDER_NAME)
+                sig.initVerify(leafPublicKey)
+                sig.update(payloadString.toByteArray(StandardCharsets.UTF_8))
+                if (sig.verify(signatureBytes)) return VerificationResult(true, null)
             }
-            val sig = Signature.getInstance(algorithm, BouncyCastleProvider.PROVIDER_NAME)
-            sig.initVerify(leafPublicKey)
-            sig.update(payload)
+        } catch (e: Exception) {
+            return VerificationResult(false, "Heartbeat verification failed: ${e.message}")
+        }
+    }
+
+    if (authorityPublicKey != null) {
+        try {
+            val sig = Signature.getInstance("Ed25519", BouncyCastleProvider.PROVIDER_NAME)
+            sig.initVerify(authorityPublicKey)
+            sig.update("heartbeat:${input.id}:${input.lastSyncUtc}".toByteArray(StandardCharsets.UTF_8))
             if (sig.verify(signatureBytes)) return VerificationResult(true, null)
         } catch (e: Exception) {
             return VerificationResult(false, "Heartbeat verification failed: ${e.message}")
