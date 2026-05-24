@@ -507,7 +507,7 @@ export async function verifyDeviceAttestation(
       const pems = inputs.certificateChain.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [];
       if (pems.length > 0) {
         try {
-          const cert = forge.pki.certificateFromPem(pems[0]);
+          const cert = forge.pki.certificateFromPem(pems[0] as string) as any;
           const orgAttr = cert.subject.attributes.find((a: any) => a.name === 'organizationName' || a.shortName === 'O');
           if (!orgAttr || orgAttr.value !== inputs.vendor) {
             return { ok: false, reason: `Certificate does not contain expected vendor ${inputs.vendor}` };

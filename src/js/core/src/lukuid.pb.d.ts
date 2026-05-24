@@ -406,8 +406,8 @@ export namespace lukuid {
     /** Properties of a GetRecordRequest. */
     interface IGetRecordRequest {
 
-        /** GetRecordRequest recordId */
-        recordId?: (string|null);
+        /** GetRecordRequest id */
+        id?: (string|null);
     }
 
     /** Represents a GetRecordRequest. */
@@ -419,8 +419,8 @@ export namespace lukuid {
          */
         constructor(properties?: lukuid.IGetRecordRequest);
 
-        /** GetRecordRequest recordId. */
-        public recordId: string;
+        /** GetRecordRequest id. */
+        public id: string;
 
         /**
          * Creates a new GetRecordRequest instance using the specified properties.
@@ -503,8 +503,8 @@ export namespace lukuid {
     /** Properties of an AttestRequest. */
     interface IAttestRequest {
 
-        /** AttestRequest parentRecordId */
-        parentRecordId?: (string|null);
+        /** AttestRequest parentId */
+        parentId?: (string|null);
 
         /** AttestRequest signature */
         signature?: (Uint8Array|null);
@@ -533,8 +533,8 @@ export namespace lukuid {
         /** AttestRequest merkleRoot */
         merkleRoot?: (string|null);
 
-        /** AttestRequest custodyId */
-        custodyId?: (string|null);
+        /** AttestRequest id */
+        id?: (string|null);
 
         /** AttestRequest event */
         event?: (string|null);
@@ -555,8 +555,8 @@ export namespace lukuid {
          */
         constructor(properties?: lukuid.IAttestRequest);
 
-        /** AttestRequest parentRecordId. */
-        public parentRecordId: string;
+        /** AttestRequest parentId. */
+        public parentId: string;
 
         /** AttestRequest signature. */
         public signature: Uint8Array;
@@ -585,8 +585,8 @@ export namespace lukuid {
         /** AttestRequest merkleRoot. */
         public merkleRoot: string;
 
-        /** AttestRequest custodyId. */
-        public custodyId: string;
+        /** AttestRequest id. */
+        public id: string;
 
         /** AttestRequest event. */
         public event: string;
@@ -3559,8 +3559,8 @@ export namespace lukuid {
         /** RecordMeta deviceId */
         deviceId?: (number|null);
 
-        /** RecordMeta recordId */
-        recordId?: (string|null);
+        /** RecordMeta id */
+        id?: (string|null);
     }
 
     /** Represents a RecordMeta. */
@@ -3578,8 +3578,8 @@ export namespace lukuid {
         /** RecordMeta deviceId. */
         public deviceId: number;
 
-        /** RecordMeta recordId. */
-        public recordId: string;
+        /** RecordMeta id. */
+        public id: string;
 
         /**
          * Creates a new RecordMeta instance using the specified properties.
@@ -3665,8 +3665,8 @@ export namespace lukuid {
         /** ScanRecordMin version */
         version?: (string|null);
 
-        /** ScanRecordMin recordId */
-        recordId?: (string|null);
+        /** ScanRecordMin id */
+        id?: (string|null);
 
         /** ScanRecordMin timestampUtc */
         timestampUtc?: (number|Long|null);
@@ -3696,8 +3696,8 @@ export namespace lukuid {
         /** ScanRecordMin version. */
         public version: string;
 
-        /** ScanRecordMin recordId. */
-        public recordId: string;
+        /** ScanRecordMin id. */
+        public id: string;
 
         /** ScanRecordMin timestampUtc. */
         public timestampUtc: (number|Long);
@@ -3798,8 +3798,8 @@ export namespace lukuid {
         /** EnvironmentRecordMin version */
         version?: (string|null);
 
-        /** EnvironmentRecordMin recordId */
-        recordId?: (string|null);
+        /** EnvironmentRecordMin id */
+        id?: (string|null);
 
         /** EnvironmentRecordMin timestampUtc */
         timestampUtc?: (number|Long|null);
@@ -3841,8 +3841,8 @@ export namespace lukuid {
         /** EnvironmentRecordMin version. */
         public version: string;
 
-        /** EnvironmentRecordMin recordId. */
-        public recordId: string;
+        /** EnvironmentRecordMin id. */
+        public id: string;
 
         /** EnvironmentRecordMin timestampUtc. */
         public timestampUtc: (number|Long);
@@ -5118,11 +5118,11 @@ export namespace lukuid {
         /** AttachmentRecord version */
         version?: (string|null);
 
-        /** AttachmentRecord attachmentId */
-        attachmentId?: (string|null);
+        /** AttachmentRecord id */
+        id?: (string|null);
 
-        /** AttachmentRecord parentRecordId */
-        parentRecordId?: (string|null);
+        /** AttachmentRecord parentId */
+        parentId?: (string|null);
 
         /** AttachmentRecord signature */
         signature?: (Uint8Array|null);
@@ -5163,9 +5163,6 @@ export namespace lukuid {
         /** AttachmentRecord externalIdentity */
         externalIdentity?: (lukuid.IExternalIdentity|null);
 
-        /** AttachmentRecord custodyId */
-        custodyId?: (string|null);
-
         /** AttachmentRecord event */
         event?: (string|null);
 
@@ -5191,11 +5188,11 @@ export namespace lukuid {
         /** AttachmentRecord version. */
         public version: string;
 
-        /** AttachmentRecord attachmentId. */
-        public attachmentId: string;
+        /** AttachmentRecord id. */
+        public id: string;
 
-        /** AttachmentRecord parentRecordId. */
-        public parentRecordId: string;
+        /** AttachmentRecord parentId. */
+        public parentId: string;
 
         /** AttachmentRecord signature. */
         public signature: Uint8Array;
@@ -5235,9 +5232,6 @@ export namespace lukuid {
 
         /** AttachmentRecord externalIdentity. */
         public externalIdentity?: (lukuid.IExternalIdentity|null);
-
-        /** AttachmentRecord custodyId. */
-        public custodyId: string;
 
         /** AttachmentRecord event. */
         public event: string;
@@ -5335,8 +5329,8 @@ export namespace lukuid {
         /** ScanRecord version */
         version?: (string|null);
 
-        /** ScanRecord scanId */
-        scanId?: (string|null);
+        /** ScanRecord id */
+        id?: (string|null);
 
         /** ScanRecord signature */
         signature?: (Uint8Array|null);
@@ -5378,8 +5372,8 @@ export namespace lukuid {
         /** ScanRecord version. */
         public version: string;
 
-        /** ScanRecord scanId. */
-        public scanId: string;
+        /** ScanRecord id. */
+        public id: string;
 
         /** ScanRecord signature. */
         public signature: Uint8Array;
@@ -5821,8 +5815,8 @@ export namespace lukuid {
         /** EnvironmentRecord version */
         version?: (string|null);
 
-        /** EnvironmentRecord eventId */
-        eventId?: (string|null);
+        /** EnvironmentRecord id */
+        id?: (string|null);
 
         /** EnvironmentRecord signature */
         signature?: (Uint8Array|null);
@@ -5861,8 +5855,8 @@ export namespace lukuid {
         /** EnvironmentRecord version. */
         public version: string;
 
-        /** EnvironmentRecord eventId. */
-        public eventId: string;
+        /** EnvironmentRecord id. */
+        public id: string;
 
         /** EnvironmentRecord signature. */
         public signature: Uint8Array;
@@ -6229,8 +6223,8 @@ export namespace lukuid {
     /** Properties of a FullRecordResponse. */
     interface IFullRecordResponse {
 
-        /** FullRecordResponse recordId */
-        recordId?: (string|null);
+        /** FullRecordResponse id */
+        id?: (string|null);
 
         /** FullRecordResponse scanFull */
         scanFull?: (lukuid.IScanRecord|null);
@@ -6248,8 +6242,8 @@ export namespace lukuid {
          */
         constructor(properties?: lukuid.IFullRecordResponse);
 
-        /** FullRecordResponse recordId. */
-        public recordId: string;
+        /** FullRecordResponse id. */
+        public id: string;
 
         /** FullRecordResponse scanFull. */
         public scanFull?: (lukuid.IScanRecord|null);

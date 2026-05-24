@@ -1073,7 +1073,7 @@ export const lukuid = $root.lukuid = (() => {
          * Properties of a GetRecordRequest.
          * @memberof lukuid
          * @interface IGetRecordRequest
-         * @property {string|null} [recordId] GetRecordRequest recordId
+         * @property {string|null} [id] GetRecordRequest id
          */
 
         /**
@@ -1092,12 +1092,12 @@ export const lukuid = $root.lukuid = (() => {
         }
 
         /**
-         * GetRecordRequest recordId.
-         * @member {string} recordId
+         * GetRecordRequest id.
+         * @member {string} id
          * @memberof lukuid.GetRecordRequest
          * @instance
          */
-        GetRecordRequest.prototype.recordId = "";
+        GetRecordRequest.prototype.id = "";
 
         /**
          * Creates a new GetRecordRequest instance using the specified properties.
@@ -1123,8 +1123,8 @@ export const lukuid = $root.lukuid = (() => {
         GetRecordRequest.encode = function encode(message, writer) {
             if (!writer)
                 writer = $Writer.create();
-            if (message.recordId != null && Object.hasOwnProperty.call(message, "recordId"))
-                writer.uint32(/* id 1, wireType 2 =*/10).string(message.recordId);
+            if (message.id != null && Object.hasOwnProperty.call(message, "id"))
+                writer.uint32(/* id 1, wireType 2 =*/10).string(message.id);
             return writer;
         };
 
@@ -1162,7 +1162,7 @@ export const lukuid = $root.lukuid = (() => {
                     break;
                 switch (tag >>> 3) {
                 case 1: {
-                        message.recordId = reader.string();
+                        message.id = reader.string();
                         break;
                     }
                 default:
@@ -1200,9 +1200,9 @@ export const lukuid = $root.lukuid = (() => {
         GetRecordRequest.verify = function verify(message) {
             if (typeof message !== "object" || message === null)
                 return "object expected";
-            if (message.recordId != null && message.hasOwnProperty("recordId"))
-                if (!$util.isString(message.recordId))
-                    return "recordId: string expected";
+            if (message.id != null && message.hasOwnProperty("id"))
+                if (!$util.isString(message.id))
+                    return "id: string expected";
             return null;
         };
 
@@ -1218,8 +1218,8 @@ export const lukuid = $root.lukuid = (() => {
             if (object instanceof $root.lukuid.GetRecordRequest)
                 return object;
             let message = new $root.lukuid.GetRecordRequest();
-            if (object.recordId != null)
-                message.recordId = String(object.recordId);
+            if (object.id != null)
+                message.id = String(object.id);
             return message;
         };
 
@@ -1237,9 +1237,9 @@ export const lukuid = $root.lukuid = (() => {
                 options = {};
             let object = {};
             if (options.defaults)
-                object.recordId = "";
-            if (message.recordId != null && message.hasOwnProperty("recordId"))
-                object.recordId = message.recordId;
+                object.id = "";
+            if (message.id != null && message.hasOwnProperty("id"))
+                object.id = message.id;
             return object;
         };
 
@@ -1278,7 +1278,7 @@ export const lukuid = $root.lukuid = (() => {
          * Properties of an AttestRequest.
          * @memberof lukuid
          * @interface IAttestRequest
-         * @property {string|null} [parentRecordId] AttestRequest parentRecordId
+         * @property {string|null} [parentId] AttestRequest parentId
          * @property {Uint8Array|null} [signature] AttestRequest signature
          * @property {string|null} [checksum] AttestRequest checksum
          * @property {string|null} [mime] AttestRequest mime
@@ -1288,7 +1288,7 @@ export const lukuid = $root.lukuid = (() => {
          * @property {number|null} [lng] AttestRequest lng
          * @property {string|null} [content] AttestRequest content
          * @property {string|null} [merkleRoot] AttestRequest merkleRoot
-         * @property {string|null} [custodyId] AttestRequest custodyId
+         * @property {string|null} [id] AttestRequest id
          * @property {string|null} [event] AttestRequest event
          * @property {string|null} [status] AttestRequest status
          * @property {string|null} [contextRef] AttestRequest contextRef
@@ -1310,12 +1310,12 @@ export const lukuid = $root.lukuid = (() => {
         }
 
         /**
-         * AttestRequest parentRecordId.
-         * @member {string} parentRecordId
+         * AttestRequest parentId.
+         * @member {string} parentId
          * @memberof lukuid.AttestRequest
          * @instance
          */
-        AttestRequest.prototype.parentRecordId = "";
+        AttestRequest.prototype.parentId = "";
 
         /**
          * AttestRequest signature.
@@ -1390,12 +1390,12 @@ export const lukuid = $root.lukuid = (() => {
         AttestRequest.prototype.merkleRoot = "";
 
         /**
-         * AttestRequest custodyId.
-         * @member {string} custodyId
+         * AttestRequest id.
+         * @member {string} id
          * @memberof lukuid.AttestRequest
          * @instance
          */
-        AttestRequest.prototype.custodyId = "";
+        AttestRequest.prototype.id = "";
 
         /**
          * AttestRequest event.
@@ -1445,8 +1445,8 @@ export const lukuid = $root.lukuid = (() => {
         AttestRequest.encode = function encode(message, writer) {
             if (!writer)
                 writer = $Writer.create();
-            if (message.parentRecordId != null && Object.hasOwnProperty.call(message, "parentRecordId"))
-                writer.uint32(/* id 1, wireType 2 =*/10).string(message.parentRecordId);
+            if (message.parentId != null && Object.hasOwnProperty.call(message, "parentId"))
+                writer.uint32(/* id 1, wireType 2 =*/10).string(message.parentId);
             if (message.signature != null && Object.hasOwnProperty.call(message, "signature"))
                 writer.uint32(/* id 2, wireType 2 =*/18).bytes(message.signature);
             if (message.checksum != null && Object.hasOwnProperty.call(message, "checksum"))
@@ -1465,8 +1465,8 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 10, wireType 2 =*/82).string(message.content);
             if (message.merkleRoot != null && Object.hasOwnProperty.call(message, "merkleRoot"))
                 writer.uint32(/* id 11, wireType 2 =*/90).string(message.merkleRoot);
-            if (message.custodyId != null && Object.hasOwnProperty.call(message, "custodyId"))
-                writer.uint32(/* id 12, wireType 2 =*/98).string(message.custodyId);
+            if (message.id != null && Object.hasOwnProperty.call(message, "id"))
+                writer.uint32(/* id 12, wireType 2 =*/98).string(message.id);
             if (message.event != null && Object.hasOwnProperty.call(message, "event"))
                 writer.uint32(/* id 13, wireType 2 =*/106).string(message.event);
             if (message.status != null && Object.hasOwnProperty.call(message, "status"))
@@ -1510,7 +1510,7 @@ export const lukuid = $root.lukuid = (() => {
                     break;
                 switch (tag >>> 3) {
                 case 1: {
-                        message.parentRecordId = reader.string();
+                        message.parentId = reader.string();
                         break;
                     }
                 case 2: {
@@ -1550,7 +1550,7 @@ export const lukuid = $root.lukuid = (() => {
                         break;
                     }
                 case 12: {
-                        message.custodyId = reader.string();
+                        message.id = reader.string();
                         break;
                     }
                 case 13: {
@@ -1600,9 +1600,9 @@ export const lukuid = $root.lukuid = (() => {
         AttestRequest.verify = function verify(message) {
             if (typeof message !== "object" || message === null)
                 return "object expected";
-            if (message.parentRecordId != null && message.hasOwnProperty("parentRecordId"))
-                if (!$util.isString(message.parentRecordId))
-                    return "parentRecordId: string expected";
+            if (message.parentId != null && message.hasOwnProperty("parentId"))
+                if (!$util.isString(message.parentId))
+                    return "parentId: string expected";
             if (message.signature != null && message.hasOwnProperty("signature"))
                 if (!(message.signature && typeof message.signature.length === "number" || $util.isString(message.signature)))
                     return "signature: buffer expected";
@@ -1630,9 +1630,9 @@ export const lukuid = $root.lukuid = (() => {
             if (message.merkleRoot != null && message.hasOwnProperty("merkleRoot"))
                 if (!$util.isString(message.merkleRoot))
                     return "merkleRoot: string expected";
-            if (message.custodyId != null && message.hasOwnProperty("custodyId"))
-                if (!$util.isString(message.custodyId))
-                    return "custodyId: string expected";
+            if (message.id != null && message.hasOwnProperty("id"))
+                if (!$util.isString(message.id))
+                    return "id: string expected";
             if (message.event != null && message.hasOwnProperty("event"))
                 if (!$util.isString(message.event))
                     return "event: string expected";
@@ -1657,8 +1657,8 @@ export const lukuid = $root.lukuid = (() => {
             if (object instanceof $root.lukuid.AttestRequest)
                 return object;
             let message = new $root.lukuid.AttestRequest();
-            if (object.parentRecordId != null)
-                message.parentRecordId = String(object.parentRecordId);
+            if (object.parentId != null)
+                message.parentId = String(object.parentId);
             if (object.signature != null)
                 if (typeof object.signature === "string")
                     $util.base64.decode(object.signature, message.signature = $util.newBuffer($util.base64.length(object.signature)), 0);
@@ -1680,8 +1680,8 @@ export const lukuid = $root.lukuid = (() => {
                 message.content = String(object.content);
             if (object.merkleRoot != null)
                 message.merkleRoot = String(object.merkleRoot);
-            if (object.custodyId != null)
-                message.custodyId = String(object.custodyId);
+            if (object.id != null)
+                message.id = String(object.id);
             if (object.event != null)
                 message.event = String(object.event);
             if (object.status != null)
@@ -1705,7 +1705,7 @@ export const lukuid = $root.lukuid = (() => {
                 options = {};
             let object = {};
             if (options.defaults) {
-                object.parentRecordId = "";
+                object.parentId = "";
                 if (options.bytes === String)
                     object.signature = "";
                 else {
@@ -1721,13 +1721,13 @@ export const lukuid = $root.lukuid = (() => {
                 object.lng = 0;
                 object.content = "";
                 object.merkleRoot = "";
-                object.custodyId = "";
+                object.id = "";
                 object.event = "";
                 object.status = "";
                 object.contextRef = "";
             }
-            if (message.parentRecordId != null && message.hasOwnProperty("parentRecordId"))
-                object.parentRecordId = message.parentRecordId;
+            if (message.parentId != null && message.hasOwnProperty("parentId"))
+                object.parentId = message.parentId;
             if (message.signature != null && message.hasOwnProperty("signature"))
                 object.signature = options.bytes === String ? $util.base64.encode(message.signature, 0, message.signature.length) : options.bytes === Array ? Array.prototype.slice.call(message.signature) : message.signature;
             if (message.checksum != null && message.hasOwnProperty("checksum"))
@@ -1746,8 +1746,8 @@ export const lukuid = $root.lukuid = (() => {
                 object.content = message.content;
             if (message.merkleRoot != null && message.hasOwnProperty("merkleRoot"))
                 object.merkleRoot = message.merkleRoot;
-            if (message.custodyId != null && message.hasOwnProperty("custodyId"))
-                object.custodyId = message.custodyId;
+            if (message.id != null && message.hasOwnProperty("id"))
+                object.id = message.id;
             if (message.event != null && message.hasOwnProperty("event"))
                 object.event = message.event;
             if (message.status != null && message.hasOwnProperty("status"))
@@ -10239,7 +10239,7 @@ export const lukuid = $root.lukuid = (() => {
          * @interface IRecordMeta
          * @property {number|Long|null} [timestampUtc] RecordMeta timestampUtc
          * @property {number|null} [deviceId] RecordMeta deviceId
-         * @property {string|null} [recordId] RecordMeta recordId
+         * @property {string|null} [id] RecordMeta id
          */
 
         /**
@@ -10274,12 +10274,12 @@ export const lukuid = $root.lukuid = (() => {
         RecordMeta.prototype.deviceId = 0;
 
         /**
-         * RecordMeta recordId.
-         * @member {string} recordId
+         * RecordMeta id.
+         * @member {string} id
          * @memberof lukuid.RecordMeta
          * @instance
          */
-        RecordMeta.prototype.recordId = "";
+        RecordMeta.prototype.id = "";
 
         /**
          * Creates a new RecordMeta instance using the specified properties.
@@ -10309,8 +10309,8 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 1, wireType 0 =*/8).int64(message.timestampUtc);
             if (message.deviceId != null && Object.hasOwnProperty.call(message, "deviceId"))
                 writer.uint32(/* id 2, wireType 0 =*/16).uint32(message.deviceId);
-            if (message.recordId != null && Object.hasOwnProperty.call(message, "recordId"))
-                writer.uint32(/* id 3, wireType 2 =*/26).string(message.recordId);
+            if (message.id != null && Object.hasOwnProperty.call(message, "id"))
+                writer.uint32(/* id 3, wireType 2 =*/26).string(message.id);
             return writer;
         };
 
@@ -10356,7 +10356,7 @@ export const lukuid = $root.lukuid = (() => {
                         break;
                     }
                 case 3: {
-                        message.recordId = reader.string();
+                        message.id = reader.string();
                         break;
                     }
                 default:
@@ -10400,9 +10400,9 @@ export const lukuid = $root.lukuid = (() => {
             if (message.deviceId != null && message.hasOwnProperty("deviceId"))
                 if (!$util.isInteger(message.deviceId))
                     return "deviceId: integer expected";
-            if (message.recordId != null && message.hasOwnProperty("recordId"))
-                if (!$util.isString(message.recordId))
-                    return "recordId: string expected";
+            if (message.id != null && message.hasOwnProperty("id"))
+                if (!$util.isString(message.id))
+                    return "id: string expected";
             return null;
         };
 
@@ -10429,8 +10429,8 @@ export const lukuid = $root.lukuid = (() => {
                     message.timestampUtc = new $util.LongBits(object.timestampUtc.low >>> 0, object.timestampUtc.high >>> 0).toNumber();
             if (object.deviceId != null)
                 message.deviceId = object.deviceId >>> 0;
-            if (object.recordId != null)
-                message.recordId = String(object.recordId);
+            if (object.id != null)
+                message.id = String(object.id);
             return message;
         };
 
@@ -10454,7 +10454,7 @@ export const lukuid = $root.lukuid = (() => {
                 } else
                     object.timestampUtc = options.longs === String ? "0" : 0;
                 object.deviceId = 0;
-                object.recordId = "";
+                object.id = "";
             }
             if (message.timestampUtc != null && message.hasOwnProperty("timestampUtc"))
                 if (typeof message.timestampUtc === "number")
@@ -10463,8 +10463,8 @@ export const lukuid = $root.lukuid = (() => {
                     object.timestampUtc = options.longs === String ? $util.Long.prototype.toString.call(message.timestampUtc) : options.longs === Number ? new $util.LongBits(message.timestampUtc.low >>> 0, message.timestampUtc.high >>> 0).toNumber() : message.timestampUtc;
             if (message.deviceId != null && message.hasOwnProperty("deviceId"))
                 object.deviceId = message.deviceId;
-            if (message.recordId != null && message.hasOwnProperty("recordId"))
-                object.recordId = message.recordId;
+            if (message.id != null && message.hasOwnProperty("id"))
+                object.id = message.id;
             return object;
         };
 
@@ -10504,7 +10504,7 @@ export const lukuid = $root.lukuid = (() => {
          * @memberof lukuid
          * @interface IScanRecordMin
          * @property {string|null} [version] ScanRecordMin version
-         * @property {string|null} [recordId] ScanRecordMin recordId
+         * @property {string|null} [id] ScanRecordMin id
          * @property {number|Long|null} [timestampUtc] ScanRecordMin timestampUtc
          * @property {string|null} [tagId] ScanRecordMin tagId
          * @property {number|null} [scoreBio] ScanRecordMin scoreBio
@@ -10536,12 +10536,12 @@ export const lukuid = $root.lukuid = (() => {
         ScanRecordMin.prototype.version = "";
 
         /**
-         * ScanRecordMin recordId.
-         * @member {string} recordId
+         * ScanRecordMin id.
+         * @member {string} id
          * @memberof lukuid.ScanRecordMin
          * @instance
          */
-        ScanRecordMin.prototype.recordId = "";
+        ScanRecordMin.prototype.id = "";
 
         /**
          * ScanRecordMin timestampUtc.
@@ -10609,8 +10609,8 @@ export const lukuid = $root.lukuid = (() => {
                 writer = $Writer.create();
             if (message.version != null && Object.hasOwnProperty.call(message, "version"))
                 writer.uint32(/* id 1, wireType 2 =*/10).string(message.version);
-            if (message.recordId != null && Object.hasOwnProperty.call(message, "recordId"))
-                writer.uint32(/* id 2, wireType 2 =*/18).string(message.recordId);
+            if (message.id != null && Object.hasOwnProperty.call(message, "id"))
+                writer.uint32(/* id 2, wireType 2 =*/18).string(message.id);
             if (message.timestampUtc != null && Object.hasOwnProperty.call(message, "timestampUtc"))
                 writer.uint32(/* id 3, wireType 0 =*/24).int64(message.timestampUtc);
             if (message.tagId != null && Object.hasOwnProperty.call(message, "tagId"))
@@ -10662,7 +10662,7 @@ export const lukuid = $root.lukuid = (() => {
                         break;
                     }
                 case 2: {
-                        message.recordId = reader.string();
+                        message.id = reader.string();
                         break;
                     }
                 case 3: {
@@ -10723,9 +10723,9 @@ export const lukuid = $root.lukuid = (() => {
             if (message.version != null && message.hasOwnProperty("version"))
                 if (!$util.isString(message.version))
                     return "version: string expected";
-            if (message.recordId != null && message.hasOwnProperty("recordId"))
-                if (!$util.isString(message.recordId))
-                    return "recordId: string expected";
+            if (message.id != null && message.hasOwnProperty("id"))
+                if (!$util.isString(message.id))
+                    return "id: string expected";
             if (message.timestampUtc != null && message.hasOwnProperty("timestampUtc"))
                 if (!$util.isInteger(message.timestampUtc) && !(message.timestampUtc && $util.isInteger(message.timestampUtc.low) && $util.isInteger(message.timestampUtc.high)))
                     return "timestampUtc: integer|Long expected";
@@ -10758,8 +10758,8 @@ export const lukuid = $root.lukuid = (() => {
             let message = new $root.lukuid.ScanRecordMin();
             if (object.version != null)
                 message.version = String(object.version);
-            if (object.recordId != null)
-                message.recordId = String(object.recordId);
+            if (object.id != null)
+                message.id = String(object.id);
             if (object.timestampUtc != null)
                 if ($util.Long)
                     (message.timestampUtc = $util.Long.fromValue(object.timestampUtc)).unsigned = false;
@@ -10795,7 +10795,7 @@ export const lukuid = $root.lukuid = (() => {
             let object = {};
             if (options.defaults) {
                 object.version = "";
-                object.recordId = "";
+                object.id = "";
                 if ($util.Long) {
                     let long = new $util.Long(0, 0, false);
                     object.timestampUtc = options.longs === String ? long.toString() : options.longs === Number ? long.toNumber() : long;
@@ -10808,8 +10808,8 @@ export const lukuid = $root.lukuid = (() => {
             }
             if (message.version != null && message.hasOwnProperty("version"))
                 object.version = message.version;
-            if (message.recordId != null && message.hasOwnProperty("recordId"))
-                object.recordId = message.recordId;
+            if (message.id != null && message.hasOwnProperty("id"))
+                object.id = message.id;
             if (message.timestampUtc != null && message.hasOwnProperty("timestampUtc"))
                 if (typeof message.timestampUtc === "number")
                     object.timestampUtc = options.longs === String ? String(message.timestampUtc) : message.timestampUtc;
@@ -10862,7 +10862,7 @@ export const lukuid = $root.lukuid = (() => {
          * @memberof lukuid
          * @interface IEnvironmentRecordMin
          * @property {string|null} [version] EnvironmentRecordMin version
-         * @property {string|null} [recordId] EnvironmentRecordMin recordId
+         * @property {string|null} [id] EnvironmentRecordMin id
          * @property {number|Long|null} [timestampUtc] EnvironmentRecordMin timestampUtc
          * @property {lukuid.IMetricValue|null} [lux] EnvironmentRecordMin lux
          * @property {lukuid.IMetricValue|null} [tempC] EnvironmentRecordMin tempC
@@ -10898,12 +10898,12 @@ export const lukuid = $root.lukuid = (() => {
         EnvironmentRecordMin.prototype.version = "";
 
         /**
-         * EnvironmentRecordMin recordId.
-         * @member {string} recordId
+         * EnvironmentRecordMin id.
+         * @member {string} id
          * @memberof lukuid.EnvironmentRecordMin
          * @instance
          */
-        EnvironmentRecordMin.prototype.recordId = "";
+        EnvironmentRecordMin.prototype.id = "";
 
         /**
          * EnvironmentRecordMin timestampUtc.
@@ -11003,8 +11003,8 @@ export const lukuid = $root.lukuid = (() => {
                 writer = $Writer.create();
             if (message.version != null && Object.hasOwnProperty.call(message, "version"))
                 writer.uint32(/* id 1, wireType 2 =*/10).string(message.version);
-            if (message.recordId != null && Object.hasOwnProperty.call(message, "recordId"))
-                writer.uint32(/* id 2, wireType 2 =*/18).string(message.recordId);
+            if (message.id != null && Object.hasOwnProperty.call(message, "id"))
+                writer.uint32(/* id 2, wireType 2 =*/18).string(message.id);
             if (message.timestampUtc != null && Object.hasOwnProperty.call(message, "timestampUtc"))
                 writer.uint32(/* id 3, wireType 0 =*/24).int64(message.timestampUtc);
             if (message.lux != null && Object.hasOwnProperty.call(message, "lux"))
@@ -11064,7 +11064,7 @@ export const lukuid = $root.lukuid = (() => {
                         break;
                     }
                 case 2: {
-                        message.recordId = reader.string();
+                        message.id = reader.string();
                         break;
                     }
                 case 3: {
@@ -11141,9 +11141,9 @@ export const lukuid = $root.lukuid = (() => {
             if (message.version != null && message.hasOwnProperty("version"))
                 if (!$util.isString(message.version))
                     return "version: string expected";
-            if (message.recordId != null && message.hasOwnProperty("recordId"))
-                if (!$util.isString(message.recordId))
-                    return "recordId: string expected";
+            if (message.id != null && message.hasOwnProperty("id"))
+                if (!$util.isString(message.id))
+                    return "id: string expected";
             if (message.timestampUtc != null && message.hasOwnProperty("timestampUtc"))
                 if (!$util.isInteger(message.timestampUtc) && !(message.timestampUtc && $util.isInteger(message.timestampUtc.low) && $util.isInteger(message.timestampUtc.high)))
                     return "timestampUtc: integer|Long expected";
@@ -11198,8 +11198,8 @@ export const lukuid = $root.lukuid = (() => {
             let message = new $root.lukuid.EnvironmentRecordMin();
             if (object.version != null)
                 message.version = String(object.version);
-            if (object.recordId != null)
-                message.recordId = String(object.recordId);
+            if (object.id != null)
+                message.id = String(object.id);
             if (object.timestampUtc != null)
                 if ($util.Long)
                     (message.timestampUtc = $util.Long.fromValue(object.timestampUtc)).unsigned = false;
@@ -11258,7 +11258,7 @@ export const lukuid = $root.lukuid = (() => {
             let object = {};
             if (options.defaults) {
                 object.version = "";
-                object.recordId = "";
+                object.id = "";
                 if ($util.Long) {
                     let long = new $util.Long(0, 0, false);
                     object.timestampUtc = options.longs === String ? long.toString() : options.longs === Number ? long.toNumber() : long;
@@ -11275,8 +11275,8 @@ export const lukuid = $root.lukuid = (() => {
             }
             if (message.version != null && message.hasOwnProperty("version"))
                 object.version = message.version;
-            if (message.recordId != null && message.hasOwnProperty("recordId"))
-                object.recordId = message.recordId;
+            if (message.id != null && message.hasOwnProperty("id"))
+                object.id = message.id;
             if (message.timestampUtc != null && message.hasOwnProperty("timestampUtc"))
                 if (typeof message.timestampUtc === "number")
                     object.timestampUtc = options.longs === String ? String(message.timestampUtc) : message.timestampUtc;
@@ -14738,8 +14738,8 @@ export const lukuid = $root.lukuid = (() => {
          * @memberof lukuid
          * @interface IAttachmentRecord
          * @property {string|null} [version] AttachmentRecord version
-         * @property {string|null} [attachmentId] AttachmentRecord attachmentId
-         * @property {string|null} [parentRecordId] AttachmentRecord parentRecordId
+         * @property {string|null} [id] AttachmentRecord id
+         * @property {string|null} [parentId] AttachmentRecord parentId
          * @property {Uint8Array|null} [signature] AttachmentRecord signature
          * @property {Uint8Array|null} [parentSignature] AttachmentRecord parentSignature
          * @property {string|null} [checksum] AttachmentRecord checksum
@@ -14753,7 +14753,6 @@ export const lukuid = $root.lukuid = (() => {
          * @property {string|null} [merkleRoot] AttachmentRecord merkleRoot
          * @property {string|null} [alg] AttachmentRecord alg
          * @property {lukuid.IExternalIdentity|null} [externalIdentity] AttachmentRecord externalIdentity
-         * @property {string|null} [custodyId] AttachmentRecord custodyId
          * @property {string|null} [event] AttachmentRecord event
          * @property {string|null} [canonicalString] AttachmentRecord canonicalString
          * @property {string|null} [status] AttachmentRecord status
@@ -14784,20 +14783,20 @@ export const lukuid = $root.lukuid = (() => {
         AttachmentRecord.prototype.version = "";
 
         /**
-         * AttachmentRecord attachmentId.
-         * @member {string} attachmentId
+         * AttachmentRecord id.
+         * @member {string} id
          * @memberof lukuid.AttachmentRecord
          * @instance
          */
-        AttachmentRecord.prototype.attachmentId = "";
+        AttachmentRecord.prototype.id = "";
 
         /**
-         * AttachmentRecord parentRecordId.
-         * @member {string} parentRecordId
+         * AttachmentRecord parentId.
+         * @member {string} parentId
          * @memberof lukuid.AttachmentRecord
          * @instance
          */
-        AttachmentRecord.prototype.parentRecordId = "";
+        AttachmentRecord.prototype.parentId = "";
 
         /**
          * AttachmentRecord signature.
@@ -14904,14 +14903,6 @@ export const lukuid = $root.lukuid = (() => {
         AttachmentRecord.prototype.externalIdentity = null;
 
         /**
-         * AttachmentRecord custodyId.
-         * @member {string} custodyId
-         * @memberof lukuid.AttachmentRecord
-         * @instance
-         */
-        AttachmentRecord.prototype.custodyId = "";
-
-        /**
          * AttachmentRecord event.
          * @member {string} event
          * @memberof lukuid.AttachmentRecord
@@ -14969,10 +14960,10 @@ export const lukuid = $root.lukuid = (() => {
                 writer = $Writer.create();
             if (message.version != null && Object.hasOwnProperty.call(message, "version"))
                 writer.uint32(/* id 1, wireType 2 =*/10).string(message.version);
-            if (message.attachmentId != null && Object.hasOwnProperty.call(message, "attachmentId"))
-                writer.uint32(/* id 2, wireType 2 =*/18).string(message.attachmentId);
-            if (message.parentRecordId != null && Object.hasOwnProperty.call(message, "parentRecordId"))
-                writer.uint32(/* id 3, wireType 2 =*/26).string(message.parentRecordId);
+            if (message.id != null && Object.hasOwnProperty.call(message, "id"))
+                writer.uint32(/* id 2, wireType 2 =*/18).string(message.id);
+            if (message.parentId != null && Object.hasOwnProperty.call(message, "parentId"))
+                writer.uint32(/* id 3, wireType 2 =*/26).string(message.parentId);
             if (message.signature != null && Object.hasOwnProperty.call(message, "signature"))
                 writer.uint32(/* id 4, wireType 2 =*/34).bytes(message.signature);
             if (message.parentSignature != null && Object.hasOwnProperty.call(message, "parentSignature"))
@@ -14999,8 +14990,6 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 16, wireType 2 =*/130).string(message.alg);
             if (message.externalIdentity != null && Object.hasOwnProperty.call(message, "externalIdentity"))
                 $root.lukuid.ExternalIdentity.encode(message.externalIdentity, writer.uint32(/* id 17, wireType 2 =*/138).fork()).ldelim();
-            if (message.custodyId != null && Object.hasOwnProperty.call(message, "custodyId"))
-                writer.uint32(/* id 18, wireType 2 =*/146).string(message.custodyId);
             if (message.event != null && Object.hasOwnProperty.call(message, "event"))
                 writer.uint32(/* id 19, wireType 2 =*/154).string(message.event);
             if (message.canonicalString != null && Object.hasOwnProperty.call(message, "canonicalString"))
@@ -15050,11 +15039,11 @@ export const lukuid = $root.lukuid = (() => {
                         break;
                     }
                 case 2: {
-                        message.attachmentId = reader.string();
+                        message.id = reader.string();
                         break;
                     }
                 case 3: {
-                        message.parentRecordId = reader.string();
+                        message.parentId = reader.string();
                         break;
                     }
                 case 4: {
@@ -15107,10 +15096,6 @@ export const lukuid = $root.lukuid = (() => {
                     }
                 case 17: {
                         message.externalIdentity = $root.lukuid.ExternalIdentity.decode(reader, reader.uint32());
-                        break;
-                    }
-                case 18: {
-                        message.custodyId = reader.string();
                         break;
                     }
                 case 19: {
@@ -15167,12 +15152,12 @@ export const lukuid = $root.lukuid = (() => {
             if (message.version != null && message.hasOwnProperty("version"))
                 if (!$util.isString(message.version))
                     return "version: string expected";
-            if (message.attachmentId != null && message.hasOwnProperty("attachmentId"))
-                if (!$util.isString(message.attachmentId))
-                    return "attachmentId: string expected";
-            if (message.parentRecordId != null && message.hasOwnProperty("parentRecordId"))
-                if (!$util.isString(message.parentRecordId))
-                    return "parentRecordId: string expected";
+            if (message.id != null && message.hasOwnProperty("id"))
+                if (!$util.isString(message.id))
+                    return "id: string expected";
+            if (message.parentId != null && message.hasOwnProperty("parentId"))
+                if (!$util.isString(message.parentId))
+                    return "parentId: string expected";
             if (message.signature != null && message.hasOwnProperty("signature"))
                 if (!(message.signature && typeof message.signature.length === "number" || $util.isString(message.signature)))
                     return "signature: buffer expected";
@@ -15214,9 +15199,6 @@ export const lukuid = $root.lukuid = (() => {
                 if (error)
                     return "externalIdentity." + error;
             }
-            if (message.custodyId != null && message.hasOwnProperty("custodyId"))
-                if (!$util.isString(message.custodyId))
-                    return "custodyId: string expected";
             if (message.event != null && message.hasOwnProperty("event"))
                 if (!$util.isString(message.event))
                     return "event: string expected";
@@ -15246,10 +15228,10 @@ export const lukuid = $root.lukuid = (() => {
             let message = new $root.lukuid.AttachmentRecord();
             if (object.version != null)
                 message.version = String(object.version);
-            if (object.attachmentId != null)
-                message.attachmentId = String(object.attachmentId);
-            if (object.parentRecordId != null)
-                message.parentRecordId = String(object.parentRecordId);
+            if (object.id != null)
+                message.id = String(object.id);
+            if (object.parentId != null)
+                message.parentId = String(object.parentId);
             if (object.signature != null)
                 if (typeof object.signature === "string")
                     $util.base64.decode(object.signature, message.signature = $util.newBuffer($util.base64.length(object.signature)), 0);
@@ -15292,8 +15274,6 @@ export const lukuid = $root.lukuid = (() => {
                     throw TypeError(".lukuid.AttachmentRecord.externalIdentity: object expected");
                 message.externalIdentity = $root.lukuid.ExternalIdentity.fromObject(object.externalIdentity);
             }
-            if (object.custodyId != null)
-                message.custodyId = String(object.custodyId);
             if (object.event != null)
                 message.event = String(object.event);
             if (object.canonicalString != null)
@@ -15320,8 +15300,8 @@ export const lukuid = $root.lukuid = (() => {
             let object = {};
             if (options.defaults) {
                 object.version = "";
-                object.attachmentId = "";
-                object.parentRecordId = "";
+                object.id = "";
+                object.parentId = "";
                 if (options.bytes === String)
                     object.signature = "";
                 else {
@@ -15351,7 +15331,6 @@ export const lukuid = $root.lukuid = (() => {
                 object.merkleRoot = "";
                 object.alg = "";
                 object.externalIdentity = null;
-                object.custodyId = "";
                 object.event = "";
                 object.canonicalString = "";
                 object.status = "";
@@ -15359,10 +15338,10 @@ export const lukuid = $root.lukuid = (() => {
             }
             if (message.version != null && message.hasOwnProperty("version"))
                 object.version = message.version;
-            if (message.attachmentId != null && message.hasOwnProperty("attachmentId"))
-                object.attachmentId = message.attachmentId;
-            if (message.parentRecordId != null && message.hasOwnProperty("parentRecordId"))
-                object.parentRecordId = message.parentRecordId;
+            if (message.id != null && message.hasOwnProperty("id"))
+                object.id = message.id;
+            if (message.parentId != null && message.hasOwnProperty("parentId"))
+                object.parentId = message.parentId;
             if (message.signature != null && message.hasOwnProperty("signature"))
                 object.signature = options.bytes === String ? $util.base64.encode(message.signature, 0, message.signature.length) : options.bytes === Array ? Array.prototype.slice.call(message.signature) : message.signature;
             if (message.parentSignature != null && message.hasOwnProperty("parentSignature"))
@@ -15392,8 +15371,6 @@ export const lukuid = $root.lukuid = (() => {
                 object.alg = message.alg;
             if (message.externalIdentity != null && message.hasOwnProperty("externalIdentity"))
                 object.externalIdentity = $root.lukuid.ExternalIdentity.toObject(message.externalIdentity, options);
-            if (message.custodyId != null && message.hasOwnProperty("custodyId"))
-                object.custodyId = message.custodyId;
             if (message.event != null && message.hasOwnProperty("event"))
                 object.event = message.event;
             if (message.canonicalString != null && message.hasOwnProperty("canonicalString"))
@@ -15441,7 +15418,7 @@ export const lukuid = $root.lukuid = (() => {
          * @memberof lukuid
          * @interface IScanRecord
          * @property {string|null} [version] ScanRecord version
-         * @property {string|null} [scanId] ScanRecord scanId
+         * @property {string|null} [id] ScanRecord id
          * @property {Uint8Array|null} [signature] ScanRecord signature
          * @property {Uint8Array|null} [previousSignature] ScanRecord previousSignature
          * @property {string|null} [canonicalString] ScanRecord canonicalString
@@ -15478,12 +15455,12 @@ export const lukuid = $root.lukuid = (() => {
         ScanRecord.prototype.version = "";
 
         /**
-         * ScanRecord scanId.
-         * @member {string} scanId
+         * ScanRecord id.
+         * @member {string} id
          * @memberof lukuid.ScanRecord
          * @instance
          */
-        ScanRecord.prototype.scanId = "";
+        ScanRecord.prototype.id = "";
 
         /**
          * ScanRecord signature.
@@ -15583,8 +15560,8 @@ export const lukuid = $root.lukuid = (() => {
                 writer = $Writer.create();
             if (message.version != null && Object.hasOwnProperty.call(message, "version"))
                 writer.uint32(/* id 1, wireType 2 =*/10).string(message.version);
-            if (message.scanId != null && Object.hasOwnProperty.call(message, "scanId"))
-                writer.uint32(/* id 2, wireType 2 =*/18).string(message.scanId);
+            if (message.id != null && Object.hasOwnProperty.call(message, "id"))
+                writer.uint32(/* id 2, wireType 2 =*/18).string(message.id);
             if (message.signature != null && Object.hasOwnProperty.call(message, "signature"))
                 writer.uint32(/* id 3, wireType 2 =*/26).bytes(message.signature);
             if (message.previousSignature != null && Object.hasOwnProperty.call(message, "previousSignature"))
@@ -15645,7 +15622,7 @@ export const lukuid = $root.lukuid = (() => {
                         break;
                     }
                 case 2: {
-                        message.scanId = reader.string();
+                        message.id = reader.string();
                         break;
                     }
                 case 3: {
@@ -15724,9 +15701,9 @@ export const lukuid = $root.lukuid = (() => {
             if (message.version != null && message.hasOwnProperty("version"))
                 if (!$util.isString(message.version))
                     return "version: string expected";
-            if (message.scanId != null && message.hasOwnProperty("scanId"))
-                if (!$util.isString(message.scanId))
-                    return "scanId: string expected";
+            if (message.id != null && message.hasOwnProperty("id"))
+                if (!$util.isString(message.id))
+                    return "id: string expected";
             if (message.signature != null && message.hasOwnProperty("signature"))
                 if (!(message.signature && typeof message.signature.length === "number" || $util.isString(message.signature)))
                     return "signature: buffer expected";
@@ -15785,8 +15762,8 @@ export const lukuid = $root.lukuid = (() => {
             let message = new $root.lukuid.ScanRecord();
             if (object.version != null)
                 message.version = String(object.version);
-            if (object.scanId != null)
-                message.scanId = String(object.scanId);
+            if (object.id != null)
+                message.id = String(object.id);
             if (object.signature != null)
                 if (typeof object.signature === "string")
                     $util.base64.decode(object.signature, message.signature = $util.newBuffer($util.base64.length(object.signature)), 0);
@@ -15851,7 +15828,7 @@ export const lukuid = $root.lukuid = (() => {
                 object.attachments = [];
             if (options.defaults) {
                 object.version = "";
-                object.scanId = "";
+                object.id = "";
                 if (options.bytes === String)
                     object.signature = "";
                 else {
@@ -15875,8 +15852,8 @@ export const lukuid = $root.lukuid = (() => {
             }
             if (message.version != null && message.hasOwnProperty("version"))
                 object.version = message.version;
-            if (message.scanId != null && message.hasOwnProperty("scanId"))
-                object.scanId = message.scanId;
+            if (message.id != null && message.hasOwnProperty("id"))
+                object.id = message.id;
             if (message.signature != null && message.hasOwnProperty("signature"))
                 object.signature = options.bytes === String ? $util.base64.encode(message.signature, 0, message.signature.length) : options.bytes === Array ? Array.prototype.slice.call(message.signature) : message.signature;
             if (message.previousSignature != null && message.hasOwnProperty("previousSignature"))
@@ -16916,7 +16893,7 @@ export const lukuid = $root.lukuid = (() => {
          * @memberof lukuid
          * @interface IEnvironmentRecord
          * @property {string|null} [version] EnvironmentRecord version
-         * @property {string|null} [eventId] EnvironmentRecord eventId
+         * @property {string|null} [id] EnvironmentRecord id
          * @property {Uint8Array|null} [signature] EnvironmentRecord signature
          * @property {Uint8Array|null} [previousSignature] EnvironmentRecord previousSignature
          * @property {string|null} [canonicalString] EnvironmentRecord canonicalString
@@ -16952,12 +16929,12 @@ export const lukuid = $root.lukuid = (() => {
         EnvironmentRecord.prototype.version = "";
 
         /**
-         * EnvironmentRecord eventId.
-         * @member {string} eventId
+         * EnvironmentRecord id.
+         * @member {string} id
          * @memberof lukuid.EnvironmentRecord
          * @instance
          */
-        EnvironmentRecord.prototype.eventId = "";
+        EnvironmentRecord.prototype.id = "";
 
         /**
          * EnvironmentRecord signature.
@@ -17049,8 +17026,8 @@ export const lukuid = $root.lukuid = (() => {
                 writer = $Writer.create();
             if (message.version != null && Object.hasOwnProperty.call(message, "version"))
                 writer.uint32(/* id 1, wireType 2 =*/10).string(message.version);
-            if (message.eventId != null && Object.hasOwnProperty.call(message, "eventId"))
-                writer.uint32(/* id 2, wireType 2 =*/18).string(message.eventId);
+            if (message.id != null && Object.hasOwnProperty.call(message, "id"))
+                writer.uint32(/* id 2, wireType 2 =*/18).string(message.id);
             if (message.signature != null && Object.hasOwnProperty.call(message, "signature"))
                 writer.uint32(/* id 3, wireType 2 =*/26).bytes(message.signature);
             if (message.previousSignature != null && Object.hasOwnProperty.call(message, "previousSignature"))
@@ -17109,7 +17086,7 @@ export const lukuid = $root.lukuid = (() => {
                         break;
                     }
                 case 2: {
-                        message.eventId = reader.string();
+                        message.id = reader.string();
                         break;
                     }
                 case 3: {
@@ -17184,9 +17161,9 @@ export const lukuid = $root.lukuid = (() => {
             if (message.version != null && message.hasOwnProperty("version"))
                 if (!$util.isString(message.version))
                     return "version: string expected";
-            if (message.eventId != null && message.hasOwnProperty("eventId"))
-                if (!$util.isString(message.eventId))
-                    return "eventId: string expected";
+            if (message.id != null && message.hasOwnProperty("id"))
+                if (!$util.isString(message.id))
+                    return "id: string expected";
             if (message.signature != null && message.hasOwnProperty("signature"))
                 if (!(message.signature && typeof message.signature.length === "number" || $util.isString(message.signature)))
                     return "signature: buffer expected";
@@ -17240,8 +17217,8 @@ export const lukuid = $root.lukuid = (() => {
             let message = new $root.lukuid.EnvironmentRecord();
             if (object.version != null)
                 message.version = String(object.version);
-            if (object.eventId != null)
-                message.eventId = String(object.eventId);
+            if (object.id != null)
+                message.id = String(object.id);
             if (object.signature != null)
                 if (typeof object.signature === "string")
                     $util.base64.decode(object.signature, message.signature = $util.newBuffer($util.base64.length(object.signature)), 0);
@@ -17301,7 +17278,7 @@ export const lukuid = $root.lukuid = (() => {
                 object.attachments = [];
             if (options.defaults) {
                 object.version = "";
-                object.eventId = "";
+                object.id = "";
                 if (options.bytes === String)
                     object.signature = "";
                 else {
@@ -17324,8 +17301,8 @@ export const lukuid = $root.lukuid = (() => {
             }
             if (message.version != null && message.hasOwnProperty("version"))
                 object.version = message.version;
-            if (message.eventId != null && message.hasOwnProperty("eventId"))
-                object.eventId = message.eventId;
+            if (message.id != null && message.hasOwnProperty("id"))
+                object.id = message.id;
             if (message.signature != null && message.hasOwnProperty("signature"))
                 object.signature = options.bytes === String ? $util.base64.encode(message.signature, 0, message.signature.length) : options.bytes === Array ? Array.prototype.slice.call(message.signature) : message.signature;
             if (message.previousSignature != null && message.hasOwnProperty("previousSignature"))
@@ -18192,7 +18169,7 @@ export const lukuid = $root.lukuid = (() => {
          * Properties of a FullRecordResponse.
          * @memberof lukuid
          * @interface IFullRecordResponse
-         * @property {string|null} [recordId] FullRecordResponse recordId
+         * @property {string|null} [id] FullRecordResponse id
          * @property {lukuid.IScanRecord|null} [scanFull] FullRecordResponse scanFull
          * @property {lukuid.IEnvironmentRecord|null} [environmentFull] FullRecordResponse environmentFull
          */
@@ -18213,12 +18190,12 @@ export const lukuid = $root.lukuid = (() => {
         }
 
         /**
-         * FullRecordResponse recordId.
-         * @member {string} recordId
+         * FullRecordResponse id.
+         * @member {string} id
          * @memberof lukuid.FullRecordResponse
          * @instance
          */
-        FullRecordResponse.prototype.recordId = "";
+        FullRecordResponse.prototype.id = "";
 
         /**
          * FullRecordResponse scanFull.
@@ -18274,8 +18251,8 @@ export const lukuid = $root.lukuid = (() => {
         FullRecordResponse.encode = function encode(message, writer) {
             if (!writer)
                 writer = $Writer.create();
-            if (message.recordId != null && Object.hasOwnProperty.call(message, "recordId"))
-                writer.uint32(/* id 1, wireType 2 =*/10).string(message.recordId);
+            if (message.id != null && Object.hasOwnProperty.call(message, "id"))
+                writer.uint32(/* id 1, wireType 2 =*/10).string(message.id);
             if (message.scanFull != null && Object.hasOwnProperty.call(message, "scanFull"))
                 $root.lukuid.ScanRecord.encode(message.scanFull, writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
             if (message.environmentFull != null && Object.hasOwnProperty.call(message, "environmentFull"))
@@ -18317,7 +18294,7 @@ export const lukuid = $root.lukuid = (() => {
                     break;
                 switch (tag >>> 3) {
                 case 1: {
-                        message.recordId = reader.string();
+                        message.id = reader.string();
                         break;
                     }
                 case 2: {
@@ -18364,9 +18341,9 @@ export const lukuid = $root.lukuid = (() => {
             if (typeof message !== "object" || message === null)
                 return "object expected";
             let properties = {};
-            if (message.recordId != null && message.hasOwnProperty("recordId"))
-                if (!$util.isString(message.recordId))
-                    return "recordId: string expected";
+            if (message.id != null && message.hasOwnProperty("id"))
+                if (!$util.isString(message.id))
+                    return "id: string expected";
             if (message.scanFull != null && message.hasOwnProperty("scanFull")) {
                 properties.fullRecord = 1;
                 {
@@ -18400,8 +18377,8 @@ export const lukuid = $root.lukuid = (() => {
             if (object instanceof $root.lukuid.FullRecordResponse)
                 return object;
             let message = new $root.lukuid.FullRecordResponse();
-            if (object.recordId != null)
-                message.recordId = String(object.recordId);
+            if (object.id != null)
+                message.id = String(object.id);
             if (object.scanFull != null) {
                 if (typeof object.scanFull !== "object")
                     throw TypeError(".lukuid.FullRecordResponse.scanFull: object expected");
@@ -18429,9 +18406,9 @@ export const lukuid = $root.lukuid = (() => {
                 options = {};
             let object = {};
             if (options.defaults)
-                object.recordId = "";
-            if (message.recordId != null && message.hasOwnProperty("recordId"))
-                object.recordId = message.recordId;
+                object.id = "";
+            if (message.id != null && message.hasOwnProperty("id"))
+                object.id = message.id;
             if (message.scanFull != null && message.hasOwnProperty("scanFull")) {
                 object.scanFull = $root.lukuid.ScanRecord.toObject(message.scanFull, options);
                 if (options.oneofs)
