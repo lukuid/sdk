@@ -20,6 +20,7 @@ class DeviceAttestationInputs:
     key: str
     attestation_sig: str
     ctr: int | None = None
+    vendor: str | None = None
     record_id: str | None = None
     certificate_chain: str | None = None
     created: int | None = None
@@ -63,9 +64,9 @@ class ExternalIdentityInputs:
     trusted_fingerprints: list[str]
 
 
-def build_record_attestation_payload(id: str, key: str, ctr: int | None = None, record_id: str | None = None) -> bytes:
-    if ctr is not None and record_id:
-        return f"attestation:{id}:{key}:{ctr}:{record_id}".encode("utf-8")
+def build_record_attestation_payload(id: str, key: str, ctr: int | None = None, vendor: str | None = None, record_id: str | None = None) -> bytes:
+    if ctr is not None and vendor and record_id:
+        return f"attestation:{id}:{key}:{ctr}:{vendor}:{record_id}".encode("utf-8")
     return f"{id}:{key}".encode("utf-8")
 
 
@@ -226,7 +227,7 @@ def verify_device_attestation(
         return VerificationResult(False, "attestationSig is not valid base64")
 
     payloads = [
-        build_record_attestation_payload(inputs.id, inputs.key, inputs.ctr, inputs.record_id),
+        build_record_attestation_payload(inputs.id, inputs.key, inputs.ctr, inputs.vendor, inputs.record_id),
         f"{inputs.id}:{inputs.key}".encode("utf-8"),
     ]
     leaf_public_key: object | None = None
@@ -247,6 +248,19 @@ def verify_device_attestation(
                 leaf_public_key = certificates[0].public_key()
             except Exception:
                 leaf_public_key = None
+            
+            if inputs.vendor:
+                cert_meta = _certificate_metadata(inputs.certificate_chain, include_pubkey=False)
+                # Parse RFC 4514 string like "CN=LukuID-Device,O=LUKUID" to extract 'O='
+                subject = cert_meta["subject"]
+                vendor_found = False
+                for rdn in subject.split(','):
+                    if rdn.strip().startswith('O='):
+                        if rdn.strip()[2:] == inputs.vendor:
+                            vendor_found = True
+                        break
+                if not vendor_found:
+                    return VerificationResult(False, f"Certificate does not contain expected vendor {inputs.vendor}")
 
     if leaf_public_key is not None:
         for payload in payloads:

@@ -154,12 +154,15 @@ class LukuManifest:
 class LukuDeviceIdentity:
     device_id: str
     public_key: str
+    vendor: str | None = None
 
     @classmethod
     def from_json(cls, value: dict[str, Any]) -> "LukuDeviceIdentity":
+        vendor_val = value.get("vendor")
         return cls(
             device_id=str(value.get("device_id", "")),
             public_key=str(value.get("public_key", "")),
+            vendor=str(vendor_val) if vendor_val else None,
         )
 
     def json_object(self) -> dict[str, Any]:
@@ -387,6 +390,8 @@ class LukuArchive:
                 payload = record.get("payload") if isinstance(record.get("payload"), dict) else {}
                 device_id = str(record.get("device_id") or block.device.device_id)
                 public_key = str(record.get("public_key") or block.device.public_key)
+                vendor_val = record.get("vendor")
+                vendor = str(vendor_val) if vendor_val else block.device.vendor
                 signature = str(record.get("signature", ""))
                 previous_signature = str(record.get("previous_signature", ""))
                 canonical_string = str(record.get("canonical_string", ""))
@@ -442,6 +447,7 @@ class LukuArchive:
                             key=public_key,
                             attestation_sig=attestation_sig,
                             ctr=record_ctr,
+                            vendor=vendor,
                             record_id=attestation_record_id,
                             certificate_chain=attestation_chain,
                             created=None if options.skip_certificate_temporal_checks else timestamp,
@@ -605,6 +611,8 @@ class LukuFile:
         device = envelope.get("device") if isinstance(envelope.get("device"), dict) else {}
         device_id = str(envelope.get("device_id") or device.get("device_id") or "")
         public_key = str(envelope.get("public_key") or device.get("public_key") or "")
+        vendor_val = envelope.get("vendor") or device.get("vendor")
+        vendor = str(vendor_val) if vendor_val else None
         signature = str(envelope.get("signature", ""))
         canonical_string = str(envelope.get("canonical_string", ""))
         timestamp = _uint64(payload.get("timestamp_utc")) or _uint64(envelope.get("timestamp_utc"))
@@ -656,6 +664,7 @@ class LukuFile:
                     key=public_key,
                     attestation_sig=attestation_sig,
                     ctr=counter,
+                    vendor=vendor,
                     record_id=attestation_record_id,
                     certificate_chain=attestation_chain,
                     created=None if options.skip_certificate_temporal_checks else timestamp,

@@ -9,9 +9,10 @@ fn builds_record_attestation_payload() {
             "GC-2005-EU",
             "base64_device_public_key",
             Some(42),
+            Some("LUKUID"),
             Some("env-123")
         ),
-        "attestation:GC-2005-EU:base64_device_public_key:42:env-123"
+        "attestation:GC-2005-EU:base64_device_public_key:42:LUKUID:env-123"
     );
 }
 

@@ -7,6 +7,7 @@ export interface DeviceAttestationInputs {
   key: string;
   attestationSig: string;
   ctr?: number;
+  vendor?: string;
   recordId?: string;
   certificateChain?: string;
   created?: number; // Unix timestamp
@@ -463,9 +464,9 @@ export interface HeartbeatAttestationInputs {
   trustProfile?: string;
 }
 
-export function buildRecordAttestationPayload(id: string, key: string, ctr?: number, recordId?: string): string {
-  if (ctr !== undefined && recordId) {
-    return `attestation:${id}:${key}:${ctr}:${recordId}`;
+export function buildRecordAttestationPayload(id: string, key: string, ctr?: number, vendor?: string, recordId?: string): string {
+  if (ctr !== undefined && vendor && recordId) {
+    return `attestation:${id}:${key}:${ctr}:${vendor}:${recordId}`;
   }
   return `${id}:${key}`;
 }
@@ -486,7 +487,7 @@ export async function verifyDeviceAttestation(
   }
 
   const payloadCandidates = [
-    buildRecordAttestationPayload(inputs.id, inputs.key, inputs.ctr, inputs.recordId),
+    buildRecordAttestationPayload(inputs.id, inputs.key, inputs.ctr, inputs.vendor, inputs.recordId),
     `${inputs.id}:${inputs.key}`
   ].filter((value, index, values) => values.indexOf(value) === index);
   let leafSpki: Uint8Array | null = null;
@@ -501,6 +502,21 @@ export async function verifyDeviceAttestation(
       return { ok: false, reason: chainResult.reason ?? 'Chain processing error' };
     }
     leafSpki = chainResult.certSpkis?.[0] ?? null;
+
+    if (inputs.vendor) {
+      const pems = inputs.certificateChain.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [];
+      if (pems.length > 0) {
+        try {
+          const cert = forge.pki.certificateFromPem(pems[0]);
+          const orgAttr = cert.subject.attributes.find((a: any) => a.name === 'organizationName' || a.shortName === 'O');
+          if (!orgAttr || orgAttr.value !== inputs.vendor) {
+            return { ok: false, reason: `Certificate does not contain expected vendor ${inputs.vendor}` };
+          }
+        } catch {
+          // ignore parsing error here and let signature fail later if broken
+        }
+      }
+    }
   }
 
   // 2. Verify Signature

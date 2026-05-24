@@ -10,8 +10,8 @@ from lukuid_sdk.attestation import (
 class TestAttestationPayloads(unittest.TestCase):
     def test_build_record_attestation_payload(self) -> None:
         self.assertEqual(
-            build_record_attestation_payload("GC-2005-EU", "base64_device_public_key", 42, "env-123"),
-            b"attestation:GC-2005-EU:base64_device_public_key:42:env-123",
+            build_record_attestation_payload("GC-2005-EU", "base64_device_public_key", 42, "LUKUID", "env-123"),
+            b"attestation:GC-2005-EU:base64_device_public_key:42:LUKUID:env-123",
         )
 
     def test_build_record_heartbeat_payload(self) -> None:

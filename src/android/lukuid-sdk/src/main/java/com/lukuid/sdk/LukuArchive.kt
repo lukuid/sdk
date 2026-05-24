@@ -77,16 +77,24 @@ data class LukuManifest(
 
 data class LukuDeviceIdentity(
     val deviceId: String,
-    val publicKey: String
+    val publicKey: String,
+    val vendor: String? = null
 ) {
-    fun toJson(): JSONObject = JSONObject()
-        .put("device_id", deviceId)
-        .put("public_key", publicKey)
+    fun toJson(): JSONObject {
+        val json = JSONObject()
+            .put("device_id", deviceId)
+            .put("public_key", publicKey)
+        if (vendor != null) {
+            json.put("vendor", vendor)
+        }
+        return json
+    }
 
     companion object {
         fun fromJson(json: JSONObject): LukuDeviceIdentity = LukuDeviceIdentity(
             deviceId = json.optString("device_id"),
-            publicKey = json.optString("public_key")
+            publicKey = json.optString("public_key"),
+            vendor = json.optString("vendor").ifBlank { null }
         )
     }
 }
@@ -325,6 +333,7 @@ class LukuArchive private constructor(
                 val payload = record.optJSONObject("payload")
                 val deviceId = record.optString("device_id").ifBlank { block.device.deviceId }
                 val publicKey = record.optString("public_key").ifBlank { block.device.publicKey }
+                val vendor = record.optString("vendor").ifBlank { block.device.vendor }
                 val signature = record.optString("signature")
                 val previousSignature = record.optString("previous_signature")
                 val canonicalString = record.optString("canonical_string")
@@ -396,6 +405,7 @@ class LukuArchive private constructor(
                                 key = publicKey,
                                 attestationSig = attestationSignature,
                                 ctr = counter,
+                                vendor = vendor,
                                 recordId = attestationRecordId,
                                 certificateChain = attestationChain,
                                 created = if (options.skipCertificateTemporalChecks) null else timestamp,

@@ -31,6 +31,7 @@ export interface LukuManifest {
 export interface LukuDeviceIdentity {
   device_id: string;
   public_key: string;
+  vendor?: string;
 }
 
 export interface LukuBlock {
@@ -533,6 +534,7 @@ export class LukuFile {
     const device = asJsonObject(envelope.device);
     const deviceId = asString(envelope.device_id) ?? asString(device?.device_id);
     const publicKey = asString(envelope.public_key) ?? asString(device?.public_key);
+    const vendor = asString(envelope.vendor) ?? asString(device?.vendor);
     const signature = asString(envelope.signature) ?? '';
     const canonicalStringValue = asString(envelope.canonical_string) ?? '';
     const timestamp = recordTimestampUtc(envelope);
@@ -583,6 +585,7 @@ export class LukuFile {
           key: publicKey ?? '',
           attestationSig: attestationSignature,
           ctr: counter,
+          vendor: vendor,
           recordId: attestationRecordId,
           certificateChain: attestationChain,
           created: skipCertificateTemporalChecks ? undefined : timestamp,
@@ -1148,6 +1151,7 @@ export class LukuFile {
         const payload = asJsonObject(record.payload);
         const deviceId = asString(record.device_id) ?? block.device.device_id;
         const publicKey = asString(record.public_key) ?? block.device.public_key;
+        const vendor = asString(record.vendor) ?? block.device.vendor;
         const signature = asString(record.signature) ?? '';
         const previousSignature = asString(record.previous_signature) ?? '';
         const canonicalStringValue = asString(record.canonical_string) ?? '';
@@ -1224,6 +1228,7 @@ export class LukuFile {
               key: publicKey,
               attestationSig: attestationSignature,
               ctr: counter,
+              vendor: vendor,
               recordId: attestationRecordId,
               certificateChain: attestationChain,
               created: skipCertificateTemporalChecks ? undefined : timestamp,

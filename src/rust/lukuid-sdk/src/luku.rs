@@ -68,6 +68,8 @@ pub struct LukuBlock {
 pub struct LukuDeviceIdentity {
     pub device_id: String,
     pub public_key: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vendor: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -648,6 +650,7 @@ impl LukuFile {
                     .and_then(|d| d.get("device_id"))
                     .and_then(|v| v.as_str())
             });
+
         let public_key_opt = envelope
             .get("public_key")
             .and_then(|v| v.as_str())
@@ -657,8 +660,18 @@ impl LukuFile {
                     .and_then(|v| v.as_str())
             });
 
+        let vendor_opt = envelope
+            .get("vendor")
+            .and_then(|v| v.as_str())
+            .or_else(|| {
+                device
+                    .and_then(|d| d.get("vendor"))
+                    .and_then(|v| v.as_str())
+            });
+
         let device_id = device_id_opt.unwrap_or("");
         let public_key = public_key_opt.unwrap_or("");
+        let vendor = vendor_opt.map(String::from);
 
         let r#type = envelope
             .get("type")
@@ -818,6 +831,7 @@ impl LukuFile {
                         key: public_key.to_string(),
                         attestation_sig: attestation_sig.to_string(),
                         ctr,
+                        vendor: vendor.clone(),
                         record_id: attestation_record_id.map(|value| value.to_string()),
                         certificate_chain: Some(attestation_chain.clone()),
                         created: if options.skip_certificate_temporal_checks {
@@ -1561,6 +1575,11 @@ impl LukuFile {
                     .get("public_key")
                     .and_then(|v| v.as_str())
                     .unwrap_or(block.device.public_key.as_str());
+                let vendor = record
+                    .get("vendor")
+                    .and_then(|v| v.as_str())
+                    .map(String::from)
+                    .or_else(|| block.device.vendor.clone());
                 let r#type = record
                     .get("type")
                     .and_then(|v| v.as_str())
@@ -1799,6 +1818,7 @@ impl LukuFile {
                                 key: public_key.to_string(),
                                 attestation_sig: attestation_sig.to_string(),
                                 ctr,
+                                vendor: vendor.clone(),
                                 record_id: record_attestation_id.map(|value| value.to_string()),
                                 certificate_chain: Some(dac_chain),
                                 created: if options.skip_certificate_temporal_checks {
@@ -2523,6 +2543,11 @@ impl LukuFile {
                     .and_then(Value::as_str)
                     .unwrap_or(default_device.public_key.as_str())
                     .to_string(),
+                vendor: device
+                    .get("vendor")
+                    .and_then(Value::as_str)
+                    .map(String::from)
+                    .or_else(|| default_device.vendor.clone()),
             })
             .unwrap_or_else(|| default_device.clone());
 
@@ -2975,6 +3000,7 @@ mod tests {
         let identity = LukuDeviceIdentity {
             device_id: "LUK-TEST".to_string(),
             public_key: BASE64.encode([0u8; 32]),
+            vendor: None,
         };
 
         let signing_key = ed25519_dalek::SigningKey::from_bytes(&[7u8; 32]);
@@ -3020,6 +3046,7 @@ mod tests {
         let identity = LukuDeviceIdentity {
             device_id: "LUK-TEST".to_string(),
             public_key: BASE64.encode([0u8; 32]),
+            vendor: None,
         };
 
         let records = vec![json!({

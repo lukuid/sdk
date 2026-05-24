@@ -12,6 +12,7 @@ pub struct DeviceAttestationInputs {
     pub key: String,
     pub attestation_sig: String,
     pub ctr: Option<u64>,
+    pub vendor: Option<String>,
     pub record_id: Option<String>,
     pub certificate_chain: Option<String>,
     pub created: Option<i64>,
@@ -31,6 +32,7 @@ pub struct CertificateChainValidationResult {
     pub ok: bool,
     pub reason: Option<String>,
     pub cert_public_keys: Option<Vec<Vec<u8>>>,
+    pub leaf_vendor: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -176,10 +178,10 @@ pub struct HeartbeatAttestationInputs {
     pub trust_profile: String,
 }
 
-pub fn build_record_attestation_payload(id: &str, key: &str, ctr: Option<u64>, record_id: Option<&str>) -> String {
-    match (ctr, record_id) {
-        (Some(ctr), Some(record_id)) if !record_id.is_empty() => {
-            format!("attestation:{}:{}:{}:{}", id, key, ctr, record_id)
+pub fn build_record_attestation_payload(id: &str, key: &str, ctr: Option<u64>, vendor: Option<&str>, record_id: Option<&str>) -> String {
+    match (ctr, vendor, record_id) {
+        (Some(ctr), Some(vendor), Some(record_id)) if !record_id.is_empty() => {
+            format!("attestation:{}:{}:{}:{}:{}", id, key, ctr, vendor, record_id)
         }
         _ => format!("{}:{}", id, key),
     }
@@ -218,6 +220,7 @@ pub fn verify_device_attestation(
             &inputs.id,
             &inputs.key,
             inputs.ctr,
+            inputs.vendor.as_deref(),
             inputs.record_id.as_deref(),
         ),
         format!("{}:{}", inputs.id, inputs.key),
@@ -236,6 +239,22 @@ pub fn verify_device_attestation(
         }
         if let Some(cert_public_keys) = chain_result.cert_public_keys {
             leaf_pubkey_bytes = cert_public_keys.first().cloned();
+        }
+
+        if let Some(expected_vendor) = &inputs.vendor {
+            if let Some(cert_vendor) = chain_result.leaf_vendor {
+                if cert_vendor != *expected_vendor {
+                    return VerificationResult {
+                        ok: false,
+                        reason: Some(format!("Vendor mismatch: expected {}, got {}", expected_vendor, cert_vendor)),
+                    };
+                }
+            } else {
+                return VerificationResult {
+                    ok: false,
+                    reason: Some("Certificate does not contain a vendor organization".to_string()),
+                };
+            }
         }
     }
 
@@ -369,6 +388,7 @@ pub fn validate_certificate_chain(
             ok: false,
             reason: Some("Invalid certificate chain".to_string()),
             cert_public_keys: None,
+            leaf_vendor: None,
         };
     }
 
@@ -391,6 +411,7 @@ pub fn validate_certificate_chain(
                 trust_profile
             )),
             cert_public_keys: None,
+            leaf_vendor: None,
         };
     }
 
@@ -426,10 +447,11 @@ pub fn validate_certificate_chain(
         }
 
         if !verified {
-            return CertificateChainValidationResult {
+                return CertificateChainValidationResult {
                 ok: false,
                 reason: Some(format!("Signature verification failed at chain level {}", i)),
                 cert_public_keys: None,
+                leaf_vendor: None,
             };
         }
     }
@@ -441,6 +463,7 @@ pub fn validate_certificate_chain(
                     ok: false,
                     reason: Some(format!("Certificate is revoked: {}", rm.get_fingerprint(cert))),
                     cert_public_keys: None,
+                    leaf_vendor: None,
                 };
             }
         }
@@ -458,6 +481,7 @@ pub fn validate_certificate_chain(
                         created_ts
                     )),
                     cert_public_keys: None,
+                    leaf_vendor: None,
                 };
             }
         }
@@ -468,10 +492,24 @@ pub fn validate_certificate_chain(
         .map(|cert| cert.public_key().subject_public_key.data.to_vec())
         .collect();
 
+    let mut leaf_vendor = None;
+    if let Some(leaf) = certs.first() {
+        for rdn in leaf.subject().iter() {
+            for attr in rdn.iter() {
+                if attr.attr_type().to_string() == "2.5.4.10" { // OID for organizationName
+                    if let Ok(value) = attr.attr_value().as_str() {
+                        leaf_vendor = Some(value.to_string());
+                    }
+                }
+            }
+        }
+    }
+
     CertificateChainValidationResult {
         ok: true,
         reason: None,
         cert_public_keys: Some(cert_public_keys),
+        leaf_vendor,
     }
 }
 

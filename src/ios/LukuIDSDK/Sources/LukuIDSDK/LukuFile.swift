@@ -85,24 +85,31 @@ public struct LukuManifest {
 public struct LukuDeviceIdentity {
     public let deviceID: String
     public let publicKey: String
+    public let vendor: String?
 
-    public init(deviceID: String, publicKey: String) {
+    public init(deviceID: String, publicKey: String, vendor: String? = nil) {
         self.deviceID = deviceID
         self.publicKey = publicKey
+        self.vendor = vendor
     }
 
     fileprivate init(json: [String: Any]) {
         self.init(
             deviceID: json["device_id"] as? String ?? "",
-            publicKey: json["public_key"] as? String ?? ""
+            publicKey: json["public_key"] as? String ?? "",
+            vendor: json["vendor"] as? String
         )
     }
 
     fileprivate func jsonObject() -> [String: Any] {
-        [
+        var dict: [String: Any] = [
             "device_id": deviceID,
             "public_key": publicKey
         ]
+        if let v = vendor {
+            dict["vendor"] = v
+        }
+        return dict
     }
 }
 
@@ -444,6 +451,7 @@ public final class LukuArchive {
                 let payload = record["payload"] as? [String: Any]
                 let deviceID = (record["device_id"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? block.device.deviceID
                 let publicKey = (record["public_key"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? block.device.publicKey
+                let vendor = (record["vendor"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? block.device.vendor
                 let signature = record["signature"] as? String ?? ""
                 let previousSignature = record["previous_signature"] as? String ?? ""
                 let canonicalString = record["canonical_string"] as? String ?? ""
@@ -504,10 +512,12 @@ public final class LukuArchive {
                         issues.append(issue("ATTESTATION_CHAIN_MISSING", "Missing DAC attestation chain for device \(deviceID).", .warning))
                     } else if !isAuxRecord || !attestationSignature.isEmpty {
                         let attestationRecordId = (record["id"] as? String)
-                        let inputs = DeviceAttestationInputs(                            id: deviceID,
+                        let inputs = DeviceAttestationInputs(
+                            id: deviceID,
                             key: publicKey,
                             attestationSig: attestationSignature,
                             ctr: counter,
+                            vendor: vendor,
                             recordID: attestationRecordId,
                             certificateChain: attestationChain,
                             created: options.skipCertificateTemporalChecks ? nil : timestamp.map(Int64.init),
@@ -764,6 +774,7 @@ public enum LukuFile {
         let device = envelope["device"] as? [String: Any]
         let deviceId = (envelope["device_id"] as? String) ?? (device?["device_id"] as? String) ?? ""
         let publicKey = (envelope["public_key"] as? String) ?? (device?["public_key"] as? String) ?? ""
+        let vendor = (envelope["vendor"] as? String) ?? (device?["vendor"] as? String)
         
         let signature = envelope["signature"] as? String ?? ""
         let canonicalStringValue = envelope["canonical_string"] as? String ?? ""
@@ -812,12 +823,13 @@ public enum LukuFile {
                 issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed DAC attestation: attestationSig missing", criticality: .critical))
             } else {
                 let result = verifyDeviceAttestation(
-                    DeviceAttestationInputs(
-                        id: deviceId,
-                        key: publicKey,
-                        attestationSig: attestationSignature ?? "",
-                        ctr: counter,
-                        recordID: attestationRecordId,
+                            DeviceAttestationInputs(
+                                id: deviceId,
+                                key: publicKey,
+                                attestationSig: attestationSignature ?? "",
+                                ctr: counter,
+                                vendor: vendor,
+                                recordID: attestationRecordId,
                         certificateChain: attestationChain,
                         created: options.skipCertificateTemporalChecks ? nil : timestamp.map(Int64.init),
                         attestationAlg: nil,
@@ -1118,7 +1130,8 @@ public enum LukuFile {
 
         let device = LukuDeviceIdentity(
             deviceID: recordDevice?["device_id"] as? String ?? defaultDevice.deviceID,
-            publicKey: recordDevice?["public_key"] as? String ?? defaultDevice.publicKey
+            publicKey: recordDevice?["public_key"] as? String ?? defaultDevice.publicKey,
+            vendor: recordDevice?["vendor"] as? String ?? defaultDevice.vendor
         )
 
         func commonIdentityValue(_ key: String) -> String? {

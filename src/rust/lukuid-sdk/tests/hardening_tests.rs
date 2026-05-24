@@ -46,6 +46,7 @@ async fn create_valid_export(device_id: &str) -> LukuFile {
     let device = LukuDeviceIdentity {
         device_id: device_id.to_string(),
         public_key,
+        vendor: None,
     };
 
     let record = json!({

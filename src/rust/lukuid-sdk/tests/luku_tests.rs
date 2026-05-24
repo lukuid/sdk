@@ -79,6 +79,7 @@ fn create_valid_export(temp_dir: &std::path::Path, device_id: &str) -> (LukuFile
     let identity = LukuDeviceIdentity {
         device_id: device_id.to_string(),
         public_key: pub_b64,
+        vendor: None,
     };
 
     let canonical1 = "can1";
@@ -173,6 +174,7 @@ fn test_luku_manifest_preserves_temporal_continuity_metadata() {
     let device = LukuDeviceIdentity {
         device_id: "LUK-META".to_string(),
         public_key: pub_b64,
+        vendor: None,
     };
     let canonical = "manifest-extra-scan";
     let signature = BASE64.encode(signing_key.sign(canonical.as_bytes()).to_bytes());
@@ -262,6 +264,7 @@ fn test_luku_verify_enforces_native_continuity_when_requested() {
     let identity = LukuDeviceIdentity {
         device_id: "LUK-CONT".to_string(),
         public_key: pub_b64,
+        vendor: None,
     };
 
     let env1 = "env-1";
@@ -332,6 +335,7 @@ fn test_luku_verify_rejects_untrusted_external_identity_endorsements() {
     let identity = LukuDeviceIdentity {
         device_id: "LUK-EXT".to_string(),
         public_key: pub_b64,
+        vendor: None,
     };
 
     let canonical = "attachment-ext";
@@ -567,6 +571,7 @@ fn test_luku_verify_attested_attachment_does_not_advance_device_chain() {
     let device = LukuDeviceIdentity {
         device_id: device_id.to_string(),
         public_key: pub_b64.clone(),
+        vendor: None,
     };
 
     let records = vec![
@@ -663,6 +668,7 @@ fn test_luku_verify_attested_custody_does_not_advance_device_chain() {
     let device = LukuDeviceIdentity {
         device_id: device_id.to_string(),
         public_key: pub_b64.clone(),
+        vendor: None,
     };
 
     let records = vec![

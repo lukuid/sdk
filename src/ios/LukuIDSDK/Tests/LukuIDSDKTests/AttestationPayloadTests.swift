@@ -9,9 +9,10 @@ final class AttestationPayloadTests: XCTestCase {
                 id: "GC-2005-EU",
                 key: "base64_device_public_key",
                 ctr: 42,
+                vendor: "LUKUID",
                 recordID: "env-123"
             ),
-            "attestation:GC-2005-EU:base64_device_public_key:42:env-123"
+            "attestation:GC-2005-EU:base64_device_public_key:42:LUKUID:env-123"
         )
     }
 

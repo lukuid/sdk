@@ -9,6 +9,7 @@ struct DeviceAttestationInputs {
     let key: String
     let attestationSig: String
     let ctr: UInt64?
+    let vendor: String?
     let recordID: String?
     let certificateChain: String?
     let created: Int64?
@@ -20,6 +21,7 @@ struct DeviceAttestationInputs {
          key: String,
          attestationSig: String,
          ctr: UInt64? = nil,
+         vendor: String? = nil,
          recordID: String? = nil,
          certificateChain: String?,
          created: Int64?,
@@ -30,6 +32,7 @@ struct DeviceAttestationInputs {
         self.key = key
         self.attestationSig = attestationSig
         self.ctr = ctr
+        self.vendor = vendor
         self.recordID = recordID
         self.certificateChain = certificateChain
         self.created = created
@@ -49,9 +52,9 @@ struct HeartbeatAttestationInputs {
     let trustProfile: String
 }
 
-func buildRecordAttestationPayload(id: String, key: String, ctr: UInt64? = nil, recordID: String? = nil) -> String {
-    if let ctr, let recordID, !recordID.isEmpty {
-        return "attestation:\(id):\(key):\(ctr):\(recordID)"
+func buildRecordAttestationPayload(id: String, key: String, ctr: UInt64? = nil, vendor: String? = nil, recordID: String? = nil) -> String {
+    if let ctr, let vendor, let recordID, !recordID.isEmpty {
+        return "attestation:\(id):\(key):\(ctr):\(vendor):\(recordID)"
     }
     return "\(id):\(key)"
 }
@@ -213,7 +216,7 @@ func verifyDeviceAttestation(_ inputs: DeviceAttestationInputs, revocationManage
     }
     
     let payloadStrings = Array(Set([
-        buildRecordAttestationPayload(id: inputs.id, key: inputs.key, ctr: inputs.ctr, recordID: inputs.recordID),
+        buildRecordAttestationPayload(id: inputs.id, key: inputs.key, ctr: inputs.ctr, vendor: inputs.vendor, recordID: inputs.recordID),
         "\(inputs.id):\(inputs.key)"
     ]))
 
@@ -230,6 +233,14 @@ func verifyDeviceAttestation(_ inputs: DeviceAttestationInputs, revocationManage
             return .failure(DeviceTrustError(id: inputs.id, reason: chainResult.reason ?? "Invalid certificate chain", attemptedKeyIds: []))
         }
         leafPublicKeyData = chainResult.certificates.first.flatMap { extractRawPublicKey(from: $0) }
+        
+        if let vendor = inputs.vendor, let firstCert = chainResult.certificates.first {
+            let subjectValues = certificateSubjectValues(firstCert)
+            // O values are included in subjectValues, but let's do a strict check if we can or just check it contains vendor
+            if !subjectValues.contains(vendor) {
+                return .failure(DeviceTrustError(id: inputs.id, reason: "Certificate does not contain expected vendor \(vendor)", attemptedKeyIds: []))
+            }
+        }
     }
 
     if let leafPub = leafPublicKeyData {

@@ -483,11 +483,17 @@ impl Device {
             .to_string();
         let certificate_chain = assemble_certificate_chain(&info_obj);
 
+        let vendor = info_obj
+            .get("vendor")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+
         let inputs = DeviceAttestationInputs {
             id: id.clone(),
             key: key.clone(),
             attestation_sig,
             ctr: None,
+            vendor,
             record_id: None,
             certificate_chain,
             created: None,

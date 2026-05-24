@@ -19,6 +19,7 @@ internal data class DeviceAttestationInput(
     val key: String,
     val attestationSig: String,
     val ctr: Long? = null,
+    val vendor: String? = null,
     val recordId: String? = null,
     val certificateChain: String? = null,
     val created: Long? = null,
@@ -37,9 +38,9 @@ internal data class HeartbeatAttestationInput(
     val trustProfile: String? = "prod"
 )
 
-internal fun buildRecordAttestationPayload(id: String, key: String, ctr: Long? = null, recordId: String? = null): String {
-    return if (ctr != null && !recordId.isNullOrBlank()) {
-        "attestation:$id:$key:$ctr:$recordId"
+internal fun buildRecordAttestationPayload(id: String, key: String, ctr: Long? = null, vendor: String? = null, recordId: String? = null): String {
+    return if (ctr != null && vendor != null && !recordId.isNullOrBlank()) {
+        "attestation:$id:$key:$ctr:$vendor:$recordId"
     } else {
         "$id:$key"
     }
@@ -210,7 +211,7 @@ internal fun verifyDeviceAttestation(input: DeviceAttestationInput, revocationMa
         ?: return VerificationResult(false, "attestationSig is not valid base64")
 
     val payloads = linkedSetOf(
-        buildRecordAttestationPayload(input.id, input.key, input.ctr, input.recordId),
+        buildRecordAttestationPayload(input.id, input.key, input.ctr, input.vendor, input.recordId),
         "${input.id}:${input.key}"
     ).toList()
     var leafPublicKey: PublicKey? = null
@@ -225,7 +226,24 @@ internal fun verifyDeviceAttestation(input: DeviceAttestationInput, revocationMa
         if (!chainResult.ok) {
             return VerificationResult(false, chainResult.reason)
         }
-        leafPublicKey = chainResult.certificates.firstOrNull()?.publicKey
+        val firstCert = chainResult.certificates.firstOrNull()
+        leafPublicKey = firstCert?.publicKey
+        
+        if (input.vendor != null && firstCert != null) {
+            val subjectName = firstCert.subjectX500Principal.name
+            var vendorFound = false
+            for (rdn in subjectName.split(",")) {
+                if (rdn.trim().startsWith("O=")) {
+                    if (rdn.trim().substring(2) == input.vendor) {
+                        vendorFound = true
+                    }
+                    break
+                }
+            }
+            if (!vendorFound) {
+                return VerificationResult(false, "Certificate does not contain expected vendor ${input.vendor}")
+            }
+        }
     }
 
     if (leafPublicKey != null) {

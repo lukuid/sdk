@@ -6,8 +6,8 @@ import { buildRecordAttestationPayload, buildRecordHeartbeatPayload } from '../s
 describe('Detached attestation payloads', () => {
   it('builds the per-record DAC payload', () => {
     assert.strictEqual(
-      buildRecordAttestationPayload('GC-2005-EU', 'base64_device_public_key', 42, 'env-123'),
-      'attestation:GC-2005-EU:base64_device_public_key:42:env-123'
+      buildRecordAttestationPayload('GC-2005-EU', 'base64_device_public_key', 42, 'LUKUID', 'env-123'),
+      'attestation:GC-2005-EU:base64_device_public_key:42:LUKUID:env-123'
     );
   });
 

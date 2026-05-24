@@ -136,6 +136,7 @@ object LukuFile {
         val device = envelope.optJSONObject("device")
         val deviceId = envelope.optString("device_id").takeIf { it.isNotEmpty() } ?: device?.optString("device_id") ?: ""
         val publicKey = envelope.optString("public_key").takeIf { it.isNotEmpty() } ?: device?.optString("public_key") ?: ""
+        val vendor = envelope.optString("vendor").takeIf { it.isNotEmpty() } ?: device?.optString("vendor")
         val signature = envelope.optString("signature", "")
         val canonicalStringValue = envelope.optString("canonical_string", "")
         
@@ -185,6 +186,7 @@ object LukuFile {
                         key = publicKey,
                         attestationSig = attestationSignature,
                         ctr = recordCtr,
+                        vendor = vendor,
                         recordId = attestationRecordId,
                         certificateChain = attestationChain,
                         created = if (options.skipCertificateTemporalChecks) null else timestamp,
