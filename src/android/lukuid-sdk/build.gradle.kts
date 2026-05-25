@@ -95,6 +95,7 @@ dependencies {
     implementation("org.bouncycastle:bcprov-jdk18on:1.79")
     implementation("org.bouncycastle:bcpkix-jdk18on:1.79")
     implementation("com.github.mik3y:usb-serial-for-android:3.8.0")
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
     api("com.google.protobuf:protobuf-kotlin-lite:3.25.1")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")

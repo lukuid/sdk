@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import CryptoKit
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 import ZIPFoundation
 
 public let LUKUMimetype = "application/vnd.lukuid.package+zip"
@@ -689,9 +692,18 @@ public enum LukuFile {
     }
 
     public static func open(data: Data) throws -> LukuArchive {
+        var archiveData = data
+        if data.count > 5, data.prefix(5) == Data("%PDF-".utf8) {
+            if let extracted = extractPDFEvidence(from: data) {
+                archiveData = extracted
+            } else {
+                throw NSError(domain: "lukuid", code: -50, userInfo: [NSLocalizedDescriptionKey: "PDF does not contain an embedded 'evidence.luku' file"])
+            }
+        }
+
         let archive: Archive
         do {
-            archive = try Archive(data: data, accessMode: .read)
+            archive = try Archive(data: archiveData, accessMode: .read)
         } catch {
             throw NSError(domain: "lukuid", code: -50, userInfo: [NSLocalizedDescriptionKey: "Failed to open .luku archive: \(error.localizedDescription)"])
         }
@@ -1374,3 +1386,64 @@ private extension Array {
         }
     }
 }
+
+#if canImport(CoreGraphics)
+private func extractPDFEvidence(from pdfData: Data) -> Data? {
+    guard let provider = CGDataProvider(data: pdfData as CFData),
+          let doc = CGPDFDocument(provider),
+          let catalog = doc.catalog else { return nil }
+
+    var namesDict: CGPDFDictionaryRef? = nil
+    guard CGPDFDictionaryGetDictionary(catalog, "Names", &namesDict), let names = namesDict else { return nil }
+
+    var embeddedFilesDict: CGPDFDictionaryRef? = nil
+    guard CGPDFDictionaryGetDictionary(names, "EmbeddedFiles", &embeddedFilesDict), let embeddedFiles = embeddedFilesDict else { return nil }
+
+    func searchNode(_ node: CGPDFDictionaryRef) -> Data? {
+        var namesArray: CGPDFArrayRef? = nil
+        if CGPDFDictionaryGetArray(node, "Names", &namesArray), let array = namesArray {
+            let count = CGPDFArrayGetCount(array)
+            for i in stride(from: 0, to: count, by: 2) {
+                var nameStr: CGPDFStringRef? = nil
+                if CGPDFArrayGetString(array, i, &nameStr), let str = nameStr, let ptr = CGPDFStringGetBytePtr(str) {
+                    let name = String(cString: ptr)
+                    if name == "evidence.luku" {
+                        var specDict: CGPDFDictionaryRef? = nil
+                        if CGPDFArrayGetDictionary(array, i + 1, &specDict), let spec = specDict {
+                            var efDict: CGPDFDictionaryRef? = nil
+                            if CGPDFDictionaryGetDictionary(spec, "EF", &efDict), let ef = efDict {
+                                var stream: CGPDFStreamRef? = nil
+                                if CGPDFDictionaryGetStream(ef, "F", &stream), let s = stream {
+                                    var format: CGPDFDataFormat = .raw
+                                    if let data = CGPDFStreamCopyData(s, &format) {
+                                        return data as Data
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        var kidsArray: CGPDFArrayRef? = nil
+        if CGPDFDictionaryGetArray(node, "Kids", &kidsArray), let kids = kidsArray {
+            let count = CGPDFArrayGetCount(kids)
+            for i in 0..<count {
+                var kidDict: CGPDFDictionaryRef? = nil
+                if CGPDFArrayGetDictionary(kids, i, &kidDict), let kid = kidDict {
+                    if let result = searchNode(kid) {
+                        return result
+                    }
+                }
+            }
+        }
+        return nil
+    }
+
+    return searchNode(embeddedFiles)
+}
+#else
+private func extractPDFEvidence(from pdfData: Data) -> Data? {
+    return nil
+}
+#endif

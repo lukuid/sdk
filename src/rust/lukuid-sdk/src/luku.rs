@@ -167,11 +167,48 @@ impl LukuFile {
     }
 
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, String> {
-        let file = File::open(&path).map_err(|e| e.to_string())?;
+        let mut file = File::open(&path).map_err(|e| e.to_string())?;
+        
+        let mut magic = [0u8; 5];
+        if file.read_exact(&mut magic).is_ok() {
+            if &magic == b"%PDF-" {
+                let mut data = Vec::new();
+                std::io::copy(&mut file, &mut data).map_err(|e| e.to_string())?;
+                let mut full_data = magic.to_vec();
+                full_data.extend(data);
+                return Self::open_bytes(&full_data);
+            }
+        }
+        
+        // Reset file pointer and pass to open_reader
+        use std::io::Seek;
+        file.seek(std::io::SeekFrom::Start(0)).map_err(|e| e.to_string())?;
         Self::open_reader(file, Some(path.as_ref().to_path_buf()))
     }
 
     pub fn open_bytes(data: &[u8]) -> Result<Self, String> {
+        if data.starts_with(b"%PDF-") {
+            let doc = lopdf::Document::load_mem(data).map_err(|e| format!("Failed to load PDF: {}", e))?;
+            
+            // 1. Get the Catalog (Root)
+            if let Ok(catalog) = doc.catalog() {
+                // 2. Get the Names dictionary from the Catalog
+                if let Ok(names_obj) = catalog.get(b"Names") {
+                    if let Ok(names_dict) = doc.get_object(names_obj.as_reference().map_err(|e| e.to_string())?).and_then(|o| o.as_dict()) {
+                        // 3. Get the EmbeddedFiles name tree
+                        if let Ok(embedded_files_obj) = names_dict.get(b"EmbeddedFiles") {
+                            let tree_node = doc.get_object(embedded_files_obj.as_reference().map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+                            
+                            // 4. Traverse the Name Tree
+                            if let Some(content) = find_evidence_in_tree(&doc, &tree_node) {
+                                return Self::open_reader(Cursor::new(content), None);
+                            }
+                        }
+                    }
+                }
+            }
+            return Err("PDF does not contain an embedded 'evidence.luku' file".to_string());
+        }
         Self::open_reader(Cursor::new(data), None)
     }
 
@@ -2965,6 +3002,44 @@ impl LukuFile {
         zip.finish().map_err(|e| e.to_string())?;
         Ok(())
     }
+}
+
+fn find_evidence_in_tree(doc: &lopdf::Document, node: &lopdf::Object) -> Option<Vec<u8>> {
+    let dict = node.as_dict().ok()?;
+
+    if let Ok(names_array) = dict.get(b"Names") {
+        let array = names_array.as_array().ok()?;
+        for i in (0..array.len()).step_by(2) {
+            if let Ok(name_bytes) = array[i].as_str() {
+                if name_bytes == b"evidence.luku" {
+                    let file_spec_ref = array[i + 1].as_reference().ok()?;
+                    if let Ok(spec) = doc.get_object(file_spec_ref).and_then(|o| o.as_dict()) {
+                        if let Ok(ef_obj) = spec.get(b"EF") {
+                            if let Ok(ef_dict) = doc.get_object(ef_obj.as_reference().ok()?).and_then(|o| o.as_dict()) {
+                                if let Ok(stream_obj) = ef_dict.get(b"F") {
+                                    if let Ok(stream) = doc.get_object(stream_obj.as_reference().ok()?).and_then(|o| o.as_stream()) {
+                                        return stream.decompressed_content().ok();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else if let Ok(kids_array) = dict.get(b"Kids") {
+        if let Ok(kids) = kids_array.as_array() {
+            for kid_ref in kids {
+                if let Ok(kid_node) = doc.get_object(kid_ref.as_reference().ok()?) {
+                    if let Some(content) = find_evidence_in_tree(doc, &kid_node) {
+                        return Some(content);
+                    }
+                }
+            }
+        }
+    }
+
+    None
 }
 
 fn is_safe_zip_entry_name(name: &str) -> bool {

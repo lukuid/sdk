@@ -23,6 +23,7 @@ import java.util.LinkedHashMap
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
+import com.tom_roush.pdfbox.pdmodel.PDDocument
 
 const val LUKU_MIMETYPE: String = "application/vnd.lukuid.package+zip"
 private val SUPPORTED_ARCHIVE_VERSIONS = setOf("1.0.0", "1.0")
@@ -566,9 +567,34 @@ class LukuArchive private constructor(
         fun open(file: File): LukuArchive = open(FileInputStream(file).use { it.readBytes() })
 
         fun open(data: ByteArray): LukuArchive {
+            var archiveData = data
+            if (data.size > 5 && data.copyOfRange(0, 5).contentEquals("%PDF-".toByteArray(StandardCharsets.US_ASCII))) {
+                try {
+                    PDDocument.load(data).use { doc ->
+                        val embeddedFiles = doc.documentCatalog?.names?.embeddedFiles
+                        if (embeddedFiles != null) {
+                            val namesMap = embeddedFiles.names
+                            if (namesMap != null) {
+                                for ((name, fileSpec) in namesMap) {
+                                    if (name == "evidence.luku") {
+                                        val stream = fileSpec.embeddedFile
+                                        if (stream != null) {
+                                            archiveData = stream.toByteArray()
+                                            break
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Ignore and fallback to raw data
+                }
+            }
+
             val files = linkedMapOf<String, ByteArray>()
             val seenNames = linkedSetOf<String>()
-            ZipInputStream(ByteArrayInputStream(data)).use { zip ->
+            ZipInputStream(ByteArrayInputStream(archiveData)).use { zip ->
                 var entry = zip.nextEntry
                 while (entry != null) {
                     validateZipEntryName(entry.name)

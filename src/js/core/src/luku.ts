@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
+import { PDFDocument, PDFName, PDFDict, PDFArray, PDFRawStream, decodePDFRawStream } from 'pdf-lib';
 import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js';
 import {
   verifyDeviceAttestation,
@@ -461,6 +462,53 @@ export class LukuFile {
   }
 
   static async openBytes(data: Uint8Array): Promise<LukuFile> {
+    if (data.length > 5 && new TextDecoder().decode(data.slice(0, 5)) === '%PDF-') {
+      try {
+        const doc = await PDFDocument.load(data);
+        const catalog = doc.catalog;
+        const names = catalog.get(PDFName.of('Names'));
+        if (names instanceof PDFDict) {
+          const embeddedFiles = names.get(PDFName.of('EmbeddedFiles'));
+          if (embeddedFiles instanceof PDFDict) {
+            const traverseTree = (node: PDFDict): Uint8Array | null => {
+              const namesArray = node.get(PDFName.of('Names'));
+              if (namesArray instanceof PDFArray) {
+                for (let i = 0; i < namesArray.size(); i += 2) {
+                  const spec = namesArray.lookup(i + 1);
+                  if (spec instanceof PDFDict) {
+                    const ef = spec.lookup(PDFName.of('EF'));
+                    if (ef instanceof PDFDict) {
+                      const f = ef.lookup(PDFName.of('F'));
+                      if (f instanceof PDFRawStream) {
+                        return decodePDFRawStream(f).decode();
+                      }
+                    }
+                  }
+                }
+              }
+              const kidsArray = node.get(PDFName.of('Kids'));
+              if (kidsArray instanceof PDFArray) {
+                for (let i = 0; i < kidsArray.size(); i++) {
+                  const kid = kidsArray.lookup(i);
+                  if (kid instanceof PDFDict) {
+                    const result = traverseTree(kid);
+                    if (result) return result;
+                  }
+                }
+              }
+              return null;
+            };
+            const extracted = traverseTree(embeddedFiles);
+            if (extracted) {
+              data = extracted;
+            }
+          }
+        }
+      } catch (e) {
+        // Fallback to raw data parsing if PDF extraction fails
+      }
+    }
+
     let archiveEntries: Record<string, Uint8Array>;
     try {
       archiveEntries = unzipSync(data);
