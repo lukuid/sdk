@@ -782,6 +782,48 @@ class LukuFile:
 
     @staticmethod
     def open_bytes(data: bytes) -> LukuArchive:
+        if data.startswith(b"%PDF-"):
+            try:
+                from pypdf import PdfReader
+                reader = PdfReader(io.BytesIO(data))
+                
+                # Check for evidence.luku in attachments
+                attachments = reader.attachments
+                if "evidence.luku" in attachments:
+                    data = attachments["evidence.luku"][0]
+                else:
+                    # Alternative: search embedded files via names dictionary
+                    catalog = reader.trailer.get("/Root", {})
+                    names = catalog.get("/Names", {})
+                    embedded_files = names.get("/EmbeddedFiles", {})
+                    
+                    def find_in_tree(node):
+                        if "/Names" in node:
+                            names_list = node["/Names"]
+                            for i in range(0, len(names_list), 2):
+                                if names_list[i] == "evidence.luku":
+                                    file_spec = names_list[i+1].get_object()
+                                    ef = file_spec.get("/EF", {})
+                                    f = ef.get("/F", {}).get_object()
+                                    return f.get_data()
+                        elif "/Kids" in node:
+                            for kid in node["/Kids"]:
+                                result = find_in_tree(kid.get_object())
+                                if result:
+                                    return result
+                        return None
+                    
+                    extracted = find_in_tree(embedded_files)
+                    if extracted:
+                        data = extracted
+                    else:
+                        raise ValueError("PDF does not contain an embedded 'evidence.luku' file")
+            except Exception as exc:
+                if isinstance(exc, ValueError):
+                    raise
+                # Fallback to direct ZIP parsing if PDF parsing fails
+                pass
+
         try:
             archive = zipfile.ZipFile(io.BytesIO(data), "r")
         except Exception as exc:
