@@ -710,6 +710,14 @@ impl LukuFile {
         let public_key = public_key_opt.unwrap_or("");
         let vendor = vendor_opt.map(String::from);
 
+        if vendor.is_none() {
+            issues.push(VerificationIssue {
+                code: "DEVICE_VENDOR_MISSING".to_string(),
+                message: format!("Device vendor is missing for device {}.", device_id),
+                criticality: Criticality::Critical,
+            });
+        }
+
         let r#type = envelope
             .get("type")
             .and_then(|v| v.as_str())
@@ -1617,6 +1625,19 @@ impl LukuFile {
                     .and_then(|v| v.as_str())
                     .map(String::from)
                     .or_else(|| block.device.vendor.clone());
+
+                if vendor.is_none() {
+                    Self::push_issue(
+                        &mut issues,
+                        debug_logging,
+                        Some("record"),
+                        VerificationIssue {
+                            code: "DEVICE_VENDOR_MISSING".to_string(),
+                            message: format!("Device vendor is missing for device {} at block {}.", device_id, index),
+                            criticality: Criticality::Critical,
+                        },
+                    );
+                }
                 let r#type = record
                     .get("type")
                     .and_then(|v| v.as_str())

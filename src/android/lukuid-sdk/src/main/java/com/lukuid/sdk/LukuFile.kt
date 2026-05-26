@@ -136,7 +136,11 @@ object LukuFile {
         val device = envelope.optJSONObject("device")
         val deviceId = envelope.optString("device_id").takeIf { it.isNotEmpty() } ?: device?.optString("device_id") ?: ""
         val publicKey = envelope.optString("public_key").takeIf { it.isNotEmpty() } ?: device?.optString("public_key") ?: ""
-        val vendor = envelope.optString("vendor").takeIf { it.isNotEmpty() } ?: device?.optString("vendor")
+        val vendor = envelope.optString("vendor").takeIf { it.isNotBlank() } ?: device?.optString("vendor")?.takeIf { it.isNotBlank() }
+
+        if (vendor == null) {
+            issues.add(VerificationIssue("DEVICE_VENDOR_MISSING", "Device vendor is missing for device $deviceId.", Criticality.CRITICAL))
+        }
         val signature = envelope.optString("signature", "")
         val canonicalStringValue = envelope.optString("canonical_string", "")
         

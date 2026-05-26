@@ -584,6 +584,10 @@ export class LukuFile {
     const publicKey = asString(envelope.public_key) ?? asString(device?.public_key);
     const vendor = asString(envelope.vendor) ?? asString(device?.vendor);
     const signature = asString(envelope.signature) ?? '';
+
+    if (!vendor) {
+      issues.push(issue('DEVICE_VENDOR_MISSING', `Device vendor is missing for device ${deviceId ?? 'unknown'}.`, 'critical'));
+    }
     const canonicalStringValue = asString(envelope.canonical_string) ?? '';
     const timestamp = recordTimestampUtc(envelope);
     const counter = recordCounter(envelope);
@@ -1201,6 +1205,10 @@ export class LukuFile {
         const publicKey = asString(record.public_key) ?? block.device.public_key;
         const vendor = asString(record.vendor) ?? block.device.vendor;
         const signature = asString(record.signature) ?? '';
+
+        if (!vendor) {
+          issues.push(issue('DEVICE_VENDOR_MISSING', `Device vendor is missing for device ${deviceId} at block ${block.block_id}.`, 'critical'));
+        }
         const previousSignature = asString(record.previous_signature) ?? '';
         const canonicalStringValue = asString(record.canonical_string) ?? '';
         const timestamp = asNumber(payload?.timestamp_utc) ?? asNumber(record.timestamp_utc);

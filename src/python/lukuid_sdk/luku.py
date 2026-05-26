@@ -392,6 +392,9 @@ class LukuArchive:
                 public_key = str(record.get("public_key") or block.device.public_key)
                 vendor_val = record.get("vendor")
                 vendor = str(vendor_val) if vendor_val else block.device.vendor
+
+                if not vendor:
+                    issues.append(_issue("DEVICE_VENDOR_MISSING", f"Device vendor is missing for device {device_id} at block {block_index}.", Criticality.CRITICAL))
                 signature = str(record.get("signature", ""))
                 previous_signature = str(record.get("previous_signature", ""))
                 canonical_string = str(record.get("canonical_string", ""))
@@ -613,6 +616,9 @@ class LukuFile:
         public_key = str(envelope.get("public_key") or device.get("public_key") or "")
         vendor_val = envelope.get("vendor") or device.get("vendor")
         vendor = str(vendor_val) if vendor_val else None
+
+        if not vendor:
+            issues.append(_issue("DEVICE_VENDOR_MISSING", f"Device vendor is missing for device {device_id}.", Criticality.CRITICAL))
         signature = str(envelope.get("signature", ""))
         canonical_string = str(envelope.get("canonical_string", ""))
         timestamp = _uint64(payload.get("timestamp_utc")) or _uint64(envelope.get("timestamp_utc"))

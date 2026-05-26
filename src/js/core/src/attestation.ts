@@ -31,6 +31,7 @@ export interface CertificateChainValidationResult {
   ok: boolean;
   reason?: string;
   certSpkis?: Uint8Array[];
+  leafVendor?: string;
 }
 
 export interface ExternalIdentityInputs {
@@ -210,6 +211,7 @@ interface ParsedCertificate {
   tbsDer: Uint8Array;
   signatureAlgorithmOid: string;
   signatureBits: Uint8Array;
+  subjectOrganization?: string;
   subjectOrganizationalUnits: string[];
   validFrom: number;
   validTo: number;
@@ -329,7 +331,8 @@ function parseDerTime(bytes: Uint8Array, tag: number): number {
   throw new Error(`Unsupported time tag 0x${tag.toString(16)}`);
 }
 
-function parseSubjectOrganizationalUnits(bytes: Uint8Array, nameElement: DerElement): string[] {
+function parseSubjectAttributes(bytes: Uint8Array, nameElement: DerElement): { organization?: string; organizationalUnits: string[] } {
+  let organization: string | undefined;
   const organizationalUnits: string[] = [];
   let cursor = nameElement.contentStart;
 
@@ -339,18 +342,23 @@ function parseSubjectOrganizationalUnits(bytes: Uint8Array, nameElement: DerElem
     while (setCursor < setElement.contentEnd) {
       const attribute = readDerElement(bytes, setCursor);
       let attrCursor = attribute.contentStart;
-      const oid = readDerElement(bytes, attrCursor);
-      attrCursor = oid.end;
+      const oidElement = readDerElement(bytes, attrCursor);
+      const oid = decodeDerOid(bytes.slice(oidElement.contentStart, oidElement.contentEnd));
+      attrCursor = oidElement.end;
       const value = readDerElement(bytes, attrCursor);
-      if (decodeDerOid(bytes.slice(oid.contentStart, oid.contentEnd)) === '2.5.4.11') {
-        organizationalUnits.push(decodeDerString(bytes.slice(value.contentStart, value.contentEnd)));
+      const valueString = decodeDerString(bytes.slice(value.contentStart, value.contentEnd));
+      
+      if (oid === '2.5.4.10') {
+        organization = valueString;
+      } else if (oid === '2.5.4.11') {
+        organizationalUnits.push(valueString);
       }
       setCursor = attribute.end;
     }
     cursor = setElement.end;
   }
 
-  return organizationalUnits;
+  return { organization, organizationalUnits };
 }
 
 function parseDerCertificate(certDer: Uint8Array): ParsedCertificate {
@@ -373,7 +381,7 @@ function parseDerCertificate(certDer: Uint8Array): ParsedCertificate {
   let cursor = tbsCertificate.contentStart;
   let elementIndex = 0;
 
-  if (cursor < tbsCertificate.contentEnd) {
+  if (cursor < tbsCertificate.contentStart + tbsCertificate.headerLength + 10) { // version is optional and at the start
     const maybeVersion = readDerElement(certDer, cursor);
     if (maybeVersion.tag === 0xa0) {
       cursor = maybeVersion.end;
@@ -387,12 +395,14 @@ function parseDerCertificate(certDer: Uint8Array): ParsedCertificate {
       const notAfter = readDerElement(certDer, notBefore.end);
       const subject = readDerElement(certDer, element.end);
       const spki = readDerElement(certDer, subject.end);
+      const attrs = parseSubjectAttributes(certDer, subject);
       return {
         certDer,
         tbsDer: certDer.slice(tbsCertificate.start, tbsCertificate.end),
         signatureAlgorithmOid,
         signatureBits,
-        subjectOrganizationalUnits: parseSubjectOrganizationalUnits(certDer, subject),
+        subjectOrganization: attrs.organization,
+        subjectOrganizationalUnits: attrs.organizationalUnits,
         validFrom: parseDerTime(certDer.slice(notBefore.contentStart, notBefore.contentEnd), notBefore.tag),
         validTo: parseDerTime(certDer.slice(notAfter.contentStart, notAfter.contentEnd), notAfter.tag),
         spkiDer: certDer.slice(spki.start, spki.end)
@@ -504,17 +514,11 @@ export async function verifyDeviceAttestation(
     leafSpki = chainResult.certSpkis?.[0] ?? null;
 
     if (inputs.vendor) {
-      const pems = inputs.certificateChain.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [];
-      if (pems.length > 0) {
-        try {
-          const cert = forge.pki.certificateFromPem(pems[0] as string) as any;
-          const orgAttr = cert.subject.attributes.find((a: any) => a.name === 'organizationName' || a.shortName === 'O');
-          if (!orgAttr || orgAttr.value !== inputs.vendor) {
-            return { ok: false, reason: `Certificate does not contain expected vendor ${inputs.vendor}` };
-          }
-        } catch {
-          // ignore parsing error here and let signature fail later if broken
-        }
+      if (!chainResult.leafVendor) {
+        return { ok: false, reason: 'Certificate does not contain a vendor organization' };
+      }
+      if (chainResult.leafVendor !== inputs.vendor) {
+        return { ok: false, reason: `Vendor mismatch: expected ${inputs.vendor}, got ${chainResult.leafVendor}` };
       }
     }
   }
@@ -742,7 +746,10 @@ export async function validateCertificateChain(
         }
       }
 
-      return { ok: true, certSpkis };
+      const leafSubject = certs[0].subject;
+      const vendorMatch = /O=([^,]+)/.exec(leafSubject);
+
+      return { ok: true, certSpkis, leafVendor: vendorMatch ? vendorMatch[1] : undefined };
     }
 
     const certs = parsePemChain(inputs.certificateChain);
@@ -811,7 +818,11 @@ export async function validateCertificateChain(
       }
     }
 
-    return { ok: true, certSpkis: certs.map((cert) => cert.spkiDer) };
+    return { 
+      ok: true, 
+      certSpkis: certs.map((cert) => cert.spkiDer),
+      leafVendor: certs[0].subjectOrganization
+    };
   } catch (error) {
     return { ok: false, reason: `Chain processing error: ${error instanceof Error ? error.message : String(error)}` };
   }

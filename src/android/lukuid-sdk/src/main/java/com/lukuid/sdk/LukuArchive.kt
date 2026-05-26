@@ -334,7 +334,12 @@ class LukuArchive private constructor(
                 val payload = record.optJSONObject("payload")
                 val deviceId = record.optString("device_id").ifBlank { block.device.deviceId }
                 val publicKey = record.optString("public_key").ifBlank { block.device.publicKey }
-                val vendor = record.optString("vendor").ifBlank { block.device.vendor }
+                val vendor = record.optString("vendor").ifBlank { block.device.vendor }.ifBlank { null }
+                
+                if (vendor == null) {
+                    issues.add(VerificationIssue("DEVICE_VENDOR_MISSING", "Device vendor is missing for device $deviceId at block ${block.blockId}.", Criticality.CRITICAL))
+                }
+                
                 val signature = record.optString("signature")
                 val previousSignature = record.optString("previous_signature")
                 val canonicalString = record.optString("canonical_string")
