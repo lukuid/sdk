@@ -674,9 +674,7 @@ export class LukuidSdk {
     this.emitter.emit('device', { kind: 'added', device });
     this.log('debug', 'Device added without deep validation', {
       transport: transport.name,
-      transportId: candidate.transportId,
-      deviceId: device.info.id,
-      verified: device.info.verified
+      transportId: candidate.transportId
     });
     return device;
   }
