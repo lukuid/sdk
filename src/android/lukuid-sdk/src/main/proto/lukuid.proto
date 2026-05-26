@@ -146,6 +146,14 @@ message SetHeartbeatRequest {
   bytes intermediate_der = 5;
 }
 
+message SetConfigureRequest {
+  bytes config_der = 1;
+  bytes signature = 2;
+  bytes certificate_der = 3;
+  bytes intermediate_der = 4;
+  uint64 counter = 5;
+}
+
 message ScanEnableRequest {
   bool enabled = 1;
 }
@@ -228,6 +236,7 @@ message CommandRequest {
     OtaEndRequest ota_data_v2 = 8; // Restoring original if 8 was used differently, but let's stick to sequence
     SetAttestationRequest set_attestation = 9;
     SetHeartbeatRequest set_heartbeat = 10;
+    SetConfigureRequest configure = 17;
     ScanEnableRequest scan_enable = 12;
     GenerateHeartbeatRequest generate_heartbeat = 13;
     FetchTelemetryRequest fetch_telemetry = 14;

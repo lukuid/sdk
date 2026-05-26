@@ -210,7 +210,7 @@ fn encode_command_request(input: &Value) -> Option<Vec<u8>> {
             }
             write_message(&mut out, 4, &nested);
         }
-        "config" | "configure" => {
+        "config" => {
             if let Some(v) = source.get("name").and_then(Value::as_str) {
                 write_string(&mut nested, 1, v);
             }
@@ -287,6 +287,24 @@ fn encode_command_request(input: &Value) -> Option<Vec<u8>> {
                 write_u32(&mut nested, 24, v);
             }
             write_message(&mut out, 5, &nested);
+        }
+        "configure" => {
+            if let Some(v) = source.get("config_der").and_then(as_bytes) {
+                write_bytes(&mut nested, 1, &v);
+            }
+            if let Some(v) = source.get("signature").and_then(as_bytes) {
+                write_bytes(&mut nested, 2, &v);
+            }
+            if let Some(v) = source.get("certificate_der").and_then(as_bytes) {
+                write_bytes(&mut nested, 3, &v);
+            }
+            if let Some(v) = source.get("intermediate_der").and_then(as_bytes) {
+                write_bytes(&mut nested, 4, &v);
+            }
+            if let Some(v) = as_u64(source.get("counter")) {
+                write_u64(&mut nested, 5, v);
+            }
+            write_message(&mut out, 17, &nested);
         }
         "ota_begin" => {
             if let Some(v) = as_u32(source.get("size")) {

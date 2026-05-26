@@ -534,7 +534,7 @@ internal class LukuCodec(
                     asString("context_ref")?.let { attest.contextRef = it }
                     builder.attest = attest.build()
                 }
-                "config", "configure" -> {
+                "config" -> {
                     val config = LukuIDProto.ConfigRequest.newBuilder()
                     asString("name")?.let { config.name = it }
                     asString("wifi_ssid")?.let { config.wifiSsid = it }
@@ -561,6 +561,15 @@ internal class LukuCodec(
                     asBytes("upload_ca_der")?.let { config.uploadCaDer = it }
                     asInt("upload_frequency")?.let { config.uploadFrequency = it }
                     builder.config = config.build()
+                }
+                "configure" -> {
+                    val configure = LukuIDProto.SetConfigureRequest.newBuilder()
+                    asBytes("config_der")?.let { configure.configDer = it }
+                    asBytes("signature")?.let { configure.signature = it }
+                    asBytes("certificate_der")?.let { configure.certificateDer = it }
+                    asBytes("intermediate_der")?.let { configure.intermediateDer = it }
+                    asLong("counter")?.let { configure.counter = it }
+                    builder.configure = configure.build()
                 }
                 "ota_begin" -> {
                     val ota = LukuIDProto.OtaBeginRequest.newBuilder()

@@ -314,7 +314,7 @@ struct LukuIDGetRecordRequest: Sendable {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var recordID: String = String()
+  var id: String = String()
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -326,7 +326,7 @@ struct LukuIDAttestRequest: Sendable {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var parentRecordID: String = String()
+  var parentID: String = String()
 
   var signature: Data = Data()
 
@@ -346,7 +346,7 @@ struct LukuIDAttestRequest: Sendable {
 
   var merkleRoot: String = String()
 
-  var custodyID: String = String()
+  var id: String = String()
 
   var event: String = String()
 
@@ -656,6 +656,26 @@ struct LukuIDSetHeartbeatRequest: Sendable {
   var timestamp: Int64 = 0
 
   var intermediateDer: Data = Data()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+struct LukuIDSetConfigureRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var configDer: Data = Data()
+
+  var signature: Data = Data()
+
+  var certificateDer: Data = Data()
+
+  var intermediateDer: Data = Data()
+
+  var counter: UInt64 = 0
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1021,6 +1041,14 @@ struct LukuIDCommandRequest: Sendable {
     set {payload = .setHeartbeat(newValue)}
   }
 
+  var configure: LukuIDSetConfigureRequest {
+    get {
+      if case .configure(let v)? = payload {return v}
+      return LukuIDSetConfigureRequest()
+    }
+    set {payload = .configure(newValue)}
+  }
+
   var scanEnable: LukuIDScanEnableRequest {
     get {
       if case .scanEnable(let v)? = payload {return v}
@@ -1074,6 +1102,7 @@ struct LukuIDCommandRequest: Sendable {
     case otaDataV2(LukuIDOtaEndRequest)
     case setAttestation(LukuIDSetAttestationRequest)
     case setHeartbeat(LukuIDSetHeartbeatRequest)
+    case configure(LukuIDSetConfigureRequest)
     case scanEnable(LukuIDScanEnableRequest)
     case generateHeartbeat(LukuIDGenerateHeartbeatRequest)
     case fetchTelemetry(LukuIDFetchTelemetryRequest)
@@ -1393,7 +1422,7 @@ struct LukuIDRecordMeta: Sendable {
 
   var deviceID: UInt32 = 0
 
-  var recordID: String = String()
+  var id: String = String()
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1407,7 +1436,7 @@ struct LukuIDScanRecordMin: Sendable {
 
   var version: String = String()
 
-  var recordID: String = String()
+  var id: String = String()
 
   var timestampUtc: Int64 = 0
 
@@ -1434,9 +1463,9 @@ struct LukuIDEnvironmentRecordMin: @unchecked Sendable {
     set {_uniqueStorage()._version = newValue}
   }
 
-  var recordID: String {
-    get {_storage._recordID}
-    set {_uniqueStorage()._recordID = newValue}
+  var id: String {
+    get {_storage._id}
+    set {_uniqueStorage()._id = newValue}
   }
 
   var timestampUtc: Int64 {
@@ -1878,14 +1907,14 @@ struct LukuIDAttachmentRecord: @unchecked Sendable {
     set {_uniqueStorage()._version = newValue}
   }
 
-  var attachmentID: String {
-    get {_storage._attachmentID}
-    set {_uniqueStorage()._attachmentID = newValue}
+  var id: String {
+    get {_storage._id}
+    set {_uniqueStorage()._id = newValue}
   }
 
-  var parentRecordID: String {
-    get {_storage._parentRecordID}
-    set {_uniqueStorage()._parentRecordID = newValue}
+  var parentID: String {
+    get {_storage._parentID}
+    set {_uniqueStorage()._parentID = newValue}
   }
 
   var signature: Data {
@@ -1957,11 +1986,6 @@ struct LukuIDAttachmentRecord: @unchecked Sendable {
   /// Clears the value of `externalIdentity`. Subsequent reads from it will return its default value.
   mutating func clearExternalIdentity() {_uniqueStorage()._externalIdentity = nil}
 
-  var custodyID: String {
-    get {_storage._custodyID}
-    set {_uniqueStorage()._custodyID = newValue}
-  }
-
   var event: String {
     get {_storage._event}
     set {_uniqueStorage()._event = newValue}
@@ -1999,9 +2023,9 @@ struct LukuIDScanRecord: @unchecked Sendable {
     set {_uniqueStorage()._version = newValue}
   }
 
-  var scanID: String {
-    get {_storage._scanID}
-    set {_uniqueStorage()._scanID = newValue}
+  var id: String {
+    get {_storage._id}
+    set {_uniqueStorage()._id = newValue}
   }
 
   var signature: Data {
@@ -2223,9 +2247,9 @@ struct LukuIDEnvironmentRecord: @unchecked Sendable {
     set {_uniqueStorage()._version = newValue}
   }
 
-  var eventID: String {
-    get {_storage._eventID}
-    set {_uniqueStorage()._eventID = newValue}
+  var id: String {
+    get {_storage._id}
+    set {_uniqueStorage()._id = newValue}
   }
 
   var signature: Data {
@@ -2347,7 +2371,7 @@ struct LukuIDFullRecordResponse: Sendable {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var recordID: String = String()
+  var id: String = String()
 
   var fullRecord: LukuIDFullRecordResponse.OneOf_FullRecord? = nil
 
@@ -2794,7 +2818,7 @@ extension LukuIDFetchRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
 
 extension LukuIDGetRecordRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".GetRecordRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}record_id\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2802,21 +2826,21 @@ extension LukuIDGetRecordRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       // allocates stack space for every case branch when no optimizations are
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.recordID) }()
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
       default: break
       }
     }
   }
 
   func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.recordID.isEmpty {
-      try visitor.visitSingularStringField(value: self.recordID, fieldNumber: 1)
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   static func ==(lhs: LukuIDGetRecordRequest, rhs: LukuIDGetRecordRequest) -> Bool {
-    if lhs.recordID != rhs.recordID {return false}
+    if lhs.id != rhs.id {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2824,7 +2848,7 @@ extension LukuIDGetRecordRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension LukuIDAttestRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".AttestRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}parent_record_id\0\u{1}signature\0\u{1}checksum\0\u{2}\u{2}mime\0\u{1}type\0\u{1}title\0\u{1}lat\0\u{1}lng\0\u{1}content\0\u{3}merkle_root\0\u{3}custody_id\0\u{1}event\0\u{1}status\0\u{3}context_ref\0\u{c}\u{4}\u{1}")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}parent_id\0\u{1}signature\0\u{1}checksum\0\u{2}\u{2}mime\0\u{1}type\0\u{1}title\0\u{1}lat\0\u{1}lng\0\u{1}content\0\u{3}merkle_root\0\u{1}id\0\u{1}event\0\u{1}status\0\u{3}context_ref\0\u{c}\u{4}\u{1}")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2832,7 +2856,7 @@ extension LukuIDAttestRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       // allocates stack space for every case branch when no optimizations are
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.parentRecordID) }()
+      case 1: try { try decoder.decodeSingularStringField(value: &self.parentID) }()
       case 2: try { try decoder.decodeSingularBytesField(value: &self.signature) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.checksum) }()
       case 5: try { try decoder.decodeSingularStringField(value: &self.mime) }()
@@ -2842,7 +2866,7 @@ extension LukuIDAttestRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       case 9: try { try decoder.decodeSingularDoubleField(value: &self.lng) }()
       case 10: try { try decoder.decodeSingularStringField(value: &self.content) }()
       case 11: try { try decoder.decodeSingularStringField(value: &self.merkleRoot) }()
-      case 12: try { try decoder.decodeSingularStringField(value: &self.custodyID) }()
+      case 12: try { try decoder.decodeSingularStringField(value: &self.id) }()
       case 13: try { try decoder.decodeSingularStringField(value: &self.event) }()
       case 14: try { try decoder.decodeSingularStringField(value: &self.status) }()
       case 15: try { try decoder.decodeSingularStringField(value: &self.contextRef) }()
@@ -2852,8 +2876,8 @@ extension LukuIDAttestRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
   }
 
   func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.parentRecordID.isEmpty {
-      try visitor.visitSingularStringField(value: self.parentRecordID, fieldNumber: 1)
+    if !self.parentID.isEmpty {
+      try visitor.visitSingularStringField(value: self.parentID, fieldNumber: 1)
     }
     if !self.signature.isEmpty {
       try visitor.visitSingularBytesField(value: self.signature, fieldNumber: 2)
@@ -2882,8 +2906,8 @@ extension LukuIDAttestRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     if !self.merkleRoot.isEmpty {
       try visitor.visitSingularStringField(value: self.merkleRoot, fieldNumber: 11)
     }
-    if !self.custodyID.isEmpty {
-      try visitor.visitSingularStringField(value: self.custodyID, fieldNumber: 12)
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 12)
     }
     if !self.event.isEmpty {
       try visitor.visitSingularStringField(value: self.event, fieldNumber: 13)
@@ -2898,7 +2922,7 @@ extension LukuIDAttestRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
   }
 
   static func ==(lhs: LukuIDAttestRequest, rhs: LukuIDAttestRequest) -> Bool {
-    if lhs.parentRecordID != rhs.parentRecordID {return false}
+    if lhs.parentID != rhs.parentID {return false}
     if lhs.signature != rhs.signature {return false}
     if lhs.checksum != rhs.checksum {return false}
     if lhs.mime != rhs.mime {return false}
@@ -2908,7 +2932,7 @@ extension LukuIDAttestRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     if lhs.lng != rhs.lng {return false}
     if lhs.content != rhs.content {return false}
     if lhs.merkleRoot != rhs.merkleRoot {return false}
-    if lhs.custodyID != rhs.custodyID {return false}
+    if lhs.id != rhs.id {return false}
     if lhs.event != rhs.event {return false}
     if lhs.status != rhs.status {return false}
     if lhs.contextRef != rhs.contextRef {return false}
@@ -3346,6 +3370,56 @@ extension LukuIDSetHeartbeatRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if lhs.signature != rhs.signature {return false}
     if lhs.timestamp != rhs.timestamp {return false}
     if lhs.intermediateDer != rhs.intermediateDer {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension LukuIDSetConfigureRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".SetConfigureRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}config_der\0\u{1}signature\0\u{3}certificate_der\0\u{3}intermediate_der\0\u{1}counter\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBytesField(value: &self.configDer) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.signature) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.certificateDer) }()
+      case 4: try { try decoder.decodeSingularBytesField(value: &self.intermediateDer) }()
+      case 5: try { try decoder.decodeSingularUInt64Field(value: &self.counter) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.configDer.isEmpty {
+      try visitor.visitSingularBytesField(value: self.configDer, fieldNumber: 1)
+    }
+    if !self.signature.isEmpty {
+      try visitor.visitSingularBytesField(value: self.signature, fieldNumber: 2)
+    }
+    if !self.certificateDer.isEmpty {
+      try visitor.visitSingularBytesField(value: self.certificateDer, fieldNumber: 3)
+    }
+    if !self.intermediateDer.isEmpty {
+      try visitor.visitSingularBytesField(value: self.intermediateDer, fieldNumber: 4)
+    }
+    if self.counter != 0 {
+      try visitor.visitSingularUInt64Field(value: self.counter, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: LukuIDSetConfigureRequest, rhs: LukuIDSetConfigureRequest) -> Bool {
+    if lhs.configDer != rhs.configDer {return false}
+    if lhs.signature != rhs.signature {return false}
+    if lhs.certificateDer != rhs.certificateDer {return false}
+    if lhs.intermediateDer != rhs.intermediateDer {return false}
+    if lhs.counter != rhs.counter {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3863,7 +3937,7 @@ extension LukuIDHistoricalExportResponse: SwiftProtobuf.Message, SwiftProtobuf._
 
 extension LukuIDCommandRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".CommandRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}action\0\u{1}fetch\0\u{1}get\0\u{1}attest\0\u{1}config\0\u{3}ota_begin\0\u{3}ota_data\0\u{3}ota_data_v2\0\u{3}set_attestation\0\u{3}set_heartbeat\0\u{4}\u{2}scan_enable\0\u{3}generate_heartbeat\0\u{3}fetch_telemetry\0\u{3}get_certificate\0\u{3}get_chain\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}action\0\u{1}fetch\0\u{1}get\0\u{1}attest\0\u{1}config\0\u{3}ota_begin\0\u{3}ota_data\0\u{3}ota_data_v2\0\u{3}set_attestation\0\u{3}set_heartbeat\0\u{4}\u{2}scan_enable\0\u{3}generate_heartbeat\0\u{3}fetch_telemetry\0\u{3}get_certificate\0\u{3}get_chain\0\u{1}configure\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4054,6 +4128,19 @@ extension LukuIDCommandRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
           self.payload = .getChain(v)
         }
       }()
+      case 17: try {
+        var v: LukuIDSetConfigureRequest?
+        var hadOneofValue = false
+        if let current = self.payload {
+          hadOneofValue = true
+          if case .configure(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.payload = .configure(v)
+        }
+      }()
       default: break
       }
     }
@@ -4123,6 +4210,10 @@ extension LukuIDCommandRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     case .getChain?: try {
       guard case .getChain(let v)? = self.payload else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 16)
+    }()
+    case .configure?: try {
+      guard case .configure(let v)? = self.payload else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
     }()
     case nil: break
     }
@@ -4675,7 +4766,7 @@ extension LukuIDNetworkConfigResponse: SwiftProtobuf.Message, SwiftProtobuf._Mes
 
 extension LukuIDRecordMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".RecordMeta"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}timestamp_utc\0\u{3}device_id\0\u{3}record_id\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}timestamp_utc\0\u{3}device_id\0\u{1}id\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4685,7 +4776,7 @@ extension LukuIDRecordMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularInt64Field(value: &self.timestampUtc) }()
       case 2: try { try decoder.decodeSingularUInt32Field(value: &self.deviceID) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.recordID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.id) }()
       default: break
       }
     }
@@ -4698,8 +4789,8 @@ extension LukuIDRecordMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     if self.deviceID != 0 {
       try visitor.visitSingularUInt32Field(value: self.deviceID, fieldNumber: 2)
     }
-    if !self.recordID.isEmpty {
-      try visitor.visitSingularStringField(value: self.recordID, fieldNumber: 3)
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 3)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4707,7 +4798,7 @@ extension LukuIDRecordMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
   static func ==(lhs: LukuIDRecordMeta, rhs: LukuIDRecordMeta) -> Bool {
     if lhs.timestampUtc != rhs.timestampUtc {return false}
     if lhs.deviceID != rhs.deviceID {return false}
-    if lhs.recordID != rhs.recordID {return false}
+    if lhs.id != rhs.id {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -4715,7 +4806,7 @@ extension LukuIDRecordMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
 
 extension LukuIDScanRecordMin: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ScanRecordMin"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}version\0\u{3}record_id\0\u{3}timestamp_utc\0\u{3}tag_id\0\u{3}score_bio\0\u{3}score_auth\0\u{3}score_env\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}version\0\u{1}id\0\u{3}timestamp_utc\0\u{3}tag_id\0\u{3}score_bio\0\u{3}score_auth\0\u{3}score_env\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4724,7 +4815,7 @@ extension LukuIDScanRecordMin: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.version) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.recordID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.id) }()
       case 3: try { try decoder.decodeSingularInt64Field(value: &self.timestampUtc) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.tagID) }()
       case 5: try { try decoder.decodeSingularUInt32Field(value: &self.scoreBio) }()
@@ -4739,8 +4830,8 @@ extension LukuIDScanRecordMin: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     if !self.version.isEmpty {
       try visitor.visitSingularStringField(value: self.version, fieldNumber: 1)
     }
-    if !self.recordID.isEmpty {
-      try visitor.visitSingularStringField(value: self.recordID, fieldNumber: 2)
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 2)
     }
     if self.timestampUtc != 0 {
       try visitor.visitSingularInt64Field(value: self.timestampUtc, fieldNumber: 3)
@@ -4762,7 +4853,7 @@ extension LukuIDScanRecordMin: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
   static func ==(lhs: LukuIDScanRecordMin, rhs: LukuIDScanRecordMin) -> Bool {
     if lhs.version != rhs.version {return false}
-    if lhs.recordID != rhs.recordID {return false}
+    if lhs.id != rhs.id {return false}
     if lhs.timestampUtc != rhs.timestampUtc {return false}
     if lhs.tagID != rhs.tagID {return false}
     if lhs.scoreBio != rhs.scoreBio {return false}
@@ -4775,11 +4866,11 @@ extension LukuIDScanRecordMin: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension LukuIDEnvironmentRecordMin: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".EnvironmentRecordMin"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}version\0\u{3}record_id\0\u{3}timestamp_utc\0\u{1}lux\0\u{3}temp_c\0\u{3}humidity_pct\0\u{3}voc_raw\0\u{1}tamper\0\u{3}wake_event\0\u{3}vbus_present\0\u{3}voc_index\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}version\0\u{1}id\0\u{3}timestamp_utc\0\u{1}lux\0\u{3}temp_c\0\u{3}humidity_pct\0\u{3}voc_raw\0\u{1}tamper\0\u{3}wake_event\0\u{3}vbus_present\0\u{3}voc_index\0")
 
   fileprivate class _StorageClass {
     var _version: String = String()
-    var _recordID: String = String()
+    var _id: String = String()
     var _timestampUtc: Int64 = 0
     var _lux: LukuIDMetricValue? = nil
     var _tempC: LukuIDMetricValue? = nil
@@ -4800,7 +4891,7 @@ extension LukuIDEnvironmentRecordMin: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
     init(copying source: _StorageClass) {
       _version = source._version
-      _recordID = source._recordID
+      _id = source._id
       _timestampUtc = source._timestampUtc
       _lux = source._lux
       _tempC = source._tempC
@@ -4829,7 +4920,7 @@ extension LukuIDEnvironmentRecordMin: SwiftProtobuf.Message, SwiftProtobuf._Mess
         // enabled. https://github.com/apple/swift-protobuf/issues/1034
         switch fieldNumber {
         case 1: try { try decoder.decodeSingularStringField(value: &_storage._version) }()
-        case 2: try { try decoder.decodeSingularStringField(value: &_storage._recordID) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._id) }()
         case 3: try { try decoder.decodeSingularInt64Field(value: &_storage._timestampUtc) }()
         case 4: try { try decoder.decodeSingularMessageField(value: &_storage._lux) }()
         case 5: try { try decoder.decodeSingularMessageField(value: &_storage._tempC) }()
@@ -4854,8 +4945,8 @@ extension LukuIDEnvironmentRecordMin: SwiftProtobuf.Message, SwiftProtobuf._Mess
       if !_storage._version.isEmpty {
         try visitor.visitSingularStringField(value: _storage._version, fieldNumber: 1)
       }
-      if !_storage._recordID.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._recordID, fieldNumber: 2)
+      if !_storage._id.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._id, fieldNumber: 2)
       }
       if _storage._timestampUtc != 0 {
         try visitor.visitSingularInt64Field(value: _storage._timestampUtc, fieldNumber: 3)
@@ -4894,7 +4985,7 @@ extension LukuIDEnvironmentRecordMin: SwiftProtobuf.Message, SwiftProtobuf._Mess
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._version != rhs_storage._version {return false}
-        if _storage._recordID != rhs_storage._recordID {return false}
+        if _storage._id != rhs_storage._id {return false}
         if _storage._timestampUtc != rhs_storage._timestampUtc {return false}
         if _storage._lux != rhs_storage._lux {return false}
         if _storage._tempC != rhs_storage._tempC {return false}
@@ -5613,12 +5704,12 @@ extension LukuIDExternalIdentity: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension LukuIDAttachmentRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".AttachmentRecord"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}version\0\u{3}attachment_id\0\u{3}parent_record_id\0\u{1}signature\0\u{3}parent_signature\0\u{1}checksum\0\u{3}timestamp_utc\0\u{1}mime\0\u{1}type\0\u{1}title\0\u{1}lat\0\u{1}lng\0\u{2}\u{2}content\0\u{3}merkle_root\0\u{1}alg\0\u{3}external_identity\0\u{3}custody_id\0\u{1}event\0\u{3}canonical_string\0\u{1}status\0\u{3}context_ref\0\u{c}\u{d}\u{1}")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}version\0\u{1}id\0\u{3}parent_id\0\u{1}signature\0\u{3}parent_signature\0\u{1}checksum\0\u{3}timestamp_utc\0\u{1}mime\0\u{1}type\0\u{1}title\0\u{1}lat\0\u{1}lng\0\u{2}\u{2}content\0\u{3}merkle_root\0\u{1}alg\0\u{3}external_identity\0\u{2}\u{2}event\0\u{3}canonical_string\0\u{1}status\0\u{3}context_ref\0\u{c}\u{d}\u{1}")
 
   fileprivate class _StorageClass {
     var _version: String = String()
-    var _attachmentID: String = String()
-    var _parentRecordID: String = String()
+    var _id: String = String()
+    var _parentID: String = String()
     var _signature: Data = Data()
     var _parentSignature: Data = Data()
     var _checksum: String = String()
@@ -5632,7 +5723,6 @@ extension LukuIDAttachmentRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     var _merkleRoot: String = String()
     var _alg: String = String()
     var _externalIdentity: LukuIDExternalIdentity? = nil
-    var _custodyID: String = String()
     var _event: String = String()
     var _canonicalString: String = String()
     var _status: String = String()
@@ -5648,8 +5738,8 @@ extension LukuIDAttachmentRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
     init(copying source: _StorageClass) {
       _version = source._version
-      _attachmentID = source._attachmentID
-      _parentRecordID = source._parentRecordID
+      _id = source._id
+      _parentID = source._parentID
       _signature = source._signature
       _parentSignature = source._parentSignature
       _checksum = source._checksum
@@ -5663,7 +5753,6 @@ extension LukuIDAttachmentRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       _merkleRoot = source._merkleRoot
       _alg = source._alg
       _externalIdentity = source._externalIdentity
-      _custodyID = source._custodyID
       _event = source._event
       _canonicalString = source._canonicalString
       _status = source._status
@@ -5687,8 +5776,8 @@ extension LukuIDAttachmentRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageI
         // enabled. https://github.com/apple/swift-protobuf/issues/1034
         switch fieldNumber {
         case 1: try { try decoder.decodeSingularStringField(value: &_storage._version) }()
-        case 2: try { try decoder.decodeSingularStringField(value: &_storage._attachmentID) }()
-        case 3: try { try decoder.decodeSingularStringField(value: &_storage._parentRecordID) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._id) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._parentID) }()
         case 4: try { try decoder.decodeSingularBytesField(value: &_storage._signature) }()
         case 5: try { try decoder.decodeSingularBytesField(value: &_storage._parentSignature) }()
         case 6: try { try decoder.decodeSingularStringField(value: &_storage._checksum) }()
@@ -5702,7 +5791,6 @@ extension LukuIDAttachmentRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageI
         case 15: try { try decoder.decodeSingularStringField(value: &_storage._merkleRoot) }()
         case 16: try { try decoder.decodeSingularStringField(value: &_storage._alg) }()
         case 17: try { try decoder.decodeSingularMessageField(value: &_storage._externalIdentity) }()
-        case 18: try { try decoder.decodeSingularStringField(value: &_storage._custodyID) }()
         case 19: try { try decoder.decodeSingularStringField(value: &_storage._event) }()
         case 20: try { try decoder.decodeSingularStringField(value: &_storage._canonicalString) }()
         case 21: try { try decoder.decodeSingularStringField(value: &_storage._status) }()
@@ -5722,11 +5810,11 @@ extension LukuIDAttachmentRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       if !_storage._version.isEmpty {
         try visitor.visitSingularStringField(value: _storage._version, fieldNumber: 1)
       }
-      if !_storage._attachmentID.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._attachmentID, fieldNumber: 2)
+      if !_storage._id.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._id, fieldNumber: 2)
       }
-      if !_storage._parentRecordID.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._parentRecordID, fieldNumber: 3)
+      if !_storage._parentID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._parentID, fieldNumber: 3)
       }
       if !_storage._signature.isEmpty {
         try visitor.visitSingularBytesField(value: _storage._signature, fieldNumber: 4)
@@ -5767,9 +5855,6 @@ extension LukuIDAttachmentRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       try { if let v = _storage._externalIdentity {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
       } }()
-      if !_storage._custodyID.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._custodyID, fieldNumber: 18)
-      }
       if !_storage._event.isEmpty {
         try visitor.visitSingularStringField(value: _storage._event, fieldNumber: 19)
       }
@@ -5792,8 +5877,8 @@ extension LukuIDAttachmentRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageI
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._version != rhs_storage._version {return false}
-        if _storage._attachmentID != rhs_storage._attachmentID {return false}
-        if _storage._parentRecordID != rhs_storage._parentRecordID {return false}
+        if _storage._id != rhs_storage._id {return false}
+        if _storage._parentID != rhs_storage._parentID {return false}
         if _storage._signature != rhs_storage._signature {return false}
         if _storage._parentSignature != rhs_storage._parentSignature {return false}
         if _storage._checksum != rhs_storage._checksum {return false}
@@ -5807,7 +5892,6 @@ extension LukuIDAttachmentRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageI
         if _storage._merkleRoot != rhs_storage._merkleRoot {return false}
         if _storage._alg != rhs_storage._alg {return false}
         if _storage._externalIdentity != rhs_storage._externalIdentity {return false}
-        if _storage._custodyID != rhs_storage._custodyID {return false}
         if _storage._event != rhs_storage._event {return false}
         if _storage._canonicalString != rhs_storage._canonicalString {return false}
         if _storage._status != rhs_storage._status {return false}
@@ -5823,11 +5907,11 @@ extension LukuIDAttachmentRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension LukuIDScanRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ScanRecord"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}version\0\u{3}scan_id\0\u{1}signature\0\u{3}previous_signature\0\u{3}canonical_string\0\u{1}payload\0\u{1}device\0\u{1}manufacturer\0\u{1}attachments\0\u{1}identity\0\u{1}alg\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}version\0\u{1}id\0\u{1}signature\0\u{3}previous_signature\0\u{3}canonical_string\0\u{1}payload\0\u{1}device\0\u{1}manufacturer\0\u{1}attachments\0\u{1}identity\0\u{1}alg\0")
 
   fileprivate class _StorageClass {
     var _version: String = String()
-    var _scanID: String = String()
+    var _id: String = String()
     var _signature: Data = Data()
     var _previousSignature: Data = Data()
     var _canonicalString: String = String()
@@ -5848,7 +5932,7 @@ extension LukuIDScanRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
 
     init(copying source: _StorageClass) {
       _version = source._version
-      _scanID = source._scanID
+      _id = source._id
       _signature = source._signature
       _previousSignature = source._previousSignature
       _canonicalString = source._canonicalString
@@ -5877,7 +5961,7 @@ extension LukuIDScanRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
         // enabled. https://github.com/apple/swift-protobuf/issues/1034
         switch fieldNumber {
         case 1: try { try decoder.decodeSingularStringField(value: &_storage._version) }()
-        case 2: try { try decoder.decodeSingularStringField(value: &_storage._scanID) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._id) }()
         case 3: try { try decoder.decodeSingularBytesField(value: &_storage._signature) }()
         case 4: try { try decoder.decodeSingularBytesField(value: &_storage._previousSignature) }()
         case 5: try { try decoder.decodeSingularStringField(value: &_storage._canonicalString) }()
@@ -5902,8 +5986,8 @@ extension LukuIDScanRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
       if !_storage._version.isEmpty {
         try visitor.visitSingularStringField(value: _storage._version, fieldNumber: 1)
       }
-      if !_storage._scanID.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._scanID, fieldNumber: 2)
+      if !_storage._id.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._id, fieldNumber: 2)
       }
       if !_storage._signature.isEmpty {
         try visitor.visitSingularBytesField(value: _storage._signature, fieldNumber: 3)
@@ -5942,7 +6026,7 @@ extension LukuIDScanRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._version != rhs_storage._version {return false}
-        if _storage._scanID != rhs_storage._scanID {return false}
+        if _storage._id != rhs_storage._id {return false}
         if _storage._signature != rhs_storage._signature {return false}
         if _storage._previousSignature != rhs_storage._previousSignature {return false}
         if _storage._canonicalString != rhs_storage._canonicalString {return false}
@@ -6213,11 +6297,11 @@ extension LukuIDEnvironmentPayload.Accel: SwiftProtobuf.Message, SwiftProtobuf._
 
 extension LukuIDEnvironmentRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".EnvironmentRecord"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}version\0\u{3}event_id\0\u{1}signature\0\u{3}previous_signature\0\u{3}canonical_string\0\u{1}payload\0\u{1}device\0\u{1}attachments\0\u{1}identity\0\u{1}alg\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}version\0\u{1}id\0\u{1}signature\0\u{3}previous_signature\0\u{3}canonical_string\0\u{1}payload\0\u{1}device\0\u{1}attachments\0\u{1}identity\0\u{1}alg\0")
 
   fileprivate class _StorageClass {
     var _version: String = String()
-    var _eventID: String = String()
+    var _id: String = String()
     var _signature: Data = Data()
     var _previousSignature: Data = Data()
     var _canonicalString: String = String()
@@ -6237,7 +6321,7 @@ extension LukuIDEnvironmentRecord: SwiftProtobuf.Message, SwiftProtobuf._Message
 
     init(copying source: _StorageClass) {
       _version = source._version
-      _eventID = source._eventID
+      _id = source._id
       _signature = source._signature
       _previousSignature = source._previousSignature
       _canonicalString = source._canonicalString
@@ -6265,7 +6349,7 @@ extension LukuIDEnvironmentRecord: SwiftProtobuf.Message, SwiftProtobuf._Message
         // enabled. https://github.com/apple/swift-protobuf/issues/1034
         switch fieldNumber {
         case 1: try { try decoder.decodeSingularStringField(value: &_storage._version) }()
-        case 2: try { try decoder.decodeSingularStringField(value: &_storage._eventID) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._id) }()
         case 3: try { try decoder.decodeSingularBytesField(value: &_storage._signature) }()
         case 4: try { try decoder.decodeSingularBytesField(value: &_storage._previousSignature) }()
         case 5: try { try decoder.decodeSingularStringField(value: &_storage._canonicalString) }()
@@ -6289,8 +6373,8 @@ extension LukuIDEnvironmentRecord: SwiftProtobuf.Message, SwiftProtobuf._Message
       if !_storage._version.isEmpty {
         try visitor.visitSingularStringField(value: _storage._version, fieldNumber: 1)
       }
-      if !_storage._eventID.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._eventID, fieldNumber: 2)
+      if !_storage._id.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._id, fieldNumber: 2)
       }
       if !_storage._signature.isEmpty {
         try visitor.visitSingularBytesField(value: _storage._signature, fieldNumber: 3)
@@ -6326,7 +6410,7 @@ extension LukuIDEnvironmentRecord: SwiftProtobuf.Message, SwiftProtobuf._Message
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._version != rhs_storage._version {return false}
-        if _storage._eventID != rhs_storage._eventID {return false}
+        if _storage._id != rhs_storage._id {return false}
         if _storage._signature != rhs_storage._signature {return false}
         if _storage._previousSignature != rhs_storage._previousSignature {return false}
         if _storage._canonicalString != rhs_storage._canonicalString {return false}
@@ -6465,7 +6549,7 @@ extension LukuIDRecordBatches: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension LukuIDFullRecordResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".FullRecordResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}record_id\0\u{3}scan_full\0\u{3}environment_full\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}scan_full\0\u{3}environment_full\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -6473,7 +6557,7 @@ extension LukuIDFullRecordResponse: SwiftProtobuf.Message, SwiftProtobuf._Messag
       // allocates stack space for every case branch when no optimizations are
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.recordID) }()
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
       case 2: try {
         var v: LukuIDScanRecord?
         var hadOneofValue = false
@@ -6510,8 +6594,8 @@ extension LukuIDFullRecordResponse: SwiftProtobuf.Message, SwiftProtobuf._Messag
     // allocates stack space for every if/case branch local when no optimizations
     // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
     // https://github.com/apple/swift-protobuf/issues/1182
-    if !self.recordID.isEmpty {
-      try visitor.visitSingularStringField(value: self.recordID, fieldNumber: 1)
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
     }
     switch self.fullRecord {
     case .scanFull?: try {
@@ -6528,7 +6612,7 @@ extension LukuIDFullRecordResponse: SwiftProtobuf.Message, SwiftProtobuf._Messag
   }
 
   static func ==(lhs: LukuIDFullRecordResponse, rhs: LukuIDFullRecordResponse) -> Bool {
-    if lhs.recordID != rhs.recordID {return false}
+    if lhs.id != rhs.id {return false}
     if lhs.fullRecord != rhs.fullRecord {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true

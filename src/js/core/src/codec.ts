@@ -168,7 +168,7 @@ function magicMatches(buf: Uint8Array, offset: number): boolean {
   return true;
 }
 
-function encodeCommandRequest(frame: DeviceFrame): Uint8Array {
+export function encodeCommandRequest(frame: DeviceFrame): Uint8Array {
   const record = frame as JsonRecord;
   const opts = isRecord(record.opts) ? record.opts : undefined;
   const source = opts ?? record;
@@ -217,7 +217,7 @@ function encodeCommandRequest(frame: DeviceFrame): Uint8Array {
     if (typeof source.content === 'string') writeString(nested, 10, source.content);
     if (typeof source.merkle_root === 'string') writeString(nested, 11, source.merkle_root);
     writeMessage(chunks, 4, nested);
-  } else if (action === 'config' || action === 'configure') {
+  } else if (action === 'config') {
     const nested: number[] = [];
     if (typeof source.name === 'string') writeString(nested, 1, source.name);
     if (typeof source.wifi_ssid === 'string') writeString(nested, 2, source.wifi_ssid);
@@ -288,6 +288,22 @@ function encodeCommandRequest(frame: DeviceFrame): Uint8Array {
     const inter = normalizeBytesValue(source.intermediate_der);
     if (inter) writeBytesField(nested, 5, inter);
     writeMessage(chunks, 10, nested);
+  } else if (action === 'configure') {
+    const nested: number[] = [];
+    const config = normalizeBytesValue(source.config_der);
+    if (config) writeBytesField(nested, 1, config);
+
+    const sig = normalizeBytesValue(source.signature);
+    if (sig) writeBytesField(nested, 2, sig);
+
+    const cert = normalizeBytesValue(source.certificate_der);
+    if (cert) writeBytesField(nested, 3, cert);
+
+    const inter = normalizeBytesValue(source.intermediate_der);
+    if (inter) writeBytesField(nested, 4, inter);
+
+    if (typeof source.counter === 'number') writeVarintField(nested, 5, source.counter);
+    writeMessage(chunks, 17, nested);
   } else if (action === 'scan_enable') {
     const nested: number[] = [];
     if (typeof source.enabled === 'boolean') writeBool(nested, 1, source.enabled);

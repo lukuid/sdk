@@ -226,7 +226,7 @@ final class LukuCodec {
             if let v = asString("status") { attest.status = v }
             if let v = asString("context_ref") { attest.contextRef = v }
             request.attest = attest
-        case "config", "configure":
+        case "config":
             var config = LukuIDConfigRequest()
             if let v = asString("name") { config.name = v }
             if let v = asString("wifi_ssid") { config.wifiSsid = v }
@@ -241,6 +241,14 @@ final class LukuCodec {
             if let v = asBool("mqtt_broadcast_enabled") { config.mqttBroadcastEnabled = v }
             if let v = asString("custom_heartbeat_url") { config.customHeartbeatURL = v }
             request.config = config
+        case "configure":
+            var configure = LukuIDSetConfigureRequest()
+            if let v = asData("config_der") { configure.configDer = v }
+            if let v = asData("signature") { configure.signature = v }
+            if let v = asData("certificate_der") { configure.certificateDer = v }
+            if let v = asData("intermediate_der") { configure.intermediateDer = v }
+            if let v = asInt64("counter") { configure.counter = UInt64(v) }
+            request.configure = configure
         case "ota_begin":
             var ota = LukuIDOtaBeginRequest()
             if let v = asUInt32("size") { ota.size = v }

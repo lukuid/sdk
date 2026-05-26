@@ -4,6 +4,6 @@ export { TinyEventEmitter } from './events.js';
 export { createDevice, DeviceCommandError, parseInfoPayload } from './device.js';
 export { DeviceTrustError } from './errors.js';
 export { RevocationManager, type RevocationManagerOptions } from './revocation.js';
-export { encodeFrame, LukuDecoder } from './codec.js';
+export { encodeFrame, encodeCommandRequest, LukuDecoder } from './codec.js';
 export * from './luku.js';
 export * from './parser.js';
