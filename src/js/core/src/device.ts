@@ -313,17 +313,14 @@ class LukuidDevice implements Device {
     }
 
     const record = payload as Record<string, unknown>;
-    const id = typeof record.id === 'string' ? record.id : undefined;
-    if (!id || id.length === 0) {
-        throw new Error('STATUS response missing id');
-    }
+    const id = typeof record.id === 'string' ? record.id : '';
 
     const info: DeviceInfo = {
         transportId: this.descriptor.transportId,
         transport: this.descriptor.transport,
         name: typeof record.name === 'string' ? record.name : undefined,
-        id,
-        key: typeof record.public_key === 'string' ? record.public_key : '',
+        id: id,
+        key: typeof record.public_key === 'string' ? record.public_key : (record.public_key instanceof Uint8Array ? encodeBase64(record.public_key) : ''),
         capabilities: [],
         firmware: undefined,
         model: typeof record.model === 'string' ? record.model : undefined,

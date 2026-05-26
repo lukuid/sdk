@@ -403,6 +403,13 @@ function decodeCommandResponse(payload: Uint8Array): JsonRecord | null {
         out.record_batches = decodeRecordBatches(message);
         break;
       }
+      case 16: {
+        const message = readLengthDelimited(payload, cursor, wireType);
+        if (message === null) return null;
+        const statusResponse = decodeStatusResponse(message);
+        Object.assign(out, statusResponse);
+        break;
+      }
       case 14: {
         const message = readLengthDelimited(payload, cursor, wireType);
         if (message === null) return null;
@@ -1672,5 +1679,30 @@ function decodeHistoricalExportResponse(payload: Uint8Array): JsonRecord {
     }
   }
   out.has_more = has_more;
+  return out;
+}
+
+function decodeStatusResponse(payload: Uint8Array): JsonRecord {
+  const cursor = { value: 0 };
+  const out: JsonRecord = {};
+  while (cursor.value < payload.length) {
+    const key = readVarint(payload, cursor);
+    if (key === null) break;
+    const field = key >>> 3;
+    const wireType = key & 0x07;
+    switch (field) {
+      case 1: assignString(payload, cursor, wireType, out, 'id'); break;
+      case 2: assignString(payload, cursor, wireType, out, 'name'); break;
+      case 3: assignBytes(payload, cursor, wireType, out, 'public_key'); break;
+      case 4: assignString(payload, cursor, wireType, out, 'product'); break;
+      case 5: assignString(payload, cursor, wireType, out, 'model'); break;
+      case 6: assignFloat32(payload, cursor, wireType, out, 'battery_health'); break;
+      case 7: assignInt64(payload, cursor, wireType, out, 'timestamp'); break;
+      case 8: assignBool(payload, cursor, wireType, out, 'has_attestation'); break;
+      case 9: assignBool(payload, cursor, wireType, out, 'has_heartbeat'); break;
+      case 10: assignBool(payload, cursor, wireType, out, 'needs_sync'); break;
+      default: skipField(payload, cursor, wireType); break;
+    }
+  }
   return out;
 }
