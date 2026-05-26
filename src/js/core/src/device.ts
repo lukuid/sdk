@@ -323,7 +323,7 @@ class LukuidDevice implements Device {
         transport: this.descriptor.transport,
         name: typeof record.name === 'string' ? record.name : undefined,
         id,
-        key: '',
+        key: typeof record.public_key === 'string' ? record.public_key : '',
         capabilities: [],
         firmware: undefined,
         model: typeof record.model === 'string' ? record.model : undefined,
