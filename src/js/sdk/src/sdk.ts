@@ -163,6 +163,31 @@ export class LukuidRequestError extends Error {
   }
 }
 
+const DEFAULT_DEVICE_REQUEST_OPTIONS: DeviceRequestOptions = {
+  transportOptions: {
+    webusb: {
+      filters: [
+        { vendorId: 0x303a, productId: 0x4002 }, // LukuID GuardCard (Native USB)
+        { vendorId: 0x303a, productId: 0x0002 }, // ESP32-S3 default
+        { vendorId: 0x303a }, // Any Espressif device
+        { vendorId: 0x0403 }, // FTDI
+        { vendorId: 0x10c4 }, // CP210x
+        { vendorId: 0x1a86 }  // CH34x
+      ]
+    },
+    webserial: {
+      filters: [
+        { usbVendorId: 0x303a, usbProductId: 0x4002 },
+        { usbVendorId: 0x303a, usbProductId: 0x0002 },
+        { usbVendorId: 0x303a },
+        { usbVendorId: 0x0403 },
+        { usbVendorId: 0x10c4 },
+        { usbVendorId: 0x1a86 }
+      ]
+    }
+  }
+};
+
 export class LukuidSdk {
   private readonly emitter = new TinyEventEmitter<SdkEventMap>();
   private readonly registry = new TransportRegistry((level, message, context) => this.log(level, message, context));
@@ -290,9 +315,18 @@ export class LukuidSdk {
   }
 
   async requestDevice(options?: DeviceRequestOptions): Promise<Device> {
-    const transports = await this.selectTransports(options?.preferredTransports);
+    const mergedOptions: DeviceRequestOptions = {
+      ...DEFAULT_DEVICE_REQUEST_OPTIONS,
+      ...options,
+      transportOptions: {
+        ...DEFAULT_DEVICE_REQUEST_OPTIONS.transportOptions,
+        ...options?.transportOptions
+      }
+    };
+
+    const transports = await this.selectTransports(mergedOptions.preferredTransports);
     this.log('debug', 'Requesting device', {
-      preferredTransports: options?.preferredTransports,
+      preferredTransports: mergedOptions.preferredTransports,
       selectedTransports: transports.map((transport) => transport.name),
       isBrowser: isBrowser()
     });
@@ -306,7 +340,7 @@ export class LukuidSdk {
         }
 
         try {
-          const requestOptions = options?.transportOptions?.[transport.name];
+          const requestOptions = mergedOptions.transportOptions?.[transport.name];
           const candidate = await transport.requestDevice(requestOptions);
           if (!candidate) {
             continue;
@@ -314,6 +348,13 @@ export class LukuidSdk {
 
           const device = await this.upsertDevice(transport, candidate, { propagateTrustError: true });
           if (device) {
+            this.log('debug', 'Probing identity for requested device', {
+              transport: transport.name,
+              transportId: candidate.transportId
+            });
+            
+            await device.ensureValidated();
+            
             return device;
           }
         } catch (error) {
