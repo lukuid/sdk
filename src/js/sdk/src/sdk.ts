@@ -792,7 +792,7 @@ interface WatcherHandle {
   stop(): Promise<void> | void;
 }
 
-class TransportRegistry {
+export class TransportRegistry {
   private readonly entries: TransportEntry[] = [];
 
   constructor(private readonly logger: (level: 'debug' | 'warn' | 'error', message: string, context?: Record<string, unknown>) => void) {}
