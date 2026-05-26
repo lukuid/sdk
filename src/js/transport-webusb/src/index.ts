@@ -42,13 +42,8 @@ export function createWebUsbTransport(options: WebUsbTransportOptions = {}): Tra
         return null;
       }
 
-      const filters = request?.filters;
-      if (!filters || filters.length === 0) {
-        throw new Error('WebUSB requestDevice requires filters');
-      }
-
       try {
-        const device = await usb.requestDevice({ filters });
+        const device = await usb.requestDevice({ filters: request?.filters ?? [] });
         return toCandidate(device);
       } catch (error) {
         if (error instanceof DOMException && error.name === 'NotFoundError') {

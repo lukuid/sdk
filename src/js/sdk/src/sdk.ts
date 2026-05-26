@@ -14,6 +14,7 @@ import {
   RevocationManager
 } from '@lukuid/core';
 import { isExternalCallAllowed } from './urlUtils.js';
+import { autoRegisterDefaultTransports as registerEnvTransports, readFileAsUint8Array } from './env.js';
 
 export interface DeviceDiscoveryOptions {
   preferredTransports?: string[];
@@ -175,7 +176,7 @@ export class LukuidSdk {
   private readonly revocationManager: RevocationManager;
 
   constructor(private readonly options: LukuidSdkOptions = {}) {
-    this.defaultTransportsReady = autoRegisterDefaultTransports(
+    this.defaultTransportsReady = registerEnvTransports(
       this.registry,
       (level, message, context) => this.log(level, message, context),
       this.options.debugLogging ?? false
@@ -602,11 +603,7 @@ export class LukuidSdk {
   async parse(input: Uint8Array | string): Promise<import('@lukuid/core').LukuParseResult> {
     let data: Uint8Array;
     if (typeof input === 'string') {
-      if (!isNode()) {
-        throw new Error('Parsing from filename is only supported in Node.js');
-      }
-      const fs = await import('node:fs/promises');
-      data = new Uint8Array(await fs.readFile(input));
+      data = await readFileAsUint8Array(input);
     } else {
       data = input;
     }
@@ -833,44 +830,6 @@ class TransportRegistry {
 interface TransportEntry {
   loader: TransportFactory;
   instance: Transport | null;
-}
-
-async function autoRegisterDefaultTransports(
-  registry: TransportRegistry,
-  logger: (level: 'debug' | 'warn' | 'error', message: string, context?: Record<string, unknown>) => void,
-  debugLogging: boolean
-): Promise<void> {
-  if (isBrowser()) {
-    registry.register(async () => {
-      const mod = await import('@lukuid/transport-webusb');
-      return mod.createWebUsbTransport();
-    });
-
-    registry.register(async () => {
-      const mod = await import('@lukuid/transport-webble');
-      return mod.createWebBleTransport();
-    });
-  }
-
-  if (isNode()) {
-    registry.register(async () => {
-      const mod = await import('@lukuid/transport-serial-node');
-      const serialOptions = {
-        debugLogging,
-        logger: (
-          level: 'debug' | 'warn' | 'error',
-          message: string,
-          context?: Record<string, unknown>
-        ) => logger(level, message, { transport: 'serial', ...context })
-      } as Parameters<typeof mod.createSerialTransport>[0];
-      return mod.createSerialTransport(serialOptions);
-    });
-
-    registry.register(async () => {
-      const mod = await import('@lukuid/transport-ble-node');
-      return mod.createBleTransport();
-    });
-  }
 }
 
 function isBrowser(): boolean {

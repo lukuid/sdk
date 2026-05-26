@@ -8,6 +8,7 @@ export default defineConfig({
     '@abandonware/noble',
     '@abandonware/bluetooth-hci-socket',
     'serialport',
-    'ws'
+    'ws',
+    './env.js'
   ]
 });

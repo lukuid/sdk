@@ -11,7 +11,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --sourcemap --outDir dist",
+    "build": "tsup src/index.ts src/env.ts src/env.browser.ts --format esm,cjs --dts --sourcemap --outDir dist",
     "lint": "pnpm --dir ../core build && pnpm --dir ../transport-webble build && pnpm --dir ../transport-webusb build && pnpm --dir ../transport-ble-node build && pnpm --dir ../transport-serial-node build && tsc --noEmit",
     "test": "echo 'No tests yet'"
   },
@@ -29,8 +29,33 @@
   "optionalDependencies": {
     "@lukuid/transport-webble": "workspace:*",
     "@lukuid/transport-webusb": "workspace:*",
+    "@lukuid/transport-webserial": "workspace:*",
     "@lukuid/transport-serial-node": "workspace:*",
     "@lukuid/transport-ble-node": "workspace:*"
+  },
+  "browser": {
+    "@lukuid/transport-serial-node": false,
+    "@lukuid/transport-ble-node": false,
+    "@abandonware/noble": false,
+    "serialport": false,
+    "fs": false,
+    "fs/promises": false,
+    "node:fs/promises": false,
+    "path": false,
+    "node:path": false,
+    "module": false,
+    "node:module": false,
+    "util": false,
+    "node:util": false,
+    "child_process": false,
+    "node:child_process": false,
+    "os": false,
+    "node:os": false,
+    "stream": false,
+    "node:stream": false,
+    "process": false,
+    "./src/env.js": "./src/env.browser.js",
+    "./dist/env.js": "./dist/env.browser.js"
   },
   "sideEffects": false,
   "license": "Apache-2.0",
