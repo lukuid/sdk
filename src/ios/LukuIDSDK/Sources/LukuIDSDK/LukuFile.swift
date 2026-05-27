@@ -462,6 +462,10 @@ public final class LukuArchive {
                 let counter = uint64(payload?["ctr"])
                 let genesisHash = payload?["genesis_hash"] as? String ?? ""
 
+                if vendor == nil || vendor?.isEmpty == true {
+                    issues.append(issue("DEVICE_VENDOR_MISSING", "Device vendor is missing for device \(deviceID).", .critical))
+                }
+
                 if !isAuxRecord && !seenDevices.contains(deviceID) {
                     seenDevices.insert(deviceID)
                     if counter == 0, !genesisHash.isEmpty, previousSignature != genesisHash {
@@ -800,6 +804,10 @@ public enum LukuFile {
 
         if deviceId.isEmpty || publicKey.isEmpty {
             issues.append(VerificationIssue(code: "DEVICE_IDENTITY_MISSING", message: "Envelope is missing device_id or public_key.", criticality: .critical))
+        }
+
+        if vendor == nil || vendor?.isEmpty == true {
+            issues.append(VerificationIssue(code: "DEVICE_VENDOR_MISSING", message: "Device vendor is missing for device \(deviceId).", criticality: .critical))
         }
 
         if !isAuxRecord {

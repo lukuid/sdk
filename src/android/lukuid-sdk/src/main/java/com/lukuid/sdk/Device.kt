@@ -92,8 +92,8 @@ data class LukuSdkOptions(
      */
     val debugLogging: Boolean = false,
     /**
-     * If true, devices that fail cryptographic attestation will still be exposed
-     * but will have `verified = false`. Default is `false`.
+     * Deprecated compatibility flag. Devices that fail cryptographic attestation
+     * are always exposed with `verified = false`.
      */
     val allowUnverifiedDevices: Boolean = false,
     /**

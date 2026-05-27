@@ -517,14 +517,6 @@ impl Device {
             );
         }
 
-        if !verification.ok && !options.allow_unverified_devices {
-            return Err(DeviceError::Verification(
-                verification
-                    .reason
-                    .unwrap_or_else(|| "Verification failed".to_string()),
-            ));
-        }
-
         let last_sync = info_obj
             .get("slac")
             .and_then(|v| v.get("valid_from"))

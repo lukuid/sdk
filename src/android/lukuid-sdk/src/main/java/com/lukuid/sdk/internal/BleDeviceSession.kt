@@ -17,7 +17,6 @@ import org.json.JSONObject
 import com.lukuid.sdk.Device
 import com.lukuid.sdk.DeviceEventPayload
 import com.lukuid.sdk.DeviceInfo
-import com.lukuid.sdk.DeviceTrustException
 import com.lukuid.sdk.DiscoveredDevice
 import com.lukuid.sdk.SdkError
 import com.lukuid.sdk.TransportType
@@ -252,21 +251,14 @@ internal class BleDeviceSession(
             } else infoDataRaw
 
             val parsed = parseInfo(infoData)
-            val verification = verifyDeviceAttestation(parsed.attestation, sdkProvider().revocationManager)
+            val verification = parsed.attestation?.let { verifyDeviceAttestation(it, sdkProvider().revocationManager) }
+                ?: VerificationResult(false, "INFO response missing attestation")
             debugLog(
                 sdkOptions,
                 "BLE INFO validation result",
                 mapOf("transportId" to transportId, "deviceId" to parsed.info.id, "verified" to verification.ok, "reason" to verification.reason)
             )
-            
-            if (!verification.ok && !sdkOptions.allowUnverifiedDevices) {
-                throw DeviceTrustException(
-                    parsed.attestation.id,
-                    verification.reason ?: "Signature rejected",
-                    emptyList()
-                )
-            }
-            
+
             val info = parsed.info.copy(verified = verification.ok)
             
             // Automatic Heartbeat if verified
@@ -432,24 +424,25 @@ internal class BleDeviceSession(
         )
 
         val attestationSig = infoFieldAsBase64(normalized["signature"])
-            ?: throw IllegalStateException("INFO missing attestation signature")
         val attestationAlg = normalized["attestationAlg"]?.toString() ?: "ed25519"
         val attestationPayloadVersion = 1
         val certificateChain = assembleInfoCertificateChain(normalized)
 
-        val attestation = DeviceAttestationInput(
-            id = id,
-            key = key,
-            attestationSig = attestationSig,
-            certificateChain = certificateChain,
-            attestationAlg = attestationAlg,
-            attestationPayloadVersion = attestationPayloadVersion
-        )
+        val attestation = attestationSig?.let {
+            DeviceAttestationInput(
+                id = id,
+                key = key,
+                attestationSig = it,
+                certificateChain = certificateChain,
+                attestationAlg = attestationAlg,
+                attestationPayloadVersion = attestationPayloadVersion
+            )
+        }
 
         return ParsedInfo(info, attestation)
     }
 
-    private data class ParsedInfo(val info: DeviceInfo, val attestation: DeviceAttestationInput)
+    private data class ParsedInfo(val info: DeviceInfo, val attestation: DeviceAttestationInput?)
 
     private fun handleIncoming(message: Map<String, Any?>) {
         messageCallbacks.forEach { it.invoke(message) }

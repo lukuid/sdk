@@ -50,7 +50,6 @@ describe('LukuDecoder', () => {
     const payload: number[] = [];
     writeString(payload, 1, 'info');
     writeU32(payload, 2, 1);
-    writeBool(payload, 3, true);
     const infoPayload: number[] = [];
     writeString(infoPayload, 10, 'B784AE14');
     writeString(infoPayload, 11, 'guardcard');

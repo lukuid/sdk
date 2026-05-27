@@ -297,7 +297,12 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
         
         let parsed = try parseInfo(infoMap)
         
-        let verification = verifyDeviceAttestation(parsed.attestation, revocationManager: client.revocationManager)
+        let verification: Result<Void, DeviceTrustError>
+        if let attestation = parsed.attestation {
+            verification = verifyDeviceAttestation(attestation, revocationManager: client.revocationManager)
+        } else {
+            verification = .failure(DeviceTrustError(id: parsed.info.id, reason: "INFO response missing attestation", attemptedKeyIds: []))
+        }
         let verificationOk: Bool
         if case .success = verification {
             verificationOk = true
@@ -314,15 +319,6 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
                 "allowUnverified": options.allowUnverifiedDevices
             ]
         )
-        switch verification {
-        case .success:
-            break
-        case .failure(let error):
-            if !options.allowUnverifiedDevices {
-                throw error
-            }
-        }
-        
         let isVerified = verificationOk
 
         let finalInfo = DeviceInfo(
@@ -480,28 +476,28 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
             syncRequired: syncRequired
         )
 
-        guard let attestationSig = infoFieldBase64(map["signature"]) else {
-            throw NSError(domain: "lukuid", code: -33, userInfo: [NSLocalizedDescriptionKey: "Missing attestation signature"])
-        }
+        let attestationSig = infoFieldBase64(map["signature"])
         let attestationAlg = map["attestationAlg"] as? String ?? "ed25519"
         let attestationPayloadVersion = 1
 
-        let attestation = DeviceAttestationInputs(
-            id: id,
-            key: key,
-            attestationSig: attestationSig,
-            certificateChain: assembleInfoCertificateChain(map),
-            created: nil,
-            attestationAlg: attestationAlg,
-            attestationPayloadVersion: Int64(attestationPayloadVersion)
-        )
+        let attestation = attestationSig.map {
+            DeviceAttestationInputs(
+                id: id,
+                key: key,
+                attestationSig: $0,
+                certificateChain: assembleInfoCertificateChain(map),
+                created: nil,
+                attestationAlg: attestationAlg,
+                attestationPayloadVersion: Int64(attestationPayloadVersion)
+            )
+        }
 
         return ParsedInfo(info: info, attestation: attestation)
     }
 
     private struct ParsedInfo {
         let info: DeviceInfo
-        let attestation: DeviceAttestationInputs
+        let attestation: DeviceAttestationInputs?
     }
 
     private func send(frame: [String: Any]) async throws {

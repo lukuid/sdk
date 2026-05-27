@@ -207,11 +207,11 @@ final class LukuCodec {
             request.fetch = fetch
         case "get":
             var get = LukuIDGetRecordRequest()
-            get.recordID = asString("record_id") ?? asString("id") ?? asString("device_id") ?? ""
+            get.id = asString("record_id") ?? asString("id") ?? asString("device_id") ?? ""
             request.get = get
         case "attest":
             var attest = LukuIDAttestRequest()
-            attest.parentRecordID = asString("parent_record_id") ?? asString("record_id") ?? asString("id") ?? ""
+            attest.parentID = asString("parent_record_id") ?? asString("record_id") ?? asString("id") ?? ""
             if let v = asData("signature") { attest.signature = v }
             if let v = asString("checksum") { attest.checksum = v }
             if let v = asString("mime") { attest.mime = v }
@@ -221,7 +221,7 @@ final class LukuCodec {
             if let v = asDouble("lng") { attest.lng = v }
             if let v = asString("content") { attest.content = v }
             if let v = asString("merkle_root") { attest.merkleRoot = v }
-            if let v = asString("custody_id") { attest.custodyID = v }
+            if let v = asString("custody_id") { attest.id = v }
             if let v = asString("event") { attest.event = v }
             if let v = asString("status") { attest.status = v }
             if let v = asString("context_ref") { attest.contextRef = v }
@@ -500,7 +500,7 @@ final class LukuCodec {
                 "type": "scan_min",
                 "record": [
                     "version": scanMin.version,
-                    "record_id": scanMin.recordID,
+                    "record_id": scanMin.id,
                     "timestamp_utc": scanMin.timestampUtc,
                     "tag_id": scanMin.tagID,
                     "score_bio": scanMin.scoreBio,
@@ -514,7 +514,7 @@ final class LukuCodec {
                 "type": "environment_min",
                 "record": [
                     "version": envMin.version,
-                    "record_id": envMin.recordID,
+                    "record_id": envMin.id,
                     "timestamp_utc": envMin.timestampUtc,
                     "lux": mapMetricValue(envMin.lux) as Any,
                     "temp_c": mapMetricValue(envMin.tempC) as Any,
@@ -554,7 +554,7 @@ final class LukuCodec {
     }
 
     private func mapFullRecord(_ full: LukuIDFullRecordResponse) -> [String: Any] {
-        var dict: [String: Any] = ["record_id": full.recordID]
+        var dict: [String: Any] = ["record_id": full.id]
         switch full.fullRecord {
         case .scanFull(let scan):
             dict["view"] = "animalreader_detail"
@@ -571,7 +571,7 @@ final class LukuCodec {
     private func mapScanRecord(_ record: LukuIDScanRecord) -> [String: Any] {
         var dict: [String: Any] = [:]
         dict["version"] = record.version
-        dict["scan_id"] = record.scanID
+        dict["scan_id"] = record.id
         dict["signature"] = record.signature
         dict["previous_signature"] = record.previousSignature
         dict["payload"] = mapScanPayload(record.payload)
@@ -676,7 +676,7 @@ final class LukuCodec {
     private func mapEnvRecord(_ record: LukuIDEnvironmentRecord) -> [String: Any] {
         var dict: [String: Any] = [:]
         dict["version"] = record.version
-        dict["event_id"] = record.eventID
+        dict["event_id"] = record.id
         dict["signature"] = record.signature
         dict["previous_signature"] = record.previousSignature
         dict["canonical_string"] = record.canonicalString

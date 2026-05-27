@@ -390,7 +390,7 @@ internal class SerialDeviceSession(
             id = id,
             key = key,
             attestationSig = serialInfoFieldAsBase64(infoResponse["signature"])
-                ?: throw IllegalStateException("INFO missing attestation signature"),
+                ?: "",
             certificateChain = serialAssembleInfoCertificateChain(infoResponse),
             attestationAlg = null,
             attestationPayloadVersion = null
@@ -402,10 +402,6 @@ internal class SerialDeviceSession(
             "USB serial INFO validation result",
             mapOf("transportId" to transportId, "deviceId" to id, "verified" to verification.ok, "reason" to verification.reason)
         )
-
-        if (!verification.ok && !sdkOptions.allowUnverifiedDevices) {
-            throw com.lukuid.sdk.DeviceTrustException(id, verification.reason ?: "Signature rejected", emptyList())
-        }
 
         info = DeviceInfo(
             transportId = transportId,

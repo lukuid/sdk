@@ -357,28 +357,17 @@ class LukuidDevice implements Device {
       }
     }
 
-    const normalized = parseInfoPayload(payload, this.descriptor, { requireAttestation: true });
-    if (!normalized.attestation) {
-      throw new Error('INFO response missing attestation');
-    }
-
-    const result = await verifyDeviceAttestation({
-      id: normalized.attestation.id,
-      key: normalized.attestation.key,
-      attestationSig: normalized.attestation.attestationSig,
-      attestationAlg: normalized.attestation.attestationAlg,
-      attestationPayloadVersion: normalized.attestation.attestationPayloadVersion,
-      certificateChain: assembleCertificateChain(normalized.attestation as unknown as Record<string, unknown>)
-    }, this.context.options?.revocationManager);
-
-    if (!result.ok && !this.context.options?.allowUnverifiedDevices) {
-        await this.close('Verification failed');
-        throw new DeviceTrustError(
-            normalized.attestation.id,
-            result.reason ?? 'Signature rejected',
-            []
-        );
-    }
+    const normalized = parseInfoPayload(payload, this.descriptor, { requireAttestation: false });
+    const result = normalized.attestation
+      ? await verifyDeviceAttestation({
+        id: normalized.attestation.id,
+        key: normalized.attestation.key,
+        attestationSig: normalized.attestation.attestationSig,
+        attestationAlg: normalized.attestation.attestationAlg,
+        attestationPayloadVersion: normalized.attestation.attestationPayloadVersion,
+        certificateChain: assembleCertificateChain(normalized.attestation as unknown as Record<string, unknown>)
+      }, this.context.options?.revocationManager)
+      : { ok: false, reason: 'INFO response missing attestation' };
 
     const info: DeviceInfo = {
         ...normalized.info,

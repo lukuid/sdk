@@ -15,7 +15,7 @@ final class GuardCardVocTests: XCTestCase {
 
         var envRecord = LukuIDEnvironmentRecord()
         envRecord.version = "1.0.0"
-        envRecord.eventID = "ENV-VOC-1"
+        envRecord.id = "ENV-VOC-1"
         envRecord.canonicalString = "env-voc-canonical"
         envRecord.payload = payload
 

@@ -1633,7 +1633,7 @@ impl LukuFile {
                         Some("record"),
                         VerificationIssue {
                             code: "DEVICE_VENDOR_MISSING".to_string(),
-                            message: format!("Device vendor is missing for device {} at block {}.", device_id, index),
+                            message: format!("Device vendor is missing for device {} at block {}.", device_id, block_index),
                             criticality: Criticality::Critical,
                         },
                     );

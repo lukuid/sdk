@@ -106,7 +106,7 @@ The SDK and Device interactions can be customized using initialization options o
 | `LUKUID_DISABLE_TELEMETRY` | Env Var | `undefined` | Set to `"1"` to strictly block all telemetry data extraction and transmission globally. |
 | `disable_external_calls` | Config | `false` | Air-gap mode. Blocks all outbound traffic to the LukuID cloud (allows custom local endpoints). |
 | `api_url` | Config | `https://api.lukuid.com` | Base URL for the LukuID API. |
-| `allow_unverified_devices` | Config | `false` | If true, permits connection to devices that fail cryptographic attestation (flags as `verified=false`). |
+| `allow_unverified_devices` | Config | `false` | Deprecated compatibility flag. Devices that fail cryptographic attestation are returned with `verified=false`. |
 | `debug_logging` | Config | `false` | Emits verbose discovery and validation diagnostics. |
 | `crl_memory_only` | Config | `false` | Keeps Certificate Revocation Lists (CRLs) strictly in memory without writing to disk. |
 | `crl_cache_path` | Config | *OS Default* | Custom local directory path for storing the CRL cache. |

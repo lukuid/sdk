@@ -142,8 +142,8 @@ public struct LukuIDClientOptions: Sendable {
      */
     public let debugLogging: Bool
     /**
-     * If true, devices that fail cryptographic attestation will still be exposed
-     * but will have `verified = false`. Default is `false`.
+     * Deprecated compatibility flag. Devices that fail cryptographic attestation
+     * are always exposed with `verified = false`.
      */
     public let allowUnverifiedDevices: Bool
     

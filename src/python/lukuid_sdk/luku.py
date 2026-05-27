@@ -371,7 +371,7 @@ class LukuArchive:
         policy = options.policy or _manifest_policy(self.manifest.json_object())
         continuity_types = {"environment"}
 
-        for block in self.blocks:
+        for index, block in enumerate(self.blocks):
             last_signatures: dict[str, str] = {}
             block_dac_chain = "".join(
                 entry
@@ -394,7 +394,7 @@ class LukuArchive:
                 vendor = str(vendor_val) if vendor_val else block.device.vendor
 
                 if not vendor:
-                    issues.append(_issue("DEVICE_VENDOR_MISSING", f"Device vendor is missing for device {device_id} at block {block_index}.", Criticality.CRITICAL))
+                    issues.append(_issue("DEVICE_VENDOR_MISSING", f"Device vendor is missing for device {device_id} at block {index}.", Criticality.CRITICAL))
                 signature = str(record.get("signature", ""))
                 previous_signature = str(record.get("previous_signature", ""))
                 canonical_string = str(record.get("canonical_string", ""))
