@@ -3,7 +3,7 @@ import XCTest
 @testable import LukuIDSDK
 import CryptoKit
 
-final class GuardCardVocTests: XCTestCase {
+final class LukuIDEnvironmentVocTests: XCTestCase {
     private let magic = Data([0x4C, 0x55, 0x4B, 0x55, 0x49, 0x44, 0x01, 0x7E])
 
     func testDecoderMapsVocRawAndVocIndexFromEnvironmentFrames() throws {

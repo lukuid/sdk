@@ -510,7 +510,7 @@ final class LukuCodec {
             ]
         case .environmentMin(let envMin):
             return [
-                "view": "guardcard_list",
+                "view": "environment_list",
                 "type": "environment_min",
                 "record": [
                     "version": envMin.version,
@@ -560,7 +560,7 @@ final class LukuCodec {
             dict["view"] = "animalreader_detail"
             dict["scan_record"] = mapScanRecord(scan)
         case .environmentFull(let env):
-            dict["view"] = "guardcard_detail"
+            dict["view"] = "environment_detail"
             dict["env_record"] = mapEnvRecord(env)
         default:
             dict["view"] = "unknown"

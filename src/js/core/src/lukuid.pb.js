@@ -4251,6 +4251,354 @@ export const lukuid = $root.lukuid = (() => {
         return SetHeartbeatRequest;
     })();
 
+    lukuid.SetConfigureRequest = (function() {
+
+        /**
+         * Properties of a SetConfigureRequest.
+         * @memberof lukuid
+         * @interface ISetConfigureRequest
+         * @property {Uint8Array|null} [configDer] SetConfigureRequest configDer
+         * @property {Uint8Array|null} [signature] SetConfigureRequest signature
+         * @property {Uint8Array|null} [certificateDer] SetConfigureRequest certificateDer
+         * @property {Uint8Array|null} [intermediateDer] SetConfigureRequest intermediateDer
+         * @property {number|Long|null} [counter] SetConfigureRequest counter
+         */
+
+        /**
+         * Constructs a new SetConfigureRequest.
+         * @memberof lukuid
+         * @classdesc Represents a SetConfigureRequest.
+         * @implements ISetConfigureRequest
+         * @constructor
+         * @param {lukuid.ISetConfigureRequest=} [properties] Properties to set
+         */
+        function SetConfigureRequest(properties) {
+            if (properties)
+                for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * SetConfigureRequest configDer.
+         * @member {Uint8Array} configDer
+         * @memberof lukuid.SetConfigureRequest
+         * @instance
+         */
+        SetConfigureRequest.prototype.configDer = $util.newBuffer([]);
+
+        /**
+         * SetConfigureRequest signature.
+         * @member {Uint8Array} signature
+         * @memberof lukuid.SetConfigureRequest
+         * @instance
+         */
+        SetConfigureRequest.prototype.signature = $util.newBuffer([]);
+
+        /**
+         * SetConfigureRequest certificateDer.
+         * @member {Uint8Array} certificateDer
+         * @memberof lukuid.SetConfigureRequest
+         * @instance
+         */
+        SetConfigureRequest.prototype.certificateDer = $util.newBuffer([]);
+
+        /**
+         * SetConfigureRequest intermediateDer.
+         * @member {Uint8Array} intermediateDer
+         * @memberof lukuid.SetConfigureRequest
+         * @instance
+         */
+        SetConfigureRequest.prototype.intermediateDer = $util.newBuffer([]);
+
+        /**
+         * SetConfigureRequest counter.
+         * @member {number|Long} counter
+         * @memberof lukuid.SetConfigureRequest
+         * @instance
+         */
+        SetConfigureRequest.prototype.counter = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+
+        /**
+         * Creates a new SetConfigureRequest instance using the specified properties.
+         * @function create
+         * @memberof lukuid.SetConfigureRequest
+         * @static
+         * @param {lukuid.ISetConfigureRequest=} [properties] Properties to set
+         * @returns {lukuid.SetConfigureRequest} SetConfigureRequest instance
+         */
+        SetConfigureRequest.create = function create(properties) {
+            return new SetConfigureRequest(properties);
+        };
+
+        /**
+         * Encodes the specified SetConfigureRequest message. Does not implicitly {@link lukuid.SetConfigureRequest.verify|verify} messages.
+         * @function encode
+         * @memberof lukuid.SetConfigureRequest
+         * @static
+         * @param {lukuid.ISetConfigureRequest} message SetConfigureRequest message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        SetConfigureRequest.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.configDer != null && Object.hasOwnProperty.call(message, "configDer"))
+                writer.uint32(/* id 1, wireType 2 =*/10).bytes(message.configDer);
+            if (message.signature != null && Object.hasOwnProperty.call(message, "signature"))
+                writer.uint32(/* id 2, wireType 2 =*/18).bytes(message.signature);
+            if (message.certificateDer != null && Object.hasOwnProperty.call(message, "certificateDer"))
+                writer.uint32(/* id 3, wireType 2 =*/26).bytes(message.certificateDer);
+            if (message.intermediateDer != null && Object.hasOwnProperty.call(message, "intermediateDer"))
+                writer.uint32(/* id 4, wireType 2 =*/34).bytes(message.intermediateDer);
+            if (message.counter != null && Object.hasOwnProperty.call(message, "counter"))
+                writer.uint32(/* id 5, wireType 0 =*/40).uint64(message.counter);
+            return writer;
+        };
+
+        /**
+         * Encodes the specified SetConfigureRequest message, length delimited. Does not implicitly {@link lukuid.SetConfigureRequest.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof lukuid.SetConfigureRequest
+         * @static
+         * @param {lukuid.ISetConfigureRequest} message SetConfigureRequest message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        SetConfigureRequest.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a SetConfigureRequest message from the specified reader or buffer.
+         * @function decode
+         * @memberof lukuid.SetConfigureRequest
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {lukuid.SetConfigureRequest} SetConfigureRequest
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        SetConfigureRequest.decode = function decode(reader, length, error) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lukuid.SetConfigureRequest();
+            while (reader.pos < end) {
+                let tag = reader.uint32();
+                if (tag === error)
+                    break;
+                switch (tag >>> 3) {
+                case 1: {
+                        message.configDer = reader.bytes();
+                        break;
+                    }
+                case 2: {
+                        message.signature = reader.bytes();
+                        break;
+                    }
+                case 3: {
+                        message.certificateDer = reader.bytes();
+                        break;
+                    }
+                case 4: {
+                        message.intermediateDer = reader.bytes();
+                        break;
+                    }
+                case 5: {
+                        message.counter = reader.uint64();
+                        break;
+                    }
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes a SetConfigureRequest message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof lukuid.SetConfigureRequest
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {lukuid.SetConfigureRequest} SetConfigureRequest
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        SetConfigureRequest.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies a SetConfigureRequest message.
+         * @function verify
+         * @memberof lukuid.SetConfigureRequest
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        SetConfigureRequest.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.configDer != null && message.hasOwnProperty("configDer"))
+                if (!(message.configDer && typeof message.configDer.length === "number" || $util.isString(message.configDer)))
+                    return "configDer: buffer expected";
+            if (message.signature != null && message.hasOwnProperty("signature"))
+                if (!(message.signature && typeof message.signature.length === "number" || $util.isString(message.signature)))
+                    return "signature: buffer expected";
+            if (message.certificateDer != null && message.hasOwnProperty("certificateDer"))
+                if (!(message.certificateDer && typeof message.certificateDer.length === "number" || $util.isString(message.certificateDer)))
+                    return "certificateDer: buffer expected";
+            if (message.intermediateDer != null && message.hasOwnProperty("intermediateDer"))
+                if (!(message.intermediateDer && typeof message.intermediateDer.length === "number" || $util.isString(message.intermediateDer)))
+                    return "intermediateDer: buffer expected";
+            if (message.counter != null && message.hasOwnProperty("counter"))
+                if (!$util.isInteger(message.counter) && !(message.counter && $util.isInteger(message.counter.low) && $util.isInteger(message.counter.high)))
+                    return "counter: integer|Long expected";
+            return null;
+        };
+
+        /**
+         * Creates a SetConfigureRequest message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof lukuid.SetConfigureRequest
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {lukuid.SetConfigureRequest} SetConfigureRequest
+         */
+        SetConfigureRequest.fromObject = function fromObject(object) {
+            if (object instanceof $root.lukuid.SetConfigureRequest)
+                return object;
+            let message = new $root.lukuid.SetConfigureRequest();
+            if (object.configDer != null)
+                if (typeof object.configDer === "string")
+                    $util.base64.decode(object.configDer, message.configDer = $util.newBuffer($util.base64.length(object.configDer)), 0);
+                else if (object.configDer.length >= 0)
+                    message.configDer = object.configDer;
+            if (object.signature != null)
+                if (typeof object.signature === "string")
+                    $util.base64.decode(object.signature, message.signature = $util.newBuffer($util.base64.length(object.signature)), 0);
+                else if (object.signature.length >= 0)
+                    message.signature = object.signature;
+            if (object.certificateDer != null)
+                if (typeof object.certificateDer === "string")
+                    $util.base64.decode(object.certificateDer, message.certificateDer = $util.newBuffer($util.base64.length(object.certificateDer)), 0);
+                else if (object.certificateDer.length >= 0)
+                    message.certificateDer = object.certificateDer;
+            if (object.intermediateDer != null)
+                if (typeof object.intermediateDer === "string")
+                    $util.base64.decode(object.intermediateDer, message.intermediateDer = $util.newBuffer($util.base64.length(object.intermediateDer)), 0);
+                else if (object.intermediateDer.length >= 0)
+                    message.intermediateDer = object.intermediateDer;
+            if (object.counter != null)
+                if ($util.Long)
+                    (message.counter = $util.Long.fromValue(object.counter)).unsigned = true;
+                else if (typeof object.counter === "string")
+                    message.counter = parseInt(object.counter, 10);
+                else if (typeof object.counter === "number")
+                    message.counter = object.counter;
+                else if (typeof object.counter === "object")
+                    message.counter = new $util.LongBits(object.counter.low >>> 0, object.counter.high >>> 0).toNumber(true);
+            return message;
+        };
+
+        /**
+         * Creates a plain object from a SetConfigureRequest message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof lukuid.SetConfigureRequest
+         * @static
+         * @param {lukuid.SetConfigureRequest} message SetConfigureRequest
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        SetConfigureRequest.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            let object = {};
+            if (options.defaults) {
+                if (options.bytes === String)
+                    object.configDer = "";
+                else {
+                    object.configDer = [];
+                    if (options.bytes !== Array)
+                        object.configDer = $util.newBuffer(object.configDer);
+                }
+                if (options.bytes === String)
+                    object.signature = "";
+                else {
+                    object.signature = [];
+                    if (options.bytes !== Array)
+                        object.signature = $util.newBuffer(object.signature);
+                }
+                if (options.bytes === String)
+                    object.certificateDer = "";
+                else {
+                    object.certificateDer = [];
+                    if (options.bytes !== Array)
+                        object.certificateDer = $util.newBuffer(object.certificateDer);
+                }
+                if (options.bytes === String)
+                    object.intermediateDer = "";
+                else {
+                    object.intermediateDer = [];
+                    if (options.bytes !== Array)
+                        object.intermediateDer = $util.newBuffer(object.intermediateDer);
+                }
+                if ($util.Long) {
+                    let long = new $util.Long(0, 0, true);
+                    object.counter = options.longs === String ? long.toString() : options.longs === Number ? long.toNumber() : long;
+                } else
+                    object.counter = options.longs === String ? "0" : 0;
+            }
+            if (message.configDer != null && message.hasOwnProperty("configDer"))
+                object.configDer = options.bytes === String ? $util.base64.encode(message.configDer, 0, message.configDer.length) : options.bytes === Array ? Array.prototype.slice.call(message.configDer) : message.configDer;
+            if (message.signature != null && message.hasOwnProperty("signature"))
+                object.signature = options.bytes === String ? $util.base64.encode(message.signature, 0, message.signature.length) : options.bytes === Array ? Array.prototype.slice.call(message.signature) : message.signature;
+            if (message.certificateDer != null && message.hasOwnProperty("certificateDer"))
+                object.certificateDer = options.bytes === String ? $util.base64.encode(message.certificateDer, 0, message.certificateDer.length) : options.bytes === Array ? Array.prototype.slice.call(message.certificateDer) : message.certificateDer;
+            if (message.intermediateDer != null && message.hasOwnProperty("intermediateDer"))
+                object.intermediateDer = options.bytes === String ? $util.base64.encode(message.intermediateDer, 0, message.intermediateDer.length) : options.bytes === Array ? Array.prototype.slice.call(message.intermediateDer) : message.intermediateDer;
+            if (message.counter != null && message.hasOwnProperty("counter"))
+                if (typeof message.counter === "number")
+                    object.counter = options.longs === String ? String(message.counter) : message.counter;
+                else
+                    object.counter = options.longs === String ? $util.Long.prototype.toString.call(message.counter) : options.longs === Number ? new $util.LongBits(message.counter.low >>> 0, message.counter.high >>> 0).toNumber(true) : message.counter;
+            return object;
+        };
+
+        /**
+         * Converts this SetConfigureRequest to JSON.
+         * @function toJSON
+         * @memberof lukuid.SetConfigureRequest
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        SetConfigureRequest.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        /**
+         * Gets the default type url for SetConfigureRequest
+         * @function getTypeUrl
+         * @memberof lukuid.SetConfigureRequest
+         * @static
+         * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns {string} The default type url
+         */
+        SetConfigureRequest.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+            if (typeUrlPrefix === undefined) {
+                typeUrlPrefix = "type.googleapis.com";
+            }
+            return typeUrlPrefix + "/lukuid.SetConfigureRequest";
+        };
+
+        return SetConfigureRequest;
+    })();
+
     lukuid.ScanEnableRequest = (function() {
 
         /**
@@ -7363,6 +7711,7 @@ export const lukuid = $root.lukuid = (() => {
          * @property {lukuid.IOtaEndRequest|null} [otaDataV2] CommandRequest otaDataV2
          * @property {lukuid.ISetAttestationRequest|null} [setAttestation] CommandRequest setAttestation
          * @property {lukuid.ISetHeartbeatRequest|null} [setHeartbeat] CommandRequest setHeartbeat
+         * @property {lukuid.ISetConfigureRequest|null} [configure] CommandRequest configure
          * @property {lukuid.IScanEnableRequest|null} [scanEnable] CommandRequest scanEnable
          * @property {lukuid.IGenerateHeartbeatRequest|null} [generateHeartbeat] CommandRequest generateHeartbeat
          * @property {lukuid.IFetchTelemetryRequest|null} [fetchTelemetry] CommandRequest fetchTelemetry
@@ -7466,6 +7815,14 @@ export const lukuid = $root.lukuid = (() => {
         CommandRequest.prototype.setHeartbeat = null;
 
         /**
+         * CommandRequest configure.
+         * @member {lukuid.ISetConfigureRequest|null|undefined} configure
+         * @memberof lukuid.CommandRequest
+         * @instance
+         */
+        CommandRequest.prototype.configure = null;
+
+        /**
          * CommandRequest scanEnable.
          * @member {lukuid.IScanEnableRequest|null|undefined} scanEnable
          * @memberof lukuid.CommandRequest
@@ -7510,12 +7867,12 @@ export const lukuid = $root.lukuid = (() => {
 
         /**
          * CommandRequest payload.
-         * @member {"fetch"|"get"|"attest"|"config"|"otaBegin"|"otaData"|"otaDataV2"|"setAttestation"|"setHeartbeat"|"scanEnable"|"generateHeartbeat"|"fetchTelemetry"|"getCertificate"|"getChain"|undefined} payload
+         * @member {"fetch"|"get"|"attest"|"config"|"otaBegin"|"otaData"|"otaDataV2"|"setAttestation"|"setHeartbeat"|"configure"|"scanEnable"|"generateHeartbeat"|"fetchTelemetry"|"getCertificate"|"getChain"|undefined} payload
          * @memberof lukuid.CommandRequest
          * @instance
          */
         Object.defineProperty(CommandRequest.prototype, "payload", {
-            get: $util.oneOfGetter($oneOfFields = ["fetch", "get", "attest", "config", "otaBegin", "otaData", "otaDataV2", "setAttestation", "setHeartbeat", "scanEnable", "generateHeartbeat", "fetchTelemetry", "getCertificate", "getChain"]),
+            get: $util.oneOfGetter($oneOfFields = ["fetch", "get", "attest", "config", "otaBegin", "otaData", "otaDataV2", "setAttestation", "setHeartbeat", "configure", "scanEnable", "generateHeartbeat", "fetchTelemetry", "getCertificate", "getChain"]),
             set: $util.oneOfSetter($oneOfFields)
         });
 
@@ -7573,6 +7930,8 @@ export const lukuid = $root.lukuid = (() => {
                 $root.lukuid.GetCertificateRequest.encode(message.getCertificate, writer.uint32(/* id 15, wireType 2 =*/122).fork()).ldelim();
             if (message.getChain != null && Object.hasOwnProperty.call(message, "getChain"))
                 $root.lukuid.GetChainRequest.encode(message.getChain, writer.uint32(/* id 16, wireType 2 =*/130).fork()).ldelim();
+            if (message.configure != null && Object.hasOwnProperty.call(message, "configure"))
+                $root.lukuid.SetConfigureRequest.encode(message.configure, writer.uint32(/* id 17, wireType 2 =*/138).fork()).ldelim();
             return writer;
         };
 
@@ -7647,6 +8006,10 @@ export const lukuid = $root.lukuid = (() => {
                     }
                 case 10: {
                         message.setHeartbeat = $root.lukuid.SetHeartbeatRequest.decode(reader, reader.uint32());
+                        break;
+                    }
+                case 17: {
+                        message.configure = $root.lukuid.SetConfigureRequest.decode(reader, reader.uint32());
                         break;
                     }
                 case 12: {
@@ -7796,6 +8159,16 @@ export const lukuid = $root.lukuid = (() => {
                         return "setHeartbeat." + error;
                 }
             }
+            if (message.configure != null && message.hasOwnProperty("configure")) {
+                if (properties.payload === 1)
+                    return "payload: multiple values";
+                properties.payload = 1;
+                {
+                    let error = $root.lukuid.SetConfigureRequest.verify(message.configure);
+                    if (error)
+                        return "configure." + error;
+                }
+            }
             if (message.scanEnable != null && message.hasOwnProperty("scanEnable")) {
                 if (properties.payload === 1)
                     return "payload: multiple values";
@@ -7907,6 +8280,11 @@ export const lukuid = $root.lukuid = (() => {
                 if (typeof object.setHeartbeat !== "object")
                     throw TypeError(".lukuid.CommandRequest.setHeartbeat: object expected");
                 message.setHeartbeat = $root.lukuid.SetHeartbeatRequest.fromObject(object.setHeartbeat);
+            }
+            if (object.configure != null) {
+                if (typeof object.configure !== "object")
+                    throw TypeError(".lukuid.CommandRequest.configure: object expected");
+                message.configure = $root.lukuid.SetConfigureRequest.fromObject(object.configure);
             }
             if (object.scanEnable != null) {
                 if (typeof object.scanEnable !== "object")
@@ -8022,6 +8400,11 @@ export const lukuid = $root.lukuid = (() => {
                 object.getChain = $root.lukuid.GetChainRequest.toObject(message.getChain, options);
                 if (options.oneofs)
                     object.payload = "getChain";
+            }
+            if (message.configure != null && message.hasOwnProperty("configure")) {
+                object.configure = $root.lukuid.SetConfigureRequest.toObject(message.configure, options);
+                if (options.oneofs)
+                    object.payload = "configure";
             }
             return object;
         };

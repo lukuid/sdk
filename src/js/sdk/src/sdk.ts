@@ -167,7 +167,7 @@ const DEFAULT_DEVICE_REQUEST_OPTIONS: DeviceRequestOptions = {
   transportOptions: {
     webusb: {
       filters: [
-        { vendorId: 0x303a, productId: 0x4002 }, // LukuID GuardCard (Native USB)
+        { vendorId: 0x303a, productId: 0x4002 }, // LukuID LukuID Environment (Native USB)
         { vendorId: 0x303a, productId: 0x0002 }, // ESP32-S3 default
         { vendorId: 0x303a }, // Any Espressif device
         { vendorId: 0x0403 }, // FTDI

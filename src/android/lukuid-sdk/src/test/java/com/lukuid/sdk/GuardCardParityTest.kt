@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-class GuardCardParityTest {
+class LukuIDEnvironmentParityTest {
 
     private fun getValidEnvelopeStr(): String {
         val file = File("../../../samples/envelopes/dev/1.0.0/valid_envelope.json")

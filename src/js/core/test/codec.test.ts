@@ -52,7 +52,7 @@ describe('LukuDecoder', () => {
     writeU32(payload, 2, 1);
     const infoPayload: number[] = [];
     writeString(infoPayload, 10, 'B784AE14');
-    writeString(infoPayload, 11, 'guardcard');
+    writeString(infoPayload, 11, 'environment');
     writeString(infoPayload, 12, 'LUKUID-GUARDCARD-V1');
     writeString(infoPayload, 13, 'v1.0.0');
     writeBytes(infoPayload, 28, Uint8Array.from(Buffer.from('t4SuFBxXUx2rMw4uYlwcPuAoXJB/NuNSQF1lTLrbVRg=', 'base64')));

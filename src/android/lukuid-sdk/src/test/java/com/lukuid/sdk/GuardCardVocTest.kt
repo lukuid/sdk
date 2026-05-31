@@ -12,7 +12,7 @@ import java.security.KeyPairGenerator
 import java.security.Signature
 import java.util.Base64
 
-class GuardCardVocTest {
+class LukuIDEnvironmentVocTest {
     private val magic = byteArrayOf(0x4C, 0x55, 0x4B, 0x55, 0x49, 0x44, 0x01, 0x7E)
 
     @Test

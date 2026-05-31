@@ -402,8 +402,8 @@ def validate_certificate_chain(
     if created is not None:
         try:
             for cert in certs:
-                valid_from = int(cert.not_valid_before_utc.timestamp())
-                valid_to = int(cert.not_valid_after_utc.timestamp())
+                valid_from = int(cert.not_valid_before.timestamp())
+                valid_to = int(cert.not_valid_after.timestamp())
                 if created < valid_from or created > valid_to:
                     return CertificateChainValidationResult(
                         False,
@@ -616,8 +616,8 @@ def _certificate_metadata(cert_pem: str, include_pubkey: bool = True) -> dict[st
     return {
         "subject": cert.subject.rfc4514_string(),
         "issuer": cert.issuer.rfc4514_string(),
-        "not_before": int(cert.not_valid_before_utc.timestamp()),
-        "not_after": int(cert.not_valid_after_utc.timestamp()),
+        "not_before": int(cert.not_valid_before.timestamp()),
+        "not_after": int(cert.not_valid_after.timestamp()),
         "public_key_pem": public_key_pem,
         "sig_len": len(cert.signature),
     }

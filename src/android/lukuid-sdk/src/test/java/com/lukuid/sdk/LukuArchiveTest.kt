@@ -246,7 +246,7 @@ class LukuArchiveTest {
             device = LukuDeviceIdentity("LUK-CONT", signer.publicKeyBase64),
             attachments = emptyMap(),
             signer = LukuSigner(signer.privateKey, signer.publicKeyBase64),
-            options = LukuExportOptions(policy = LukuPolicy(name = "guardcard", nativeContinuityGapSeconds = 600))
+            options = LukuExportOptions(policy = LukuPolicy(name = "environment", nativeContinuityGapSeconds = 600))
         )
         val issues = archive.verify(testOptions().copy(requireContinuity = true))
         assertTrue(hasIssue(issues, "CONTINUITY_GAP_EXCEEDED"))

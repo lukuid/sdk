@@ -2,7 +2,7 @@
 import XCTest
 @testable import LukuIDSDK
 
-final class GuardCardParityTests: XCTestCase {
+final class LukuIDEnvironmentParityTests: XCTestCase {
 
     private func getValidEnvelope() -> [String: Any] {
         let fileManager = FileManager.default

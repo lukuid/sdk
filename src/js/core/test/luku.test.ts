@@ -305,7 +305,7 @@ describe('LukuFile', () => {
       {},
       signer.signer,
       {
-        policy: { name: 'guardcard', native_continuity_gap_seconds: 600 }
+        policy: { name: 'environment', native_continuity_gap_seconds: 600 }
       }
     );
 

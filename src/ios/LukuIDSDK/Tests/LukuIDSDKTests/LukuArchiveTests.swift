@@ -271,7 +271,7 @@ final class LukuArchiveTests: XCTestCase {
             device: LukuDeviceIdentity(deviceID: "LUK-CONT", publicKey: signer.publicKeyBase64),
             attachments: [:],
             signer: LukuSigner(privateKey: signer.privateKey, publicKeyBase64: signer.publicKeyBase64),
-            options: LukuExportOptions(policy: LukuPolicy(name: "guardcard", nativeContinuityGapSeconds: 600))
+            options: LukuExportOptions(policy: LukuPolicy(name: "environment", nativeContinuityGapSeconds: 600))
         )
 
         let issues = archive.verify(options: LukuVerifyOptions(

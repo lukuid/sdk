@@ -100,8 +100,8 @@ async function createSignedEnvironmentEnvelope(canonicalString: string): Promise
   };
 }
 
-describe('GuardCard VOC transport', () => {
-  it('decodes voc_raw and voc_index from GuardCard environment frames', () => {
+describe('LukuID Environment VOC transport', () => {
+  it('decodes voc_raw and voc_index from LukuID Environment environment frames', () => {
     const payload = [
       ...encodeUint64Field(1, 4502),
       ...encodeInt64Field(2, 1770823456),

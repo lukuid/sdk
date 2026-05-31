@@ -27,7 +27,7 @@ class LukuCodecTest {
 
         val info = LukuIDProto.DeviceInfoResponse.newBuilder()
             .setId("B784AE14")
-            .setProduct("guardcard")
+            .setProduct("environment")
             .setModel("LUKUID-GUARDCARD-V1")
             .setFirmware("v1.0.0")
             .setKey(com.google.protobuf.ByteString.copyFrom(Base64.getDecoder().decode("t4SuFBxXUx2rMw4uYlwcPuAoXJB/NuNSQF1lTLrbVRg=")))

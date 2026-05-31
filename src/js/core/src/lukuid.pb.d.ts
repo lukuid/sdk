@@ -1461,6 +1461,127 @@ export namespace lukuid {
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
+    /** Properties of a SetConfigureRequest. */
+    interface ISetConfigureRequest {
+
+        /** SetConfigureRequest configDer */
+        configDer?: (Uint8Array|null);
+
+        /** SetConfigureRequest signature */
+        signature?: (Uint8Array|null);
+
+        /** SetConfigureRequest certificateDer */
+        certificateDer?: (Uint8Array|null);
+
+        /** SetConfigureRequest intermediateDer */
+        intermediateDer?: (Uint8Array|null);
+
+        /** SetConfigureRequest counter */
+        counter?: (number|Long|null);
+    }
+
+    /** Represents a SetConfigureRequest. */
+    class SetConfigureRequest implements ISetConfigureRequest {
+
+        /**
+         * Constructs a new SetConfigureRequest.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: lukuid.ISetConfigureRequest);
+
+        /** SetConfigureRequest configDer. */
+        public configDer: Uint8Array;
+
+        /** SetConfigureRequest signature. */
+        public signature: Uint8Array;
+
+        /** SetConfigureRequest certificateDer. */
+        public certificateDer: Uint8Array;
+
+        /** SetConfigureRequest intermediateDer. */
+        public intermediateDer: Uint8Array;
+
+        /** SetConfigureRequest counter. */
+        public counter: (number|Long);
+
+        /**
+         * Creates a new SetConfigureRequest instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns SetConfigureRequest instance
+         */
+        public static create(properties?: lukuid.ISetConfigureRequest): lukuid.SetConfigureRequest;
+
+        /**
+         * Encodes the specified SetConfigureRequest message. Does not implicitly {@link lukuid.SetConfigureRequest.verify|verify} messages.
+         * @param message SetConfigureRequest message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: lukuid.ISetConfigureRequest, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified SetConfigureRequest message, length delimited. Does not implicitly {@link lukuid.SetConfigureRequest.verify|verify} messages.
+         * @param message SetConfigureRequest message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: lukuid.ISetConfigureRequest, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a SetConfigureRequest message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns SetConfigureRequest
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): lukuid.SetConfigureRequest;
+
+        /**
+         * Decodes a SetConfigureRequest message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns SetConfigureRequest
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): lukuid.SetConfigureRequest;
+
+        /**
+         * Verifies a SetConfigureRequest message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a SetConfigureRequest message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns SetConfigureRequest
+         */
+        public static fromObject(object: { [k: string]: any }): lukuid.SetConfigureRequest;
+
+        /**
+         * Creates a plain object from a SetConfigureRequest message. Also converts values to other types if specified.
+         * @param message SetConfigureRequest
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: lukuid.SetConfigureRequest, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this SetConfigureRequest to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+
+        /**
+         * Gets the default type url for SetConfigureRequest
+         * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns The default type url
+         */
+        public static getTypeUrl(typeUrlPrefix?: string): string;
+    }
+
     /** Properties of a ScanEnableRequest. */
     interface IScanEnableRequest {
 
@@ -2772,6 +2893,9 @@ export namespace lukuid {
         /** CommandRequest setHeartbeat */
         setHeartbeat?: (lukuid.ISetHeartbeatRequest|null);
 
+        /** CommandRequest configure */
+        configure?: (lukuid.ISetConfigureRequest|null);
+
         /** CommandRequest scanEnable */
         scanEnable?: (lukuid.IScanEnableRequest|null);
 
@@ -2827,6 +2951,9 @@ export namespace lukuid {
         /** CommandRequest setHeartbeat. */
         public setHeartbeat?: (lukuid.ISetHeartbeatRequest|null);
 
+        /** CommandRequest configure. */
+        public configure?: (lukuid.ISetConfigureRequest|null);
+
         /** CommandRequest scanEnable. */
         public scanEnable?: (lukuid.IScanEnableRequest|null);
 
@@ -2843,7 +2970,7 @@ export namespace lukuid {
         public getChain?: (lukuid.IGetChainRequest|null);
 
         /** CommandRequest payload. */
-        public payload?: ("fetch"|"get"|"attest"|"config"|"otaBegin"|"otaData"|"otaDataV2"|"setAttestation"|"setHeartbeat"|"scanEnable"|"generateHeartbeat"|"fetchTelemetry"|"getCertificate"|"getChain");
+        public payload?: ("fetch"|"get"|"attest"|"config"|"otaBegin"|"otaData"|"otaDataV2"|"setAttestation"|"setHeartbeat"|"configure"|"scanEnable"|"generateHeartbeat"|"fetchTelemetry"|"getCertificate"|"getChain");
 
         /**
          * Creates a new CommandRequest instance using the specified properties.

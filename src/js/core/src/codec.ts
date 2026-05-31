@@ -540,7 +540,7 @@ function decodeDataEntry(payload: Uint8Array): JsonRecord | null {
 
     if (field === 2) {
       return {
-        view: 'guardcard_list',
+        view: 'environment_list',
         type: 'environment_min',
         record: decodeEnvironmentRecordMin(message)
       };

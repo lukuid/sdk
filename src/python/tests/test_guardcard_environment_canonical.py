@@ -8,7 +8,7 @@ from cryptography.hazmat.primitives import serialization
 from lukuid_sdk import LukuFile, LukuVerifyOptions
 
 
-class TestGuardCardEnvironmentCanonical(unittest.TestCase):
+class TestLukuIDEnvironmentEnvironmentCanonical(unittest.TestCase):
     def test_verify_envelope_accepts_new_voc_canonical_and_rejects_old_format(self):
         private_key = ed25519.Ed25519PrivateKey.generate()
         public_key = private_key.public_key()

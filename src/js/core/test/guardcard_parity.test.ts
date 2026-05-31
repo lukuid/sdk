@@ -53,7 +53,7 @@ async function runWithBrowserCrypto<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-describe('GuardCard Envelope Parity', () => {
+describe('LukuID Environment Envelope Parity', () => {
   it('fails when DAC detached attestation signature fields are missing', async () => {
     const envelope = await getValidEnvelope();
     const identity = envelope.identity as JsonObject;

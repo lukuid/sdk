@@ -595,7 +595,7 @@ fn decode_data_entry(bytes: &[u8]) -> Option<Value> {
             }
             2 => {
                 return Some(json!({
-                    "view": "guardcard_list",
+                    "view": "environment_list",
                     "type": "environment_min",
                     "record": decode_environment_record_min(message),
                 }));

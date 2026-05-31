@@ -19,7 +19,7 @@ final class LukuCodecTests: XCTestCase {
 
         var info = LukuIDDeviceInfoResponse()
         info.id = "B784AE14"
-        info.product = "guardcard"
+        info.product = "environment"
         info.model = "LUKUID-GUARDCARD-V1"
         info.firmware = "v1.0.0"
         info.key = Data(base64Encoded: "t4SuFBxXUx2rMw4uYlwcPuAoXJB/NuNSQF1lTLrbVRg=")!

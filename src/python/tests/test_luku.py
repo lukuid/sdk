@@ -209,7 +209,7 @@ class LukuArchiveTests(unittest.TestCase):
             identity,
             {},
             signer,
-            LukuExportOptions(policy=LukuPolicy(name="guardcard", native_continuity_gap_seconds=600)),
+            LukuExportOptions(policy=LukuPolicy(name="environment", native_continuity_gap_seconds=600)),
         )
         issues = archive.verify(
             LukuVerifyOptions(

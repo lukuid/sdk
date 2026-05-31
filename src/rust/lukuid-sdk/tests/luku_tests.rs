@@ -304,7 +304,7 @@ fn test_luku_verify_enforces_native_continuity_when_requested() {
         &signing_key,
         LukuExportOptions {
             policy: Some(lukuid_sdk::luku::LukuPolicy {
-                name: "guardcard".to_string(),
+                name: "environment".to_string(),
                 native_continuity_gap_seconds: Some(600),
             }),
         },

@@ -32,7 +32,7 @@ def verify(envelope: dict):
     ))
 
 
-class TestGuardCardParity(unittest.TestCase):
+class TestLukuIDEnvironmentParity(unittest.TestCase):
     def test_missing_detached_dac_signature_fails(self):
         envelope = get_valid_envelope()
         envelope.pop("attestation_signature", None)

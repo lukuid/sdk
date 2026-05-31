@@ -335,7 +335,7 @@ internal class LukuCodec(
                 )
             )
             LukuIDProto.DataEntry.MinRecordCase.ENVIRONMENT_MIN -> mapOf(
-                "view" to "guardcard_list",
+                "view" to "environment_list",
                 "type" to "environment_min",
                 "record" to mapOf(
                     "version" to entry.environmentMin.version,
@@ -364,7 +364,7 @@ internal class LukuCodec(
                 out["scan_record"] = scanRecordToMap(full.scanFull)
             }
             LukuIDProto.FullRecordResponse.FullRecordCase.ENVIRONMENT_FULL -> {
-                out["view"] = "guardcard_detail"
+                out["view"] = "environment_detail"
                 out["env_record"] = envRecordToMap(full.environmentFull)
             }
             else -> out["view"] = "unknown"
