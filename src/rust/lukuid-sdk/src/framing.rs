@@ -1708,6 +1708,66 @@ fn decode_environment_payload(bytes: &[u8]) -> Value {
             21 => {
                 let _ = insert_u32(bytes, &mut cursor, wire_type, &mut out, "voc_index");
             }
+            22 => {
+                let _ = insert_f64(bytes, &mut cursor, wire_type, &mut out, "gps_lat");
+            }
+            23 => {
+                let _ = insert_f64(bytes, &mut cursor, wire_type, &mut out, "gps_lng");
+            }
+            24 => {
+                let _ = insert_f32(bytes, &mut cursor, wire_type, &mut out, "gps_accuracy_m");
+            }
+            25 => {
+                let _ = insert_f32(bytes, &mut cursor, wire_type, &mut out, "gps_altitude_m");
+            }
+            26 => {
+                let _ = insert_f32(bytes, &mut cursor, wire_type, &mut out, "gps_speed_mps");
+            }
+            27 => {
+                let _ = insert_f32(bytes, &mut cursor, wire_type, &mut out, "gps_heading_deg");
+            }
+            28 => {
+                let _ = insert_u32(bytes, &mut cursor, wire_type, &mut out, "gps_satellites");
+            }
+            29 => {
+                let _ = insert_u32(bytes, &mut cursor, wire_type, &mut out, "gps_fix_quality");
+            }
+            30 => {
+                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "mobile_network");
+            }
+            31 => {
+                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "mobile_radio");
+            }
+            32 => {
+                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "mobile_operator");
+            }
+            33 => {
+                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "mobile_mcc");
+            }
+            34 => {
+                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "mobile_mnc");
+            }
+            35 => {
+                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "mobile_lac");
+            }
+            36 => {
+                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "mobile_cell_id");
+            }
+            37 => {
+                let _ = insert_i32(bytes, &mut cursor, wire_type, &mut out, "mobile_rssi_dbm");
+            }
+            38 => {
+                let _ = insert_i32(bytes, &mut cursor, wire_type, &mut out, "mobile_rsrp_dbm");
+            }
+            39 => {
+                let _ = insert_f32(bytes, &mut cursor, wire_type, &mut out, "mobile_rsrq_db");
+            }
+            40 => {
+                let _ = insert_f32(bytes, &mut cursor, wire_type, &mut out, "mobile_sinr_db");
+            }
+            41 => {
+                let _ = insert_bool(bytes, &mut cursor, wire_type, &mut out, "mobile_roaming");
+            }
             _ => {
                 let _ = skip_field(bytes, &mut cursor, wire_type);
             }

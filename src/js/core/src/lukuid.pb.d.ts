@@ -5672,6 +5672,66 @@ export namespace lukuid {
 
         /** EnvironmentPayload vocIndex */
         vocIndex?: (number|null);
+
+        /** EnvironmentPayload gpsLat */
+        gpsLat?: (number|null);
+
+        /** EnvironmentPayload gpsLng */
+        gpsLng?: (number|null);
+
+        /** EnvironmentPayload gpsAccuracyM */
+        gpsAccuracyM?: (number|null);
+
+        /** EnvironmentPayload gpsAltitudeM */
+        gpsAltitudeM?: (number|null);
+
+        /** EnvironmentPayload gpsSpeedMps */
+        gpsSpeedMps?: (number|null);
+
+        /** EnvironmentPayload gpsHeadingDeg */
+        gpsHeadingDeg?: (number|null);
+
+        /** EnvironmentPayload gpsSatellites */
+        gpsSatellites?: (number|null);
+
+        /** EnvironmentPayload gpsFixQuality */
+        gpsFixQuality?: (number|null);
+
+        /** EnvironmentPayload mobileNetwork */
+        mobileNetwork?: (string|null);
+
+        /** EnvironmentPayload mobileRadio */
+        mobileRadio?: (string|null);
+
+        /** EnvironmentPayload mobileOperator */
+        mobileOperator?: (string|null);
+
+        /** EnvironmentPayload mobileMcc */
+        mobileMcc?: (string|null);
+
+        /** EnvironmentPayload mobileMnc */
+        mobileMnc?: (string|null);
+
+        /** EnvironmentPayload mobileLac */
+        mobileLac?: (string|null);
+
+        /** EnvironmentPayload mobileCellId */
+        mobileCellId?: (string|null);
+
+        /** EnvironmentPayload mobileRssiDbm */
+        mobileRssiDbm?: (number|null);
+
+        /** EnvironmentPayload mobileRsrpDbm */
+        mobileRsrpDbm?: (number|null);
+
+        /** EnvironmentPayload mobileRsrqDb */
+        mobileRsrqDb?: (number|null);
+
+        /** EnvironmentPayload mobileSinrDb */
+        mobileSinrDb?: (number|null);
+
+        /** EnvironmentPayload mobileRoaming */
+        mobileRoaming?: (boolean|null);
     }
 
     /** Represents an EnvironmentPayload. */
@@ -5745,6 +5805,66 @@ export namespace lukuid {
 
         /** EnvironmentPayload vocIndex. */
         public vocIndex: number;
+
+        /** EnvironmentPayload gpsLat. */
+        public gpsLat?: (number|null);
+
+        /** EnvironmentPayload gpsLng. */
+        public gpsLng?: (number|null);
+
+        /** EnvironmentPayload gpsAccuracyM. */
+        public gpsAccuracyM?: (number|null);
+
+        /** EnvironmentPayload gpsAltitudeM. */
+        public gpsAltitudeM?: (number|null);
+
+        /** EnvironmentPayload gpsSpeedMps. */
+        public gpsSpeedMps?: (number|null);
+
+        /** EnvironmentPayload gpsHeadingDeg. */
+        public gpsHeadingDeg?: (number|null);
+
+        /** EnvironmentPayload gpsSatellites. */
+        public gpsSatellites?: (number|null);
+
+        /** EnvironmentPayload gpsFixQuality. */
+        public gpsFixQuality?: (number|null);
+
+        /** EnvironmentPayload mobileNetwork. */
+        public mobileNetwork?: (string|null);
+
+        /** EnvironmentPayload mobileRadio. */
+        public mobileRadio?: (string|null);
+
+        /** EnvironmentPayload mobileOperator. */
+        public mobileOperator?: (string|null);
+
+        /** EnvironmentPayload mobileMcc. */
+        public mobileMcc?: (string|null);
+
+        /** EnvironmentPayload mobileMnc. */
+        public mobileMnc?: (string|null);
+
+        /** EnvironmentPayload mobileLac. */
+        public mobileLac?: (string|null);
+
+        /** EnvironmentPayload mobileCellId. */
+        public mobileCellId?: (string|null);
+
+        /** EnvironmentPayload mobileRssiDbm. */
+        public mobileRssiDbm?: (number|null);
+
+        /** EnvironmentPayload mobileRsrpDbm. */
+        public mobileRsrpDbm?: (number|null);
+
+        /** EnvironmentPayload mobileRsrqDb. */
+        public mobileRsrqDb?: (number|null);
+
+        /** EnvironmentPayload mobileSinrDb. */
+        public mobileSinrDb?: (number|null);
+
+        /** EnvironmentPayload mobileRoaming. */
+        public mobileRoaming?: (boolean|null);
 
         /**
          * Creates a new EnvironmentPayload instance using the specified properties.

@@ -1197,6 +1197,26 @@ function decodeEnvironmentPayload(payload: Uint8Array): JsonRecord {
       case 19: assignUint32(payload, cursor, wireType, out, 'clk_var'); break;
       case 20: assignInt32(payload, cursor, wireType, out, 'drift'); break;
       case 21: assignUint32(payload, cursor, wireType, out, 'voc_index'); break;
+      case 22: assignFloat64(payload, cursor, wireType, out, 'gps_lat'); break;
+      case 23: assignFloat64(payload, cursor, wireType, out, 'gps_lng'); break;
+      case 24: assignFloat32(payload, cursor, wireType, out, 'gps_accuracy_m'); break;
+      case 25: assignFloat32(payload, cursor, wireType, out, 'gps_altitude_m'); break;
+      case 26: assignFloat32(payload, cursor, wireType, out, 'gps_speed_mps'); break;
+      case 27: assignFloat32(payload, cursor, wireType, out, 'gps_heading_deg'); break;
+      case 28: assignUint32(payload, cursor, wireType, out, 'gps_satellites'); break;
+      case 29: assignUint32(payload, cursor, wireType, out, 'gps_fix_quality'); break;
+      case 30: assignString(payload, cursor, wireType, out, 'mobile_network'); break;
+      case 31: assignString(payload, cursor, wireType, out, 'mobile_radio'); break;
+      case 32: assignString(payload, cursor, wireType, out, 'mobile_operator'); break;
+      case 33: assignString(payload, cursor, wireType, out, 'mobile_mcc'); break;
+      case 34: assignString(payload, cursor, wireType, out, 'mobile_mnc'); break;
+      case 35: assignString(payload, cursor, wireType, out, 'mobile_lac'); break;
+      case 36: assignString(payload, cursor, wireType, out, 'mobile_cell_id'); break;
+      case 37: assignInt32(payload, cursor, wireType, out, 'mobile_rssi_dbm'); break;
+      case 38: assignInt32(payload, cursor, wireType, out, 'mobile_rsrp_dbm'); break;
+      case 39: assignFloat32(payload, cursor, wireType, out, 'mobile_rsrq_db'); break;
+      case 40: assignFloat32(payload, cursor, wireType, out, 'mobile_sinr_db'); break;
+      case 41: assignBool(payload, cursor, wireType, out, 'mobile_roaming'); break;
       default: skipField(payload, cursor, wireType); break;
     }
   }

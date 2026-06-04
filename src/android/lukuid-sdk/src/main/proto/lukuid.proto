@@ -528,6 +528,26 @@ message EnvironmentPayload {
   uint32 clk_var = 19;
   int32 drift = 20;
   uint32 voc_index = 21;
+  optional double gps_lat = 22;
+  optional double gps_lng = 23;
+  optional float gps_accuracy_m = 24;
+  optional float gps_altitude_m = 25;
+  optional float gps_speed_mps = 26;
+  optional float gps_heading_deg = 27;
+  optional uint32 gps_satellites = 28;
+  optional uint32 gps_fix_quality = 29;
+  optional string mobile_network = 30;
+  optional string mobile_radio = 31;
+  optional string mobile_operator = 32;
+  optional string mobile_mcc = 33;
+  optional string mobile_mnc = 34;
+  optional string mobile_lac = 35;
+  optional string mobile_cell_id = 36;
+  optional int32 mobile_rssi_dbm = 37;
+  optional int32 mobile_rsrp_dbm = 38;
+  optional float mobile_rsrq_db = 39;
+  optional float mobile_sinr_db = 40;
+  optional bool mobile_roaming = 41;
 }
 
 message EnvironmentRecord {

@@ -717,6 +717,26 @@ final class LukuCodec {
         if payload.hasInitialTempC {
             dict["initial_temp_c"] = payload.initialTempC
         }
+        if payload.hasGpsLat { dict["gps_lat"] = payload.gpsLat }
+        if payload.hasGpsLng { dict["gps_lng"] = payload.gpsLng }
+        if payload.hasGpsAccuracyM { dict["gps_accuracy_m"] = payload.gpsAccuracyM }
+        if payload.hasGpsAltitudeM { dict["gps_altitude_m"] = payload.gpsAltitudeM }
+        if payload.hasGpsSpeedMps { dict["gps_speed_mps"] = payload.gpsSpeedMps }
+        if payload.hasGpsHeadingDeg { dict["gps_heading_deg"] = payload.gpsHeadingDeg }
+        if payload.hasGpsSatellites { dict["gps_satellites"] = payload.gpsSatellites }
+        if payload.hasGpsFixQuality { dict["gps_fix_quality"] = payload.gpsFixQuality }
+        if payload.hasMobileNetwork { dict["mobile_network"] = payload.mobileNetwork }
+        if payload.hasMobileRadio { dict["mobile_radio"] = payload.mobileRadio }
+        if payload.hasMobileOperator { dict["mobile_operator"] = payload.mobileOperator }
+        if payload.hasMobileMcc { dict["mobile_mcc"] = payload.mobileMcc }
+        if payload.hasMobileMnc { dict["mobile_mnc"] = payload.mobileMnc }
+        if payload.hasMobileLac { dict["mobile_lac"] = payload.mobileLac }
+        if payload.hasMobileCellID { dict["mobile_cell_id"] = payload.mobileCellID }
+        if payload.hasMobileRssiDbm { dict["mobile_rssi_dbm"] = payload.mobileRssiDbm }
+        if payload.hasMobileRsrpDbm { dict["mobile_rsrp_dbm"] = payload.mobileRsrpDbm }
+        if payload.hasMobileRsrqDb { dict["mobile_rsrq_db"] = payload.mobileRsrqDb }
+        if payload.hasMobileSinrDb { dict["mobile_sinr_db"] = payload.mobileSinrDb }
+        if payload.hasMobileRoaming { dict["mobile_roaming"] = payload.mobileRoaming }
         return dict
     }
 }

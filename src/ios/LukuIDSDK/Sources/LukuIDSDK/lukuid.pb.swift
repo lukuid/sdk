@@ -2214,6 +2214,186 @@ struct LukuIDEnvironmentPayload: @unchecked Sendable {
     set {_uniqueStorage()._vocIndex = newValue}
   }
 
+  var gpsLat: Double {
+    get {_storage._gpsLat ?? 0}
+    set {_uniqueStorage()._gpsLat = newValue}
+  }
+  /// Returns true if `gpsLat` has been explicitly set.
+  var hasGpsLat: Bool {_storage._gpsLat != nil}
+  /// Clears the value of `gpsLat`. Subsequent reads from it will return its default value.
+  mutating func clearGpsLat() {_uniqueStorage()._gpsLat = nil}
+
+  var gpsLng: Double {
+    get {_storage._gpsLng ?? 0}
+    set {_uniqueStorage()._gpsLng = newValue}
+  }
+  /// Returns true if `gpsLng` has been explicitly set.
+  var hasGpsLng: Bool {_storage._gpsLng != nil}
+  /// Clears the value of `gpsLng`. Subsequent reads from it will return its default value.
+  mutating func clearGpsLng() {_uniqueStorage()._gpsLng = nil}
+
+  var gpsAccuracyM: Float {
+    get {_storage._gpsAccuracyM ?? 0}
+    set {_uniqueStorage()._gpsAccuracyM = newValue}
+  }
+  /// Returns true if `gpsAccuracyM` has been explicitly set.
+  var hasGpsAccuracyM: Bool {_storage._gpsAccuracyM != nil}
+  /// Clears the value of `gpsAccuracyM`. Subsequent reads from it will return its default value.
+  mutating func clearGpsAccuracyM() {_uniqueStorage()._gpsAccuracyM = nil}
+
+  var gpsAltitudeM: Float {
+    get {_storage._gpsAltitudeM ?? 0}
+    set {_uniqueStorage()._gpsAltitudeM = newValue}
+  }
+  /// Returns true if `gpsAltitudeM` has been explicitly set.
+  var hasGpsAltitudeM: Bool {_storage._gpsAltitudeM != nil}
+  /// Clears the value of `gpsAltitudeM`. Subsequent reads from it will return its default value.
+  mutating func clearGpsAltitudeM() {_uniqueStorage()._gpsAltitudeM = nil}
+
+  var gpsSpeedMps: Float {
+    get {_storage._gpsSpeedMps ?? 0}
+    set {_uniqueStorage()._gpsSpeedMps = newValue}
+  }
+  /// Returns true if `gpsSpeedMps` has been explicitly set.
+  var hasGpsSpeedMps: Bool {_storage._gpsSpeedMps != nil}
+  /// Clears the value of `gpsSpeedMps`. Subsequent reads from it will return its default value.
+  mutating func clearGpsSpeedMps() {_uniqueStorage()._gpsSpeedMps = nil}
+
+  var gpsHeadingDeg: Float {
+    get {_storage._gpsHeadingDeg ?? 0}
+    set {_uniqueStorage()._gpsHeadingDeg = newValue}
+  }
+  /// Returns true if `gpsHeadingDeg` has been explicitly set.
+  var hasGpsHeadingDeg: Bool {_storage._gpsHeadingDeg != nil}
+  /// Clears the value of `gpsHeadingDeg`. Subsequent reads from it will return its default value.
+  mutating func clearGpsHeadingDeg() {_uniqueStorage()._gpsHeadingDeg = nil}
+
+  var gpsSatellites: UInt32 {
+    get {_storage._gpsSatellites ?? 0}
+    set {_uniqueStorage()._gpsSatellites = newValue}
+  }
+  /// Returns true if `gpsSatellites` has been explicitly set.
+  var hasGpsSatellites: Bool {_storage._gpsSatellites != nil}
+  /// Clears the value of `gpsSatellites`. Subsequent reads from it will return its default value.
+  mutating func clearGpsSatellites() {_uniqueStorage()._gpsSatellites = nil}
+
+  var gpsFixQuality: UInt32 {
+    get {_storage._gpsFixQuality ?? 0}
+    set {_uniqueStorage()._gpsFixQuality = newValue}
+  }
+  /// Returns true if `gpsFixQuality` has been explicitly set.
+  var hasGpsFixQuality: Bool {_storage._gpsFixQuality != nil}
+  /// Clears the value of `gpsFixQuality`. Subsequent reads from it will return its default value.
+  mutating func clearGpsFixQuality() {_uniqueStorage()._gpsFixQuality = nil}
+
+  var mobileNetwork: String {
+    get {_storage._mobileNetwork ?? String()}
+    set {_uniqueStorage()._mobileNetwork = newValue}
+  }
+  /// Returns true if `mobileNetwork` has been explicitly set.
+  var hasMobileNetwork: Bool {_storage._mobileNetwork != nil}
+  /// Clears the value of `mobileNetwork`. Subsequent reads from it will return its default value.
+  mutating func clearMobileNetwork() {_uniqueStorage()._mobileNetwork = nil}
+
+  var mobileRadio: String {
+    get {_storage._mobileRadio ?? String()}
+    set {_uniqueStorage()._mobileRadio = newValue}
+  }
+  /// Returns true if `mobileRadio` has been explicitly set.
+  var hasMobileRadio: Bool {_storage._mobileRadio != nil}
+  /// Clears the value of `mobileRadio`. Subsequent reads from it will return its default value.
+  mutating func clearMobileRadio() {_uniqueStorage()._mobileRadio = nil}
+
+  var mobileOperator: String {
+    get {_storage._mobileOperator ?? String()}
+    set {_uniqueStorage()._mobileOperator = newValue}
+  }
+  /// Returns true if `mobileOperator` has been explicitly set.
+  var hasMobileOperator: Bool {_storage._mobileOperator != nil}
+  /// Clears the value of `mobileOperator`. Subsequent reads from it will return its default value.
+  mutating func clearMobileOperator() {_uniqueStorage()._mobileOperator = nil}
+
+  var mobileMcc: String {
+    get {_storage._mobileMcc ?? String()}
+    set {_uniqueStorage()._mobileMcc = newValue}
+  }
+  /// Returns true if `mobileMcc` has been explicitly set.
+  var hasMobileMcc: Bool {_storage._mobileMcc != nil}
+  /// Clears the value of `mobileMcc`. Subsequent reads from it will return its default value.
+  mutating func clearMobileMcc() {_uniqueStorage()._mobileMcc = nil}
+
+  var mobileMnc: String {
+    get {_storage._mobileMnc ?? String()}
+    set {_uniqueStorage()._mobileMnc = newValue}
+  }
+  /// Returns true if `mobileMnc` has been explicitly set.
+  var hasMobileMnc: Bool {_storage._mobileMnc != nil}
+  /// Clears the value of `mobileMnc`. Subsequent reads from it will return its default value.
+  mutating func clearMobileMnc() {_uniqueStorage()._mobileMnc = nil}
+
+  var mobileLac: String {
+    get {_storage._mobileLac ?? String()}
+    set {_uniqueStorage()._mobileLac = newValue}
+  }
+  /// Returns true if `mobileLac` has been explicitly set.
+  var hasMobileLac: Bool {_storage._mobileLac != nil}
+  /// Clears the value of `mobileLac`. Subsequent reads from it will return its default value.
+  mutating func clearMobileLac() {_uniqueStorage()._mobileLac = nil}
+
+  var mobileCellID: String {
+    get {_storage._mobileCellID ?? String()}
+    set {_uniqueStorage()._mobileCellID = newValue}
+  }
+  /// Returns true if `mobileCellID` has been explicitly set.
+  var hasMobileCellID: Bool {_storage._mobileCellID != nil}
+  /// Clears the value of `mobileCellID`. Subsequent reads from it will return its default value.
+  mutating func clearMobileCellID() {_uniqueStorage()._mobileCellID = nil}
+
+  var mobileRssiDbm: Int32 {
+    get {_storage._mobileRssiDbm ?? 0}
+    set {_uniqueStorage()._mobileRssiDbm = newValue}
+  }
+  /// Returns true if `mobileRssiDbm` has been explicitly set.
+  var hasMobileRssiDbm: Bool {_storage._mobileRssiDbm != nil}
+  /// Clears the value of `mobileRssiDbm`. Subsequent reads from it will return its default value.
+  mutating func clearMobileRssiDbm() {_uniqueStorage()._mobileRssiDbm = nil}
+
+  var mobileRsrpDbm: Int32 {
+    get {_storage._mobileRsrpDbm ?? 0}
+    set {_uniqueStorage()._mobileRsrpDbm = newValue}
+  }
+  /// Returns true if `mobileRsrpDbm` has been explicitly set.
+  var hasMobileRsrpDbm: Bool {_storage._mobileRsrpDbm != nil}
+  /// Clears the value of `mobileRsrpDbm`. Subsequent reads from it will return its default value.
+  mutating func clearMobileRsrpDbm() {_uniqueStorage()._mobileRsrpDbm = nil}
+
+  var mobileRsrqDb: Float {
+    get {_storage._mobileRsrqDb ?? 0}
+    set {_uniqueStorage()._mobileRsrqDb = newValue}
+  }
+  /// Returns true if `mobileRsrqDb` has been explicitly set.
+  var hasMobileRsrqDb: Bool {_storage._mobileRsrqDb != nil}
+  /// Clears the value of `mobileRsrqDb`. Subsequent reads from it will return its default value.
+  mutating func clearMobileRsrqDb() {_uniqueStorage()._mobileRsrqDb = nil}
+
+  var mobileSinrDb: Float {
+    get {_storage._mobileSinrDb ?? 0}
+    set {_uniqueStorage()._mobileSinrDb = newValue}
+  }
+  /// Returns true if `mobileSinrDb` has been explicitly set.
+  var hasMobileSinrDb: Bool {_storage._mobileSinrDb != nil}
+  /// Clears the value of `mobileSinrDb`. Subsequent reads from it will return its default value.
+  mutating func clearMobileSinrDb() {_uniqueStorage()._mobileSinrDb = nil}
+
+  var mobileRoaming: Bool {
+    get {_storage._mobileRoaming ?? false}
+    set {_uniqueStorage()._mobileRoaming = newValue}
+  }
+  /// Returns true if `mobileRoaming` has been explicitly set.
+  var hasMobileRoaming: Bool {_storage._mobileRoaming != nil}
+  /// Clears the value of `mobileRoaming`. Subsequent reads from it will return its default value.
+  mutating func clearMobileRoaming() {_uniqueStorage()._mobileRoaming = nil}
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   struct Accel: Sendable {
@@ -6047,7 +6227,7 @@ extension LukuIDScanRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
 
 extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".EnvironmentPayload"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ctr\0\u{3}timestamp_utc\0\u{3}uptime_us\0\u{1}nonce\0\u{1}firmware\0\u{1}lux\0\u{3}temp_c\0\u{3}humidity_pct\0\u{3}pressure_hpa\0\u{3}voc_raw\0\u{3}accel_g\0\u{1}tamper\0\u{3}wake_event\0\u{3}vbus_present\0\u{3}genesis_hash\0\u{3}battery_percent\0\u{3}initial_temp_c\0\u{1}vbus\0\u{3}clk_var\0\u{1}drift\0\u{3}voc_index\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ctr\0\u{3}timestamp_utc\0\u{3}uptime_us\0\u{1}nonce\0\u{1}firmware\0\u{1}lux\0\u{3}temp_c\0\u{3}humidity_pct\0\u{3}pressure_hpa\0\u{3}voc_raw\0\u{3}accel_g\0\u{1}tamper\0\u{3}wake_event\0\u{3}vbus_present\0\u{3}genesis_hash\0\u{3}battery_percent\0\u{3}initial_temp_c\0\u{1}vbus\0\u{3}clk_var\0\u{1}drift\0\u{3}voc_index\0\u{3}gps_lat\0\u{3}gps_lng\0\u{3}gps_accuracy_m\0\u{3}gps_altitude_m\0\u{3}gps_speed_mps\0\u{3}gps_heading_deg\0\u{3}gps_satellites\0\u{3}gps_fix_quality\0\u{3}mobile_network\0\u{3}mobile_radio\0\u{3}mobile_operator\0\u{3}mobile_mcc\0\u{3}mobile_mnc\0\u{3}mobile_lac\0\u{3}mobile_cell_id\0\u{3}mobile_rssi_dbm\0\u{3}mobile_rsrp_dbm\0\u{3}mobile_rsrq_db\0\u{3}mobile_sinr_db\0\u{3}mobile_roaming\0")
 
   fileprivate class _StorageClass {
     var _ctr: UInt64 = 0
@@ -6071,6 +6251,26 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
     var _clkVar: UInt32 = 0
     var _drift: Int32 = 0
     var _vocIndex: UInt32 = 0
+    var _gpsLat: Double? = nil
+    var _gpsLng: Double? = nil
+    var _gpsAccuracyM: Float? = nil
+    var _gpsAltitudeM: Float? = nil
+    var _gpsSpeedMps: Float? = nil
+    var _gpsHeadingDeg: Float? = nil
+    var _gpsSatellites: UInt32? = nil
+    var _gpsFixQuality: UInt32? = nil
+    var _mobileNetwork: String? = nil
+    var _mobileRadio: String? = nil
+    var _mobileOperator: String? = nil
+    var _mobileMcc: String? = nil
+    var _mobileMnc: String? = nil
+    var _mobileLac: String? = nil
+    var _mobileCellID: String? = nil
+    var _mobileRssiDbm: Int32? = nil
+    var _mobileRsrpDbm: Int32? = nil
+    var _mobileRsrqDb: Float? = nil
+    var _mobileSinrDb: Float? = nil
+    var _mobileRoaming: Bool? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -6102,6 +6302,26 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
       _clkVar = source._clkVar
       _drift = source._drift
       _vocIndex = source._vocIndex
+      _gpsLat = source._gpsLat
+      _gpsLng = source._gpsLng
+      _gpsAccuracyM = source._gpsAccuracyM
+      _gpsAltitudeM = source._gpsAltitudeM
+      _gpsSpeedMps = source._gpsSpeedMps
+      _gpsHeadingDeg = source._gpsHeadingDeg
+      _gpsSatellites = source._gpsSatellites
+      _gpsFixQuality = source._gpsFixQuality
+      _mobileNetwork = source._mobileNetwork
+      _mobileRadio = source._mobileRadio
+      _mobileOperator = source._mobileOperator
+      _mobileMcc = source._mobileMcc
+      _mobileMnc = source._mobileMnc
+      _mobileLac = source._mobileLac
+      _mobileCellID = source._mobileCellID
+      _mobileRssiDbm = source._mobileRssiDbm
+      _mobileRsrpDbm = source._mobileRsrpDbm
+      _mobileRsrqDb = source._mobileRsrqDb
+      _mobileSinrDb = source._mobileSinrDb
+      _mobileRoaming = source._mobileRoaming
     }
   }
 
@@ -6141,6 +6361,26 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
         case 19: try { try decoder.decodeSingularUInt32Field(value: &_storage._clkVar) }()
         case 20: try { try decoder.decodeSingularInt32Field(value: &_storage._drift) }()
         case 21: try { try decoder.decodeSingularUInt32Field(value: &_storage._vocIndex) }()
+        case 22: try { try decoder.decodeSingularDoubleField(value: &_storage._gpsLat) }()
+        case 23: try { try decoder.decodeSingularDoubleField(value: &_storage._gpsLng) }()
+        case 24: try { try decoder.decodeSingularFloatField(value: &_storage._gpsAccuracyM) }()
+        case 25: try { try decoder.decodeSingularFloatField(value: &_storage._gpsAltitudeM) }()
+        case 26: try { try decoder.decodeSingularFloatField(value: &_storage._gpsSpeedMps) }()
+        case 27: try { try decoder.decodeSingularFloatField(value: &_storage._gpsHeadingDeg) }()
+        case 28: try { try decoder.decodeSingularUInt32Field(value: &_storage._gpsSatellites) }()
+        case 29: try { try decoder.decodeSingularUInt32Field(value: &_storage._gpsFixQuality) }()
+        case 30: try { try decoder.decodeSingularStringField(value: &_storage._mobileNetwork) }()
+        case 31: try { try decoder.decodeSingularStringField(value: &_storage._mobileRadio) }()
+        case 32: try { try decoder.decodeSingularStringField(value: &_storage._mobileOperator) }()
+        case 33: try { try decoder.decodeSingularStringField(value: &_storage._mobileMcc) }()
+        case 34: try { try decoder.decodeSingularStringField(value: &_storage._mobileMnc) }()
+        case 35: try { try decoder.decodeSingularStringField(value: &_storage._mobileLac) }()
+        case 36: try { try decoder.decodeSingularStringField(value: &_storage._mobileCellID) }()
+        case 37: try { try decoder.decodeSingularInt32Field(value: &_storage._mobileRssiDbm) }()
+        case 38: try { try decoder.decodeSingularInt32Field(value: &_storage._mobileRsrpDbm) }()
+        case 39: try { try decoder.decodeSingularFloatField(value: &_storage._mobileRsrqDb) }()
+        case 40: try { try decoder.decodeSingularFloatField(value: &_storage._mobileSinrDb) }()
+        case 41: try { try decoder.decodeSingularBoolField(value: &_storage._mobileRoaming) }()
         default: break
         }
       }
@@ -6216,6 +6456,66 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
       if _storage._vocIndex != 0 {
         try visitor.visitSingularUInt32Field(value: _storage._vocIndex, fieldNumber: 21)
       }
+      try { if let v = _storage._gpsLat {
+        try visitor.visitSingularDoubleField(value: v, fieldNumber: 22)
+      } }()
+      try { if let v = _storage._gpsLng {
+        try visitor.visitSingularDoubleField(value: v, fieldNumber: 23)
+      } }()
+      try { if let v = _storage._gpsAccuracyM {
+        try visitor.visitSingularFloatField(value: v, fieldNumber: 24)
+      } }()
+      try { if let v = _storage._gpsAltitudeM {
+        try visitor.visitSingularFloatField(value: v, fieldNumber: 25)
+      } }()
+      try { if let v = _storage._gpsSpeedMps {
+        try visitor.visitSingularFloatField(value: v, fieldNumber: 26)
+      } }()
+      try { if let v = _storage._gpsHeadingDeg {
+        try visitor.visitSingularFloatField(value: v, fieldNumber: 27)
+      } }()
+      try { if let v = _storage._gpsSatellites {
+        try visitor.visitSingularUInt32Field(value: v, fieldNumber: 28)
+      } }()
+      try { if let v = _storage._gpsFixQuality {
+        try visitor.visitSingularUInt32Field(value: v, fieldNumber: 29)
+      } }()
+      try { if let v = _storage._mobileNetwork {
+        try visitor.visitSingularStringField(value: v, fieldNumber: 30)
+      } }()
+      try { if let v = _storage._mobileRadio {
+        try visitor.visitSingularStringField(value: v, fieldNumber: 31)
+      } }()
+      try { if let v = _storage._mobileOperator {
+        try visitor.visitSingularStringField(value: v, fieldNumber: 32)
+      } }()
+      try { if let v = _storage._mobileMcc {
+        try visitor.visitSingularStringField(value: v, fieldNumber: 33)
+      } }()
+      try { if let v = _storage._mobileMnc {
+        try visitor.visitSingularStringField(value: v, fieldNumber: 34)
+      } }()
+      try { if let v = _storage._mobileLac {
+        try visitor.visitSingularStringField(value: v, fieldNumber: 35)
+      } }()
+      try { if let v = _storage._mobileCellID {
+        try visitor.visitSingularStringField(value: v, fieldNumber: 36)
+      } }()
+      try { if let v = _storage._mobileRssiDbm {
+        try visitor.visitSingularInt32Field(value: v, fieldNumber: 37)
+      } }()
+      try { if let v = _storage._mobileRsrpDbm {
+        try visitor.visitSingularInt32Field(value: v, fieldNumber: 38)
+      } }()
+      try { if let v = _storage._mobileRsrqDb {
+        try visitor.visitSingularFloatField(value: v, fieldNumber: 39)
+      } }()
+      try { if let v = _storage._mobileSinrDb {
+        try visitor.visitSingularFloatField(value: v, fieldNumber: 40)
+      } }()
+      try { if let v = _storage._mobileRoaming {
+        try visitor.visitSingularBoolField(value: v, fieldNumber: 41)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -6246,6 +6546,26 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
         if _storage._clkVar != rhs_storage._clkVar {return false}
         if _storage._drift != rhs_storage._drift {return false}
         if _storage._vocIndex != rhs_storage._vocIndex {return false}
+        if _storage._gpsLat != rhs_storage._gpsLat {return false}
+        if _storage._gpsLng != rhs_storage._gpsLng {return false}
+        if _storage._gpsAccuracyM != rhs_storage._gpsAccuracyM {return false}
+        if _storage._gpsAltitudeM != rhs_storage._gpsAltitudeM {return false}
+        if _storage._gpsSpeedMps != rhs_storage._gpsSpeedMps {return false}
+        if _storage._gpsHeadingDeg != rhs_storage._gpsHeadingDeg {return false}
+        if _storage._gpsSatellites != rhs_storage._gpsSatellites {return false}
+        if _storage._gpsFixQuality != rhs_storage._gpsFixQuality {return false}
+        if _storage._mobileNetwork != rhs_storage._mobileNetwork {return false}
+        if _storage._mobileRadio != rhs_storage._mobileRadio {return false}
+        if _storage._mobileOperator != rhs_storage._mobileOperator {return false}
+        if _storage._mobileMcc != rhs_storage._mobileMcc {return false}
+        if _storage._mobileMnc != rhs_storage._mobileMnc {return false}
+        if _storage._mobileLac != rhs_storage._mobileLac {return false}
+        if _storage._mobileCellID != rhs_storage._mobileCellID {return false}
+        if _storage._mobileRssiDbm != rhs_storage._mobileRssiDbm {return false}
+        if _storage._mobileRsrpDbm != rhs_storage._mobileRsrpDbm {return false}
+        if _storage._mobileRsrqDb != rhs_storage._mobileRsrqDb {return false}
+        if _storage._mobileSinrDb != rhs_storage._mobileSinrDb {return false}
+        if _storage._mobileRoaming != rhs_storage._mobileRoaming {return false}
         return true
       }
       if !storagesAreEqual {return false}

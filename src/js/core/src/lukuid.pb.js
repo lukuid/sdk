@@ -16317,6 +16317,26 @@ export const lukuid = $root.lukuid = (() => {
          * @property {number|null} [clkVar] EnvironmentPayload clkVar
          * @property {number|null} [drift] EnvironmentPayload drift
          * @property {number|null} [vocIndex] EnvironmentPayload vocIndex
+         * @property {number|null} [gpsLat] EnvironmentPayload gpsLat
+         * @property {number|null} [gpsLng] EnvironmentPayload gpsLng
+         * @property {number|null} [gpsAccuracyM] EnvironmentPayload gpsAccuracyM
+         * @property {number|null} [gpsAltitudeM] EnvironmentPayload gpsAltitudeM
+         * @property {number|null} [gpsSpeedMps] EnvironmentPayload gpsSpeedMps
+         * @property {number|null} [gpsHeadingDeg] EnvironmentPayload gpsHeadingDeg
+         * @property {number|null} [gpsSatellites] EnvironmentPayload gpsSatellites
+         * @property {number|null} [gpsFixQuality] EnvironmentPayload gpsFixQuality
+         * @property {string|null} [mobileNetwork] EnvironmentPayload mobileNetwork
+         * @property {string|null} [mobileRadio] EnvironmentPayload mobileRadio
+         * @property {string|null} [mobileOperator] EnvironmentPayload mobileOperator
+         * @property {string|null} [mobileMcc] EnvironmentPayload mobileMcc
+         * @property {string|null} [mobileMnc] EnvironmentPayload mobileMnc
+         * @property {string|null} [mobileLac] EnvironmentPayload mobileLac
+         * @property {string|null} [mobileCellId] EnvironmentPayload mobileCellId
+         * @property {number|null} [mobileRssiDbm] EnvironmentPayload mobileRssiDbm
+         * @property {number|null} [mobileRsrpDbm] EnvironmentPayload mobileRsrpDbm
+         * @property {number|null} [mobileRsrqDb] EnvironmentPayload mobileRsrqDb
+         * @property {number|null} [mobileSinrDb] EnvironmentPayload mobileSinrDb
+         * @property {boolean|null} [mobileRoaming] EnvironmentPayload mobileRoaming
          */
 
         /**
@@ -16502,12 +16522,292 @@ export const lukuid = $root.lukuid = (() => {
          */
         EnvironmentPayload.prototype.vocIndex = 0;
 
+        /**
+         * EnvironmentPayload gpsLat.
+         * @member {number|null|undefined} gpsLat
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.gpsLat = null;
+
+        /**
+         * EnvironmentPayload gpsLng.
+         * @member {number|null|undefined} gpsLng
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.gpsLng = null;
+
+        /**
+         * EnvironmentPayload gpsAccuracyM.
+         * @member {number|null|undefined} gpsAccuracyM
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.gpsAccuracyM = null;
+
+        /**
+         * EnvironmentPayload gpsAltitudeM.
+         * @member {number|null|undefined} gpsAltitudeM
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.gpsAltitudeM = null;
+
+        /**
+         * EnvironmentPayload gpsSpeedMps.
+         * @member {number|null|undefined} gpsSpeedMps
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.gpsSpeedMps = null;
+
+        /**
+         * EnvironmentPayload gpsHeadingDeg.
+         * @member {number|null|undefined} gpsHeadingDeg
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.gpsHeadingDeg = null;
+
+        /**
+         * EnvironmentPayload gpsSatellites.
+         * @member {number|null|undefined} gpsSatellites
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.gpsSatellites = null;
+
+        /**
+         * EnvironmentPayload gpsFixQuality.
+         * @member {number|null|undefined} gpsFixQuality
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.gpsFixQuality = null;
+
+        /**
+         * EnvironmentPayload mobileNetwork.
+         * @member {string|null|undefined} mobileNetwork
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.mobileNetwork = null;
+
+        /**
+         * EnvironmentPayload mobileRadio.
+         * @member {string|null|undefined} mobileRadio
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.mobileRadio = null;
+
+        /**
+         * EnvironmentPayload mobileOperator.
+         * @member {string|null|undefined} mobileOperator
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.mobileOperator = null;
+
+        /**
+         * EnvironmentPayload mobileMcc.
+         * @member {string|null|undefined} mobileMcc
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.mobileMcc = null;
+
+        /**
+         * EnvironmentPayload mobileMnc.
+         * @member {string|null|undefined} mobileMnc
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.mobileMnc = null;
+
+        /**
+         * EnvironmentPayload mobileLac.
+         * @member {string|null|undefined} mobileLac
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.mobileLac = null;
+
+        /**
+         * EnvironmentPayload mobileCellId.
+         * @member {string|null|undefined} mobileCellId
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.mobileCellId = null;
+
+        /**
+         * EnvironmentPayload mobileRssiDbm.
+         * @member {number|null|undefined} mobileRssiDbm
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.mobileRssiDbm = null;
+
+        /**
+         * EnvironmentPayload mobileRsrpDbm.
+         * @member {number|null|undefined} mobileRsrpDbm
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.mobileRsrpDbm = null;
+
+        /**
+         * EnvironmentPayload mobileRsrqDb.
+         * @member {number|null|undefined} mobileRsrqDb
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.mobileRsrqDb = null;
+
+        /**
+         * EnvironmentPayload mobileSinrDb.
+         * @member {number|null|undefined} mobileSinrDb
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.mobileSinrDb = null;
+
+        /**
+         * EnvironmentPayload mobileRoaming.
+         * @member {boolean|null|undefined} mobileRoaming
+         * @memberof lukuid.EnvironmentPayload
+         * @instance
+         */
+        EnvironmentPayload.prototype.mobileRoaming = null;
+
         // OneOf field names bound to virtual getters and setters
         let $oneOfFields;
 
         // Virtual OneOf for proto3 optional field
         Object.defineProperty(EnvironmentPayload.prototype, "_initialTempC", {
             get: $util.oneOfGetter($oneOfFields = ["initialTempC"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_gpsLat", {
+            get: $util.oneOfGetter($oneOfFields = ["gpsLat"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_gpsLng", {
+            get: $util.oneOfGetter($oneOfFields = ["gpsLng"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_gpsAccuracyM", {
+            get: $util.oneOfGetter($oneOfFields = ["gpsAccuracyM"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_gpsAltitudeM", {
+            get: $util.oneOfGetter($oneOfFields = ["gpsAltitudeM"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_gpsSpeedMps", {
+            get: $util.oneOfGetter($oneOfFields = ["gpsSpeedMps"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_gpsHeadingDeg", {
+            get: $util.oneOfGetter($oneOfFields = ["gpsHeadingDeg"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_gpsSatellites", {
+            get: $util.oneOfGetter($oneOfFields = ["gpsSatellites"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_gpsFixQuality", {
+            get: $util.oneOfGetter($oneOfFields = ["gpsFixQuality"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_mobileNetwork", {
+            get: $util.oneOfGetter($oneOfFields = ["mobileNetwork"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_mobileRadio", {
+            get: $util.oneOfGetter($oneOfFields = ["mobileRadio"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_mobileOperator", {
+            get: $util.oneOfGetter($oneOfFields = ["mobileOperator"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_mobileMcc", {
+            get: $util.oneOfGetter($oneOfFields = ["mobileMcc"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_mobileMnc", {
+            get: $util.oneOfGetter($oneOfFields = ["mobileMnc"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_mobileLac", {
+            get: $util.oneOfGetter($oneOfFields = ["mobileLac"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_mobileCellId", {
+            get: $util.oneOfGetter($oneOfFields = ["mobileCellId"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_mobileRssiDbm", {
+            get: $util.oneOfGetter($oneOfFields = ["mobileRssiDbm"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_mobileRsrpDbm", {
+            get: $util.oneOfGetter($oneOfFields = ["mobileRsrpDbm"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_mobileRsrqDb", {
+            get: $util.oneOfGetter($oneOfFields = ["mobileRsrqDb"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_mobileSinrDb", {
+            get: $util.oneOfGetter($oneOfFields = ["mobileSinrDb"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_mobileRoaming", {
+            get: $util.oneOfGetter($oneOfFields = ["mobileRoaming"]),
             set: $util.oneOfSetter($oneOfFields)
         });
 
@@ -16577,6 +16877,46 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 20, wireType 0 =*/160).int32(message.drift);
             if (message.vocIndex != null && Object.hasOwnProperty.call(message, "vocIndex"))
                 writer.uint32(/* id 21, wireType 0 =*/168).uint32(message.vocIndex);
+            if (message.gpsLat != null && Object.hasOwnProperty.call(message, "gpsLat"))
+                writer.uint32(/* id 22, wireType 1 =*/177).double(message.gpsLat);
+            if (message.gpsLng != null && Object.hasOwnProperty.call(message, "gpsLng"))
+                writer.uint32(/* id 23, wireType 1 =*/185).double(message.gpsLng);
+            if (message.gpsAccuracyM != null && Object.hasOwnProperty.call(message, "gpsAccuracyM"))
+                writer.uint32(/* id 24, wireType 5 =*/197).float(message.gpsAccuracyM);
+            if (message.gpsAltitudeM != null && Object.hasOwnProperty.call(message, "gpsAltitudeM"))
+                writer.uint32(/* id 25, wireType 5 =*/205).float(message.gpsAltitudeM);
+            if (message.gpsSpeedMps != null && Object.hasOwnProperty.call(message, "gpsSpeedMps"))
+                writer.uint32(/* id 26, wireType 5 =*/213).float(message.gpsSpeedMps);
+            if (message.gpsHeadingDeg != null && Object.hasOwnProperty.call(message, "gpsHeadingDeg"))
+                writer.uint32(/* id 27, wireType 5 =*/221).float(message.gpsHeadingDeg);
+            if (message.gpsSatellites != null && Object.hasOwnProperty.call(message, "gpsSatellites"))
+                writer.uint32(/* id 28, wireType 0 =*/224).uint32(message.gpsSatellites);
+            if (message.gpsFixQuality != null && Object.hasOwnProperty.call(message, "gpsFixQuality"))
+                writer.uint32(/* id 29, wireType 0 =*/232).uint32(message.gpsFixQuality);
+            if (message.mobileNetwork != null && Object.hasOwnProperty.call(message, "mobileNetwork"))
+                writer.uint32(/* id 30, wireType 2 =*/242).string(message.mobileNetwork);
+            if (message.mobileRadio != null && Object.hasOwnProperty.call(message, "mobileRadio"))
+                writer.uint32(/* id 31, wireType 2 =*/250).string(message.mobileRadio);
+            if (message.mobileOperator != null && Object.hasOwnProperty.call(message, "mobileOperator"))
+                writer.uint32(/* id 32, wireType 2 =*/258).string(message.mobileOperator);
+            if (message.mobileMcc != null && Object.hasOwnProperty.call(message, "mobileMcc"))
+                writer.uint32(/* id 33, wireType 2 =*/266).string(message.mobileMcc);
+            if (message.mobileMnc != null && Object.hasOwnProperty.call(message, "mobileMnc"))
+                writer.uint32(/* id 34, wireType 2 =*/274).string(message.mobileMnc);
+            if (message.mobileLac != null && Object.hasOwnProperty.call(message, "mobileLac"))
+                writer.uint32(/* id 35, wireType 2 =*/282).string(message.mobileLac);
+            if (message.mobileCellId != null && Object.hasOwnProperty.call(message, "mobileCellId"))
+                writer.uint32(/* id 36, wireType 2 =*/290).string(message.mobileCellId);
+            if (message.mobileRssiDbm != null && Object.hasOwnProperty.call(message, "mobileRssiDbm"))
+                writer.uint32(/* id 37, wireType 0 =*/296).int32(message.mobileRssiDbm);
+            if (message.mobileRsrpDbm != null && Object.hasOwnProperty.call(message, "mobileRsrpDbm"))
+                writer.uint32(/* id 38, wireType 0 =*/304).int32(message.mobileRsrpDbm);
+            if (message.mobileRsrqDb != null && Object.hasOwnProperty.call(message, "mobileRsrqDb"))
+                writer.uint32(/* id 39, wireType 5 =*/317).float(message.mobileRsrqDb);
+            if (message.mobileSinrDb != null && Object.hasOwnProperty.call(message, "mobileSinrDb"))
+                writer.uint32(/* id 40, wireType 5 =*/325).float(message.mobileSinrDb);
+            if (message.mobileRoaming != null && Object.hasOwnProperty.call(message, "mobileRoaming"))
+                writer.uint32(/* id 41, wireType 0 =*/328).bool(message.mobileRoaming);
             return writer;
         };
 
@@ -16697,6 +17037,86 @@ export const lukuid = $root.lukuid = (() => {
                         message.vocIndex = reader.uint32();
                         break;
                     }
+                case 22: {
+                        message.gpsLat = reader.double();
+                        break;
+                    }
+                case 23: {
+                        message.gpsLng = reader.double();
+                        break;
+                    }
+                case 24: {
+                        message.gpsAccuracyM = reader.float();
+                        break;
+                    }
+                case 25: {
+                        message.gpsAltitudeM = reader.float();
+                        break;
+                    }
+                case 26: {
+                        message.gpsSpeedMps = reader.float();
+                        break;
+                    }
+                case 27: {
+                        message.gpsHeadingDeg = reader.float();
+                        break;
+                    }
+                case 28: {
+                        message.gpsSatellites = reader.uint32();
+                        break;
+                    }
+                case 29: {
+                        message.gpsFixQuality = reader.uint32();
+                        break;
+                    }
+                case 30: {
+                        message.mobileNetwork = reader.string();
+                        break;
+                    }
+                case 31: {
+                        message.mobileRadio = reader.string();
+                        break;
+                    }
+                case 32: {
+                        message.mobileOperator = reader.string();
+                        break;
+                    }
+                case 33: {
+                        message.mobileMcc = reader.string();
+                        break;
+                    }
+                case 34: {
+                        message.mobileMnc = reader.string();
+                        break;
+                    }
+                case 35: {
+                        message.mobileLac = reader.string();
+                        break;
+                    }
+                case 36: {
+                        message.mobileCellId = reader.string();
+                        break;
+                    }
+                case 37: {
+                        message.mobileRssiDbm = reader.int32();
+                        break;
+                    }
+                case 38: {
+                        message.mobileRsrpDbm = reader.int32();
+                        break;
+                    }
+                case 39: {
+                        message.mobileRsrqDb = reader.float();
+                        break;
+                    }
+                case 40: {
+                        message.mobileSinrDb = reader.float();
+                        break;
+                    }
+                case 41: {
+                        message.mobileRoaming = reader.bool();
+                        break;
+                    }
                 default:
                     reader.skipType(tag & 7);
                     break;
@@ -16800,6 +17220,106 @@ export const lukuid = $root.lukuid = (() => {
             if (message.vocIndex != null && message.hasOwnProperty("vocIndex"))
                 if (!$util.isInteger(message.vocIndex))
                     return "vocIndex: integer expected";
+            if (message.gpsLat != null && message.hasOwnProperty("gpsLat")) {
+                properties._gpsLat = 1;
+                if (typeof message.gpsLat !== "number")
+                    return "gpsLat: number expected";
+            }
+            if (message.gpsLng != null && message.hasOwnProperty("gpsLng")) {
+                properties._gpsLng = 1;
+                if (typeof message.gpsLng !== "number")
+                    return "gpsLng: number expected";
+            }
+            if (message.gpsAccuracyM != null && message.hasOwnProperty("gpsAccuracyM")) {
+                properties._gpsAccuracyM = 1;
+                if (typeof message.gpsAccuracyM !== "number")
+                    return "gpsAccuracyM: number expected";
+            }
+            if (message.gpsAltitudeM != null && message.hasOwnProperty("gpsAltitudeM")) {
+                properties._gpsAltitudeM = 1;
+                if (typeof message.gpsAltitudeM !== "number")
+                    return "gpsAltitudeM: number expected";
+            }
+            if (message.gpsSpeedMps != null && message.hasOwnProperty("gpsSpeedMps")) {
+                properties._gpsSpeedMps = 1;
+                if (typeof message.gpsSpeedMps !== "number")
+                    return "gpsSpeedMps: number expected";
+            }
+            if (message.gpsHeadingDeg != null && message.hasOwnProperty("gpsHeadingDeg")) {
+                properties._gpsHeadingDeg = 1;
+                if (typeof message.gpsHeadingDeg !== "number")
+                    return "gpsHeadingDeg: number expected";
+            }
+            if (message.gpsSatellites != null && message.hasOwnProperty("gpsSatellites")) {
+                properties._gpsSatellites = 1;
+                if (!$util.isInteger(message.gpsSatellites))
+                    return "gpsSatellites: integer expected";
+            }
+            if (message.gpsFixQuality != null && message.hasOwnProperty("gpsFixQuality")) {
+                properties._gpsFixQuality = 1;
+                if (!$util.isInteger(message.gpsFixQuality))
+                    return "gpsFixQuality: integer expected";
+            }
+            if (message.mobileNetwork != null && message.hasOwnProperty("mobileNetwork")) {
+                properties._mobileNetwork = 1;
+                if (!$util.isString(message.mobileNetwork))
+                    return "mobileNetwork: string expected";
+            }
+            if (message.mobileRadio != null && message.hasOwnProperty("mobileRadio")) {
+                properties._mobileRadio = 1;
+                if (!$util.isString(message.mobileRadio))
+                    return "mobileRadio: string expected";
+            }
+            if (message.mobileOperator != null && message.hasOwnProperty("mobileOperator")) {
+                properties._mobileOperator = 1;
+                if (!$util.isString(message.mobileOperator))
+                    return "mobileOperator: string expected";
+            }
+            if (message.mobileMcc != null && message.hasOwnProperty("mobileMcc")) {
+                properties._mobileMcc = 1;
+                if (!$util.isString(message.mobileMcc))
+                    return "mobileMcc: string expected";
+            }
+            if (message.mobileMnc != null && message.hasOwnProperty("mobileMnc")) {
+                properties._mobileMnc = 1;
+                if (!$util.isString(message.mobileMnc))
+                    return "mobileMnc: string expected";
+            }
+            if (message.mobileLac != null && message.hasOwnProperty("mobileLac")) {
+                properties._mobileLac = 1;
+                if (!$util.isString(message.mobileLac))
+                    return "mobileLac: string expected";
+            }
+            if (message.mobileCellId != null && message.hasOwnProperty("mobileCellId")) {
+                properties._mobileCellId = 1;
+                if (!$util.isString(message.mobileCellId))
+                    return "mobileCellId: string expected";
+            }
+            if (message.mobileRssiDbm != null && message.hasOwnProperty("mobileRssiDbm")) {
+                properties._mobileRssiDbm = 1;
+                if (!$util.isInteger(message.mobileRssiDbm))
+                    return "mobileRssiDbm: integer expected";
+            }
+            if (message.mobileRsrpDbm != null && message.hasOwnProperty("mobileRsrpDbm")) {
+                properties._mobileRsrpDbm = 1;
+                if (!$util.isInteger(message.mobileRsrpDbm))
+                    return "mobileRsrpDbm: integer expected";
+            }
+            if (message.mobileRsrqDb != null && message.hasOwnProperty("mobileRsrqDb")) {
+                properties._mobileRsrqDb = 1;
+                if (typeof message.mobileRsrqDb !== "number")
+                    return "mobileRsrqDb: number expected";
+            }
+            if (message.mobileSinrDb != null && message.hasOwnProperty("mobileSinrDb")) {
+                properties._mobileSinrDb = 1;
+                if (typeof message.mobileSinrDb !== "number")
+                    return "mobileSinrDb: number expected";
+            }
+            if (message.mobileRoaming != null && message.hasOwnProperty("mobileRoaming")) {
+                properties._mobileRoaming = 1;
+                if (typeof message.mobileRoaming !== "boolean")
+                    return "mobileRoaming: boolean expected";
+            }
             return null;
         };
 
@@ -16881,6 +17401,46 @@ export const lukuid = $root.lukuid = (() => {
                 message.drift = object.drift | 0;
             if (object.vocIndex != null)
                 message.vocIndex = object.vocIndex >>> 0;
+            if (object.gpsLat != null)
+                message.gpsLat = Number(object.gpsLat);
+            if (object.gpsLng != null)
+                message.gpsLng = Number(object.gpsLng);
+            if (object.gpsAccuracyM != null)
+                message.gpsAccuracyM = Number(object.gpsAccuracyM);
+            if (object.gpsAltitudeM != null)
+                message.gpsAltitudeM = Number(object.gpsAltitudeM);
+            if (object.gpsSpeedMps != null)
+                message.gpsSpeedMps = Number(object.gpsSpeedMps);
+            if (object.gpsHeadingDeg != null)
+                message.gpsHeadingDeg = Number(object.gpsHeadingDeg);
+            if (object.gpsSatellites != null)
+                message.gpsSatellites = object.gpsSatellites >>> 0;
+            if (object.gpsFixQuality != null)
+                message.gpsFixQuality = object.gpsFixQuality >>> 0;
+            if (object.mobileNetwork != null)
+                message.mobileNetwork = String(object.mobileNetwork);
+            if (object.mobileRadio != null)
+                message.mobileRadio = String(object.mobileRadio);
+            if (object.mobileOperator != null)
+                message.mobileOperator = String(object.mobileOperator);
+            if (object.mobileMcc != null)
+                message.mobileMcc = String(object.mobileMcc);
+            if (object.mobileMnc != null)
+                message.mobileMnc = String(object.mobileMnc);
+            if (object.mobileLac != null)
+                message.mobileLac = String(object.mobileLac);
+            if (object.mobileCellId != null)
+                message.mobileCellId = String(object.mobileCellId);
+            if (object.mobileRssiDbm != null)
+                message.mobileRssiDbm = object.mobileRssiDbm | 0;
+            if (object.mobileRsrpDbm != null)
+                message.mobileRsrpDbm = object.mobileRsrpDbm | 0;
+            if (object.mobileRsrqDb != null)
+                message.mobileRsrqDb = Number(object.mobileRsrqDb);
+            if (object.mobileSinrDb != null)
+                message.mobileSinrDb = Number(object.mobileSinrDb);
+            if (object.mobileRoaming != null)
+                message.mobileRoaming = Boolean(object.mobileRoaming);
             return message;
         };
 
@@ -16985,6 +17545,106 @@ export const lukuid = $root.lukuid = (() => {
                 object.drift = message.drift;
             if (message.vocIndex != null && message.hasOwnProperty("vocIndex"))
                 object.vocIndex = message.vocIndex;
+            if (message.gpsLat != null && message.hasOwnProperty("gpsLat")) {
+                object.gpsLat = options.json && !isFinite(message.gpsLat) ? String(message.gpsLat) : message.gpsLat;
+                if (options.oneofs)
+                    object._gpsLat = "gpsLat";
+            }
+            if (message.gpsLng != null && message.hasOwnProperty("gpsLng")) {
+                object.gpsLng = options.json && !isFinite(message.gpsLng) ? String(message.gpsLng) : message.gpsLng;
+                if (options.oneofs)
+                    object._gpsLng = "gpsLng";
+            }
+            if (message.gpsAccuracyM != null && message.hasOwnProperty("gpsAccuracyM")) {
+                object.gpsAccuracyM = options.json && !isFinite(message.gpsAccuracyM) ? String(message.gpsAccuracyM) : message.gpsAccuracyM;
+                if (options.oneofs)
+                    object._gpsAccuracyM = "gpsAccuracyM";
+            }
+            if (message.gpsAltitudeM != null && message.hasOwnProperty("gpsAltitudeM")) {
+                object.gpsAltitudeM = options.json && !isFinite(message.gpsAltitudeM) ? String(message.gpsAltitudeM) : message.gpsAltitudeM;
+                if (options.oneofs)
+                    object._gpsAltitudeM = "gpsAltitudeM";
+            }
+            if (message.gpsSpeedMps != null && message.hasOwnProperty("gpsSpeedMps")) {
+                object.gpsSpeedMps = options.json && !isFinite(message.gpsSpeedMps) ? String(message.gpsSpeedMps) : message.gpsSpeedMps;
+                if (options.oneofs)
+                    object._gpsSpeedMps = "gpsSpeedMps";
+            }
+            if (message.gpsHeadingDeg != null && message.hasOwnProperty("gpsHeadingDeg")) {
+                object.gpsHeadingDeg = options.json && !isFinite(message.gpsHeadingDeg) ? String(message.gpsHeadingDeg) : message.gpsHeadingDeg;
+                if (options.oneofs)
+                    object._gpsHeadingDeg = "gpsHeadingDeg";
+            }
+            if (message.gpsSatellites != null && message.hasOwnProperty("gpsSatellites")) {
+                object.gpsSatellites = message.gpsSatellites;
+                if (options.oneofs)
+                    object._gpsSatellites = "gpsSatellites";
+            }
+            if (message.gpsFixQuality != null && message.hasOwnProperty("gpsFixQuality")) {
+                object.gpsFixQuality = message.gpsFixQuality;
+                if (options.oneofs)
+                    object._gpsFixQuality = "gpsFixQuality";
+            }
+            if (message.mobileNetwork != null && message.hasOwnProperty("mobileNetwork")) {
+                object.mobileNetwork = message.mobileNetwork;
+                if (options.oneofs)
+                    object._mobileNetwork = "mobileNetwork";
+            }
+            if (message.mobileRadio != null && message.hasOwnProperty("mobileRadio")) {
+                object.mobileRadio = message.mobileRadio;
+                if (options.oneofs)
+                    object._mobileRadio = "mobileRadio";
+            }
+            if (message.mobileOperator != null && message.hasOwnProperty("mobileOperator")) {
+                object.mobileOperator = message.mobileOperator;
+                if (options.oneofs)
+                    object._mobileOperator = "mobileOperator";
+            }
+            if (message.mobileMcc != null && message.hasOwnProperty("mobileMcc")) {
+                object.mobileMcc = message.mobileMcc;
+                if (options.oneofs)
+                    object._mobileMcc = "mobileMcc";
+            }
+            if (message.mobileMnc != null && message.hasOwnProperty("mobileMnc")) {
+                object.mobileMnc = message.mobileMnc;
+                if (options.oneofs)
+                    object._mobileMnc = "mobileMnc";
+            }
+            if (message.mobileLac != null && message.hasOwnProperty("mobileLac")) {
+                object.mobileLac = message.mobileLac;
+                if (options.oneofs)
+                    object._mobileLac = "mobileLac";
+            }
+            if (message.mobileCellId != null && message.hasOwnProperty("mobileCellId")) {
+                object.mobileCellId = message.mobileCellId;
+                if (options.oneofs)
+                    object._mobileCellId = "mobileCellId";
+            }
+            if (message.mobileRssiDbm != null && message.hasOwnProperty("mobileRssiDbm")) {
+                object.mobileRssiDbm = message.mobileRssiDbm;
+                if (options.oneofs)
+                    object._mobileRssiDbm = "mobileRssiDbm";
+            }
+            if (message.mobileRsrpDbm != null && message.hasOwnProperty("mobileRsrpDbm")) {
+                object.mobileRsrpDbm = message.mobileRsrpDbm;
+                if (options.oneofs)
+                    object._mobileRsrpDbm = "mobileRsrpDbm";
+            }
+            if (message.mobileRsrqDb != null && message.hasOwnProperty("mobileRsrqDb")) {
+                object.mobileRsrqDb = options.json && !isFinite(message.mobileRsrqDb) ? String(message.mobileRsrqDb) : message.mobileRsrqDb;
+                if (options.oneofs)
+                    object._mobileRsrqDb = "mobileRsrqDb";
+            }
+            if (message.mobileSinrDb != null && message.hasOwnProperty("mobileSinrDb")) {
+                object.mobileSinrDb = options.json && !isFinite(message.mobileSinrDb) ? String(message.mobileSinrDb) : message.mobileSinrDb;
+                if (options.oneofs)
+                    object._mobileSinrDb = "mobileSinrDb";
+            }
+            if (message.mobileRoaming != null && message.hasOwnProperty("mobileRoaming")) {
+                object.mobileRoaming = message.mobileRoaming;
+                if (options.oneofs)
+                    object._mobileRoaming = "mobileRoaming";
+            }
             return object;
         };
 
