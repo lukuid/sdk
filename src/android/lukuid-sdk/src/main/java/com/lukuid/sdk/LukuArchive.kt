@@ -414,7 +414,7 @@ class LukuArchive private constructor(
                                 vendor = vendor,
                                 recordId = attestationRecordId,
                                 certificateChain = attestationChain,
-                                created = if (options.skipCertificateTemporalChecks) null else timestamp,
+                                created = null,
                                 trustProfile = options.trustProfile
                             )
                         )

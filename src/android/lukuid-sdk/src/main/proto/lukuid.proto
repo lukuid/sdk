@@ -112,12 +112,21 @@ message ConfigRequest {
   optional bytes upload_certificate_der = 22;
   optional bytes upload_ca_der = 23;
   optional uint32 upload_frequency = 24;
+  optional bool auto_update_enabled = 25;
 }
 
 message OtaBeginRequest {
   uint32 size = 1;
   bytes public_key = 2;
   bool binary_mode = 3;
+  string update_uid = 4;
+  string from_version = 5;
+  string target_version = 6;
+  string sha256 = 7;
+  uint64 counter = 8;
+  bytes certificate_der = 9;
+  bytes intermediate_der = 10;
+  bytes ota_start_signature = 11;
 }
 
 message OtaDataRequest {
@@ -280,6 +289,7 @@ message DeviceInfoResponse {
   UploadMode upload_mode = 29;
   string upload_destination = 30;
   UploadAuth upload_auth = 31;
+  bool auto_update_enabled = 32;
 }
 
 message StatusResponse {
@@ -316,6 +326,7 @@ message NetworkConfigResponse {
   UploadTokenType upload_token_type = 17;
   string upload_topic = 18;
   uint32 upload_frequency = 19;
+  bool auto_update_enabled = 20;
 }
 
 message RecordMeta {
@@ -510,7 +521,7 @@ message EnvironmentPayload {
   float temp_c = 7;
   float humidity_pct = 8;
   float pressure_hpa = 9;
-  uint32 voc_raw = 10;
+  optional uint32 voc_raw = 10;
 
   message Accel {
     float x = 1;
@@ -527,7 +538,7 @@ message EnvironmentPayload {
   uint32 vbus = 18;
   uint32 clk_var = 19;
   int32 drift = 20;
-  uint32 voc_index = 21;
+  optional uint32 voc_index = 21;
   optional double gps_lat = 22;
   optional double gps_lng = 23;
   optional float gps_accuracy_m = 24;

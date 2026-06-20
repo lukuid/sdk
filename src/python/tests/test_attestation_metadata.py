@@ -3,7 +3,13 @@ import json
 import unittest
 from pathlib import Path
 
-from lukuid_sdk.attestation import TRUSTED_ROOT_CERTS_PEM, _certificate_metadata, pem_from_der_string
+from lukuid_sdk.attestation import (
+    TRUSTED_ROOT_CERTS_PEM,
+    DeviceAttestationInputs,
+    _certificate_metadata,
+    pem_from_der_string,
+    verify_device_attestation,
+)
 
 
 def resolve_valid_envelope() -> Path:
@@ -46,6 +52,32 @@ class TestAttestationMetadata(unittest.TestCase):
         metadata = _certificate_metadata(TRUSTED_ROOT_CERTS_PEM[0], include_pubkey=False)
         self.assertIn("LukuID PQC Root CA", metadata["subject"])
         self.assertIsNone(metadata["public_key_pem"])
+
+    def test_dac_attestation_uses_dac_start_anchor_instead_of_record_time(self):
+        envelope = json.loads(resolve_valid_envelope().read_text(encoding="utf-8"))
+        identity = envelope["identity"]
+        chain = "".join(
+            pem
+            for pem in (
+                pem_from_der_string(envelope["attestation_dac_der"]),
+                pem_from_der_string(envelope["attestation_manufacturer_der"]),
+                pem_from_der_string(envelope["attestation_intermediate_der"]),
+            )
+            if pem
+        )
+
+        result = verify_device_attestation(
+            DeviceAttestationInputs(
+                id=envelope["device"]["device_id"],
+                key=envelope["device"]["public_key"],
+                attestation_sig=identity["signature"],
+                certificate_chain=chain,
+                created=4102444800,
+                trust_profile="dev",
+            )
+        )
+
+        self.assertTrue(result.ok, result.reason)
 
 
 if __name__ == "__main__":

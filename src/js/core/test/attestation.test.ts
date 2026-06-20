@@ -131,4 +131,27 @@ describe('Device Attestation', () => {
             });
         }
     });
+
+    it('accepts DAC attestation when the record timestamp is after DAC expiry', async () => {
+        const samplePath = path.join(samplesDir, 'first-passable-verification-sample.luku');
+        const archive = await LukuFile.openBytes(new Uint8Array(await readFile(samplePath)));
+        const block = archive.blocks[0];
+        const record = block.batch[0];
+        const identity = record.identity as JsonObject | undefined;
+        const certificateChain = [
+            pemFromDerBase64(block.attestation_dac_der),
+            pemFromDerBase64(block.attestation_manufacturer_der),
+            pemFromDerBase64(block.attestation_intermediate_der)
+        ].filter((value): value is string => Boolean(value)).join('');
+
+        const result = await verifyDeviceAttestation({
+            id: typeof record.device_id === 'string' ? record.device_id : block.device.device_id,
+            key: typeof record.public_key === 'string' ? record.public_key : block.device.public_key,
+            attestationSig: typeof identity?.signature === 'string' ? identity.signature : '',
+            certificateChain,
+            created: 4102444800,
+            trustProfile: 'dev'
+        });
+        assert.strictEqual(result.ok, true, result.reason);
+    });
 });

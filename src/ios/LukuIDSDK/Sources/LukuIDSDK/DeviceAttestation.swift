@@ -81,6 +81,13 @@ struct CertificateChainValidationResult {
     let certificates: [SecCertificate]
 }
 
+private let dacValidityAnchorGraceSeconds: Int64 = 3600
+
+enum CertificateValidityAnchor {
+    case created
+    case dacNotBeforePlusGrace
+}
+
 // Trusted Root Certificates (PEM)
 private let TRUSTED_ROOT_CERTS_PEM = [
     """
@@ -225,9 +232,10 @@ func verifyDeviceAttestation(_ inputs: DeviceAttestationInputs, revocationManage
     if let chainPEM = inputs.certificateChain {
         let chainResult = validateCertificateChain(
             chainPEM,
-            created: inputs.created,
+            created: nil,
             trustProfile: inputs.trustProfile,
-            revocationManager: revocationManager
+            revocationManager: revocationManager,
+            validityAnchor: .dacNotBeforePlusGrace
         )
         guard chainResult.ok else {
             return .failure(DeviceTrustError(id: inputs.id, reason: chainResult.reason ?? "Invalid certificate chain", attemptedKeyIds: []))
@@ -321,7 +329,8 @@ func validateCertificateChain(
     _ chainPEM: String,
     created: Int64?,
     trustProfile: String,
-    revocationManager: RevocationManager? = nil
+    revocationManager: RevocationManager? = nil,
+    validityAnchor: CertificateValidityAnchor = .created
 ) -> CertificateChainValidationResult {
     let certs = parsePEMChain(chainPEM)
     guard !certs.isEmpty else {
@@ -390,7 +399,15 @@ func validateCertificateChain(
         }
     }
 
-    if let createdTs = created {
+    let temporalReference: Int64?
+    switch validityAnchor {
+    case .created:
+        temporalReference = created
+    case .dacNotBeforePlusGrace:
+        temporalReference = certs.first.map { certificateValidity($0).validFrom + dacValidityAnchorGraceSeconds }
+    }
+
+    if let createdTs = temporalReference {
         for cert in certs {
             if !verifyTemporalBirth(cert, created: createdTs) {
                 let range = certificateValidity(cert)

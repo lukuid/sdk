@@ -879,11 +879,7 @@ impl LukuFile {
                         vendor: vendor.clone(),
                         record_id: attestation_record_id.map(|value| value.to_string()),
                         certificate_chain: Some(attestation_chain.clone()),
-                        created: if options.skip_certificate_temporal_checks {
-                            None
-                        } else {
-                            timestamp.map(|t| t as i64)
-                        },
+                        created: None,
                         attestation_alg: None,
                         attestation_payload_version: None,
                         trust_profile: options.trust_profile.clone(),
@@ -1879,11 +1875,7 @@ impl LukuFile {
                                 vendor: vendor.clone(),
                                 record_id: record_attestation_id.map(|value| value.to_string()),
                                 certificate_chain: Some(dac_chain),
-                                created: if options.skip_certificate_temporal_checks {
-                                    None
-                                } else {
-                                    timestamp.map(|v| v as i64)
-                                },
+                                created: None,
                                 attestation_alg: None,
                                 attestation_payload_version: None,
                                 trust_profile: options.trust_profile.clone(),

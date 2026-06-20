@@ -3,9 +3,21 @@ package com.lukuid.sdk.internal
 
 import org.junit.Assert.*
 import org.junit.Test
+import org.json.JSONObject
+import java.io.File
 import java.util.Base64
 
 class DeviceAttestationTest {
+
+    private fun getValidEnvelope(): JSONObject {
+        return JSONObject(File("../../../samples/envelopes/dev/1.0.0/valid_envelope.json").readText())
+    }
+
+    private fun pemFromDerBase64(value: String): String {
+        return "-----BEGIN CERTIFICATE-----\n" +
+            value.chunked(64).joinToString("\n") +
+            "\n-----END CERTIFICATE-----\n"
+    }
 
     @Test
     fun `fails when signature is missing`() {
@@ -74,5 +86,30 @@ class DeviceAttestationTest {
         val result = verifyDeviceAttestation(input, rm)
         assertFalse(result.ok)
         println("REASON: ${result.reason}"); assertTrue(result.reason?.contains("revoked") == true)
+    }
+
+    @Test
+    fun `uses DAC start anchor instead of record time for temporal validity`() {
+        val envelope = getValidEnvelope()
+        val identity = envelope.getJSONObject("identity")
+        val device = envelope.getJSONObject("device")
+        val chain = listOf(
+            envelope.getString("attestation_dac_der"),
+            envelope.getString("attestation_manufacturer_der"),
+            envelope.getString("attestation_intermediate_der")
+        ).joinToString("") { pemFromDerBase64(it) }
+
+        val result = verifyDeviceAttestation(
+            DeviceAttestationInput(
+                id = device.getString("device_id"),
+                key = device.getString("public_key"),
+                attestationSig = identity.getString("signature"),
+                certificateChain = chain,
+                created = 4102444800L,
+                trustProfile = "dev"
+            )
+        )
+
+        assertTrue("unexpected attestation failure: ${result.reason}", result.ok)
     }
 }

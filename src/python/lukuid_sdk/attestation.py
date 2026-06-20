@@ -209,6 +209,7 @@ _PQC_SIGNATURE_ALGORITHMS = {
     "2.16.840.1.101.3.4.3.19": "ML-DSA-87",
 }
 _oqs_module: object | None | bool = False
+_DAC_VALIDITY_ANCHOR_GRACE_SECONDS = 3600
 
 
 from .revocation import RevocationManager
@@ -235,10 +236,11 @@ def verify_device_attestation(
     if inputs.certificate_chain:
         chain_result = validate_certificate_chain(
             inputs.certificate_chain,
-            created=inputs.created,
+            created=None,
             trust_profile=inputs.trust_profile,
             allow_untrusted_roots=inputs.allow_untrusted_roots,
             revocation_manager=revocation_manager,
+            validity_anchor="dac_not_before_plus_grace",
         )
         if not chain_result.ok:
             return VerificationResult(False, chain_result.reason)
@@ -341,6 +343,7 @@ def validate_certificate_chain(
     trust_profile: str,
     allow_untrusted_roots: bool = False,
     revocation_manager: RevocationManager | None = None,
+    validity_anchor: str = "created",
 ) -> CertificateChainValidationResult:
     certs_pem = _CERT_PATTERN.findall(certificate_chain)
     if not certs_pem:
@@ -399,15 +402,19 @@ def validate_certificate_chain(
             if revocation_manager.is_revoked(cert):
                 return CertificateChainValidationResult(False, f"Certificate is revoked: {revocation_manager.get_fingerprint(cert)}")
 
-    if created is not None:
+    temporal_reference = created
+    if validity_anchor == "dac_not_before_plus_grace":
+        temporal_reference = int(certs[0].not_valid_before.timestamp()) + _DAC_VALIDITY_ANCHOR_GRACE_SECONDS
+
+    if temporal_reference is not None:
         try:
             for cert in certs:
                 valid_from = int(cert.not_valid_before.timestamp())
                 valid_to = int(cert.not_valid_after.timestamp())
-                if created < valid_from or created > valid_to:
+                if temporal_reference < valid_from or temporal_reference > valid_to:
                     return CertificateChainValidationResult(
                         False,
-                        f"Temporal birth check failed: created ({created}) is outside cert window [{valid_from} - {valid_to}]",
+                        f"Temporal birth check failed: created ({temporal_reference}) is outside cert window [{valid_from} - {valid_to}]",
                     )
         except Exception as exc:
             return CertificateChainValidationResult(False, f"Chain processing error: {exc}")

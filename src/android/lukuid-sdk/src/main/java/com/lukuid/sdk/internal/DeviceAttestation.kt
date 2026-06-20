@@ -74,6 +74,13 @@ internal data class ExternalIdentityInput(
     val trustedFingerprints: List<String> = emptyList()
 )
 
+private const val DAC_VALIDITY_ANCHOR_GRACE_SECONDS = 3600L
+
+internal enum class CertificateValidityAnchor {
+    CREATED,
+    DAC_NOT_BEFORE_PLUS_GRACE
+}
+
 private val TRUSTED_ROOT_CERTS_PEM = listOf(
     """
     -----BEGIN CERTIFICATE-----
@@ -219,9 +226,10 @@ internal fun verifyDeviceAttestation(input: DeviceAttestationInput, revocationMa
     if (!input.certificateChain.isNullOrEmpty()) {
         val chainResult = validateCertificateChain(
             input.certificateChain,
-            input.created,
+            null,
             input.trustProfile ?: "prod",
-            revocationManager
+            revocationManager,
+            CertificateValidityAnchor.DAC_NOT_BEFORE_PLUS_GRACE
         )
         if (!chainResult.ok) {
             return VerificationResult(false, chainResult.reason)
@@ -344,7 +352,8 @@ internal fun validateCertificateChain(
     certificateChain: String,
     created: Long?,
     trustProfile: String,
-    revocationManager: RevocationManager? = null
+    revocationManager: RevocationManager? = null,
+    validityAnchor: CertificateValidityAnchor = CertificateValidityAnchor.CREATED
 ): CertificateChainValidationResult {
     if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
         Security.insertProviderAt(BouncyCastleProvider(), 1)
@@ -404,12 +413,18 @@ internal fun validateCertificateChain(
             }
         }
 
-        if (created != null) {
+        val temporalReference = when (validityAnchor) {
+            CertificateValidityAnchor.CREATED -> created
+            CertificateValidityAnchor.DAC_NOT_BEFORE_PLUS_GRACE ->
+                certs.firstOrNull()?.notBefore?.time?.div(1000)?.plus(DAC_VALIDITY_ANCHOR_GRACE_SECONDS)
+        }
+
+        if (temporalReference != null) {
             for (cert in certs) {
                 val validFrom = cert.notBefore.time / 1000
                 val validTo = cert.notAfter.time / 1000
-                if (created < validFrom || created > validTo) {
-                    return CertificateChainValidationResult(false, "Temporal birth check failed: created ($created) is outside cert window [$validFrom - $validTo]")
+                if (temporalReference < validFrom || temporalReference > validTo) {
+                    return CertificateChainValidationResult(false, "Temporal birth check failed: created ($temporalReference) is outside cert window [$validFrom - $validTo]")
                 }
             }
         }

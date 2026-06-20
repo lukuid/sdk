@@ -25,6 +25,7 @@ export interface CertificateChainValidationInputs {
   certificateChain: string;
   created?: number;
   trustProfile?: string;
+  validityAnchor?: 'created' | 'dac_not_before_plus_grace';
 }
 
 export interface CertificateChainValidationResult {
@@ -464,6 +465,8 @@ function getSubtleCrypto(): SubtleCrypto {
 
 import { RevocationManager } from './revocation.js';
 
+const DAC_VALIDITY_ANCHOR_GRACE_SECONDS = 3600;
+
 export interface HeartbeatAttestationInputs {
   id: string;
   heartbeatSig: string;
@@ -505,7 +508,7 @@ export async function verifyDeviceAttestation(
   if (inputs.certificateChain) {
     const chainResult = await validateCertificateChain({
       certificateChain: inputs.certificateChain,
-      created: inputs.created,
+      validityAnchor: 'dac_not_before_plus_grace',
       trustProfile: inputs.trustProfile
     }, revocationManager);
     if (!chainResult.ok) {
@@ -736,12 +739,18 @@ export async function validateCertificateChain(
         }
       }
 
-      if (inputs.created) {
+      const temporalReference = inputs.validityAnchor === 'dac_not_before_plus_grace'
+        ? Date.parse(certs[0].validFrom) / 1000 + DAC_VALIDITY_ANCHOR_GRACE_SECONDS
+        : inputs.created;
+      if (temporalReference !== undefined) {
+        if (!Number.isFinite(temporalReference)) {
+          return { ok: false, reason: 'Temporal DAC provisioning check failed: invalid DAC validity start' };
+        }
         for (const cert of certs) {
           const validFrom = Date.parse(cert.validFrom) / 1000;
           const validTo = Date.parse(cert.validTo) / 1000;
-          if (inputs.created < validFrom || inputs.created > validTo) {
-            return { ok: false, reason: `Temporal birth check failed: created (${inputs.created}) is outside cert window [${validFrom} - ${validTo}]` };
+          if (temporalReference < validFrom || temporalReference > validTo) {
+            return { ok: false, reason: `Temporal birth check failed: created (${temporalReference}) is outside cert window [${validFrom} - ${validTo}]` };
           }
         }
       }
@@ -810,10 +819,13 @@ export async function validateCertificateChain(
       }
     }
 
-    if (inputs.created) {
+    const temporalReference = inputs.validityAnchor === 'dac_not_before_plus_grace'
+      ? certs[0].validFrom + DAC_VALIDITY_ANCHOR_GRACE_SECONDS
+      : inputs.created;
+    if (temporalReference !== undefined) {
       for (const cert of certs) {
-        if (inputs.created < cert.validFrom || inputs.created > cert.validTo) {
-          return { ok: false, reason: `Temporal birth check failed: created (${inputs.created}) is outside cert window [${cert.validFrom} - ${cert.validTo}]` };
+        if (temporalReference < cert.validFrom || temporalReference > cert.validTo) {
+          return { ok: false, reason: `Temporal birth check failed: created (${temporalReference}) is outside cert window [${cert.validFrom} - ${cert.validTo}]` };
         }
       }
     }

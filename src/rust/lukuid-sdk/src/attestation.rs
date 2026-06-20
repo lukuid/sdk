@@ -6,6 +6,13 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use x509_parser::prelude::*;
 
+const DAC_VALIDITY_ANCHOR_GRACE_SECONDS: i64 = 3600;
+
+enum CertificateValidityAnchor {
+    Created,
+    DacNotBeforePlusGrace,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeviceAttestationInputs {
     pub id: String,
@@ -229,8 +236,13 @@ pub fn verify_device_attestation(
     let mut leaf_pubkey_bytes: Option<Vec<u8>> = None;
 
     if let Some(chain_pem) = &inputs.certificate_chain {
-        let chain_result =
-            validate_certificate_chain(chain_pem, inputs.created, &inputs.trust_profile, revocation_manager);
+        let chain_result = validate_certificate_chain_with_anchor(
+            chain_pem,
+            None,
+            &inputs.trust_profile,
+            revocation_manager,
+            CertificateValidityAnchor::DacNotBeforePlusGrace,
+        );
         if !chain_result.ok {
             return VerificationResult {
                 ok: false,
@@ -377,6 +389,22 @@ pub fn validate_certificate_chain(
     trust_profile: &str,
     revocation_manager: Option<&RevocationManager>,
 ) -> CertificateChainValidationResult {
+    validate_certificate_chain_with_anchor(
+        chain_pem,
+        created,
+        trust_profile,
+        revocation_manager,
+        CertificateValidityAnchor::Created,
+    )
+}
+
+fn validate_certificate_chain_with_anchor(
+    chain_pem: &str,
+    created: Option<i64>,
+    trust_profile: &str,
+    revocation_manager: Option<&RevocationManager>,
+    validity_anchor: CertificateValidityAnchor,
+) -> CertificateChainValidationResult {
     let pems: Vec<_> = x509_parser::pem::Pem::iter_from_buffer(chain_pem.as_bytes())
         .filter_map(|r| r.ok())
         .collect();
@@ -469,7 +497,14 @@ pub fn validate_certificate_chain(
         }
     }
 
-    if let Some(created_ts) = created {
+    let temporal_reference = match validity_anchor {
+        CertificateValidityAnchor::Created => created,
+        CertificateValidityAnchor::DacNotBeforePlusGrace => certs
+            .first()
+            .map(|cert| cert.validity().not_before.timestamp() + DAC_VALIDITY_ANCHOR_GRACE_SECONDS),
+    };
+
+    if let Some(created_ts) = temporal_reference {
         for cert in &certs {
             let valid_from = cert.validity().not_before.timestamp();
             let valid_to = cert.validity().not_after.timestamp();

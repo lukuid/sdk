@@ -640,7 +640,6 @@ export class LukuFile {
           vendor: vendor,
           recordId: attestationRecordId,
           certificateChain: attestationChain,
-          created: skipCertificateTemporalChecks ? undefined : timestamp,
           trustProfile
         });
         if (!attestationResult.ok) {
@@ -1287,7 +1286,6 @@ export class LukuFile {
               vendor: vendor,
               recordId: attestationRecordId,
               certificateChain: attestationChain,
-              created: skipCertificateTemporalChecks ? undefined : timestamp,
               trustProfile
             });
             if (!result.ok) {

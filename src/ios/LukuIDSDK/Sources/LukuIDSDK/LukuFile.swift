@@ -527,7 +527,7 @@ public final class LukuArchive {
                             vendor: vendor,
                             recordID: attestationRecordId,
                             certificateChain: attestationChain,
-                            created: options.skipCertificateTemporalChecks ? nil : timestamp.map(Int64.init),
+                            created: nil,
                             attestationAlg: nil,
                             attestationPayloadVersion: nil,
                             trustProfile: options.trustProfile
@@ -851,7 +851,7 @@ public enum LukuFile {
                                 vendor: vendor,
                                 recordID: attestationRecordId,
                         certificateChain: attestationChain,
-                        created: options.skipCertificateTemporalChecks ? nil : timestamp.map(Int64.init),
+                        created: nil,
                         attestationAlg: nil,
                         attestationPayloadVersion: nil,
                         trustProfile: options.trustProfile
