@@ -15,8 +15,7 @@ export namespace lukuid {
     /** UploadMode enum. */
     enum UploadMode {
         UPLOAD_MODE_NONE = 0,
-        UPLOAD_MODE_HTTP = 1,
-        UPLOAD_MODE_MQTT = 2
+        UPLOAD_MODE_HTTP = 1
     }
 
     /** UploadAuth enum. */
@@ -687,30 +686,6 @@ export namespace lukuid {
         /** ConfigRequest wifiPassword */
         wifiPassword?: (string|null);
 
-        /** ConfigRequest mqttBrokerUrl */
-        mqttBrokerUrl?: (string|null);
-
-        /** ConfigRequest mqttPort */
-        mqttPort?: (number|null);
-
-        /** ConfigRequest mqttTopic */
-        mqttTopic?: (string|null);
-
-        /** ConfigRequest mqttUsername */
-        mqttUsername?: (string|null);
-
-        /** ConfigRequest mqttPassword */
-        mqttPassword?: (string|null);
-
-        /** ConfigRequest mqttCertificateDer */
-        mqttCertificateDer?: (Uint8Array|null);
-
-        /** ConfigRequest mqttCaDer */
-        mqttCaDer?: (Uint8Array|null);
-
-        /** ConfigRequest mqttBroadcastEnabled */
-        mqttBroadcastEnabled?: (boolean|null);
-
         /** ConfigRequest customHeartbeatUrl */
         customHeartbeatUrl?: (string|null);
 
@@ -746,6 +721,9 @@ export namespace lukuid {
 
         /** ConfigRequest uploadFrequency */
         uploadFrequency?: (number|null);
+
+        /** ConfigRequest autoUpdateEnabled */
+        autoUpdateEnabled?: (boolean|null);
     }
 
     /** Represents a ConfigRequest. */
@@ -765,30 +743,6 @@ export namespace lukuid {
 
         /** ConfigRequest wifiPassword. */
         public wifiPassword?: (string|null);
-
-        /** ConfigRequest mqttBrokerUrl. */
-        public mqttBrokerUrl?: (string|null);
-
-        /** ConfigRequest mqttPort. */
-        public mqttPort?: (number|null);
-
-        /** ConfigRequest mqttTopic. */
-        public mqttTopic?: (string|null);
-
-        /** ConfigRequest mqttUsername. */
-        public mqttUsername?: (string|null);
-
-        /** ConfigRequest mqttPassword. */
-        public mqttPassword?: (string|null);
-
-        /** ConfigRequest mqttCertificateDer. */
-        public mqttCertificateDer?: (Uint8Array|null);
-
-        /** ConfigRequest mqttCaDer. */
-        public mqttCaDer?: (Uint8Array|null);
-
-        /** ConfigRequest mqttBroadcastEnabled. */
-        public mqttBroadcastEnabled?: (boolean|null);
 
         /** ConfigRequest customHeartbeatUrl. */
         public customHeartbeatUrl?: (string|null);
@@ -825,6 +779,9 @@ export namespace lukuid {
 
         /** ConfigRequest uploadFrequency. */
         public uploadFrequency?: (number|null);
+
+        /** ConfigRequest autoUpdateEnabled. */
+        public autoUpdateEnabled?: (boolean|null);
 
         /**
          * Creates a new ConfigRequest instance using the specified properties.
@@ -915,6 +872,30 @@ export namespace lukuid {
 
         /** OtaBeginRequest binaryMode */
         binaryMode?: (boolean|null);
+
+        /** OtaBeginRequest updateUid */
+        updateUid?: (string|null);
+
+        /** OtaBeginRequest fromVersion */
+        fromVersion?: (string|null);
+
+        /** OtaBeginRequest targetVersion */
+        targetVersion?: (string|null);
+
+        /** OtaBeginRequest sha256 */
+        sha256?: (string|null);
+
+        /** OtaBeginRequest counter */
+        counter?: (number|Long|null);
+
+        /** OtaBeginRequest certificateDer */
+        certificateDer?: (Uint8Array|null);
+
+        /** OtaBeginRequest intermediateDer */
+        intermediateDer?: (Uint8Array|null);
+
+        /** OtaBeginRequest otaStartSignature */
+        otaStartSignature?: (Uint8Array|null);
     }
 
     /** Represents an OtaBeginRequest. */
@@ -934,6 +915,30 @@ export namespace lukuid {
 
         /** OtaBeginRequest binaryMode. */
         public binaryMode: boolean;
+
+        /** OtaBeginRequest updateUid. */
+        public updateUid: string;
+
+        /** OtaBeginRequest fromVersion. */
+        public fromVersion: string;
+
+        /** OtaBeginRequest targetVersion. */
+        public targetVersion: string;
+
+        /** OtaBeginRequest sha256. */
+        public sha256: string;
+
+        /** OtaBeginRequest counter. */
+        public counter: (number|Long);
+
+        /** OtaBeginRequest certificateDer. */
+        public certificateDer: Uint8Array;
+
+        /** OtaBeginRequest intermediateDer. */
+        public intermediateDer: Uint8Array;
+
+        /** OtaBeginRequest otaStartSignature. */
+        public otaStartSignature: Uint8Array;
 
         /**
          * Creates a new OtaBeginRequest instance using the specified properties.
@@ -3145,6 +3150,9 @@ export namespace lukuid {
 
         /** DeviceInfoResponse uploadAuth */
         uploadAuth?: (lukuid.UploadAuth|null);
+
+        /** DeviceInfoResponse autoUpdateEnabled */
+        autoUpdateEnabled?: (boolean|null);
     }
 
     /** Represents a DeviceInfoResponse. */
@@ -3248,6 +3256,9 @@ export namespace lukuid {
 
         /** DeviceInfoResponse uploadAuth. */
         public uploadAuth: lukuid.UploadAuth;
+
+        /** DeviceInfoResponse autoUpdateEnabled. */
+        public autoUpdateEnabled: boolean;
 
         /**
          * Creates a new DeviceInfoResponse instance using the specified properties.
@@ -3487,32 +3498,8 @@ export namespace lukuid {
         /** NetworkConfigResponse wifiPasswordSet */
         wifiPasswordSet?: (boolean|null);
 
-        /** NetworkConfigResponse mqttBrokerUrl */
-        mqttBrokerUrl?: (string|null);
-
-        /** NetworkConfigResponse mqttPort */
-        mqttPort?: (number|null);
-
-        /** NetworkConfigResponse mqttTopic */
-        mqttTopic?: (string|null);
-
-        /** NetworkConfigResponse mqttUsername */
-        mqttUsername?: (string|null);
-
-        /** NetworkConfigResponse mqttPasswordSet */
-        mqttPasswordSet?: (boolean|null);
-
-        /** NetworkConfigResponse mqttBroadcastEnabled */
-        mqttBroadcastEnabled?: (boolean|null);
-
         /** NetworkConfigResponse csr */
         csr?: (Uint8Array|null);
-
-        /** NetworkConfigResponse mqttCertificateDer */
-        mqttCertificateDer?: (Uint8Array|null);
-
-        /** NetworkConfigResponse mqttCaDer */
-        mqttCaDer?: (Uint8Array|null);
 
         /** NetworkConfigResponse uploadMode */
         uploadMode?: (lukuid.UploadMode|null);
@@ -3534,6 +3521,9 @@ export namespace lukuid {
 
         /** NetworkConfigResponse uploadFrequency */
         uploadFrequency?: (number|null);
+
+        /** NetworkConfigResponse autoUpdateEnabled */
+        autoUpdateEnabled?: (boolean|null);
     }
 
     /** Represents a NetworkConfigResponse. */
@@ -3551,32 +3541,8 @@ export namespace lukuid {
         /** NetworkConfigResponse wifiPasswordSet. */
         public wifiPasswordSet: boolean;
 
-        /** NetworkConfigResponse mqttBrokerUrl. */
-        public mqttBrokerUrl: string;
-
-        /** NetworkConfigResponse mqttPort. */
-        public mqttPort: number;
-
-        /** NetworkConfigResponse mqttTopic. */
-        public mqttTopic: string;
-
-        /** NetworkConfigResponse mqttUsername. */
-        public mqttUsername: string;
-
-        /** NetworkConfigResponse mqttPasswordSet. */
-        public mqttPasswordSet: boolean;
-
-        /** NetworkConfigResponse mqttBroadcastEnabled. */
-        public mqttBroadcastEnabled: boolean;
-
         /** NetworkConfigResponse csr. */
         public csr: Uint8Array;
-
-        /** NetworkConfigResponse mqttCertificateDer. */
-        public mqttCertificateDer: Uint8Array;
-
-        /** NetworkConfigResponse mqttCaDer. */
-        public mqttCaDer: Uint8Array;
 
         /** NetworkConfigResponse uploadMode. */
         public uploadMode: lukuid.UploadMode;
@@ -3598,6 +3564,9 @@ export namespace lukuid {
 
         /** NetworkConfigResponse uploadFrequency. */
         public uploadFrequency: number;
+
+        /** NetworkConfigResponse autoUpdateEnabled. */
+        public autoUpdateEnabled: boolean;
 
         /**
          * Creates a new NetworkConfigResponse instance using the specified properties.
@@ -5771,7 +5740,7 @@ export namespace lukuid {
         public pressureHpa: number;
 
         /** EnvironmentPayload vocRaw. */
-        public vocRaw: number;
+        public vocRaw?: (number|null);
 
         /** EnvironmentPayload accelG. */
         public accelG?: (lukuid.EnvironmentPayload.IAccel|null);
@@ -5804,7 +5773,7 @@ export namespace lukuid {
         public drift: number;
 
         /** EnvironmentPayload vocIndex. */
-        public vocIndex: number;
+        public vocIndex?: (number|null);
 
         /** EnvironmentPayload gpsLat. */
         public gpsLat?: (number|null);

@@ -20,12 +20,12 @@ import SwiftProtobuf
 // incompatible with the version of SwiftProtobuf to which you are linking.
 // Please ensure that you are building against the same version of the API
 // that was used to generate this file.
-fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
+fileprivate nonisolated struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
   struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
   typealias Version = _2
 }
 
-enum LukuIDStatus: SwiftProtobuf.Enum, Swift.CaseIterable {
+nonisolated enum LukuIDStatus: SwiftProtobuf.Enum, Swift.CaseIterable {
   typealias RawValue = Int
   case unknown // = 0
   case ok // = 1
@@ -67,11 +67,10 @@ enum LukuIDStatus: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
-enum LukuIDUploadMode: SwiftProtobuf.Enum, Swift.CaseIterable {
+nonisolated enum LukuIDUploadMode: SwiftProtobuf.Enum, Swift.CaseIterable {
   typealias RawValue = Int
   case none // = 0
   case http // = 1
-  case mqtt // = 2
   case UNRECOGNIZED(Int)
 
   init() {
@@ -82,7 +81,6 @@ enum LukuIDUploadMode: SwiftProtobuf.Enum, Swift.CaseIterable {
     switch rawValue {
     case 0: self = .none
     case 1: self = .http
-    case 2: self = .mqtt
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -91,7 +89,6 @@ enum LukuIDUploadMode: SwiftProtobuf.Enum, Swift.CaseIterable {
     switch self {
     case .none: return 0
     case .http: return 1
-    case .mqtt: return 2
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -100,12 +97,11 @@ enum LukuIDUploadMode: SwiftProtobuf.Enum, Swift.CaseIterable {
   static let allCases: [LukuIDUploadMode] = [
     .none,
     .http,
-    .mqtt,
   ]
 
 }
 
-enum LukuIDUploadAuth: SwiftProtobuf.Enum, Swift.CaseIterable {
+nonisolated enum LukuIDUploadAuth: SwiftProtobuf.Enum, Swift.CaseIterable {
   typealias RawValue = Int
   case none // = 0
   case token // = 1
@@ -143,7 +139,7 @@ enum LukuIDUploadAuth: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
-enum LukuIDUploadTokenType: SwiftProtobuf.Enum, Swift.CaseIterable {
+nonisolated enum LukuIDUploadTokenType: SwiftProtobuf.Enum, Swift.CaseIterable {
   typealias RawValue = Int
   case header // = 0
   case query // = 1
@@ -185,7 +181,7 @@ enum LukuIDUploadTokenType: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
-enum LukuIDFetchWindow: SwiftProtobuf.Enum, Swift.CaseIterable {
+nonisolated enum LukuIDFetchWindow: SwiftProtobuf.Enum, Swift.CaseIterable {
   typealias RawValue = Int
   case none // = 0
   case hourly // = 1
@@ -231,7 +227,7 @@ enum LukuIDFetchWindow: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
-struct LukuIDMetricStats: Sendable {
+nonisolated struct LukuIDMetricStats: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -251,7 +247,7 @@ struct LukuIDMetricStats: Sendable {
   init() {}
 }
 
-struct LukuIDMetricValue: Sendable {
+nonisolated struct LukuIDMetricValue: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -276,7 +272,7 @@ struct LukuIDMetricValue: Sendable {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum OneOf_Kind: Equatable, Sendable {
+  nonisolated enum OneOf_Kind: Equatable, Sendable {
     case value(Float)
     case stats(LukuIDMetricStats)
 
@@ -285,7 +281,7 @@ struct LukuIDMetricValue: Sendable {
   init() {}
 }
 
-struct LukuIDFetchRequest: Sendable {
+nonisolated struct LukuIDFetchRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -309,7 +305,7 @@ struct LukuIDFetchRequest: Sendable {
   init() {}
 }
 
-struct LukuIDGetRecordRequest: Sendable {
+nonisolated struct LukuIDGetRecordRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -321,7 +317,7 @@ struct LukuIDGetRecordRequest: Sendable {
   init() {}
 }
 
-struct LukuIDAttestRequest: Sendable {
+nonisolated struct LukuIDAttestRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -359,226 +355,178 @@ struct LukuIDAttestRequest: Sendable {
   init() {}
 }
 
-struct LukuIDConfigRequest: @unchecked Sendable {
+nonisolated struct LukuIDConfigRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   var name: String {
-    get {_storage._name ?? String()}
-    set {_uniqueStorage()._name = newValue}
+    get {_name ?? String()}
+    set {_name = newValue}
   }
   /// Returns true if `name` has been explicitly set.
-  var hasName: Bool {_storage._name != nil}
+  var hasName: Bool {self._name != nil}
   /// Clears the value of `name`. Subsequent reads from it will return its default value.
-  mutating func clearName() {_uniqueStorage()._name = nil}
+  mutating func clearName() {self._name = nil}
 
   var wifiSsid: String {
-    get {_storage._wifiSsid ?? String()}
-    set {_uniqueStorage()._wifiSsid = newValue}
+    get {_wifiSsid ?? String()}
+    set {_wifiSsid = newValue}
   }
   /// Returns true if `wifiSsid` has been explicitly set.
-  var hasWifiSsid: Bool {_storage._wifiSsid != nil}
+  var hasWifiSsid: Bool {self._wifiSsid != nil}
   /// Clears the value of `wifiSsid`. Subsequent reads from it will return its default value.
-  mutating func clearWifiSsid() {_uniqueStorage()._wifiSsid = nil}
+  mutating func clearWifiSsid() {self._wifiSsid = nil}
 
   var wifiPassword: String {
-    get {_storage._wifiPassword ?? String()}
-    set {_uniqueStorage()._wifiPassword = newValue}
+    get {_wifiPassword ?? String()}
+    set {_wifiPassword = newValue}
   }
   /// Returns true if `wifiPassword` has been explicitly set.
-  var hasWifiPassword: Bool {_storage._wifiPassword != nil}
+  var hasWifiPassword: Bool {self._wifiPassword != nil}
   /// Clears the value of `wifiPassword`. Subsequent reads from it will return its default value.
-  mutating func clearWifiPassword() {_uniqueStorage()._wifiPassword = nil}
-
-  var mqttBrokerURL: String {
-    get {_storage._mqttBrokerURL ?? String()}
-    set {_uniqueStorage()._mqttBrokerURL = newValue}
-  }
-  /// Returns true if `mqttBrokerURL` has been explicitly set.
-  var hasMqttBrokerURL: Bool {_storage._mqttBrokerURL != nil}
-  /// Clears the value of `mqttBrokerURL`. Subsequent reads from it will return its default value.
-  mutating func clearMqttBrokerURL() {_uniqueStorage()._mqttBrokerURL = nil}
-
-  var mqttPort: UInt32 {
-    get {_storage._mqttPort ?? 0}
-    set {_uniqueStorage()._mqttPort = newValue}
-  }
-  /// Returns true if `mqttPort` has been explicitly set.
-  var hasMqttPort: Bool {_storage._mqttPort != nil}
-  /// Clears the value of `mqttPort`. Subsequent reads from it will return its default value.
-  mutating func clearMqttPort() {_uniqueStorage()._mqttPort = nil}
-
-  var mqttTopic: String {
-    get {_storage._mqttTopic ?? String()}
-    set {_uniqueStorage()._mqttTopic = newValue}
-  }
-  /// Returns true if `mqttTopic` has been explicitly set.
-  var hasMqttTopic: Bool {_storage._mqttTopic != nil}
-  /// Clears the value of `mqttTopic`. Subsequent reads from it will return its default value.
-  mutating func clearMqttTopic() {_uniqueStorage()._mqttTopic = nil}
-
-  var mqttUsername: String {
-    get {_storage._mqttUsername ?? String()}
-    set {_uniqueStorage()._mqttUsername = newValue}
-  }
-  /// Returns true if `mqttUsername` has been explicitly set.
-  var hasMqttUsername: Bool {_storage._mqttUsername != nil}
-  /// Clears the value of `mqttUsername`. Subsequent reads from it will return its default value.
-  mutating func clearMqttUsername() {_uniqueStorage()._mqttUsername = nil}
-
-  var mqttPassword: String {
-    get {_storage._mqttPassword ?? String()}
-    set {_uniqueStorage()._mqttPassword = newValue}
-  }
-  /// Returns true if `mqttPassword` has been explicitly set.
-  var hasMqttPassword: Bool {_storage._mqttPassword != nil}
-  /// Clears the value of `mqttPassword`. Subsequent reads from it will return its default value.
-  mutating func clearMqttPassword() {_uniqueStorage()._mqttPassword = nil}
-
-  var mqttCertificateDer: Data {
-    get {_storage._mqttCertificateDer ?? Data()}
-    set {_uniqueStorage()._mqttCertificateDer = newValue}
-  }
-  /// Returns true if `mqttCertificateDer` has been explicitly set.
-  var hasMqttCertificateDer: Bool {_storage._mqttCertificateDer != nil}
-  /// Clears the value of `mqttCertificateDer`. Subsequent reads from it will return its default value.
-  mutating func clearMqttCertificateDer() {_uniqueStorage()._mqttCertificateDer = nil}
-
-  var mqttCaDer: Data {
-    get {_storage._mqttCaDer ?? Data()}
-    set {_uniqueStorage()._mqttCaDer = newValue}
-  }
-  /// Returns true if `mqttCaDer` has been explicitly set.
-  var hasMqttCaDer: Bool {_storage._mqttCaDer != nil}
-  /// Clears the value of `mqttCaDer`. Subsequent reads from it will return its default value.
-  mutating func clearMqttCaDer() {_uniqueStorage()._mqttCaDer = nil}
-
-  var mqttBroadcastEnabled: Bool {
-    get {_storage._mqttBroadcastEnabled ?? false}
-    set {_uniqueStorage()._mqttBroadcastEnabled = newValue}
-  }
-  /// Returns true if `mqttBroadcastEnabled` has been explicitly set.
-  var hasMqttBroadcastEnabled: Bool {_storage._mqttBroadcastEnabled != nil}
-  /// Clears the value of `mqttBroadcastEnabled`. Subsequent reads from it will return its default value.
-  mutating func clearMqttBroadcastEnabled() {_uniqueStorage()._mqttBroadcastEnabled = nil}
+  mutating func clearWifiPassword() {self._wifiPassword = nil}
 
   var customHeartbeatURL: String {
-    get {_storage._customHeartbeatURL ?? String()}
-    set {_uniqueStorage()._customHeartbeatURL = newValue}
+    get {_customHeartbeatURL ?? String()}
+    set {_customHeartbeatURL = newValue}
   }
   /// Returns true if `customHeartbeatURL` has been explicitly set.
-  var hasCustomHeartbeatURL: Bool {_storage._customHeartbeatURL != nil}
+  var hasCustomHeartbeatURL: Bool {self._customHeartbeatURL != nil}
   /// Clears the value of `customHeartbeatURL`. Subsequent reads from it will return its default value.
-  mutating func clearCustomHeartbeatURL() {_uniqueStorage()._customHeartbeatURL = nil}
+  mutating func clearCustomHeartbeatURL() {self._customHeartbeatURL = nil}
 
   var networkParticipationEnabled: Bool {
-    get {_storage._networkParticipationEnabled ?? false}
-    set {_uniqueStorage()._networkParticipationEnabled = newValue}
+    get {_networkParticipationEnabled ?? false}
+    set {_networkParticipationEnabled = newValue}
   }
   /// Returns true if `networkParticipationEnabled` has been explicitly set.
-  var hasNetworkParticipationEnabled: Bool {_storage._networkParticipationEnabled != nil}
+  var hasNetworkParticipationEnabled: Bool {self._networkParticipationEnabled != nil}
   /// Clears the value of `networkParticipationEnabled`. Subsequent reads from it will return its default value.
-  mutating func clearNetworkParticipationEnabled() {_uniqueStorage()._networkParticipationEnabled = nil}
+  mutating func clearNetworkParticipationEnabled() {self._networkParticipationEnabled = nil}
 
   var uploadMode: LukuIDUploadMode {
-    get {_storage._uploadMode ?? .none}
-    set {_uniqueStorage()._uploadMode = newValue}
+    get {_uploadMode ?? .none}
+    set {_uploadMode = newValue}
   }
   /// Returns true if `uploadMode` has been explicitly set.
-  var hasUploadMode: Bool {_storage._uploadMode != nil}
+  var hasUploadMode: Bool {self._uploadMode != nil}
   /// Clears the value of `uploadMode`. Subsequent reads from it will return its default value.
-  mutating func clearUploadMode() {_uniqueStorage()._uploadMode = nil}
+  mutating func clearUploadMode() {self._uploadMode = nil}
 
   var uploadDestination: String {
-    get {_storage._uploadDestination ?? String()}
-    set {_uniqueStorage()._uploadDestination = newValue}
+    get {_uploadDestination ?? String()}
+    set {_uploadDestination = newValue}
   }
   /// Returns true if `uploadDestination` has been explicitly set.
-  var hasUploadDestination: Bool {_storage._uploadDestination != nil}
+  var hasUploadDestination: Bool {self._uploadDestination != nil}
   /// Clears the value of `uploadDestination`. Subsequent reads from it will return its default value.
-  mutating func clearUploadDestination() {_uniqueStorage()._uploadDestination = nil}
+  mutating func clearUploadDestination() {self._uploadDestination = nil}
 
   var uploadAuth: LukuIDUploadAuth {
-    get {_storage._uploadAuth ?? .none}
-    set {_uniqueStorage()._uploadAuth = newValue}
+    get {_uploadAuth ?? .none}
+    set {_uploadAuth = newValue}
   }
   /// Returns true if `uploadAuth` has been explicitly set.
-  var hasUploadAuth: Bool {_storage._uploadAuth != nil}
+  var hasUploadAuth: Bool {self._uploadAuth != nil}
   /// Clears the value of `uploadAuth`. Subsequent reads from it will return its default value.
-  mutating func clearUploadAuth() {_uniqueStorage()._uploadAuth = nil}
+  mutating func clearUploadAuth() {self._uploadAuth = nil}
 
   var uploadTokenKey: String {
-    get {_storage._uploadTokenKey ?? String()}
-    set {_uniqueStorage()._uploadTokenKey = newValue}
+    get {_uploadTokenKey ?? String()}
+    set {_uploadTokenKey = newValue}
   }
   /// Returns true if `uploadTokenKey` has been explicitly set.
-  var hasUploadTokenKey: Bool {_storage._uploadTokenKey != nil}
+  var hasUploadTokenKey: Bool {self._uploadTokenKey != nil}
   /// Clears the value of `uploadTokenKey`. Subsequent reads from it will return its default value.
-  mutating func clearUploadTokenKey() {_uniqueStorage()._uploadTokenKey = nil}
+  mutating func clearUploadTokenKey() {self._uploadTokenKey = nil}
 
   var uploadTokenValue: String {
-    get {_storage._uploadTokenValue ?? String()}
-    set {_uniqueStorage()._uploadTokenValue = newValue}
+    get {_uploadTokenValue ?? String()}
+    set {_uploadTokenValue = newValue}
   }
   /// Returns true if `uploadTokenValue` has been explicitly set.
-  var hasUploadTokenValue: Bool {_storage._uploadTokenValue != nil}
+  var hasUploadTokenValue: Bool {self._uploadTokenValue != nil}
   /// Clears the value of `uploadTokenValue`. Subsequent reads from it will return its default value.
-  mutating func clearUploadTokenValue() {_uniqueStorage()._uploadTokenValue = nil}
+  mutating func clearUploadTokenValue() {self._uploadTokenValue = nil}
 
   var uploadTokenType: LukuIDUploadTokenType {
-    get {_storage._uploadTokenType ?? .header}
-    set {_uniqueStorage()._uploadTokenType = newValue}
+    get {_uploadTokenType ?? .header}
+    set {_uploadTokenType = newValue}
   }
   /// Returns true if `uploadTokenType` has been explicitly set.
-  var hasUploadTokenType: Bool {_storage._uploadTokenType != nil}
+  var hasUploadTokenType: Bool {self._uploadTokenType != nil}
   /// Clears the value of `uploadTokenType`. Subsequent reads from it will return its default value.
-  mutating func clearUploadTokenType() {_uniqueStorage()._uploadTokenType = nil}
+  mutating func clearUploadTokenType() {self._uploadTokenType = nil}
 
   var uploadTopic: String {
-    get {_storage._uploadTopic ?? String()}
-    set {_uniqueStorage()._uploadTopic = newValue}
+    get {_uploadTopic ?? String()}
+    set {_uploadTopic = newValue}
   }
   /// Returns true if `uploadTopic` has been explicitly set.
-  var hasUploadTopic: Bool {_storage._uploadTopic != nil}
+  var hasUploadTopic: Bool {self._uploadTopic != nil}
   /// Clears the value of `uploadTopic`. Subsequent reads from it will return its default value.
-  mutating func clearUploadTopic() {_uniqueStorage()._uploadTopic = nil}
+  mutating func clearUploadTopic() {self._uploadTopic = nil}
 
   var uploadCertificateDer: Data {
-    get {_storage._uploadCertificateDer ?? Data()}
-    set {_uniqueStorage()._uploadCertificateDer = newValue}
+    get {_uploadCertificateDer ?? Data()}
+    set {_uploadCertificateDer = newValue}
   }
   /// Returns true if `uploadCertificateDer` has been explicitly set.
-  var hasUploadCertificateDer: Bool {_storage._uploadCertificateDer != nil}
+  var hasUploadCertificateDer: Bool {self._uploadCertificateDer != nil}
   /// Clears the value of `uploadCertificateDer`. Subsequent reads from it will return its default value.
-  mutating func clearUploadCertificateDer() {_uniqueStorage()._uploadCertificateDer = nil}
+  mutating func clearUploadCertificateDer() {self._uploadCertificateDer = nil}
 
   var uploadCaDer: Data {
-    get {_storage._uploadCaDer ?? Data()}
-    set {_uniqueStorage()._uploadCaDer = newValue}
+    get {_uploadCaDer ?? Data()}
+    set {_uploadCaDer = newValue}
   }
   /// Returns true if `uploadCaDer` has been explicitly set.
-  var hasUploadCaDer: Bool {_storage._uploadCaDer != nil}
+  var hasUploadCaDer: Bool {self._uploadCaDer != nil}
   /// Clears the value of `uploadCaDer`. Subsequent reads from it will return its default value.
-  mutating func clearUploadCaDer() {_uniqueStorage()._uploadCaDer = nil}
+  mutating func clearUploadCaDer() {self._uploadCaDer = nil}
 
   var uploadFrequency: UInt32 {
-    get {_storage._uploadFrequency ?? 0}
-    set {_uniqueStorage()._uploadFrequency = newValue}
+    get {_uploadFrequency ?? 0}
+    set {_uploadFrequency = newValue}
   }
   /// Returns true if `uploadFrequency` has been explicitly set.
-  var hasUploadFrequency: Bool {_storage._uploadFrequency != nil}
+  var hasUploadFrequency: Bool {self._uploadFrequency != nil}
   /// Clears the value of `uploadFrequency`. Subsequent reads from it will return its default value.
-  mutating func clearUploadFrequency() {_uniqueStorage()._uploadFrequency = nil}
+  mutating func clearUploadFrequency() {self._uploadFrequency = nil}
+
+  var autoUpdateEnabled: Bool {
+    get {_autoUpdateEnabled ?? false}
+    set {_autoUpdateEnabled = newValue}
+  }
+  /// Returns true if `autoUpdateEnabled` has been explicitly set.
+  var hasAutoUpdateEnabled: Bool {self._autoUpdateEnabled != nil}
+  /// Clears the value of `autoUpdateEnabled`. Subsequent reads from it will return its default value.
+  mutating func clearAutoUpdateEnabled() {self._autoUpdateEnabled = nil}
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
 
-  fileprivate var _storage = _StorageClass.defaultInstance
+  fileprivate var _name: String? = nil
+  fileprivate var _wifiSsid: String? = nil
+  fileprivate var _wifiPassword: String? = nil
+  fileprivate var _customHeartbeatURL: String? = nil
+  fileprivate var _networkParticipationEnabled: Bool? = nil
+  fileprivate var _uploadMode: LukuIDUploadMode? = nil
+  fileprivate var _uploadDestination: String? = nil
+  fileprivate var _uploadAuth: LukuIDUploadAuth? = nil
+  fileprivate var _uploadTokenKey: String? = nil
+  fileprivate var _uploadTokenValue: String? = nil
+  fileprivate var _uploadTokenType: LukuIDUploadTokenType? = nil
+  fileprivate var _uploadTopic: String? = nil
+  fileprivate var _uploadCertificateDer: Data? = nil
+  fileprivate var _uploadCaDer: Data? = nil
+  fileprivate var _uploadFrequency: UInt32? = nil
+  fileprivate var _autoUpdateEnabled: Bool? = nil
 }
 
-struct LukuIDOtaBeginRequest: Sendable {
+nonisolated struct LukuIDOtaBeginRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -589,12 +537,28 @@ struct LukuIDOtaBeginRequest: Sendable {
 
   var binaryMode: Bool = false
 
+  var updateUid: String = String()
+
+  var fromVersion: String = String()
+
+  var targetVersion: String = String()
+
+  var sha256: String = String()
+
+  var counter: UInt64 = 0
+
+  var certificateDer: Data = Data()
+
+  var intermediateDer: Data = Data()
+
+  var otaStartSignature: Data = Data()
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
 }
 
-struct LukuIDOtaDataRequest: Sendable {
+nonisolated struct LukuIDOtaDataRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -608,7 +572,7 @@ struct LukuIDOtaDataRequest: Sendable {
   init() {}
 }
 
-struct LukuIDOtaEndRequest: Sendable {
+nonisolated struct LukuIDOtaEndRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -620,7 +584,7 @@ struct LukuIDOtaEndRequest: Sendable {
   init() {}
 }
 
-struct LukuIDSetAttestationRequest: Sendable {
+nonisolated struct LukuIDSetAttestationRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -642,7 +606,7 @@ struct LukuIDSetAttestationRequest: Sendable {
   init() {}
 }
 
-struct LukuIDSetHeartbeatRequest: Sendable {
+nonisolated struct LukuIDSetHeartbeatRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -662,7 +626,7 @@ struct LukuIDSetHeartbeatRequest: Sendable {
   init() {}
 }
 
-struct LukuIDSetConfigureRequest: Sendable {
+nonisolated struct LukuIDSetConfigureRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -682,7 +646,7 @@ struct LukuIDSetConfigureRequest: Sendable {
   init() {}
 }
 
-struct LukuIDScanEnableRequest: Sendable {
+nonisolated struct LukuIDScanEnableRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -694,7 +658,7 @@ struct LukuIDScanEnableRequest: Sendable {
   init() {}
 }
 
-struct LukuIDGenerateHeartbeatRequest: Sendable {
+nonisolated struct LukuIDGenerateHeartbeatRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -704,7 +668,7 @@ struct LukuIDGenerateHeartbeatRequest: Sendable {
   init() {}
 }
 
-struct LukuIDFetchTelemetryRequest: Sendable {
+nonisolated struct LukuIDFetchTelemetryRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -714,7 +678,7 @@ struct LukuIDFetchTelemetryRequest: Sendable {
   init() {}
 }
 
-struct LukuIDTelemetryValue: Sendable {
+nonisolated struct LukuIDTelemetryValue: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -755,7 +719,7 @@ struct LukuIDTelemetryValue: Sendable {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum OneOf_Kind: Equatable, Sendable {
+  nonisolated enum OneOf_Kind: Equatable, Sendable {
     case fval(Float)
     case sval(String)
     case ival(Int64)
@@ -766,7 +730,7 @@ struct LukuIDTelemetryValue: Sendable {
   init() {}
 }
 
-struct LukuIDTelemetryRow: Sendable {
+nonisolated struct LukuIDTelemetryRow: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -778,7 +742,7 @@ struct LukuIDTelemetryRow: Sendable {
   init() {}
 }
 
-struct LukuIDFetchTelemetryResponse: Sendable {
+nonisolated struct LukuIDFetchTelemetryResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -841,7 +805,7 @@ struct LukuIDFetchTelemetryResponse: Sendable {
   fileprivate var _rowCount: Int32? = nil
 }
 
-struct LukuIDGetCertificateRequest: Sendable {
+nonisolated struct LukuIDGetCertificateRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -853,7 +817,7 @@ struct LukuIDGetCertificateRequest: Sendable {
   init() {}
 }
 
-struct LukuIDGetCertificateResponse: Sendable {
+nonisolated struct LukuIDGetCertificateResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -865,7 +829,7 @@ struct LukuIDGetCertificateResponse: Sendable {
   init() {}
 }
 
-struct LukuIDGetChainRequest: Sendable {
+nonisolated struct LukuIDGetChainRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -877,7 +841,7 @@ struct LukuIDGetChainRequest: Sendable {
   init() {}
 }
 
-struct LukuIDGetChainResponse: Sendable {
+nonisolated struct LukuIDGetChainResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -889,7 +853,7 @@ struct LukuIDGetChainResponse: Sendable {
   init() {}
 }
 
-struct LukuIDHistoricalExportEntry: Sendable {
+nonisolated struct LukuIDHistoricalExportEntry: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -935,7 +899,7 @@ struct LukuIDHistoricalExportEntry: Sendable {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum OneOf_Record: Equatable, Sendable {
+  nonisolated enum OneOf_Record: Equatable, Sendable {
     case env(LukuIDEnvironmentRecord)
     /// other future ones can go here
     case scan(LukuIDScanRecord)
@@ -945,7 +909,7 @@ struct LukuIDHistoricalExportEntry: Sendable {
   init() {}
 }
 
-struct LukuIDHistoricalExportResponse: Sendable {
+nonisolated struct LukuIDHistoricalExportResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -959,139 +923,145 @@ struct LukuIDHistoricalExportResponse: Sendable {
   init() {}
 }
 
-struct LukuIDCommandRequest: Sendable {
+nonisolated struct LukuIDCommandRequest: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var action: String = String()
+  var action: String {
+    get {_storage._action}
+    set {_uniqueStorage()._action = newValue}
+  }
 
-  var payload: LukuIDCommandRequest.OneOf_Payload? = nil
+  var payload: OneOf_Payload? {
+    get {return _storage._payload}
+    set {_uniqueStorage()._payload = newValue}
+  }
 
   var fetch: LukuIDFetchRequest {
     get {
-      if case .fetch(let v)? = payload {return v}
+      if case .fetch(let v)? = _storage._payload {return v}
       return LukuIDFetchRequest()
     }
-    set {payload = .fetch(newValue)}
+    set {_uniqueStorage()._payload = .fetch(newValue)}
   }
 
   var get: LukuIDGetRecordRequest {
     get {
-      if case .get(let v)? = payload {return v}
+      if case .get(let v)? = _storage._payload {return v}
       return LukuIDGetRecordRequest()
     }
-    set {payload = .get(newValue)}
+    set {_uniqueStorage()._payload = .get(newValue)}
   }
 
   var attest: LukuIDAttestRequest {
     get {
-      if case .attest(let v)? = payload {return v}
+      if case .attest(let v)? = _storage._payload {return v}
       return LukuIDAttestRequest()
     }
-    set {payload = .attest(newValue)}
+    set {_uniqueStorage()._payload = .attest(newValue)}
   }
 
   var config: LukuIDConfigRequest {
     get {
-      if case .config(let v)? = payload {return v}
+      if case .config(let v)? = _storage._payload {return v}
       return LukuIDConfigRequest()
     }
-    set {payload = .config(newValue)}
+    set {_uniqueStorage()._payload = .config(newValue)}
   }
 
   var otaBegin: LukuIDOtaBeginRequest {
     get {
-      if case .otaBegin(let v)? = payload {return v}
+      if case .otaBegin(let v)? = _storage._payload {return v}
       return LukuIDOtaBeginRequest()
     }
-    set {payload = .otaBegin(newValue)}
+    set {_uniqueStorage()._payload = .otaBegin(newValue)}
   }
 
   var otaData: LukuIDOtaDataRequest {
     get {
-      if case .otaData(let v)? = payload {return v}
+      if case .otaData(let v)? = _storage._payload {return v}
       return LukuIDOtaDataRequest()
     }
-    set {payload = .otaData(newValue)}
+    set {_uniqueStorage()._payload = .otaData(newValue)}
   }
 
   /// Restoring original if 8 was used differently, but let's stick to sequence
   var otaDataV2: LukuIDOtaEndRequest {
     get {
-      if case .otaDataV2(let v)? = payload {return v}
+      if case .otaDataV2(let v)? = _storage._payload {return v}
       return LukuIDOtaEndRequest()
     }
-    set {payload = .otaDataV2(newValue)}
+    set {_uniqueStorage()._payload = .otaDataV2(newValue)}
   }
 
   var setAttestation: LukuIDSetAttestationRequest {
     get {
-      if case .setAttestation(let v)? = payload {return v}
+      if case .setAttestation(let v)? = _storage._payload {return v}
       return LukuIDSetAttestationRequest()
     }
-    set {payload = .setAttestation(newValue)}
+    set {_uniqueStorage()._payload = .setAttestation(newValue)}
   }
 
   var setHeartbeat: LukuIDSetHeartbeatRequest {
     get {
-      if case .setHeartbeat(let v)? = payload {return v}
+      if case .setHeartbeat(let v)? = _storage._payload {return v}
       return LukuIDSetHeartbeatRequest()
     }
-    set {payload = .setHeartbeat(newValue)}
+    set {_uniqueStorage()._payload = .setHeartbeat(newValue)}
   }
 
   var configure: LukuIDSetConfigureRequest {
     get {
-      if case .configure(let v)? = payload {return v}
+      if case .configure(let v)? = _storage._payload {return v}
       return LukuIDSetConfigureRequest()
     }
-    set {payload = .configure(newValue)}
+    set {_uniqueStorage()._payload = .configure(newValue)}
   }
 
   var scanEnable: LukuIDScanEnableRequest {
     get {
-      if case .scanEnable(let v)? = payload {return v}
+      if case .scanEnable(let v)? = _storage._payload {return v}
       return LukuIDScanEnableRequest()
     }
-    set {payload = .scanEnable(newValue)}
+    set {_uniqueStorage()._payload = .scanEnable(newValue)}
   }
 
   var generateHeartbeat: LukuIDGenerateHeartbeatRequest {
     get {
-      if case .generateHeartbeat(let v)? = payload {return v}
+      if case .generateHeartbeat(let v)? = _storage._payload {return v}
       return LukuIDGenerateHeartbeatRequest()
     }
-    set {payload = .generateHeartbeat(newValue)}
+    set {_uniqueStorage()._payload = .generateHeartbeat(newValue)}
   }
 
   var fetchTelemetry: LukuIDFetchTelemetryRequest {
     get {
-      if case .fetchTelemetry(let v)? = payload {return v}
+      if case .fetchTelemetry(let v)? = _storage._payload {return v}
       return LukuIDFetchTelemetryRequest()
     }
-    set {payload = .fetchTelemetry(newValue)}
+    set {_uniqueStorage()._payload = .fetchTelemetry(newValue)}
   }
 
   var getCertificate: LukuIDGetCertificateRequest {
     get {
-      if case .getCertificate(let v)? = payload {return v}
+      if case .getCertificate(let v)? = _storage._payload {return v}
       return LukuIDGetCertificateRequest()
     }
-    set {payload = .getCertificate(newValue)}
+    set {_uniqueStorage()._payload = .getCertificate(newValue)}
   }
 
   var getChain: LukuIDGetChainRequest {
     get {
-      if case .getChain(let v)? = payload {return v}
+      if case .getChain(let v)? = _storage._payload {return v}
       return LukuIDGetChainRequest()
     }
-    set {payload = .getChain(newValue)}
+    set {_uniqueStorage()._payload = .getChain(newValue)}
   }
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum OneOf_Payload: Equatable, Sendable {
+  nonisolated enum OneOf_Payload: Equatable, Sendable {
     case fetch(LukuIDFetchRequest)
     case get(LukuIDGetRecordRequest)
     case attest(LukuIDAttestRequest)
@@ -1112,9 +1082,11 @@ struct LukuIDCommandRequest: Sendable {
   }
 
   init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct LukuIDDeviceInfoResponse: @unchecked Sendable {
+nonisolated struct LukuIDDeviceInfoResponse: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -1274,6 +1246,11 @@ struct LukuIDDeviceInfoResponse: @unchecked Sendable {
     set {_uniqueStorage()._uploadAuth = newValue}
   }
 
+  var autoUpdateEnabled: Bool {
+    get {_storage._autoUpdateEnabled}
+    set {_uniqueStorage()._autoUpdateEnabled = newValue}
+  }
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -1281,7 +1258,7 @@ struct LukuIDDeviceInfoResponse: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct LukuIDStatusResponse: Sendable {
+nonisolated struct LukuIDStatusResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -1311,109 +1288,39 @@ struct LukuIDStatusResponse: Sendable {
   init() {}
 }
 
-struct LukuIDNetworkConfigResponse: @unchecked Sendable {
+nonisolated struct LukuIDNetworkConfigResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var wifiSsid: String {
-    get {_storage._wifiSsid}
-    set {_uniqueStorage()._wifiSsid = newValue}
-  }
+  var wifiSsid: String = String()
 
-  var wifiPasswordSet: Bool {
-    get {_storage._wifiPasswordSet}
-    set {_uniqueStorage()._wifiPasswordSet = newValue}
-  }
+  var wifiPasswordSet: Bool = false
 
-  var mqttBrokerURL: String {
-    get {_storage._mqttBrokerURL}
-    set {_uniqueStorage()._mqttBrokerURL = newValue}
-  }
+  var csr: Data = Data()
 
-  var mqttPort: UInt32 {
-    get {_storage._mqttPort}
-    set {_uniqueStorage()._mqttPort = newValue}
-  }
+  var uploadMode: LukuIDUploadMode = .none
 
-  var mqttTopic: String {
-    get {_storage._mqttTopic}
-    set {_uniqueStorage()._mqttTopic = newValue}
-  }
+  var uploadDestination: String = String()
 
-  var mqttUsername: String {
-    get {_storage._mqttUsername}
-    set {_uniqueStorage()._mqttUsername = newValue}
-  }
+  var uploadAuth: LukuIDUploadAuth = .none
 
-  var mqttPasswordSet: Bool {
-    get {_storage._mqttPasswordSet}
-    set {_uniqueStorage()._mqttPasswordSet = newValue}
-  }
+  var uploadTokenKey: String = String()
 
-  var mqttBroadcastEnabled: Bool {
-    get {_storage._mqttBroadcastEnabled}
-    set {_uniqueStorage()._mqttBroadcastEnabled = newValue}
-  }
+  var uploadTokenType: LukuIDUploadTokenType = .header
 
-  var csr: Data {
-    get {_storage._csr}
-    set {_uniqueStorage()._csr = newValue}
-  }
+  var uploadTopic: String = String()
 
-  var mqttCertificateDer: Data {
-    get {_storage._mqttCertificateDer}
-    set {_uniqueStorage()._mqttCertificateDer = newValue}
-  }
+  var uploadFrequency: UInt32 = 0
 
-  var mqttCaDer: Data {
-    get {_storage._mqttCaDer}
-    set {_uniqueStorage()._mqttCaDer = newValue}
-  }
-
-  var uploadMode: LukuIDUploadMode {
-    get {_storage._uploadMode}
-    set {_uniqueStorage()._uploadMode = newValue}
-  }
-
-  var uploadDestination: String {
-    get {_storage._uploadDestination}
-    set {_uniqueStorage()._uploadDestination = newValue}
-  }
-
-  var uploadAuth: LukuIDUploadAuth {
-    get {_storage._uploadAuth}
-    set {_uniqueStorage()._uploadAuth = newValue}
-  }
-
-  var uploadTokenKey: String {
-    get {_storage._uploadTokenKey}
-    set {_uniqueStorage()._uploadTokenKey = newValue}
-  }
-
-  var uploadTokenType: LukuIDUploadTokenType {
-    get {_storage._uploadTokenType}
-    set {_uniqueStorage()._uploadTokenType = newValue}
-  }
-
-  var uploadTopic: String {
-    get {_storage._uploadTopic}
-    set {_uniqueStorage()._uploadTopic = newValue}
-  }
-
-  var uploadFrequency: UInt32 {
-    get {_storage._uploadFrequency}
-    set {_uniqueStorage()._uploadFrequency = newValue}
-  }
+  var autoUpdateEnabled: Bool = false
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
-
-  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct LukuIDRecordMeta: Sendable {
+nonisolated struct LukuIDRecordMeta: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -1429,7 +1336,7 @@ struct LukuIDRecordMeta: Sendable {
   init() {}
 }
 
-struct LukuIDScanRecordMin: Sendable {
+nonisolated struct LukuIDScanRecordMin: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -1453,7 +1360,7 @@ struct LukuIDScanRecordMin: Sendable {
   init() {}
 }
 
-struct LukuIDEnvironmentRecordMin: @unchecked Sendable {
+nonisolated struct LukuIDEnvironmentRecordMin: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -1540,7 +1447,7 @@ struct LukuIDEnvironmentRecordMin: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct LukuIDDataEntry: Sendable {
+nonisolated struct LukuIDDataEntry: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -1565,7 +1472,7 @@ struct LukuIDDataEntry: Sendable {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum OneOf_MinRecord: Equatable, Sendable {
+  nonisolated enum OneOf_MinRecord: Equatable, Sendable {
     case scanMin(LukuIDScanRecordMin)
     case environmentMin(LukuIDEnvironmentRecordMin)
 
@@ -1574,7 +1481,7 @@ struct LukuIDDataEntry: Sendable {
   init() {}
 }
 
-struct LukuIDFetchResponse: Sendable {
+nonisolated struct LukuIDFetchResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -1586,7 +1493,7 @@ struct LukuIDFetchResponse: Sendable {
   init() {}
 }
 
-struct LukuIDScanPayload: @unchecked Sendable {
+nonisolated struct LukuIDScanPayload: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -1768,7 +1675,7 @@ struct LukuIDScanPayload: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct LukuIDDeviceInfo: Sendable {
+nonisolated struct LukuIDDeviceInfo: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -1782,7 +1689,7 @@ struct LukuIDDeviceInfo: Sendable {
   init() {}
 }
 
-struct LukuIDManufacturerInfo: Sendable {
+nonisolated struct LukuIDManufacturerInfo: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -1796,7 +1703,7 @@ struct LukuIDManufacturerInfo: Sendable {
   init() {}
 }
 
-struct LukuIDIdentity: Sendable {
+nonisolated struct LukuIDIdentity: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -1836,7 +1743,7 @@ struct LukuIDIdentity: Sendable {
   init() {}
 }
 
-struct LukuIDAttachment: Sendable {
+nonisolated struct LukuIDAttachment: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -1879,7 +1786,7 @@ struct LukuIDAttachment: Sendable {
   fileprivate var _externalIdentity: LukuIDExternalIdentity? = nil
 }
 
-struct LukuIDExternalIdentity: Sendable {
+nonisolated struct LukuIDExternalIdentity: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -1897,7 +1804,7 @@ struct LukuIDExternalIdentity: Sendable {
   init() {}
 }
 
-struct LukuIDAttachmentRecord: @unchecked Sendable {
+nonisolated struct LukuIDAttachmentRecord: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -2013,7 +1920,7 @@ struct LukuIDAttachmentRecord: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct LukuIDScanRecord: @unchecked Sendable {
+nonisolated struct LukuIDScanRecord: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -2096,7 +2003,7 @@ struct LukuIDScanRecord: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct LukuIDEnvironmentPayload: @unchecked Sendable {
+nonisolated struct LukuIDEnvironmentPayload: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -2147,9 +2054,13 @@ struct LukuIDEnvironmentPayload: @unchecked Sendable {
   }
 
   var vocRaw: UInt32 {
-    get {_storage._vocRaw}
+    get {_storage._vocRaw ?? 0}
     set {_uniqueStorage()._vocRaw = newValue}
   }
+  /// Returns true if `vocRaw` has been explicitly set.
+  var hasVocRaw: Bool {_storage._vocRaw != nil}
+  /// Clears the value of `vocRaw`. Subsequent reads from it will return its default value.
+  mutating func clearVocRaw() {_uniqueStorage()._vocRaw = nil}
 
   var accelG: LukuIDEnvironmentPayload.Accel {
     get {_storage._accelG ?? LukuIDEnvironmentPayload.Accel()}
@@ -2210,9 +2121,13 @@ struct LukuIDEnvironmentPayload: @unchecked Sendable {
   }
 
   var vocIndex: UInt32 {
-    get {_storage._vocIndex}
+    get {_storage._vocIndex ?? 0}
     set {_uniqueStorage()._vocIndex = newValue}
   }
+  /// Returns true if `vocIndex` has been explicitly set.
+  var hasVocIndex: Bool {_storage._vocIndex != nil}
+  /// Clears the value of `vocIndex`. Subsequent reads from it will return its default value.
+  mutating func clearVocIndex() {_uniqueStorage()._vocIndex = nil}
 
   var gpsLat: Double {
     get {_storage._gpsLat ?? 0}
@@ -2396,7 +2311,7 @@ struct LukuIDEnvironmentPayload: @unchecked Sendable {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  struct Accel: Sendable {
+  nonisolated struct Accel: Sendable {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
@@ -2417,7 +2332,7 @@ struct LukuIDEnvironmentPayload: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct LukuIDEnvironmentRecord: @unchecked Sendable {
+nonisolated struct LukuIDEnvironmentRecord: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -2491,7 +2406,7 @@ struct LukuIDEnvironmentRecord: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct LukuIDRecordBatch: Sendable {
+nonisolated struct LukuIDRecordBatch: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -2534,7 +2449,7 @@ struct LukuIDRecordBatch: Sendable {
   fileprivate var _device: LukuIDDeviceInfo? = nil
 }
 
-struct LukuIDRecordBatches: Sendable {
+nonisolated struct LukuIDRecordBatches: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -2546,7 +2461,7 @@ struct LukuIDRecordBatches: Sendable {
   init() {}
 }
 
-struct LukuIDFullRecordResponse: Sendable {
+nonisolated struct LukuIDFullRecordResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -2573,7 +2488,7 @@ struct LukuIDFullRecordResponse: Sendable {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum OneOf_FullRecord: Equatable, Sendable {
+  nonisolated enum OneOf_FullRecord: Equatable, Sendable {
     case scanFull(LukuIDScanRecord)
     case environmentFull(LukuIDEnvironmentRecord)
 
@@ -2582,7 +2497,7 @@ struct LukuIDFullRecordResponse: Sendable {
   init() {}
 }
 
-struct LukuIDHeartbeatInitResponse: Sendable {
+nonisolated struct LukuIDHeartbeatInitResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -2610,7 +2525,7 @@ struct LukuIDHeartbeatInitResponse: Sendable {
   init() {}
 }
 
-struct LukuIDCommandResponse: @unchecked Sendable {
+nonisolated struct LukuIDCommandResponse: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -2778,7 +2693,7 @@ struct LukuIDCommandResponse: @unchecked Sendable {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum OneOf_Payload: Equatable, Sendable {
+  nonisolated enum OneOf_Payload: Equatable, Sendable {
     case deviceInfo(LukuIDDeviceInfoResponse)
     case networkConfig(LukuIDNetworkConfigResponse)
     case scanRecord(LukuIDScanRecord)
@@ -2802,29 +2717,29 @@ struct LukuIDCommandResponse: @unchecked Sendable {
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
-fileprivate let _protobuf_package = "lukuid"
+fileprivate nonisolated let _protobuf_package = "lukuid"
 
-extension LukuIDStatus: SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDStatus: SwiftProtobuf._ProtoNameProviding {
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0STATUS_UNKNOWN\0\u{1}STATUS_OK\0\u{1}STATUS_ERROR\0\u{1}STATUS_READY\0")
 }
 
-extension LukuIDUploadMode: SwiftProtobuf._ProtoNameProviding {
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0UPLOAD_MODE_NONE\0\u{1}UPLOAD_MODE_HTTP\0\u{1}UPLOAD_MODE_MQTT\0")
+nonisolated extension LukuIDUploadMode: SwiftProtobuf._ProtoNameProviding {
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0UPLOAD_MODE_NONE\0\u{1}UPLOAD_MODE_HTTP\0")
 }
 
-extension LukuIDUploadAuth: SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDUploadAuth: SwiftProtobuf._ProtoNameProviding {
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0UPLOAD_AUTH_NONE\0\u{1}UPLOAD_AUTH_TOKEN\0\u{1}UPLOAD_AUTH_MTLS\0")
 }
 
-extension LukuIDUploadTokenType: SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDUploadTokenType: SwiftProtobuf._ProtoNameProviding {
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0UPLOAD_TOKEN_TYPE_HEADER\0\u{1}UPLOAD_TOKEN_TYPE_QUERY\0\u{1}UPLOAD_TOKEN_TYPE_BODY\0\u{1}UPLOAD_TOKEN_TYPE_BEARER\0")
 }
 
-extension LukuIDFetchWindow: SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDFetchWindow: SwiftProtobuf._ProtoNameProviding {
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0FETCH_WINDOW_NONE\0\u{1}FETCH_WINDOW_HOURLY\0\u{1}FETCH_WINDOW_DAILY\0\u{1}FETCH_WINDOW_WEEKLY\0\u{1}FETCH_WINDOW_MONTHLY\0")
 }
 
-extension LukuIDMetricStats: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDMetricStats: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".MetricStats"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}avg\0\u{1}min\0\u{1}max\0\u{1}variance\0\u{1}count\0")
 
@@ -2874,7 +2789,7 @@ extension LukuIDMetricStats: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
   }
 }
 
-extension LukuIDMetricValue: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDMetricValue: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".MetricValue"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}value\0\u{1}stats\0")
 
@@ -2936,7 +2851,7 @@ extension LukuIDMetricValue: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
   }
 }
 
-extension LukuIDFetchRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDFetchRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".FetchRequest"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}query\0\u{1}offset\0\u{1}limit\0\u{3}fetch_full\0\u{1}starts\0\u{1}ends\0\u{1}window\0")
 
@@ -2996,7 +2911,7 @@ extension LukuIDFetchRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
   }
 }
 
-extension LukuIDGetRecordRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDGetRecordRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".GetRecordRequest"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0")
 
@@ -3026,7 +2941,7 @@ extension LukuIDGetRecordRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageI
   }
 }
 
-extension LukuIDAttestRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDAttestRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".AttestRequest"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}parent_id\0\u{1}signature\0\u{1}checksum\0\u{2}\u{2}mime\0\u{1}type\0\u{1}title\0\u{1}lat\0\u{1}lng\0\u{1}content\0\u{3}merkle_root\0\u{1}id\0\u{1}event\0\u{1}status\0\u{3}context_ref\0\u{c}\u{4}\u{1}")
 
@@ -3121,233 +3036,118 @@ extension LukuIDAttestRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
   }
 }
 
-extension LukuIDConfigRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDConfigRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ConfigRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{3}wifi_ssid\0\u{3}wifi_password\0\u{3}mqtt_broker_url\0\u{3}mqtt_port\0\u{3}mqtt_topic\0\u{4}\u{2}mqtt_username\0\u{3}mqtt_password\0\u{3}mqtt_certificate_der\0\u{3}mqtt_ca_der\0\u{3}mqtt_broadcast_enabled\0\u{3}custom_heartbeat_url\0\u{3}network_participation_enabled\0\u{3}upload_mode\0\u{3}upload_destination\0\u{3}upload_auth\0\u{3}upload_token_key\0\u{3}upload_token_value\0\u{3}upload_token_type\0\u{3}upload_topic\0\u{3}upload_certificate_der\0\u{3}upload_ca_der\0\u{3}upload_frequency\0\u{c}\u{7}\u{1}")
-
-  fileprivate class _StorageClass {
-    var _name: String? = nil
-    var _wifiSsid: String? = nil
-    var _wifiPassword: String? = nil
-    var _mqttBrokerURL: String? = nil
-    var _mqttPort: UInt32? = nil
-    var _mqttTopic: String? = nil
-    var _mqttUsername: String? = nil
-    var _mqttPassword: String? = nil
-    var _mqttCertificateDer: Data? = nil
-    var _mqttCaDer: Data? = nil
-    var _mqttBroadcastEnabled: Bool? = nil
-    var _customHeartbeatURL: String? = nil
-    var _networkParticipationEnabled: Bool? = nil
-    var _uploadMode: LukuIDUploadMode? = nil
-    var _uploadDestination: String? = nil
-    var _uploadAuth: LukuIDUploadAuth? = nil
-    var _uploadTokenKey: String? = nil
-    var _uploadTokenValue: String? = nil
-    var _uploadTokenType: LukuIDUploadTokenType? = nil
-    var _uploadTopic: String? = nil
-    var _uploadCertificateDer: Data? = nil
-    var _uploadCaDer: Data? = nil
-    var _uploadFrequency: UInt32? = nil
-
-      // This property is used as the initial default value for new instances of the type.
-      // The type itself is protecting the reference to its storage via CoW semantics.
-      // This will force a copy to be made of this reference when the first mutation occurs;
-      // hence, it is safe to mark this as `nonisolated(unsafe)`.
-      static nonisolated(unsafe) let defaultInstance = _StorageClass()
-
-    private init() {}
-
-    init(copying source: _StorageClass) {
-      _name = source._name
-      _wifiSsid = source._wifiSsid
-      _wifiPassword = source._wifiPassword
-      _mqttBrokerURL = source._mqttBrokerURL
-      _mqttPort = source._mqttPort
-      _mqttTopic = source._mqttTopic
-      _mqttUsername = source._mqttUsername
-      _mqttPassword = source._mqttPassword
-      _mqttCertificateDer = source._mqttCertificateDer
-      _mqttCaDer = source._mqttCaDer
-      _mqttBroadcastEnabled = source._mqttBroadcastEnabled
-      _customHeartbeatURL = source._customHeartbeatURL
-      _networkParticipationEnabled = source._networkParticipationEnabled
-      _uploadMode = source._uploadMode
-      _uploadDestination = source._uploadDestination
-      _uploadAuth = source._uploadAuth
-      _uploadTokenKey = source._uploadTokenKey
-      _uploadTokenValue = source._uploadTokenValue
-      _uploadTokenType = source._uploadTokenType
-      _uploadTopic = source._uploadTopic
-      _uploadCertificateDer = source._uploadCertificateDer
-      _uploadCaDer = source._uploadCaDer
-      _uploadFrequency = source._uploadFrequency
-    }
-  }
-
-  fileprivate mutating func _uniqueStorage() -> _StorageClass {
-    if !isKnownUniquelyReferenced(&_storage) {
-      _storage = _StorageClass(copying: _storage)
-    }
-    return _storage
-  }
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{3}wifi_ssid\0\u{3}wifi_password\0\u{4}\u{a}custom_heartbeat_url\0\u{3}network_participation_enabled\0\u{3}upload_mode\0\u{3}upload_destination\0\u{3}upload_auth\0\u{3}upload_token_key\0\u{3}upload_token_value\0\u{3}upload_token_type\0\u{3}upload_topic\0\u{3}upload_certificate_der\0\u{3}upload_ca_der\0\u{3}upload_frequency\0\u{3}auto_update_enabled\0\u{c}\u{4}\u{9}")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    _ = _uniqueStorage()
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      while let fieldNumber = try decoder.nextFieldNumber() {
-        // The use of inline closures is to circumvent an issue where the compiler
-        // allocates stack space for every case branch when no optimizations are
-        // enabled. https://github.com/apple/swift-protobuf/issues/1034
-        switch fieldNumber {
-        case 1: try { try decoder.decodeSingularStringField(value: &_storage._name) }()
-        case 2: try { try decoder.decodeSingularStringField(value: &_storage._wifiSsid) }()
-        case 3: try { try decoder.decodeSingularStringField(value: &_storage._wifiPassword) }()
-        case 4: try { try decoder.decodeSingularStringField(value: &_storage._mqttBrokerURL) }()
-        case 5: try { try decoder.decodeSingularUInt32Field(value: &_storage._mqttPort) }()
-        case 6: try { try decoder.decodeSingularStringField(value: &_storage._mqttTopic) }()
-        case 8: try { try decoder.decodeSingularStringField(value: &_storage._mqttUsername) }()
-        case 9: try { try decoder.decodeSingularStringField(value: &_storage._mqttPassword) }()
-        case 10: try { try decoder.decodeSingularBytesField(value: &_storage._mqttCertificateDer) }()
-        case 11: try { try decoder.decodeSingularBytesField(value: &_storage._mqttCaDer) }()
-        case 12: try { try decoder.decodeSingularBoolField(value: &_storage._mqttBroadcastEnabled) }()
-        case 13: try { try decoder.decodeSingularStringField(value: &_storage._customHeartbeatURL) }()
-        case 14: try { try decoder.decodeSingularBoolField(value: &_storage._networkParticipationEnabled) }()
-        case 15: try { try decoder.decodeSingularEnumField(value: &_storage._uploadMode) }()
-        case 16: try { try decoder.decodeSingularStringField(value: &_storage._uploadDestination) }()
-        case 17: try { try decoder.decodeSingularEnumField(value: &_storage._uploadAuth) }()
-        case 18: try { try decoder.decodeSingularStringField(value: &_storage._uploadTokenKey) }()
-        case 19: try { try decoder.decodeSingularStringField(value: &_storage._uploadTokenValue) }()
-        case 20: try { try decoder.decodeSingularEnumField(value: &_storage._uploadTokenType) }()
-        case 21: try { try decoder.decodeSingularStringField(value: &_storage._uploadTopic) }()
-        case 22: try { try decoder.decodeSingularBytesField(value: &_storage._uploadCertificateDer) }()
-        case 23: try { try decoder.decodeSingularBytesField(value: &_storage._uploadCaDer) }()
-        case 24: try { try decoder.decodeSingularUInt32Field(value: &_storage._uploadFrequency) }()
-        default: break
-        }
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self._name) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self._wifiSsid) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self._wifiPassword) }()
+      case 13: try { try decoder.decodeSingularStringField(value: &self._customHeartbeatURL) }()
+      case 14: try { try decoder.decodeSingularBoolField(value: &self._networkParticipationEnabled) }()
+      case 15: try { try decoder.decodeSingularEnumField(value: &self._uploadMode) }()
+      case 16: try { try decoder.decodeSingularStringField(value: &self._uploadDestination) }()
+      case 17: try { try decoder.decodeSingularEnumField(value: &self._uploadAuth) }()
+      case 18: try { try decoder.decodeSingularStringField(value: &self._uploadTokenKey) }()
+      case 19: try { try decoder.decodeSingularStringField(value: &self._uploadTokenValue) }()
+      case 20: try { try decoder.decodeSingularEnumField(value: &self._uploadTokenType) }()
+      case 21: try { try decoder.decodeSingularStringField(value: &self._uploadTopic) }()
+      case 22: try { try decoder.decodeSingularBytesField(value: &self._uploadCertificateDer) }()
+      case 23: try { try decoder.decodeSingularBytesField(value: &self._uploadCaDer) }()
+      case 24: try { try decoder.decodeSingularUInt32Field(value: &self._uploadFrequency) }()
+      case 25: try { try decoder.decodeSingularBoolField(value: &self._autoUpdateEnabled) }()
+      default: break
       }
     }
   }
 
   func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every if/case branch local when no optimizations
-      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-      // https://github.com/apple/swift-protobuf/issues/1182
-      try { if let v = _storage._name {
-        try visitor.visitSingularStringField(value: v, fieldNumber: 1)
-      } }()
-      try { if let v = _storage._wifiSsid {
-        try visitor.visitSingularStringField(value: v, fieldNumber: 2)
-      } }()
-      try { if let v = _storage._wifiPassword {
-        try visitor.visitSingularStringField(value: v, fieldNumber: 3)
-      } }()
-      try { if let v = _storage._mqttBrokerURL {
-        try visitor.visitSingularStringField(value: v, fieldNumber: 4)
-      } }()
-      try { if let v = _storage._mqttPort {
-        try visitor.visitSingularUInt32Field(value: v, fieldNumber: 5)
-      } }()
-      try { if let v = _storage._mqttTopic {
-        try visitor.visitSingularStringField(value: v, fieldNumber: 6)
-      } }()
-      try { if let v = _storage._mqttUsername {
-        try visitor.visitSingularStringField(value: v, fieldNumber: 8)
-      } }()
-      try { if let v = _storage._mqttPassword {
-        try visitor.visitSingularStringField(value: v, fieldNumber: 9)
-      } }()
-      try { if let v = _storage._mqttCertificateDer {
-        try visitor.visitSingularBytesField(value: v, fieldNumber: 10)
-      } }()
-      try { if let v = _storage._mqttCaDer {
-        try visitor.visitSingularBytesField(value: v, fieldNumber: 11)
-      } }()
-      try { if let v = _storage._mqttBroadcastEnabled {
-        try visitor.visitSingularBoolField(value: v, fieldNumber: 12)
-      } }()
-      try { if let v = _storage._customHeartbeatURL {
-        try visitor.visitSingularStringField(value: v, fieldNumber: 13)
-      } }()
-      try { if let v = _storage._networkParticipationEnabled {
-        try visitor.visitSingularBoolField(value: v, fieldNumber: 14)
-      } }()
-      try { if let v = _storage._uploadMode {
-        try visitor.visitSingularEnumField(value: v, fieldNumber: 15)
-      } }()
-      try { if let v = _storage._uploadDestination {
-        try visitor.visitSingularStringField(value: v, fieldNumber: 16)
-      } }()
-      try { if let v = _storage._uploadAuth {
-        try visitor.visitSingularEnumField(value: v, fieldNumber: 17)
-      } }()
-      try { if let v = _storage._uploadTokenKey {
-        try visitor.visitSingularStringField(value: v, fieldNumber: 18)
-      } }()
-      try { if let v = _storage._uploadTokenValue {
-        try visitor.visitSingularStringField(value: v, fieldNumber: 19)
-      } }()
-      try { if let v = _storage._uploadTokenType {
-        try visitor.visitSingularEnumField(value: v, fieldNumber: 20)
-      } }()
-      try { if let v = _storage._uploadTopic {
-        try visitor.visitSingularStringField(value: v, fieldNumber: 21)
-      } }()
-      try { if let v = _storage._uploadCertificateDer {
-        try visitor.visitSingularBytesField(value: v, fieldNumber: 22)
-      } }()
-      try { if let v = _storage._uploadCaDer {
-        try visitor.visitSingularBytesField(value: v, fieldNumber: 23)
-      } }()
-      try { if let v = _storage._uploadFrequency {
-        try visitor.visitSingularUInt32Field(value: v, fieldNumber: 24)
-      } }()
-    }
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._name {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._wifiSsid {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._wifiPassword {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._customHeartbeatURL {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 13)
+    } }()
+    try { if let v = self._networkParticipationEnabled {
+      try visitor.visitSingularBoolField(value: v, fieldNumber: 14)
+    } }()
+    try { if let v = self._uploadMode {
+      try visitor.visitSingularEnumField(value: v, fieldNumber: 15)
+    } }()
+    try { if let v = self._uploadDestination {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 16)
+    } }()
+    try { if let v = self._uploadAuth {
+      try visitor.visitSingularEnumField(value: v, fieldNumber: 17)
+    } }()
+    try { if let v = self._uploadTokenKey {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 18)
+    } }()
+    try { if let v = self._uploadTokenValue {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 19)
+    } }()
+    try { if let v = self._uploadTokenType {
+      try visitor.visitSingularEnumField(value: v, fieldNumber: 20)
+    } }()
+    try { if let v = self._uploadTopic {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 21)
+    } }()
+    try { if let v = self._uploadCertificateDer {
+      try visitor.visitSingularBytesField(value: v, fieldNumber: 22)
+    } }()
+    try { if let v = self._uploadCaDer {
+      try visitor.visitSingularBytesField(value: v, fieldNumber: 23)
+    } }()
+    try { if let v = self._uploadFrequency {
+      try visitor.visitSingularUInt32Field(value: v, fieldNumber: 24)
+    } }()
+    try { if let v = self._autoUpdateEnabled {
+      try visitor.visitSingularBoolField(value: v, fieldNumber: 25)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
   static func ==(lhs: LukuIDConfigRequest, rhs: LukuIDConfigRequest) -> Bool {
-    if lhs._storage !== rhs._storage {
-      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-        let _storage = _args.0
-        let rhs_storage = _args.1
-        if _storage._name != rhs_storage._name {return false}
-        if _storage._wifiSsid != rhs_storage._wifiSsid {return false}
-        if _storage._wifiPassword != rhs_storage._wifiPassword {return false}
-        if _storage._mqttBrokerURL != rhs_storage._mqttBrokerURL {return false}
-        if _storage._mqttPort != rhs_storage._mqttPort {return false}
-        if _storage._mqttTopic != rhs_storage._mqttTopic {return false}
-        if _storage._mqttUsername != rhs_storage._mqttUsername {return false}
-        if _storage._mqttPassword != rhs_storage._mqttPassword {return false}
-        if _storage._mqttCertificateDer != rhs_storage._mqttCertificateDer {return false}
-        if _storage._mqttCaDer != rhs_storage._mqttCaDer {return false}
-        if _storage._mqttBroadcastEnabled != rhs_storage._mqttBroadcastEnabled {return false}
-        if _storage._customHeartbeatURL != rhs_storage._customHeartbeatURL {return false}
-        if _storage._networkParticipationEnabled != rhs_storage._networkParticipationEnabled {return false}
-        if _storage._uploadMode != rhs_storage._uploadMode {return false}
-        if _storage._uploadDestination != rhs_storage._uploadDestination {return false}
-        if _storage._uploadAuth != rhs_storage._uploadAuth {return false}
-        if _storage._uploadTokenKey != rhs_storage._uploadTokenKey {return false}
-        if _storage._uploadTokenValue != rhs_storage._uploadTokenValue {return false}
-        if _storage._uploadTokenType != rhs_storage._uploadTokenType {return false}
-        if _storage._uploadTopic != rhs_storage._uploadTopic {return false}
-        if _storage._uploadCertificateDer != rhs_storage._uploadCertificateDer {return false}
-        if _storage._uploadCaDer != rhs_storage._uploadCaDer {return false}
-        if _storage._uploadFrequency != rhs_storage._uploadFrequency {return false}
-        return true
-      }
-      if !storagesAreEqual {return false}
-    }
+    if lhs._name != rhs._name {return false}
+    if lhs._wifiSsid != rhs._wifiSsid {return false}
+    if lhs._wifiPassword != rhs._wifiPassword {return false}
+    if lhs._customHeartbeatURL != rhs._customHeartbeatURL {return false}
+    if lhs._networkParticipationEnabled != rhs._networkParticipationEnabled {return false}
+    if lhs._uploadMode != rhs._uploadMode {return false}
+    if lhs._uploadDestination != rhs._uploadDestination {return false}
+    if lhs._uploadAuth != rhs._uploadAuth {return false}
+    if lhs._uploadTokenKey != rhs._uploadTokenKey {return false}
+    if lhs._uploadTokenValue != rhs._uploadTokenValue {return false}
+    if lhs._uploadTokenType != rhs._uploadTokenType {return false}
+    if lhs._uploadTopic != rhs._uploadTopic {return false}
+    if lhs._uploadCertificateDer != rhs._uploadCertificateDer {return false}
+    if lhs._uploadCaDer != rhs._uploadCaDer {return false}
+    if lhs._uploadFrequency != rhs._uploadFrequency {return false}
+    if lhs._autoUpdateEnabled != rhs._autoUpdateEnabled {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
-extension LukuIDOtaBeginRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDOtaBeginRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".OtaBeginRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}size\0\u{3}public_key\0\u{3}binary_mode\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}size\0\u{3}public_key\0\u{3}binary_mode\0\u{3}update_uid\0\u{3}from_version\0\u{3}target_version\0\u{1}sha256\0\u{1}counter\0\u{3}certificate_der\0\u{3}intermediate_der\0\u{3}ota_start_signature\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3358,6 +3158,14 @@ extension LukuIDOtaBeginRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       case 1: try { try decoder.decodeSingularUInt32Field(value: &self.size) }()
       case 2: try { try decoder.decodeSingularBytesField(value: &self.publicKey) }()
       case 3: try { try decoder.decodeSingularBoolField(value: &self.binaryMode) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.updateUid) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.fromVersion) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.targetVersion) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.sha256) }()
+      case 8: try { try decoder.decodeSingularUInt64Field(value: &self.counter) }()
+      case 9: try { try decoder.decodeSingularBytesField(value: &self.certificateDer) }()
+      case 10: try { try decoder.decodeSingularBytesField(value: &self.intermediateDer) }()
+      case 11: try { try decoder.decodeSingularBytesField(value: &self.otaStartSignature) }()
       default: break
       }
     }
@@ -3373,6 +3181,30 @@ extension LukuIDOtaBeginRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if self.binaryMode != false {
       try visitor.visitSingularBoolField(value: self.binaryMode, fieldNumber: 3)
     }
+    if !self.updateUid.isEmpty {
+      try visitor.visitSingularStringField(value: self.updateUid, fieldNumber: 4)
+    }
+    if !self.fromVersion.isEmpty {
+      try visitor.visitSingularStringField(value: self.fromVersion, fieldNumber: 5)
+    }
+    if !self.targetVersion.isEmpty {
+      try visitor.visitSingularStringField(value: self.targetVersion, fieldNumber: 6)
+    }
+    if !self.sha256.isEmpty {
+      try visitor.visitSingularStringField(value: self.sha256, fieldNumber: 7)
+    }
+    if self.counter != 0 {
+      try visitor.visitSingularUInt64Field(value: self.counter, fieldNumber: 8)
+    }
+    if !self.certificateDer.isEmpty {
+      try visitor.visitSingularBytesField(value: self.certificateDer, fieldNumber: 9)
+    }
+    if !self.intermediateDer.isEmpty {
+      try visitor.visitSingularBytesField(value: self.intermediateDer, fieldNumber: 10)
+    }
+    if !self.otaStartSignature.isEmpty {
+      try visitor.visitSingularBytesField(value: self.otaStartSignature, fieldNumber: 11)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3380,12 +3212,20 @@ extension LukuIDOtaBeginRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if lhs.size != rhs.size {return false}
     if lhs.publicKey != rhs.publicKey {return false}
     if lhs.binaryMode != rhs.binaryMode {return false}
+    if lhs.updateUid != rhs.updateUid {return false}
+    if lhs.fromVersion != rhs.fromVersion {return false}
+    if lhs.targetVersion != rhs.targetVersion {return false}
+    if lhs.sha256 != rhs.sha256 {return false}
+    if lhs.counter != rhs.counter {return false}
+    if lhs.certificateDer != rhs.certificateDer {return false}
+    if lhs.intermediateDer != rhs.intermediateDer {return false}
+    if lhs.otaStartSignature != rhs.otaStartSignature {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
-extension LukuIDOtaDataRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDOtaDataRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".OtaDataRequest"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}data\0\u{1}offset\0")
 
@@ -3420,7 +3260,7 @@ extension LukuIDOtaDataRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
   }
 }
 
-extension LukuIDOtaEndRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDOtaEndRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".OtaEndRequest"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}signature\0")
 
@@ -3450,7 +3290,7 @@ extension LukuIDOtaEndRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
   }
 }
 
-extension LukuIDSetAttestationRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDSetAttestationRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".SetAttestationRequest"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}dac_der\0\u{3}manufacturer_der\0\u{1}signature\0\u{1}counter\0\u{1}nonce\0\u{3}intermediate_der\0")
 
@@ -3505,7 +3345,7 @@ extension LukuIDSetAttestationRequest: SwiftProtobuf.Message, SwiftProtobuf._Mes
   }
 }
 
-extension LukuIDSetHeartbeatRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDSetHeartbeatRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".SetHeartbeatRequest"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}slac_der\0\u{3}heartbeat_der\0\u{1}signature\0\u{1}timestamp\0\u{3}intermediate_der\0")
 
@@ -3555,7 +3395,7 @@ extension LukuIDSetHeartbeatRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
   }
 }
 
-extension LukuIDSetConfigureRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDSetConfigureRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".SetConfigureRequest"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}config_der\0\u{1}signature\0\u{3}certificate_der\0\u{3}intermediate_der\0\u{1}counter\0")
 
@@ -3605,7 +3445,7 @@ extension LukuIDSetConfigureRequest: SwiftProtobuf.Message, SwiftProtobuf._Messa
   }
 }
 
-extension LukuIDScanEnableRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDScanEnableRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ScanEnableRequest"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}enabled\0")
 
@@ -3635,7 +3475,7 @@ extension LukuIDScanEnableRequest: SwiftProtobuf.Message, SwiftProtobuf._Message
   }
 }
 
-extension LukuIDGenerateHeartbeatRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDGenerateHeartbeatRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".GenerateHeartbeatRequest"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
@@ -3654,7 +3494,7 @@ extension LukuIDGenerateHeartbeatRequest: SwiftProtobuf.Message, SwiftProtobuf._
   }
 }
 
-extension LukuIDFetchTelemetryRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDFetchTelemetryRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".FetchTelemetryRequest"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
@@ -3673,7 +3513,7 @@ extension LukuIDFetchTelemetryRequest: SwiftProtobuf.Message, SwiftProtobuf._Mes
   }
 }
 
-extension LukuIDTelemetryValue: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDTelemetryValue: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".TelemetryValue"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}fval\0\u{1}sval\0\u{1}ival\0\u{1}bval\0")
 
@@ -3754,7 +3594,7 @@ extension LukuIDTelemetryValue: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
   }
 }
 
-extension LukuIDTelemetryRow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDTelemetryRow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".TelemetryRow"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}values\0")
 
@@ -3784,7 +3624,7 @@ extension LukuIDTelemetryRow: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
   }
 }
 
-extension LukuIDFetchTelemetryResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDFetchTelemetryResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".FetchTelemetryResponse"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}rows\0\u{1}signature\0\u{3}canonical_string\0\u{3}telemetry_chain_version\0\u{3}telemetry_chain_tail\0\u{3}row_count\0")
 
@@ -3843,7 +3683,7 @@ extension LukuIDFetchTelemetryResponse: SwiftProtobuf.Message, SwiftProtobuf._Me
   }
 }
 
-extension LukuIDGetCertificateRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDGetCertificateRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".GetCertificateRequest"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0")
 
@@ -3873,7 +3713,7 @@ extension LukuIDGetCertificateRequest: SwiftProtobuf.Message, SwiftProtobuf._Mes
   }
 }
 
-extension LukuIDGetCertificateResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDGetCertificateResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".GetCertificateResponse"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}der\0")
 
@@ -3903,7 +3743,7 @@ extension LukuIDGetCertificateResponse: SwiftProtobuf.Message, SwiftProtobuf._Me
   }
 }
 
-extension LukuIDGetChainRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDGetChainRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".GetChainRequest"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0")
 
@@ -3933,7 +3773,7 @@ extension LukuIDGetChainRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
   }
 }
 
-extension LukuIDGetChainResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDGetChainResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".GetChainResponse"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}der\0")
 
@@ -3963,7 +3803,7 @@ extension LukuIDGetChainResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
   }
 }
 
-extension LukuIDHistoricalExportEntry: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDHistoricalExportEntry: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".HistoricalExportEntry"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}env\0\u{1}scan\0\u{3}device_id\0\u{3}public_key\0\u{3}attestation_dac_ref\0\u{3}attestation_manufacturer_ref\0\u{3}attestation_intermediate_ref\0\u{3}heartbeat_slac_ref\0\u{3}heartbeat_ref\0\u{3}heartbeat_intermediate_ref\0\u{3}attestation_root_fingerprint\0\u{3}heartbeat_root_fingerprint\0")
 
@@ -4080,7 +3920,7 @@ extension LukuIDHistoricalExportEntry: SwiftProtobuf.Message, SwiftProtobuf._Mes
   }
 }
 
-extension LukuIDHistoricalExportResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDHistoricalExportResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".HistoricalExportResponse"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}entries\0\u{3}has_more\0")
 
@@ -4115,302 +3955,340 @@ extension LukuIDHistoricalExportResponse: SwiftProtobuf.Message, SwiftProtobuf._
   }
 }
 
-extension LukuIDCommandRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDCommandRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".CommandRequest"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}action\0\u{1}fetch\0\u{1}get\0\u{1}attest\0\u{1}config\0\u{3}ota_begin\0\u{3}ota_data\0\u{3}ota_data_v2\0\u{3}set_attestation\0\u{3}set_heartbeat\0\u{4}\u{2}scan_enable\0\u{3}generate_heartbeat\0\u{3}fetch_telemetry\0\u{3}get_certificate\0\u{3}get_chain\0\u{1}configure\0")
 
+  fileprivate class _StorageClass {
+    var _action: String = String()
+    var _payload: LukuIDCommandRequest.OneOf_Payload?
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _action = source._action
+      _payload = source._payload
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.action) }()
-      case 2: try {
-        var v: LukuIDFetchRequest?
-        var hadOneofValue = false
-        if let current = self.payload {
-          hadOneofValue = true
-          if case .fetch(let m) = current {v = m}
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._action) }()
+        case 2: try {
+          var v: LukuIDFetchRequest?
+          var hadOneofValue = false
+          if let current = _storage._payload {
+            hadOneofValue = true
+            if case .fetch(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._payload = .fetch(v)
+          }
+        }()
+        case 3: try {
+          var v: LukuIDGetRecordRequest?
+          var hadOneofValue = false
+          if let current = _storage._payload {
+            hadOneofValue = true
+            if case .get(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._payload = .get(v)
+          }
+        }()
+        case 4: try {
+          var v: LukuIDAttestRequest?
+          var hadOneofValue = false
+          if let current = _storage._payload {
+            hadOneofValue = true
+            if case .attest(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._payload = .attest(v)
+          }
+        }()
+        case 5: try {
+          var v: LukuIDConfigRequest?
+          var hadOneofValue = false
+          if let current = _storage._payload {
+            hadOneofValue = true
+            if case .config(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._payload = .config(v)
+          }
+        }()
+        case 6: try {
+          var v: LukuIDOtaBeginRequest?
+          var hadOneofValue = false
+          if let current = _storage._payload {
+            hadOneofValue = true
+            if case .otaBegin(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._payload = .otaBegin(v)
+          }
+        }()
+        case 7: try {
+          var v: LukuIDOtaDataRequest?
+          var hadOneofValue = false
+          if let current = _storage._payload {
+            hadOneofValue = true
+            if case .otaData(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._payload = .otaData(v)
+          }
+        }()
+        case 8: try {
+          var v: LukuIDOtaEndRequest?
+          var hadOneofValue = false
+          if let current = _storage._payload {
+            hadOneofValue = true
+            if case .otaDataV2(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._payload = .otaDataV2(v)
+          }
+        }()
+        case 9: try {
+          var v: LukuIDSetAttestationRequest?
+          var hadOneofValue = false
+          if let current = _storage._payload {
+            hadOneofValue = true
+            if case .setAttestation(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._payload = .setAttestation(v)
+          }
+        }()
+        case 10: try {
+          var v: LukuIDSetHeartbeatRequest?
+          var hadOneofValue = false
+          if let current = _storage._payload {
+            hadOneofValue = true
+            if case .setHeartbeat(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._payload = .setHeartbeat(v)
+          }
+        }()
+        case 12: try {
+          var v: LukuIDScanEnableRequest?
+          var hadOneofValue = false
+          if let current = _storage._payload {
+            hadOneofValue = true
+            if case .scanEnable(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._payload = .scanEnable(v)
+          }
+        }()
+        case 13: try {
+          var v: LukuIDGenerateHeartbeatRequest?
+          var hadOneofValue = false
+          if let current = _storage._payload {
+            hadOneofValue = true
+            if case .generateHeartbeat(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._payload = .generateHeartbeat(v)
+          }
+        }()
+        case 14: try {
+          var v: LukuIDFetchTelemetryRequest?
+          var hadOneofValue = false
+          if let current = _storage._payload {
+            hadOneofValue = true
+            if case .fetchTelemetry(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._payload = .fetchTelemetry(v)
+          }
+        }()
+        case 15: try {
+          var v: LukuIDGetCertificateRequest?
+          var hadOneofValue = false
+          if let current = _storage._payload {
+            hadOneofValue = true
+            if case .getCertificate(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._payload = .getCertificate(v)
+          }
+        }()
+        case 16: try {
+          var v: LukuIDGetChainRequest?
+          var hadOneofValue = false
+          if let current = _storage._payload {
+            hadOneofValue = true
+            if case .getChain(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._payload = .getChain(v)
+          }
+        }()
+        case 17: try {
+          var v: LukuIDSetConfigureRequest?
+          var hadOneofValue = false
+          if let current = _storage._payload {
+            hadOneofValue = true
+            if case .configure(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._payload = .configure(v)
+          }
+        }()
+        default: break
         }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.payload = .fetch(v)
-        }
-      }()
-      case 3: try {
-        var v: LukuIDGetRecordRequest?
-        var hadOneofValue = false
-        if let current = self.payload {
-          hadOneofValue = true
-          if case .get(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.payload = .get(v)
-        }
-      }()
-      case 4: try {
-        var v: LukuIDAttestRequest?
-        var hadOneofValue = false
-        if let current = self.payload {
-          hadOneofValue = true
-          if case .attest(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.payload = .attest(v)
-        }
-      }()
-      case 5: try {
-        var v: LukuIDConfigRequest?
-        var hadOneofValue = false
-        if let current = self.payload {
-          hadOneofValue = true
-          if case .config(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.payload = .config(v)
-        }
-      }()
-      case 6: try {
-        var v: LukuIDOtaBeginRequest?
-        var hadOneofValue = false
-        if let current = self.payload {
-          hadOneofValue = true
-          if case .otaBegin(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.payload = .otaBegin(v)
-        }
-      }()
-      case 7: try {
-        var v: LukuIDOtaDataRequest?
-        var hadOneofValue = false
-        if let current = self.payload {
-          hadOneofValue = true
-          if case .otaData(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.payload = .otaData(v)
-        }
-      }()
-      case 8: try {
-        var v: LukuIDOtaEndRequest?
-        var hadOneofValue = false
-        if let current = self.payload {
-          hadOneofValue = true
-          if case .otaDataV2(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.payload = .otaDataV2(v)
-        }
-      }()
-      case 9: try {
-        var v: LukuIDSetAttestationRequest?
-        var hadOneofValue = false
-        if let current = self.payload {
-          hadOneofValue = true
-          if case .setAttestation(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.payload = .setAttestation(v)
-        }
-      }()
-      case 10: try {
-        var v: LukuIDSetHeartbeatRequest?
-        var hadOneofValue = false
-        if let current = self.payload {
-          hadOneofValue = true
-          if case .setHeartbeat(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.payload = .setHeartbeat(v)
-        }
-      }()
-      case 12: try {
-        var v: LukuIDScanEnableRequest?
-        var hadOneofValue = false
-        if let current = self.payload {
-          hadOneofValue = true
-          if case .scanEnable(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.payload = .scanEnable(v)
-        }
-      }()
-      case 13: try {
-        var v: LukuIDGenerateHeartbeatRequest?
-        var hadOneofValue = false
-        if let current = self.payload {
-          hadOneofValue = true
-          if case .generateHeartbeat(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.payload = .generateHeartbeat(v)
-        }
-      }()
-      case 14: try {
-        var v: LukuIDFetchTelemetryRequest?
-        var hadOneofValue = false
-        if let current = self.payload {
-          hadOneofValue = true
-          if case .fetchTelemetry(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.payload = .fetchTelemetry(v)
-        }
-      }()
-      case 15: try {
-        var v: LukuIDGetCertificateRequest?
-        var hadOneofValue = false
-        if let current = self.payload {
-          hadOneofValue = true
-          if case .getCertificate(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.payload = .getCertificate(v)
-        }
-      }()
-      case 16: try {
-        var v: LukuIDGetChainRequest?
-        var hadOneofValue = false
-        if let current = self.payload {
-          hadOneofValue = true
-          if case .getChain(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.payload = .getChain(v)
-        }
-      }()
-      case 17: try {
-        var v: LukuIDSetConfigureRequest?
-        var hadOneofValue = false
-        if let current = self.payload {
-          hadOneofValue = true
-          if case .configure(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.payload = .configure(v)
-        }
-      }()
-      default: break
       }
     }
   }
 
   func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if !self.action.isEmpty {
-      try visitor.visitSingularStringField(value: self.action, fieldNumber: 1)
-    }
-    switch self.payload {
-    case .fetch?: try {
-      guard case .fetch(let v)? = self.payload else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-    }()
-    case .get?: try {
-      guard case .get(let v)? = self.payload else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
-    }()
-    case .attest?: try {
-      guard case .attest(let v)? = self.payload else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
-    }()
-    case .config?: try {
-      guard case .config(let v)? = self.payload else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
-    }()
-    case .otaBegin?: try {
-      guard case .otaBegin(let v)? = self.payload else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
-    }()
-    case .otaData?: try {
-      guard case .otaData(let v)? = self.payload else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
-    }()
-    case .otaDataV2?: try {
-      guard case .otaDataV2(let v)? = self.payload else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
-    }()
-    case .setAttestation?: try {
-      guard case .setAttestation(let v)? = self.payload else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 9)
-    }()
-    case .setHeartbeat?: try {
-      guard case .setHeartbeat(let v)? = self.payload else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
-    }()
-    case .scanEnable?: try {
-      guard case .scanEnable(let v)? = self.payload else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
-    }()
-    case .generateHeartbeat?: try {
-      guard case .generateHeartbeat(let v)? = self.payload else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
-    }()
-    case .fetchTelemetry?: try {
-      guard case .fetchTelemetry(let v)? = self.payload else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
-    }()
-    case .getCertificate?: try {
-      guard case .getCertificate(let v)? = self.payload else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
-    }()
-    case .getChain?: try {
-      guard case .getChain(let v)? = self.payload else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 16)
-    }()
-    case .configure?: try {
-      guard case .configure(let v)? = self.payload else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
-    }()
-    case nil: break
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._action.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._action, fieldNumber: 1)
+      }
+      switch _storage._payload {
+      case .fetch?: try {
+        guard case .fetch(let v)? = _storage._payload else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      }()
+      case .get?: try {
+        guard case .get(let v)? = _storage._payload else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+      }()
+      case .attest?: try {
+        guard case .attest(let v)? = _storage._payload else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+      }()
+      case .config?: try {
+        guard case .config(let v)? = _storage._payload else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
+      }()
+      case .otaBegin?: try {
+        guard case .otaBegin(let v)? = _storage._payload else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
+      }()
+      case .otaData?: try {
+        guard case .otaData(let v)? = _storage._payload else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
+      }()
+      case .otaDataV2?: try {
+        guard case .otaDataV2(let v)? = _storage._payload else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
+      }()
+      case .setAttestation?: try {
+        guard case .setAttestation(let v)? = _storage._payload else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 9)
+      }()
+      case .setHeartbeat?: try {
+        guard case .setHeartbeat(let v)? = _storage._payload else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+      }()
+      case .scanEnable?: try {
+        guard case .scanEnable(let v)? = _storage._payload else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
+      }()
+      case .generateHeartbeat?: try {
+        guard case .generateHeartbeat(let v)? = _storage._payload else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+      }()
+      case .fetchTelemetry?: try {
+        guard case .fetchTelemetry(let v)? = _storage._payload else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
+      }()
+      case .getCertificate?: try {
+        guard case .getCertificate(let v)? = _storage._payload else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
+      }()
+      case .getChain?: try {
+        guard case .getChain(let v)? = _storage._payload else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 16)
+      }()
+      case .configure?: try {
+        guard case .configure(let v)? = _storage._payload else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
+      }()
+      case nil: break
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   static func ==(lhs: LukuIDCommandRequest, rhs: LukuIDCommandRequest) -> Bool {
-    if lhs.action != rhs.action {return false}
-    if lhs.payload != rhs.payload {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._action != rhs_storage._action {return false}
+        if _storage._payload != rhs_storage._payload {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
-extension LukuIDDeviceInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDDeviceInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".DeviceInfoResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}handshake\0\u{3}uptime_ms\0\u{1}token\0\u{1}battery\0\u{1}voltage\0\u{1}vbus\0\u{1}counter\0\u{3}sync_required\0\u{1}name\0\u{1}id\0\u{1}product\0\u{1}model\0\u{1}firmware\0\u{1}revision\0\u{1}pairing\0\u{3}custom_heartbeat_url\0\u{3}network_participation_enabled\0\u{3}managed_by\0\u{3}attestation_dac_der\0\u{3}attestation_manufacturer_der\0\u{3}attestation_intermediate_der\0\u{3}attestation_root_fingerprint\0\u{3}heartbeat_slac_der\0\u{3}heartbeat_der\0\u{3}heartbeat_intermediate_der\0\u{3}heartbeat_root_fingerprint\0\u{1}signature\0\u{1}key\0\u{3}upload_mode\0\u{3}upload_destination\0\u{3}upload_auth\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}handshake\0\u{3}uptime_ms\0\u{1}token\0\u{1}battery\0\u{1}voltage\0\u{1}vbus\0\u{1}counter\0\u{3}sync_required\0\u{1}name\0\u{1}id\0\u{1}product\0\u{1}model\0\u{1}firmware\0\u{1}revision\0\u{1}pairing\0\u{3}custom_heartbeat_url\0\u{3}network_participation_enabled\0\u{3}managed_by\0\u{3}attestation_dac_der\0\u{3}attestation_manufacturer_der\0\u{3}attestation_intermediate_der\0\u{3}attestation_root_fingerprint\0\u{3}heartbeat_slac_der\0\u{3}heartbeat_der\0\u{3}heartbeat_intermediate_der\0\u{3}heartbeat_root_fingerprint\0\u{1}signature\0\u{1}key\0\u{3}upload_mode\0\u{3}upload_destination\0\u{3}upload_auth\0\u{3}auto_update_enabled\0")
 
   fileprivate class _StorageClass {
     var _handshake: String = String()
@@ -4444,6 +4322,7 @@ extension LukuIDDeviceInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._Messag
     var _uploadMode: LukuIDUploadMode = .none
     var _uploadDestination: String = String()
     var _uploadAuth: LukuIDUploadAuth = .none
+    var _autoUpdateEnabled: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -4485,6 +4364,7 @@ extension LukuIDDeviceInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._Messag
       _uploadMode = source._uploadMode
       _uploadDestination = source._uploadDestination
       _uploadAuth = source._uploadAuth
+      _autoUpdateEnabled = source._autoUpdateEnabled
     }
   }
 
@@ -4534,6 +4414,7 @@ extension LukuIDDeviceInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._Messag
         case 29: try { try decoder.decodeSingularEnumField(value: &_storage._uploadMode) }()
         case 30: try { try decoder.decodeSingularStringField(value: &_storage._uploadDestination) }()
         case 31: try { try decoder.decodeSingularEnumField(value: &_storage._uploadAuth) }()
+        case 32: try { try decoder.decodeSingularBoolField(value: &_storage._autoUpdateEnabled) }()
         default: break
         }
       }
@@ -4635,6 +4516,9 @@ extension LukuIDDeviceInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._Messag
       if _storage._uploadAuth != .none {
         try visitor.visitSingularEnumField(value: _storage._uploadAuth, fieldNumber: 31)
       }
+      if _storage._autoUpdateEnabled != false {
+        try visitor.visitSingularBoolField(value: _storage._autoUpdateEnabled, fieldNumber: 32)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4675,6 +4559,7 @@ extension LukuIDDeviceInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._Messag
         if _storage._uploadMode != rhs_storage._uploadMode {return false}
         if _storage._uploadDestination != rhs_storage._uploadDestination {return false}
         if _storage._uploadAuth != rhs_storage._uploadAuth {return false}
+        if _storage._autoUpdateEnabled != rhs_storage._autoUpdateEnabled {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -4684,7 +4569,7 @@ extension LukuIDDeviceInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._Messag
   }
 }
 
-extension LukuIDStatusResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDStatusResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".StatusResponse"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{3}public_key\0\u{3}battery_health\0\u{1}timestamp\0\u{3}has_attestation\0\u{3}has_heartbeat\0\u{3}needs_sync\0\u{1}product\0\u{1}model\0")
 
@@ -4759,192 +4644,87 @@ extension LukuIDStatusResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
   }
 }
 
-extension LukuIDNetworkConfigResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDNetworkConfigResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".NetworkConfigResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}wifi_ssid\0\u{3}wifi_password_set\0\u{3}mqtt_broker_url\0\u{3}mqtt_port\0\u{3}mqtt_topic\0\u{4}\u{2}mqtt_username\0\u{3}mqtt_password_set\0\u{3}mqtt_broadcast_enabled\0\u{1}csr\0\u{3}mqtt_certificate_der\0\u{3}mqtt_ca_der\0\u{3}upload_mode\0\u{3}upload_destination\0\u{3}upload_auth\0\u{3}upload_token_key\0\u{3}upload_token_type\0\u{3}upload_topic\0\u{3}upload_frequency\0\u{c}\u{6}\u{1}")
-
-  fileprivate class _StorageClass {
-    var _wifiSsid: String = String()
-    var _wifiPasswordSet: Bool = false
-    var _mqttBrokerURL: String = String()
-    var _mqttPort: UInt32 = 0
-    var _mqttTopic: String = String()
-    var _mqttUsername: String = String()
-    var _mqttPasswordSet: Bool = false
-    var _mqttBroadcastEnabled: Bool = false
-    var _csr: Data = Data()
-    var _mqttCertificateDer: Data = Data()
-    var _mqttCaDer: Data = Data()
-    var _uploadMode: LukuIDUploadMode = .none
-    var _uploadDestination: String = String()
-    var _uploadAuth: LukuIDUploadAuth = .none
-    var _uploadTokenKey: String = String()
-    var _uploadTokenType: LukuIDUploadTokenType = .header
-    var _uploadTopic: String = String()
-    var _uploadFrequency: UInt32 = 0
-
-      // This property is used as the initial default value for new instances of the type.
-      // The type itself is protecting the reference to its storage via CoW semantics.
-      // This will force a copy to be made of this reference when the first mutation occurs;
-      // hence, it is safe to mark this as `nonisolated(unsafe)`.
-      static nonisolated(unsafe) let defaultInstance = _StorageClass()
-
-    private init() {}
-
-    init(copying source: _StorageClass) {
-      _wifiSsid = source._wifiSsid
-      _wifiPasswordSet = source._wifiPasswordSet
-      _mqttBrokerURL = source._mqttBrokerURL
-      _mqttPort = source._mqttPort
-      _mqttTopic = source._mqttTopic
-      _mqttUsername = source._mqttUsername
-      _mqttPasswordSet = source._mqttPasswordSet
-      _mqttBroadcastEnabled = source._mqttBroadcastEnabled
-      _csr = source._csr
-      _mqttCertificateDer = source._mqttCertificateDer
-      _mqttCaDer = source._mqttCaDer
-      _uploadMode = source._uploadMode
-      _uploadDestination = source._uploadDestination
-      _uploadAuth = source._uploadAuth
-      _uploadTokenKey = source._uploadTokenKey
-      _uploadTokenType = source._uploadTokenType
-      _uploadTopic = source._uploadTopic
-      _uploadFrequency = source._uploadFrequency
-    }
-  }
-
-  fileprivate mutating func _uniqueStorage() -> _StorageClass {
-    if !isKnownUniquelyReferenced(&_storage) {
-      _storage = _StorageClass(copying: _storage)
-    }
-    return _storage
-  }
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}wifi_ssid\0\u{3}wifi_password_set\0\u{2}\u{8}csr\0\u{4}\u{3}upload_mode\0\u{3}upload_destination\0\u{3}upload_auth\0\u{3}upload_token_key\0\u{3}upload_token_type\0\u{3}upload_topic\0\u{3}upload_frequency\0\u{3}auto_update_enabled\0\u{c}\u{3}\u{7}\u{c}\u{b}\u{1}\u{c}\u{c}\u{1}")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    _ = _uniqueStorage()
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      while let fieldNumber = try decoder.nextFieldNumber() {
-        // The use of inline closures is to circumvent an issue where the compiler
-        // allocates stack space for every case branch when no optimizations are
-        // enabled. https://github.com/apple/swift-protobuf/issues/1034
-        switch fieldNumber {
-        case 1: try { try decoder.decodeSingularStringField(value: &_storage._wifiSsid) }()
-        case 2: try { try decoder.decodeSingularBoolField(value: &_storage._wifiPasswordSet) }()
-        case 3: try { try decoder.decodeSingularStringField(value: &_storage._mqttBrokerURL) }()
-        case 4: try { try decoder.decodeSingularUInt32Field(value: &_storage._mqttPort) }()
-        case 5: try { try decoder.decodeSingularStringField(value: &_storage._mqttTopic) }()
-        case 7: try { try decoder.decodeSingularStringField(value: &_storage._mqttUsername) }()
-        case 8: try { try decoder.decodeSingularBoolField(value: &_storage._mqttPasswordSet) }()
-        case 9: try { try decoder.decodeSingularBoolField(value: &_storage._mqttBroadcastEnabled) }()
-        case 10: try { try decoder.decodeSingularBytesField(value: &_storage._csr) }()
-        case 11: try { try decoder.decodeSingularBytesField(value: &_storage._mqttCertificateDer) }()
-        case 12: try { try decoder.decodeSingularBytesField(value: &_storage._mqttCaDer) }()
-        case 13: try { try decoder.decodeSingularEnumField(value: &_storage._uploadMode) }()
-        case 14: try { try decoder.decodeSingularStringField(value: &_storage._uploadDestination) }()
-        case 15: try { try decoder.decodeSingularEnumField(value: &_storage._uploadAuth) }()
-        case 16: try { try decoder.decodeSingularStringField(value: &_storage._uploadTokenKey) }()
-        case 17: try { try decoder.decodeSingularEnumField(value: &_storage._uploadTokenType) }()
-        case 18: try { try decoder.decodeSingularStringField(value: &_storage._uploadTopic) }()
-        case 19: try { try decoder.decodeSingularUInt32Field(value: &_storage._uploadFrequency) }()
-        default: break
-        }
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.wifiSsid) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.wifiPasswordSet) }()
+      case 10: try { try decoder.decodeSingularBytesField(value: &self.csr) }()
+      case 13: try { try decoder.decodeSingularEnumField(value: &self.uploadMode) }()
+      case 14: try { try decoder.decodeSingularStringField(value: &self.uploadDestination) }()
+      case 15: try { try decoder.decodeSingularEnumField(value: &self.uploadAuth) }()
+      case 16: try { try decoder.decodeSingularStringField(value: &self.uploadTokenKey) }()
+      case 17: try { try decoder.decodeSingularEnumField(value: &self.uploadTokenType) }()
+      case 18: try { try decoder.decodeSingularStringField(value: &self.uploadTopic) }()
+      case 19: try { try decoder.decodeSingularUInt32Field(value: &self.uploadFrequency) }()
+      case 20: try { try decoder.decodeSingularBoolField(value: &self.autoUpdateEnabled) }()
+      default: break
       }
     }
   }
 
   func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      if !_storage._wifiSsid.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._wifiSsid, fieldNumber: 1)
-      }
-      if _storage._wifiPasswordSet != false {
-        try visitor.visitSingularBoolField(value: _storage._wifiPasswordSet, fieldNumber: 2)
-      }
-      if !_storage._mqttBrokerURL.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._mqttBrokerURL, fieldNumber: 3)
-      }
-      if _storage._mqttPort != 0 {
-        try visitor.visitSingularUInt32Field(value: _storage._mqttPort, fieldNumber: 4)
-      }
-      if !_storage._mqttTopic.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._mqttTopic, fieldNumber: 5)
-      }
-      if !_storage._mqttUsername.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._mqttUsername, fieldNumber: 7)
-      }
-      if _storage._mqttPasswordSet != false {
-        try visitor.visitSingularBoolField(value: _storage._mqttPasswordSet, fieldNumber: 8)
-      }
-      if _storage._mqttBroadcastEnabled != false {
-        try visitor.visitSingularBoolField(value: _storage._mqttBroadcastEnabled, fieldNumber: 9)
-      }
-      if !_storage._csr.isEmpty {
-        try visitor.visitSingularBytesField(value: _storage._csr, fieldNumber: 10)
-      }
-      if !_storage._mqttCertificateDer.isEmpty {
-        try visitor.visitSingularBytesField(value: _storage._mqttCertificateDer, fieldNumber: 11)
-      }
-      if !_storage._mqttCaDer.isEmpty {
-        try visitor.visitSingularBytesField(value: _storage._mqttCaDer, fieldNumber: 12)
-      }
-      if _storage._uploadMode != .none {
-        try visitor.visitSingularEnumField(value: _storage._uploadMode, fieldNumber: 13)
-      }
-      if !_storage._uploadDestination.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._uploadDestination, fieldNumber: 14)
-      }
-      if _storage._uploadAuth != .none {
-        try visitor.visitSingularEnumField(value: _storage._uploadAuth, fieldNumber: 15)
-      }
-      if !_storage._uploadTokenKey.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._uploadTokenKey, fieldNumber: 16)
-      }
-      if _storage._uploadTokenType != .header {
-        try visitor.visitSingularEnumField(value: _storage._uploadTokenType, fieldNumber: 17)
-      }
-      if !_storage._uploadTopic.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._uploadTopic, fieldNumber: 18)
-      }
-      if _storage._uploadFrequency != 0 {
-        try visitor.visitSingularUInt32Field(value: _storage._uploadFrequency, fieldNumber: 19)
-      }
+    if !self.wifiSsid.isEmpty {
+      try visitor.visitSingularStringField(value: self.wifiSsid, fieldNumber: 1)
+    }
+    if self.wifiPasswordSet != false {
+      try visitor.visitSingularBoolField(value: self.wifiPasswordSet, fieldNumber: 2)
+    }
+    if !self.csr.isEmpty {
+      try visitor.visitSingularBytesField(value: self.csr, fieldNumber: 10)
+    }
+    if self.uploadMode != .none {
+      try visitor.visitSingularEnumField(value: self.uploadMode, fieldNumber: 13)
+    }
+    if !self.uploadDestination.isEmpty {
+      try visitor.visitSingularStringField(value: self.uploadDestination, fieldNumber: 14)
+    }
+    if self.uploadAuth != .none {
+      try visitor.visitSingularEnumField(value: self.uploadAuth, fieldNumber: 15)
+    }
+    if !self.uploadTokenKey.isEmpty {
+      try visitor.visitSingularStringField(value: self.uploadTokenKey, fieldNumber: 16)
+    }
+    if self.uploadTokenType != .header {
+      try visitor.visitSingularEnumField(value: self.uploadTokenType, fieldNumber: 17)
+    }
+    if !self.uploadTopic.isEmpty {
+      try visitor.visitSingularStringField(value: self.uploadTopic, fieldNumber: 18)
+    }
+    if self.uploadFrequency != 0 {
+      try visitor.visitSingularUInt32Field(value: self.uploadFrequency, fieldNumber: 19)
+    }
+    if self.autoUpdateEnabled != false {
+      try visitor.visitSingularBoolField(value: self.autoUpdateEnabled, fieldNumber: 20)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   static func ==(lhs: LukuIDNetworkConfigResponse, rhs: LukuIDNetworkConfigResponse) -> Bool {
-    if lhs._storage !== rhs._storage {
-      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-        let _storage = _args.0
-        let rhs_storage = _args.1
-        if _storage._wifiSsid != rhs_storage._wifiSsid {return false}
-        if _storage._wifiPasswordSet != rhs_storage._wifiPasswordSet {return false}
-        if _storage._mqttBrokerURL != rhs_storage._mqttBrokerURL {return false}
-        if _storage._mqttPort != rhs_storage._mqttPort {return false}
-        if _storage._mqttTopic != rhs_storage._mqttTopic {return false}
-        if _storage._mqttUsername != rhs_storage._mqttUsername {return false}
-        if _storage._mqttPasswordSet != rhs_storage._mqttPasswordSet {return false}
-        if _storage._mqttBroadcastEnabled != rhs_storage._mqttBroadcastEnabled {return false}
-        if _storage._csr != rhs_storage._csr {return false}
-        if _storage._mqttCertificateDer != rhs_storage._mqttCertificateDer {return false}
-        if _storage._mqttCaDer != rhs_storage._mqttCaDer {return false}
-        if _storage._uploadMode != rhs_storage._uploadMode {return false}
-        if _storage._uploadDestination != rhs_storage._uploadDestination {return false}
-        if _storage._uploadAuth != rhs_storage._uploadAuth {return false}
-        if _storage._uploadTokenKey != rhs_storage._uploadTokenKey {return false}
-        if _storage._uploadTokenType != rhs_storage._uploadTokenType {return false}
-        if _storage._uploadTopic != rhs_storage._uploadTopic {return false}
-        if _storage._uploadFrequency != rhs_storage._uploadFrequency {return false}
-        return true
-      }
-      if !storagesAreEqual {return false}
-    }
+    if lhs.wifiSsid != rhs.wifiSsid {return false}
+    if lhs.wifiPasswordSet != rhs.wifiPasswordSet {return false}
+    if lhs.csr != rhs.csr {return false}
+    if lhs.uploadMode != rhs.uploadMode {return false}
+    if lhs.uploadDestination != rhs.uploadDestination {return false}
+    if lhs.uploadAuth != rhs.uploadAuth {return false}
+    if lhs.uploadTokenKey != rhs.uploadTokenKey {return false}
+    if lhs.uploadTokenType != rhs.uploadTokenType {return false}
+    if lhs.uploadTopic != rhs.uploadTopic {return false}
+    if lhs.uploadFrequency != rhs.uploadFrequency {return false}
+    if lhs.autoUpdateEnabled != rhs.autoUpdateEnabled {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
-extension LukuIDRecordMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDRecordMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".RecordMeta"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}timestamp_utc\0\u{3}device_id\0\u{1}id\0")
 
@@ -4984,7 +4764,7 @@ extension LukuIDRecordMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
   }
 }
 
-extension LukuIDScanRecordMin: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDScanRecordMin: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ScanRecordMin"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}version\0\u{1}id\0\u{3}timestamp_utc\0\u{3}tag_id\0\u{3}score_bio\0\u{3}score_auth\0\u{3}score_env\0")
 
@@ -5044,7 +4824,7 @@ extension LukuIDScanRecordMin: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
   }
 }
 
-extension LukuIDEnvironmentRecordMin: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDEnvironmentRecordMin: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".EnvironmentRecordMin"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}version\0\u{1}id\0\u{3}timestamp_utc\0\u{1}lux\0\u{3}temp_c\0\u{3}humidity_pct\0\u{3}voc_raw\0\u{1}tamper\0\u{3}wake_event\0\u{3}vbus_present\0\u{3}voc_index\0")
 
@@ -5184,7 +4964,7 @@ extension LukuIDEnvironmentRecordMin: SwiftProtobuf.Message, SwiftProtobuf._Mess
   }
 }
 
-extension LukuIDDataEntry: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDDataEntry: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".DataEntry"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}scan_min\0\u{3}environment_min\0")
 
@@ -5251,7 +5031,7 @@ extension LukuIDDataEntry: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
   }
 }
 
-extension LukuIDFetchResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDFetchResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".FetchResponse"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}data\0")
 
@@ -5281,7 +5061,7 @@ extension LukuIDFetchResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
   }
 }
 
-extension LukuIDScanPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDScanPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ScanPayload"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ctr\0\u{1}id\0\u{3}timestamp_utc\0\u{3}uptime_us\0\u{3}temperature_c\0\u{1}nonce\0\u{1}firmware\0\u{1}tmp\0\u{1}hum\0\u{1}rssi\0\u{1}jit\0\u{1}lat\0\u{1}dur\0\u{3}v_sag\0\u{3}v_avg\0\u{3}p_cnt\0\u{3}avg_dur\0\u{3}sc_sync\0\u{3}up_time_m\0\u{3}v_drop\0\u{3}rssi_std\0\u{1}vbus\0\u{3}clk_var\0\u{1}drift\0\u{3}hdx_histo_csv\0\u{3}score_bio\0\u{3}score_auth\0\u{3}score_env\0\u{3}metrics_keys\0\u{3}scan_version\0\u{3}genesis_hash\0\u{3}country_code\0\u{4}\u{2}tag_prefix\0\u{3}tag_country\0")
 
@@ -5578,7 +5358,7 @@ extension LukuIDScanPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
   }
 }
 
-extension LukuIDDeviceInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDDeviceInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".DeviceInfo"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{3}public_key\0")
 
@@ -5613,7 +5393,7 @@ extension LukuIDDeviceInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
   }
 }
 
-extension LukuIDManufacturerInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDManufacturerInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ManufacturerInfo"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}signature\0\u{3}public_key\0")
 
@@ -5648,7 +5428,7 @@ extension LukuIDManufacturerInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageI
   }
 }
 
-extension LukuIDIdentity: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDIdentity: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".Identity"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}identity_version\0\u{3}dac_serial\0\u{3}slac_serial\0\u{3}last_sync_utc\0\u{4}\u{2}dac_der\0\u{3}slac_der\0\u{3}attestation_manufacturer_der\0\u{3}attestation_intermediate_der\0\u{3}attestation_root_fingerprint\0\u{3}heartbeat_der\0\u{3}heartbeat_intermediate_der\0\u{3}heartbeat_root_fingerprint\0\u{1}alg\0\u{3}dac_signature\0\u{3}heartbeat_signature\0\u{c}\u{5}\u{1}")
 
@@ -5748,7 +5528,7 @@ extension LukuIDIdentity: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
   }
 }
 
-extension LukuIDAttachment: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDAttachment: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".Attachment"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}signature\0\u{1}checksum\0\u{3}timestamp_utc\0\u{1}mime\0\u{3}external_identity\0\u{1}type\0\u{1}title\0\u{1}lat\0\u{1}lng\0\u{2}\u{2}content\0\u{3}merkle_root\0\u{1}alg\0\u{c}\u{a}\u{1}")
 
@@ -5837,7 +5617,7 @@ extension LukuIDAttachment: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
   }
 }
 
-extension LukuIDExternalIdentity: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDExternalIdentity: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ExternalIdentity"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}endorser_id\0\u{3}root_fingerprint\0\u{3}cert_chain_der\0\u{1}signature\0")
 
@@ -5882,7 +5662,7 @@ extension LukuIDExternalIdentity: SwiftProtobuf.Message, SwiftProtobuf._MessageI
   }
 }
 
-extension LukuIDAttachmentRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDAttachmentRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".AttachmentRecord"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}version\0\u{1}id\0\u{3}parent_id\0\u{1}signature\0\u{3}parent_signature\0\u{1}checksum\0\u{3}timestamp_utc\0\u{1}mime\0\u{1}type\0\u{1}title\0\u{1}lat\0\u{1}lng\0\u{2}\u{2}content\0\u{3}merkle_root\0\u{1}alg\0\u{3}external_identity\0\u{2}\u{2}event\0\u{3}canonical_string\0\u{1}status\0\u{3}context_ref\0\u{c}\u{d}\u{1}")
 
@@ -6085,7 +5865,7 @@ extension LukuIDAttachmentRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageI
   }
 }
 
-extension LukuIDScanRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDScanRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ScanRecord"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}version\0\u{1}id\0\u{1}signature\0\u{3}previous_signature\0\u{3}canonical_string\0\u{1}payload\0\u{1}device\0\u{1}manufacturer\0\u{1}attachments\0\u{1}identity\0\u{1}alg\0")
 
@@ -6225,7 +6005,7 @@ extension LukuIDScanRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
   }
 }
 
-extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".EnvironmentPayload"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ctr\0\u{3}timestamp_utc\0\u{3}uptime_us\0\u{1}nonce\0\u{1}firmware\0\u{1}lux\0\u{3}temp_c\0\u{3}humidity_pct\0\u{3}pressure_hpa\0\u{3}voc_raw\0\u{3}accel_g\0\u{1}tamper\0\u{3}wake_event\0\u{3}vbus_present\0\u{3}genesis_hash\0\u{3}battery_percent\0\u{3}initial_temp_c\0\u{1}vbus\0\u{3}clk_var\0\u{1}drift\0\u{3}voc_index\0\u{3}gps_lat\0\u{3}gps_lng\0\u{3}gps_accuracy_m\0\u{3}gps_altitude_m\0\u{3}gps_speed_mps\0\u{3}gps_heading_deg\0\u{3}gps_satellites\0\u{3}gps_fix_quality\0\u{3}mobile_network\0\u{3}mobile_radio\0\u{3}mobile_operator\0\u{3}mobile_mcc\0\u{3}mobile_mnc\0\u{3}mobile_lac\0\u{3}mobile_cell_id\0\u{3}mobile_rssi_dbm\0\u{3}mobile_rsrp_dbm\0\u{3}mobile_rsrq_db\0\u{3}mobile_sinr_db\0\u{3}mobile_roaming\0")
 
@@ -6239,7 +6019,7 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
     var _tempC: Float = 0
     var _humidityPct: Float = 0
     var _pressureHpa: Float = 0
-    var _vocRaw: UInt32 = 0
+    var _vocRaw: UInt32? = nil
     var _accelG: LukuIDEnvironmentPayload.Accel? = nil
     var _tamper: Bool = false
     var _wakeEvent: Bool = false
@@ -6250,7 +6030,7 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
     var _vbus: UInt32 = 0
     var _clkVar: UInt32 = 0
     var _drift: Int32 = 0
-    var _vocIndex: UInt32 = 0
+    var _vocIndex: UInt32? = nil
     var _gpsLat: Double? = nil
     var _gpsLng: Double? = nil
     var _gpsAccuracyM: Float? = nil
@@ -6420,9 +6200,9 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
       if _storage._pressureHpa.bitPattern != 0 {
         try visitor.visitSingularFloatField(value: _storage._pressureHpa, fieldNumber: 9)
       }
-      if _storage._vocRaw != 0 {
-        try visitor.visitSingularUInt32Field(value: _storage._vocRaw, fieldNumber: 10)
-      }
+      try { if let v = _storage._vocRaw {
+        try visitor.visitSingularUInt32Field(value: v, fieldNumber: 10)
+      } }()
       try { if let v = _storage._accelG {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
       } }()
@@ -6453,9 +6233,9 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
       if _storage._drift != 0 {
         try visitor.visitSingularInt32Field(value: _storage._drift, fieldNumber: 20)
       }
-      if _storage._vocIndex != 0 {
-        try visitor.visitSingularUInt32Field(value: _storage._vocIndex, fieldNumber: 21)
-      }
+      try { if let v = _storage._vocIndex {
+        try visitor.visitSingularUInt32Field(value: v, fieldNumber: 21)
+      } }()
       try { if let v = _storage._gpsLat {
         try visitor.visitSingularDoubleField(value: v, fieldNumber: 22)
       } }()
@@ -6575,7 +6355,7 @@ extension LukuIDEnvironmentPayload: SwiftProtobuf.Message, SwiftProtobuf._Messag
   }
 }
 
-extension LukuIDEnvironmentPayload.Accel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDEnvironmentPayload.Accel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = LukuIDEnvironmentPayload.protoMessageName + ".Accel"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}x\0\u{1}y\0\u{1}z\0")
 
@@ -6615,7 +6395,7 @@ extension LukuIDEnvironmentPayload.Accel: SwiftProtobuf.Message, SwiftProtobuf._
   }
 }
 
-extension LukuIDEnvironmentRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDEnvironmentRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".EnvironmentRecord"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}version\0\u{1}id\0\u{1}signature\0\u{3}previous_signature\0\u{3}canonical_string\0\u{1}payload\0\u{1}device\0\u{1}attachments\0\u{1}identity\0\u{1}alg\0")
 
@@ -6748,7 +6528,7 @@ extension LukuIDEnvironmentRecord: SwiftProtobuf.Message, SwiftProtobuf._Message
   }
 }
 
-extension LukuIDRecordBatch: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDRecordBatch: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".RecordBatch"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}attestation_dac_der\0\u{3}attestation_manufacturer_der\0\u{3}attestation_intermediate_der\0\u{3}heartbeat_slac_der\0\u{3}heartbeat_der\0\u{3}heartbeat_intermediate_der\0\u{1}device\0\u{3}environment_records\0\u{3}scan_records\0\u{3}attestation_root_fingerprint\0\u{3}heartbeat_root_fingerprint\0\u{4}\u{2}attachment_records\0")
 
@@ -6837,7 +6617,7 @@ extension LukuIDRecordBatch: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
   }
 }
 
-extension LukuIDRecordBatches: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDRecordBatches: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".RecordBatches"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}batches\0")
 
@@ -6867,7 +6647,7 @@ extension LukuIDRecordBatches: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
   }
 }
 
-extension LukuIDFullRecordResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDFullRecordResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".FullRecordResponse"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}scan_full\0\u{3}environment_full\0")
 
@@ -6939,7 +6719,7 @@ extension LukuIDFullRecordResponse: SwiftProtobuf.Message, SwiftProtobuf._Messag
   }
 }
 
-extension LukuIDHeartbeatInitResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDHeartbeatInitResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".HeartbeatInitResponse"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}signature_b64\0\u{3}csr_pem\0\u{3}attestation_b64\0\u{1}counter\0\u{3}last_sync_bucket\0\u{3}latest_timestamp\0\u{3}current_timestamp\0\u{3}last_intermediate_serial\0\u{3}last_slac_serial\0")
 
@@ -7009,7 +6789,7 @@ extension LukuIDHeartbeatInitResponse: SwiftProtobuf.Message, SwiftProtobuf._Mes
   }
 }
 
-extension LukuIDCommandResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+nonisolated extension LukuIDCommandResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".CommandResponse"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}action\0\u{1}status\0\u{1}success\0\u{3}error_code\0\u{1}message\0\u{3}device_info\0\u{3}network_config\0\u{3}scan_record\0\u{3}env_record\0\u{3}fetch_response\0\u{3}full_record_response\0\u{1}signature\0\u{1}key\0\u{3}heartbeat_init\0\u{3}record_batches\0\u{3}status_response\0\u{3}fetch_telemetry\0\u{3}has_more\0\u{3}certificate_response\0\u{3}historical_export\0\u{3}chain_response\0")
 

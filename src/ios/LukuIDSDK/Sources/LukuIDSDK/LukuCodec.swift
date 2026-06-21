@@ -231,15 +231,19 @@ final class LukuCodec {
             if let v = asString("name") { config.name = v }
             if let v = asString("wifi_ssid") { config.wifiSsid = v }
             if let v = asString("wifi_password") { config.wifiPassword = v }
-            if let v = asString("mqtt_broker_url") { config.mqttBrokerURL = v }
-            if let v = asUInt32("mqtt_port") { config.mqttPort = v }
-            if let v = asString("mqtt_topic") { config.mqttTopic = v }
-            if let v = asString("mqtt_username") { config.mqttUsername = v }
-            if let v = asString("mqtt_password") { config.mqttPassword = v }
-            if let v = asData("mqtt_certificate_der") { config.mqttCertificateDer = v }
-            if let v = asData("mqtt_ca_der") { config.mqttCaDer = v }
-            if let v = asBool("mqtt_broadcast_enabled") { config.mqttBroadcastEnabled = v }
             if let v = asString("custom_heartbeat_url") { config.customHeartbeatURL = v }
+            if let v = asBool("network_participation_enabled") { config.networkParticipationEnabled = v }
+            if let v = asUInt32("upload_mode") { config.uploadMode = LukuIDUploadMode(rawValue: Int(v)) ?? .none }
+            if let v = asString("upload_destination") { config.uploadDestination = v }
+            if let v = asUInt32("upload_auth") { config.uploadAuth = LukuIDUploadAuth(rawValue: Int(v)) ?? .none }
+            if let v = asString("upload_token_key") { config.uploadTokenKey = v }
+            if let v = asString("upload_token_value") { config.uploadTokenValue = v }
+            if let v = asUInt32("upload_token_type") { config.uploadTokenType = LukuIDUploadTokenType(rawValue: Int(v)) ?? .header }
+            if let v = asString("upload_topic") { config.uploadTopic = v }
+            if let v = asData("upload_certificate_der") { config.uploadCertificateDer = v }
+            if let v = asData("upload_ca_der") { config.uploadCaDer = v }
+            if let v = asUInt32("upload_frequency") { config.uploadFrequency = v }
+            if let v = asBool("auto_update_enabled") { config.autoUpdateEnabled = v }
             request.config = config
         case "configure":
             var configure = LukuIDSetConfigureRequest()
@@ -351,15 +355,15 @@ final class LukuCodec {
         case .networkConfig(let config):
             dict["wifi_ssid"] = config.wifiSsid
             dict["wifi_password_set"] = config.wifiPasswordSet
-            dict["mqtt_broker_url"] = config.mqttBrokerURL
-            dict["mqtt_port"] = config.mqttPort
-            dict["mqtt_topic"] = config.mqttTopic
-            dict["mqtt_username"] = config.mqttUsername
-            dict["mqtt_password_set"] = config.mqttPasswordSet
-            dict["mqtt_broadcast_enabled"] = config.mqttBroadcastEnabled
             dict["csr"] = config.csr
-            dict["mqtt_certificate_der"] = config.mqttCertificateDer
-            dict["mqtt_ca_der"] = config.mqttCaDer
+            dict["upload_mode"] = config.uploadMode.rawValue
+            dict["upload_destination"] = config.uploadDestination
+            dict["upload_auth"] = config.uploadAuth.rawValue
+            dict["upload_token_key"] = config.uploadTokenKey
+            dict["upload_token_type"] = config.uploadTokenType.rawValue
+            dict["upload_topic"] = config.uploadTopic
+            dict["upload_frequency"] = config.uploadFrequency
+            dict["auto_update_enabled"] = config.autoUpdateEnabled
         case .scanRecord(let record):
             dict["scan_record"] = mapScanRecord(record)
         case .envRecord(let record):

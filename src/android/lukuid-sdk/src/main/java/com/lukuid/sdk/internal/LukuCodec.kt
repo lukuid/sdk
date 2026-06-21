@@ -227,15 +227,7 @@ internal class LukuCodec(
                 val config = response.networkConfig
                 if (config.wifiSsid.isNotEmpty()) map["wifi_ssid"] = config.wifiSsid
                 map["wifi_password_set"] = config.wifiPasswordSet
-                if (config.mqttBrokerUrl.isNotEmpty()) map["mqtt_broker_url"] = config.mqttBrokerUrl
-                map["mqtt_port"] = config.mqttPort
-                if (config.mqttTopic.isNotEmpty()) map["mqtt_topic"] = config.mqttTopic
-                if (config.mqttUsername.isNotEmpty()) map["mqtt_username"] = config.mqttUsername
-                map["mqtt_password_set"] = config.mqttPasswordSet
-                map["mqtt_broadcast_enabled"] = config.mqttBroadcastEnabled
                 if (!config.csr.isEmpty) map["csr"] = config.csr.toByteArray()
-                if (!config.mqttCertificateDer.isEmpty) map["mqtt_certificate_der"] = config.mqttCertificateDer.toByteArray()
-                if (!config.mqttCaDer.isEmpty) map["mqtt_ca_der"] = config.mqttCaDer.toByteArray()
 
                 map["upload_mode"] = config.uploadModeValue
                 if (config.uploadDestination.isNotEmpty()) map["upload_destination"] = config.uploadDestination
@@ -539,14 +531,6 @@ internal class LukuCodec(
                     asString("name")?.let { config.name = it }
                     asString("wifi_ssid")?.let { config.wifiSsid = it }
                     asString("wifi_password")?.let { config.wifiPassword = it }
-                    asString("mqtt_broker_url")?.let { config.mqttBrokerUrl = it }
-                    asInt("mqtt_port")?.let { config.mqttPort = it }
-                    asString("mqtt_topic")?.let { config.mqttTopic = it }
-                    asString("mqtt_username")?.let { config.mqttUsername = it }
-                    asString("mqtt_password")?.let { config.mqttPassword = it }
-                    asBytes("mqtt_certificate_der")?.let { config.mqttCertificateDer = it }
-                    asBytes("mqtt_ca_der")?.let { config.mqttCaDer = it }
-                    asBool("mqtt_broadcast_enabled")?.let { config.mqttBroadcastEnabled = it }
                     asString("custom_heartbeat_url")?.let { config.customHeartbeatUrl = it }
                     asBool("network_participation_enabled")?.let { config.networkParticipationEnabled = it }
 

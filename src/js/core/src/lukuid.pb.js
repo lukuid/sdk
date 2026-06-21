@@ -41,13 +41,11 @@ export const lukuid = $root.lukuid = (() => {
      * @enum {number}
      * @property {number} UPLOAD_MODE_NONE=0 UPLOAD_MODE_NONE value
      * @property {number} UPLOAD_MODE_HTTP=1 UPLOAD_MODE_HTTP value
-     * @property {number} UPLOAD_MODE_MQTT=2 UPLOAD_MODE_MQTT value
      */
     lukuid.UploadMode = (function() {
         const valuesById = {}, values = Object.create(valuesById);
         values[valuesById[0] = "UPLOAD_MODE_NONE"] = 0;
         values[valuesById[1] = "UPLOAD_MODE_HTTP"] = 1;
-        values[valuesById[2] = "UPLOAD_MODE_MQTT"] = 2;
         return values;
     })();
 
@@ -1795,14 +1793,6 @@ export const lukuid = $root.lukuid = (() => {
          * @property {string|null} [name] ConfigRequest name
          * @property {string|null} [wifiSsid] ConfigRequest wifiSsid
          * @property {string|null} [wifiPassword] ConfigRequest wifiPassword
-         * @property {string|null} [mqttBrokerUrl] ConfigRequest mqttBrokerUrl
-         * @property {number|null} [mqttPort] ConfigRequest mqttPort
-         * @property {string|null} [mqttTopic] ConfigRequest mqttTopic
-         * @property {string|null} [mqttUsername] ConfigRequest mqttUsername
-         * @property {string|null} [mqttPassword] ConfigRequest mqttPassword
-         * @property {Uint8Array|null} [mqttCertificateDer] ConfigRequest mqttCertificateDer
-         * @property {Uint8Array|null} [mqttCaDer] ConfigRequest mqttCaDer
-         * @property {boolean|null} [mqttBroadcastEnabled] ConfigRequest mqttBroadcastEnabled
          * @property {string|null} [customHeartbeatUrl] ConfigRequest customHeartbeatUrl
          * @property {boolean|null} [networkParticipationEnabled] ConfigRequest networkParticipationEnabled
          * @property {lukuid.UploadMode|null} [uploadMode] ConfigRequest uploadMode
@@ -1815,6 +1805,7 @@ export const lukuid = $root.lukuid = (() => {
          * @property {Uint8Array|null} [uploadCertificateDer] ConfigRequest uploadCertificateDer
          * @property {Uint8Array|null} [uploadCaDer] ConfigRequest uploadCaDer
          * @property {number|null} [uploadFrequency] ConfigRequest uploadFrequency
+         * @property {boolean|null} [autoUpdateEnabled] ConfigRequest autoUpdateEnabled
          */
 
         /**
@@ -1855,70 +1846,6 @@ export const lukuid = $root.lukuid = (() => {
          * @instance
          */
         ConfigRequest.prototype.wifiPassword = null;
-
-        /**
-         * ConfigRequest mqttBrokerUrl.
-         * @member {string|null|undefined} mqttBrokerUrl
-         * @memberof lukuid.ConfigRequest
-         * @instance
-         */
-        ConfigRequest.prototype.mqttBrokerUrl = null;
-
-        /**
-         * ConfigRequest mqttPort.
-         * @member {number|null|undefined} mqttPort
-         * @memberof lukuid.ConfigRequest
-         * @instance
-         */
-        ConfigRequest.prototype.mqttPort = null;
-
-        /**
-         * ConfigRequest mqttTopic.
-         * @member {string|null|undefined} mqttTopic
-         * @memberof lukuid.ConfigRequest
-         * @instance
-         */
-        ConfigRequest.prototype.mqttTopic = null;
-
-        /**
-         * ConfigRequest mqttUsername.
-         * @member {string|null|undefined} mqttUsername
-         * @memberof lukuid.ConfigRequest
-         * @instance
-         */
-        ConfigRequest.prototype.mqttUsername = null;
-
-        /**
-         * ConfigRequest mqttPassword.
-         * @member {string|null|undefined} mqttPassword
-         * @memberof lukuid.ConfigRequest
-         * @instance
-         */
-        ConfigRequest.prototype.mqttPassword = null;
-
-        /**
-         * ConfigRequest mqttCertificateDer.
-         * @member {Uint8Array|null|undefined} mqttCertificateDer
-         * @memberof lukuid.ConfigRequest
-         * @instance
-         */
-        ConfigRequest.prototype.mqttCertificateDer = null;
-
-        /**
-         * ConfigRequest mqttCaDer.
-         * @member {Uint8Array|null|undefined} mqttCaDer
-         * @memberof lukuid.ConfigRequest
-         * @instance
-         */
-        ConfigRequest.prototype.mqttCaDer = null;
-
-        /**
-         * ConfigRequest mqttBroadcastEnabled.
-         * @member {boolean|null|undefined} mqttBroadcastEnabled
-         * @memberof lukuid.ConfigRequest
-         * @instance
-         */
-        ConfigRequest.prototype.mqttBroadcastEnabled = null;
 
         /**
          * ConfigRequest customHeartbeatUrl.
@@ -2016,6 +1943,14 @@ export const lukuid = $root.lukuid = (() => {
          */
         ConfigRequest.prototype.uploadFrequency = null;
 
+        /**
+         * ConfigRequest autoUpdateEnabled.
+         * @member {boolean|null|undefined} autoUpdateEnabled
+         * @memberof lukuid.ConfigRequest
+         * @instance
+         */
+        ConfigRequest.prototype.autoUpdateEnabled = null;
+
         // OneOf field names bound to virtual getters and setters
         let $oneOfFields;
 
@@ -2034,54 +1969,6 @@ export const lukuid = $root.lukuid = (() => {
         // Virtual OneOf for proto3 optional field
         Object.defineProperty(ConfigRequest.prototype, "_wifiPassword", {
             get: $util.oneOfGetter($oneOfFields = ["wifiPassword"]),
-            set: $util.oneOfSetter($oneOfFields)
-        });
-
-        // Virtual OneOf for proto3 optional field
-        Object.defineProperty(ConfigRequest.prototype, "_mqttBrokerUrl", {
-            get: $util.oneOfGetter($oneOfFields = ["mqttBrokerUrl"]),
-            set: $util.oneOfSetter($oneOfFields)
-        });
-
-        // Virtual OneOf for proto3 optional field
-        Object.defineProperty(ConfigRequest.prototype, "_mqttPort", {
-            get: $util.oneOfGetter($oneOfFields = ["mqttPort"]),
-            set: $util.oneOfSetter($oneOfFields)
-        });
-
-        // Virtual OneOf for proto3 optional field
-        Object.defineProperty(ConfigRequest.prototype, "_mqttTopic", {
-            get: $util.oneOfGetter($oneOfFields = ["mqttTopic"]),
-            set: $util.oneOfSetter($oneOfFields)
-        });
-
-        // Virtual OneOf for proto3 optional field
-        Object.defineProperty(ConfigRequest.prototype, "_mqttUsername", {
-            get: $util.oneOfGetter($oneOfFields = ["mqttUsername"]),
-            set: $util.oneOfSetter($oneOfFields)
-        });
-
-        // Virtual OneOf for proto3 optional field
-        Object.defineProperty(ConfigRequest.prototype, "_mqttPassword", {
-            get: $util.oneOfGetter($oneOfFields = ["mqttPassword"]),
-            set: $util.oneOfSetter($oneOfFields)
-        });
-
-        // Virtual OneOf for proto3 optional field
-        Object.defineProperty(ConfigRequest.prototype, "_mqttCertificateDer", {
-            get: $util.oneOfGetter($oneOfFields = ["mqttCertificateDer"]),
-            set: $util.oneOfSetter($oneOfFields)
-        });
-
-        // Virtual OneOf for proto3 optional field
-        Object.defineProperty(ConfigRequest.prototype, "_mqttCaDer", {
-            get: $util.oneOfGetter($oneOfFields = ["mqttCaDer"]),
-            set: $util.oneOfSetter($oneOfFields)
-        });
-
-        // Virtual OneOf for proto3 optional field
-        Object.defineProperty(ConfigRequest.prototype, "_mqttBroadcastEnabled", {
-            get: $util.oneOfGetter($oneOfFields = ["mqttBroadcastEnabled"]),
             set: $util.oneOfSetter($oneOfFields)
         });
 
@@ -2157,6 +2044,12 @@ export const lukuid = $root.lukuid = (() => {
             set: $util.oneOfSetter($oneOfFields)
         });
 
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(ConfigRequest.prototype, "_autoUpdateEnabled", {
+            get: $util.oneOfGetter($oneOfFields = ["autoUpdateEnabled"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
         /**
          * Creates a new ConfigRequest instance using the specified properties.
          * @function create
@@ -2187,22 +2080,6 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 2, wireType 2 =*/18).string(message.wifiSsid);
             if (message.wifiPassword != null && Object.hasOwnProperty.call(message, "wifiPassword"))
                 writer.uint32(/* id 3, wireType 2 =*/26).string(message.wifiPassword);
-            if (message.mqttBrokerUrl != null && Object.hasOwnProperty.call(message, "mqttBrokerUrl"))
-                writer.uint32(/* id 4, wireType 2 =*/34).string(message.mqttBrokerUrl);
-            if (message.mqttPort != null && Object.hasOwnProperty.call(message, "mqttPort"))
-                writer.uint32(/* id 5, wireType 0 =*/40).uint32(message.mqttPort);
-            if (message.mqttTopic != null && Object.hasOwnProperty.call(message, "mqttTopic"))
-                writer.uint32(/* id 6, wireType 2 =*/50).string(message.mqttTopic);
-            if (message.mqttUsername != null && Object.hasOwnProperty.call(message, "mqttUsername"))
-                writer.uint32(/* id 8, wireType 2 =*/66).string(message.mqttUsername);
-            if (message.mqttPassword != null && Object.hasOwnProperty.call(message, "mqttPassword"))
-                writer.uint32(/* id 9, wireType 2 =*/74).string(message.mqttPassword);
-            if (message.mqttCertificateDer != null && Object.hasOwnProperty.call(message, "mqttCertificateDer"))
-                writer.uint32(/* id 10, wireType 2 =*/82).bytes(message.mqttCertificateDer);
-            if (message.mqttCaDer != null && Object.hasOwnProperty.call(message, "mqttCaDer"))
-                writer.uint32(/* id 11, wireType 2 =*/90).bytes(message.mqttCaDer);
-            if (message.mqttBroadcastEnabled != null && Object.hasOwnProperty.call(message, "mqttBroadcastEnabled"))
-                writer.uint32(/* id 12, wireType 0 =*/96).bool(message.mqttBroadcastEnabled);
             if (message.customHeartbeatUrl != null && Object.hasOwnProperty.call(message, "customHeartbeatUrl"))
                 writer.uint32(/* id 13, wireType 2 =*/106).string(message.customHeartbeatUrl);
             if (message.networkParticipationEnabled != null && Object.hasOwnProperty.call(message, "networkParticipationEnabled"))
@@ -2227,6 +2104,8 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 23, wireType 2 =*/186).bytes(message.uploadCaDer);
             if (message.uploadFrequency != null && Object.hasOwnProperty.call(message, "uploadFrequency"))
                 writer.uint32(/* id 24, wireType 0 =*/192).uint32(message.uploadFrequency);
+            if (message.autoUpdateEnabled != null && Object.hasOwnProperty.call(message, "autoUpdateEnabled"))
+                writer.uint32(/* id 25, wireType 0 =*/200).bool(message.autoUpdateEnabled);
             return writer;
         };
 
@@ -2275,38 +2154,6 @@ export const lukuid = $root.lukuid = (() => {
                         message.wifiPassword = reader.string();
                         break;
                     }
-                case 4: {
-                        message.mqttBrokerUrl = reader.string();
-                        break;
-                    }
-                case 5: {
-                        message.mqttPort = reader.uint32();
-                        break;
-                    }
-                case 6: {
-                        message.mqttTopic = reader.string();
-                        break;
-                    }
-                case 8: {
-                        message.mqttUsername = reader.string();
-                        break;
-                    }
-                case 9: {
-                        message.mqttPassword = reader.string();
-                        break;
-                    }
-                case 10: {
-                        message.mqttCertificateDer = reader.bytes();
-                        break;
-                    }
-                case 11: {
-                        message.mqttCaDer = reader.bytes();
-                        break;
-                    }
-                case 12: {
-                        message.mqttBroadcastEnabled = reader.bool();
-                        break;
-                    }
                 case 13: {
                         message.customHeartbeatUrl = reader.string();
                         break;
@@ -2353,6 +2200,10 @@ export const lukuid = $root.lukuid = (() => {
                     }
                 case 24: {
                         message.uploadFrequency = reader.uint32();
+                        break;
+                    }
+                case 25: {
+                        message.autoUpdateEnabled = reader.bool();
                         break;
                     }
                 default:
@@ -2406,46 +2257,6 @@ export const lukuid = $root.lukuid = (() => {
                 if (!$util.isString(message.wifiPassword))
                     return "wifiPassword: string expected";
             }
-            if (message.mqttBrokerUrl != null && message.hasOwnProperty("mqttBrokerUrl")) {
-                properties._mqttBrokerUrl = 1;
-                if (!$util.isString(message.mqttBrokerUrl))
-                    return "mqttBrokerUrl: string expected";
-            }
-            if (message.mqttPort != null && message.hasOwnProperty("mqttPort")) {
-                properties._mqttPort = 1;
-                if (!$util.isInteger(message.mqttPort))
-                    return "mqttPort: integer expected";
-            }
-            if (message.mqttTopic != null && message.hasOwnProperty("mqttTopic")) {
-                properties._mqttTopic = 1;
-                if (!$util.isString(message.mqttTopic))
-                    return "mqttTopic: string expected";
-            }
-            if (message.mqttUsername != null && message.hasOwnProperty("mqttUsername")) {
-                properties._mqttUsername = 1;
-                if (!$util.isString(message.mqttUsername))
-                    return "mqttUsername: string expected";
-            }
-            if (message.mqttPassword != null && message.hasOwnProperty("mqttPassword")) {
-                properties._mqttPassword = 1;
-                if (!$util.isString(message.mqttPassword))
-                    return "mqttPassword: string expected";
-            }
-            if (message.mqttCertificateDer != null && message.hasOwnProperty("mqttCertificateDer")) {
-                properties._mqttCertificateDer = 1;
-                if (!(message.mqttCertificateDer && typeof message.mqttCertificateDer.length === "number" || $util.isString(message.mqttCertificateDer)))
-                    return "mqttCertificateDer: buffer expected";
-            }
-            if (message.mqttCaDer != null && message.hasOwnProperty("mqttCaDer")) {
-                properties._mqttCaDer = 1;
-                if (!(message.mqttCaDer && typeof message.mqttCaDer.length === "number" || $util.isString(message.mqttCaDer)))
-                    return "mqttCaDer: buffer expected";
-            }
-            if (message.mqttBroadcastEnabled != null && message.hasOwnProperty("mqttBroadcastEnabled")) {
-                properties._mqttBroadcastEnabled = 1;
-                if (typeof message.mqttBroadcastEnabled !== "boolean")
-                    return "mqttBroadcastEnabled: boolean expected";
-            }
             if (message.customHeartbeatUrl != null && message.hasOwnProperty("customHeartbeatUrl")) {
                 properties._customHeartbeatUrl = 1;
                 if (!$util.isString(message.customHeartbeatUrl))
@@ -2463,7 +2274,6 @@ export const lukuid = $root.lukuid = (() => {
                     return "uploadMode: enum value expected";
                 case 0:
                 case 1:
-                case 2:
                     break;
                 }
             }
@@ -2525,6 +2335,11 @@ export const lukuid = $root.lukuid = (() => {
                 if (!$util.isInteger(message.uploadFrequency))
                     return "uploadFrequency: integer expected";
             }
+            if (message.autoUpdateEnabled != null && message.hasOwnProperty("autoUpdateEnabled")) {
+                properties._autoUpdateEnabled = 1;
+                if (typeof message.autoUpdateEnabled !== "boolean")
+                    return "autoUpdateEnabled: boolean expected";
+            }
             return null;
         };
 
@@ -2546,28 +2361,6 @@ export const lukuid = $root.lukuid = (() => {
                 message.wifiSsid = String(object.wifiSsid);
             if (object.wifiPassword != null)
                 message.wifiPassword = String(object.wifiPassword);
-            if (object.mqttBrokerUrl != null)
-                message.mqttBrokerUrl = String(object.mqttBrokerUrl);
-            if (object.mqttPort != null)
-                message.mqttPort = object.mqttPort >>> 0;
-            if (object.mqttTopic != null)
-                message.mqttTopic = String(object.mqttTopic);
-            if (object.mqttUsername != null)
-                message.mqttUsername = String(object.mqttUsername);
-            if (object.mqttPassword != null)
-                message.mqttPassword = String(object.mqttPassword);
-            if (object.mqttCertificateDer != null)
-                if (typeof object.mqttCertificateDer === "string")
-                    $util.base64.decode(object.mqttCertificateDer, message.mqttCertificateDer = $util.newBuffer($util.base64.length(object.mqttCertificateDer)), 0);
-                else if (object.mqttCertificateDer.length >= 0)
-                    message.mqttCertificateDer = object.mqttCertificateDer;
-            if (object.mqttCaDer != null)
-                if (typeof object.mqttCaDer === "string")
-                    $util.base64.decode(object.mqttCaDer, message.mqttCaDer = $util.newBuffer($util.base64.length(object.mqttCaDer)), 0);
-                else if (object.mqttCaDer.length >= 0)
-                    message.mqttCaDer = object.mqttCaDer;
-            if (object.mqttBroadcastEnabled != null)
-                message.mqttBroadcastEnabled = Boolean(object.mqttBroadcastEnabled);
             if (object.customHeartbeatUrl != null)
                 message.customHeartbeatUrl = String(object.customHeartbeatUrl);
             if (object.networkParticipationEnabled != null)
@@ -2586,10 +2379,6 @@ export const lukuid = $root.lukuid = (() => {
             case "UPLOAD_MODE_HTTP":
             case 1:
                 message.uploadMode = 1;
-                break;
-            case "UPLOAD_MODE_MQTT":
-            case 2:
-                message.uploadMode = 2;
                 break;
             }
             if (object.uploadDestination != null)
@@ -2656,6 +2445,8 @@ export const lukuid = $root.lukuid = (() => {
                     message.uploadCaDer = object.uploadCaDer;
             if (object.uploadFrequency != null)
                 message.uploadFrequency = object.uploadFrequency >>> 0;
+            if (object.autoUpdateEnabled != null)
+                message.autoUpdateEnabled = Boolean(object.autoUpdateEnabled);
             return message;
         };
 
@@ -2686,46 +2477,6 @@ export const lukuid = $root.lukuid = (() => {
                 object.wifiPassword = message.wifiPassword;
                 if (options.oneofs)
                     object._wifiPassword = "wifiPassword";
-            }
-            if (message.mqttBrokerUrl != null && message.hasOwnProperty("mqttBrokerUrl")) {
-                object.mqttBrokerUrl = message.mqttBrokerUrl;
-                if (options.oneofs)
-                    object._mqttBrokerUrl = "mqttBrokerUrl";
-            }
-            if (message.mqttPort != null && message.hasOwnProperty("mqttPort")) {
-                object.mqttPort = message.mqttPort;
-                if (options.oneofs)
-                    object._mqttPort = "mqttPort";
-            }
-            if (message.mqttTopic != null && message.hasOwnProperty("mqttTopic")) {
-                object.mqttTopic = message.mqttTopic;
-                if (options.oneofs)
-                    object._mqttTopic = "mqttTopic";
-            }
-            if (message.mqttUsername != null && message.hasOwnProperty("mqttUsername")) {
-                object.mqttUsername = message.mqttUsername;
-                if (options.oneofs)
-                    object._mqttUsername = "mqttUsername";
-            }
-            if (message.mqttPassword != null && message.hasOwnProperty("mqttPassword")) {
-                object.mqttPassword = message.mqttPassword;
-                if (options.oneofs)
-                    object._mqttPassword = "mqttPassword";
-            }
-            if (message.mqttCertificateDer != null && message.hasOwnProperty("mqttCertificateDer")) {
-                object.mqttCertificateDer = options.bytes === String ? $util.base64.encode(message.mqttCertificateDer, 0, message.mqttCertificateDer.length) : options.bytes === Array ? Array.prototype.slice.call(message.mqttCertificateDer) : message.mqttCertificateDer;
-                if (options.oneofs)
-                    object._mqttCertificateDer = "mqttCertificateDer";
-            }
-            if (message.mqttCaDer != null && message.hasOwnProperty("mqttCaDer")) {
-                object.mqttCaDer = options.bytes === String ? $util.base64.encode(message.mqttCaDer, 0, message.mqttCaDer.length) : options.bytes === Array ? Array.prototype.slice.call(message.mqttCaDer) : message.mqttCaDer;
-                if (options.oneofs)
-                    object._mqttCaDer = "mqttCaDer";
-            }
-            if (message.mqttBroadcastEnabled != null && message.hasOwnProperty("mqttBroadcastEnabled")) {
-                object.mqttBroadcastEnabled = message.mqttBroadcastEnabled;
-                if (options.oneofs)
-                    object._mqttBroadcastEnabled = "mqttBroadcastEnabled";
             }
             if (message.customHeartbeatUrl != null && message.hasOwnProperty("customHeartbeatUrl")) {
                 object.customHeartbeatUrl = message.customHeartbeatUrl;
@@ -2787,6 +2538,11 @@ export const lukuid = $root.lukuid = (() => {
                 if (options.oneofs)
                     object._uploadFrequency = "uploadFrequency";
             }
+            if (message.autoUpdateEnabled != null && message.hasOwnProperty("autoUpdateEnabled")) {
+                object.autoUpdateEnabled = message.autoUpdateEnabled;
+                if (options.oneofs)
+                    object._autoUpdateEnabled = "autoUpdateEnabled";
+            }
             return object;
         };
 
@@ -2828,6 +2584,14 @@ export const lukuid = $root.lukuid = (() => {
          * @property {number|null} [size] OtaBeginRequest size
          * @property {Uint8Array|null} [publicKey] OtaBeginRequest publicKey
          * @property {boolean|null} [binaryMode] OtaBeginRequest binaryMode
+         * @property {string|null} [updateUid] OtaBeginRequest updateUid
+         * @property {string|null} [fromVersion] OtaBeginRequest fromVersion
+         * @property {string|null} [targetVersion] OtaBeginRequest targetVersion
+         * @property {string|null} [sha256] OtaBeginRequest sha256
+         * @property {number|Long|null} [counter] OtaBeginRequest counter
+         * @property {Uint8Array|null} [certificateDer] OtaBeginRequest certificateDer
+         * @property {Uint8Array|null} [intermediateDer] OtaBeginRequest intermediateDer
+         * @property {Uint8Array|null} [otaStartSignature] OtaBeginRequest otaStartSignature
          */
 
         /**
@@ -2870,6 +2634,70 @@ export const lukuid = $root.lukuid = (() => {
         OtaBeginRequest.prototype.binaryMode = false;
 
         /**
+         * OtaBeginRequest updateUid.
+         * @member {string} updateUid
+         * @memberof lukuid.OtaBeginRequest
+         * @instance
+         */
+        OtaBeginRequest.prototype.updateUid = "";
+
+        /**
+         * OtaBeginRequest fromVersion.
+         * @member {string} fromVersion
+         * @memberof lukuid.OtaBeginRequest
+         * @instance
+         */
+        OtaBeginRequest.prototype.fromVersion = "";
+
+        /**
+         * OtaBeginRequest targetVersion.
+         * @member {string} targetVersion
+         * @memberof lukuid.OtaBeginRequest
+         * @instance
+         */
+        OtaBeginRequest.prototype.targetVersion = "";
+
+        /**
+         * OtaBeginRequest sha256.
+         * @member {string} sha256
+         * @memberof lukuid.OtaBeginRequest
+         * @instance
+         */
+        OtaBeginRequest.prototype.sha256 = "";
+
+        /**
+         * OtaBeginRequest counter.
+         * @member {number|Long} counter
+         * @memberof lukuid.OtaBeginRequest
+         * @instance
+         */
+        OtaBeginRequest.prototype.counter = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+
+        /**
+         * OtaBeginRequest certificateDer.
+         * @member {Uint8Array} certificateDer
+         * @memberof lukuid.OtaBeginRequest
+         * @instance
+         */
+        OtaBeginRequest.prototype.certificateDer = $util.newBuffer([]);
+
+        /**
+         * OtaBeginRequest intermediateDer.
+         * @member {Uint8Array} intermediateDer
+         * @memberof lukuid.OtaBeginRequest
+         * @instance
+         */
+        OtaBeginRequest.prototype.intermediateDer = $util.newBuffer([]);
+
+        /**
+         * OtaBeginRequest otaStartSignature.
+         * @member {Uint8Array} otaStartSignature
+         * @memberof lukuid.OtaBeginRequest
+         * @instance
+         */
+        OtaBeginRequest.prototype.otaStartSignature = $util.newBuffer([]);
+
+        /**
          * Creates a new OtaBeginRequest instance using the specified properties.
          * @function create
          * @memberof lukuid.OtaBeginRequest
@@ -2899,6 +2727,22 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 2, wireType 2 =*/18).bytes(message.publicKey);
             if (message.binaryMode != null && Object.hasOwnProperty.call(message, "binaryMode"))
                 writer.uint32(/* id 3, wireType 0 =*/24).bool(message.binaryMode);
+            if (message.updateUid != null && Object.hasOwnProperty.call(message, "updateUid"))
+                writer.uint32(/* id 4, wireType 2 =*/34).string(message.updateUid);
+            if (message.fromVersion != null && Object.hasOwnProperty.call(message, "fromVersion"))
+                writer.uint32(/* id 5, wireType 2 =*/42).string(message.fromVersion);
+            if (message.targetVersion != null && Object.hasOwnProperty.call(message, "targetVersion"))
+                writer.uint32(/* id 6, wireType 2 =*/50).string(message.targetVersion);
+            if (message.sha256 != null && Object.hasOwnProperty.call(message, "sha256"))
+                writer.uint32(/* id 7, wireType 2 =*/58).string(message.sha256);
+            if (message.counter != null && Object.hasOwnProperty.call(message, "counter"))
+                writer.uint32(/* id 8, wireType 0 =*/64).uint64(message.counter);
+            if (message.certificateDer != null && Object.hasOwnProperty.call(message, "certificateDer"))
+                writer.uint32(/* id 9, wireType 2 =*/74).bytes(message.certificateDer);
+            if (message.intermediateDer != null && Object.hasOwnProperty.call(message, "intermediateDer"))
+                writer.uint32(/* id 10, wireType 2 =*/82).bytes(message.intermediateDer);
+            if (message.otaStartSignature != null && Object.hasOwnProperty.call(message, "otaStartSignature"))
+                writer.uint32(/* id 11, wireType 2 =*/90).bytes(message.otaStartSignature);
             return writer;
         };
 
@@ -2947,6 +2791,38 @@ export const lukuid = $root.lukuid = (() => {
                         message.binaryMode = reader.bool();
                         break;
                     }
+                case 4: {
+                        message.updateUid = reader.string();
+                        break;
+                    }
+                case 5: {
+                        message.fromVersion = reader.string();
+                        break;
+                    }
+                case 6: {
+                        message.targetVersion = reader.string();
+                        break;
+                    }
+                case 7: {
+                        message.sha256 = reader.string();
+                        break;
+                    }
+                case 8: {
+                        message.counter = reader.uint64();
+                        break;
+                    }
+                case 9: {
+                        message.certificateDer = reader.bytes();
+                        break;
+                    }
+                case 10: {
+                        message.intermediateDer = reader.bytes();
+                        break;
+                    }
+                case 11: {
+                        message.otaStartSignature = reader.bytes();
+                        break;
+                    }
                 default:
                     reader.skipType(tag & 7);
                     break;
@@ -2991,6 +2867,30 @@ export const lukuid = $root.lukuid = (() => {
             if (message.binaryMode != null && message.hasOwnProperty("binaryMode"))
                 if (typeof message.binaryMode !== "boolean")
                     return "binaryMode: boolean expected";
+            if (message.updateUid != null && message.hasOwnProperty("updateUid"))
+                if (!$util.isString(message.updateUid))
+                    return "updateUid: string expected";
+            if (message.fromVersion != null && message.hasOwnProperty("fromVersion"))
+                if (!$util.isString(message.fromVersion))
+                    return "fromVersion: string expected";
+            if (message.targetVersion != null && message.hasOwnProperty("targetVersion"))
+                if (!$util.isString(message.targetVersion))
+                    return "targetVersion: string expected";
+            if (message.sha256 != null && message.hasOwnProperty("sha256"))
+                if (!$util.isString(message.sha256))
+                    return "sha256: string expected";
+            if (message.counter != null && message.hasOwnProperty("counter"))
+                if (!$util.isInteger(message.counter) && !(message.counter && $util.isInteger(message.counter.low) && $util.isInteger(message.counter.high)))
+                    return "counter: integer|Long expected";
+            if (message.certificateDer != null && message.hasOwnProperty("certificateDer"))
+                if (!(message.certificateDer && typeof message.certificateDer.length === "number" || $util.isString(message.certificateDer)))
+                    return "certificateDer: buffer expected";
+            if (message.intermediateDer != null && message.hasOwnProperty("intermediateDer"))
+                if (!(message.intermediateDer && typeof message.intermediateDer.length === "number" || $util.isString(message.intermediateDer)))
+                    return "intermediateDer: buffer expected";
+            if (message.otaStartSignature != null && message.hasOwnProperty("otaStartSignature"))
+                if (!(message.otaStartSignature && typeof message.otaStartSignature.length === "number" || $util.isString(message.otaStartSignature)))
+                    return "otaStartSignature: buffer expected";
             return null;
         };
 
@@ -3015,6 +2915,38 @@ export const lukuid = $root.lukuid = (() => {
                     message.publicKey = object.publicKey;
             if (object.binaryMode != null)
                 message.binaryMode = Boolean(object.binaryMode);
+            if (object.updateUid != null)
+                message.updateUid = String(object.updateUid);
+            if (object.fromVersion != null)
+                message.fromVersion = String(object.fromVersion);
+            if (object.targetVersion != null)
+                message.targetVersion = String(object.targetVersion);
+            if (object.sha256 != null)
+                message.sha256 = String(object.sha256);
+            if (object.counter != null)
+                if ($util.Long)
+                    (message.counter = $util.Long.fromValue(object.counter)).unsigned = true;
+                else if (typeof object.counter === "string")
+                    message.counter = parseInt(object.counter, 10);
+                else if (typeof object.counter === "number")
+                    message.counter = object.counter;
+                else if (typeof object.counter === "object")
+                    message.counter = new $util.LongBits(object.counter.low >>> 0, object.counter.high >>> 0).toNumber(true);
+            if (object.certificateDer != null)
+                if (typeof object.certificateDer === "string")
+                    $util.base64.decode(object.certificateDer, message.certificateDer = $util.newBuffer($util.base64.length(object.certificateDer)), 0);
+                else if (object.certificateDer.length >= 0)
+                    message.certificateDer = object.certificateDer;
+            if (object.intermediateDer != null)
+                if (typeof object.intermediateDer === "string")
+                    $util.base64.decode(object.intermediateDer, message.intermediateDer = $util.newBuffer($util.base64.length(object.intermediateDer)), 0);
+                else if (object.intermediateDer.length >= 0)
+                    message.intermediateDer = object.intermediateDer;
+            if (object.otaStartSignature != null)
+                if (typeof object.otaStartSignature === "string")
+                    $util.base64.decode(object.otaStartSignature, message.otaStartSignature = $util.newBuffer($util.base64.length(object.otaStartSignature)), 0);
+                else if (object.otaStartSignature.length >= 0)
+                    message.otaStartSignature = object.otaStartSignature;
             return message;
         };
 
@@ -3041,6 +2973,36 @@ export const lukuid = $root.lukuid = (() => {
                         object.publicKey = $util.newBuffer(object.publicKey);
                 }
                 object.binaryMode = false;
+                object.updateUid = "";
+                object.fromVersion = "";
+                object.targetVersion = "";
+                object.sha256 = "";
+                if ($util.Long) {
+                    let long = new $util.Long(0, 0, true);
+                    object.counter = options.longs === String ? long.toString() : options.longs === Number ? long.toNumber() : long;
+                } else
+                    object.counter = options.longs === String ? "0" : 0;
+                if (options.bytes === String)
+                    object.certificateDer = "";
+                else {
+                    object.certificateDer = [];
+                    if (options.bytes !== Array)
+                        object.certificateDer = $util.newBuffer(object.certificateDer);
+                }
+                if (options.bytes === String)
+                    object.intermediateDer = "";
+                else {
+                    object.intermediateDer = [];
+                    if (options.bytes !== Array)
+                        object.intermediateDer = $util.newBuffer(object.intermediateDer);
+                }
+                if (options.bytes === String)
+                    object.otaStartSignature = "";
+                else {
+                    object.otaStartSignature = [];
+                    if (options.bytes !== Array)
+                        object.otaStartSignature = $util.newBuffer(object.otaStartSignature);
+                }
             }
             if (message.size != null && message.hasOwnProperty("size"))
                 object.size = message.size;
@@ -3048,6 +3010,25 @@ export const lukuid = $root.lukuid = (() => {
                 object.publicKey = options.bytes === String ? $util.base64.encode(message.publicKey, 0, message.publicKey.length) : options.bytes === Array ? Array.prototype.slice.call(message.publicKey) : message.publicKey;
             if (message.binaryMode != null && message.hasOwnProperty("binaryMode"))
                 object.binaryMode = message.binaryMode;
+            if (message.updateUid != null && message.hasOwnProperty("updateUid"))
+                object.updateUid = message.updateUid;
+            if (message.fromVersion != null && message.hasOwnProperty("fromVersion"))
+                object.fromVersion = message.fromVersion;
+            if (message.targetVersion != null && message.hasOwnProperty("targetVersion"))
+                object.targetVersion = message.targetVersion;
+            if (message.sha256 != null && message.hasOwnProperty("sha256"))
+                object.sha256 = message.sha256;
+            if (message.counter != null && message.hasOwnProperty("counter"))
+                if (typeof message.counter === "number")
+                    object.counter = options.longs === String ? String(message.counter) : message.counter;
+                else
+                    object.counter = options.longs === String ? $util.Long.prototype.toString.call(message.counter) : options.longs === Number ? new $util.LongBits(message.counter.low >>> 0, message.counter.high >>> 0).toNumber(true) : message.counter;
+            if (message.certificateDer != null && message.hasOwnProperty("certificateDer"))
+                object.certificateDer = options.bytes === String ? $util.base64.encode(message.certificateDer, 0, message.certificateDer.length) : options.bytes === Array ? Array.prototype.slice.call(message.certificateDer) : message.certificateDer;
+            if (message.intermediateDer != null && message.hasOwnProperty("intermediateDer"))
+                object.intermediateDer = options.bytes === String ? $util.base64.encode(message.intermediateDer, 0, message.intermediateDer.length) : options.bytes === Array ? Array.prototype.slice.call(message.intermediateDer) : message.intermediateDer;
+            if (message.otaStartSignature != null && message.hasOwnProperty("otaStartSignature"))
+                object.otaStartSignature = options.bytes === String ? $util.base64.encode(message.otaStartSignature, 0, message.otaStartSignature.length) : options.bytes === Array ? Array.prototype.slice.call(message.otaStartSignature) : message.otaStartSignature;
             return object;
         };
 
@@ -8475,6 +8456,7 @@ export const lukuid = $root.lukuid = (() => {
          * @property {lukuid.UploadMode|null} [uploadMode] DeviceInfoResponse uploadMode
          * @property {string|null} [uploadDestination] DeviceInfoResponse uploadDestination
          * @property {lukuid.UploadAuth|null} [uploadAuth] DeviceInfoResponse uploadAuth
+         * @property {boolean|null} [autoUpdateEnabled] DeviceInfoResponse autoUpdateEnabled
          */
 
         /**
@@ -8741,6 +8723,14 @@ export const lukuid = $root.lukuid = (() => {
         DeviceInfoResponse.prototype.uploadAuth = 0;
 
         /**
+         * DeviceInfoResponse autoUpdateEnabled.
+         * @member {boolean} autoUpdateEnabled
+         * @memberof lukuid.DeviceInfoResponse
+         * @instance
+         */
+        DeviceInfoResponse.prototype.autoUpdateEnabled = false;
+
+        /**
          * Creates a new DeviceInfoResponse instance using the specified properties.
          * @function create
          * @memberof lukuid.DeviceInfoResponse
@@ -8826,6 +8816,8 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 30, wireType 2 =*/242).string(message.uploadDestination);
             if (message.uploadAuth != null && Object.hasOwnProperty.call(message, "uploadAuth"))
                 writer.uint32(/* id 31, wireType 0 =*/248).int32(message.uploadAuth);
+            if (message.autoUpdateEnabled != null && Object.hasOwnProperty.call(message, "autoUpdateEnabled"))
+                writer.uint32(/* id 32, wireType 0 =*/256).bool(message.autoUpdateEnabled);
             return writer;
         };
 
@@ -8986,6 +8978,10 @@ export const lukuid = $root.lukuid = (() => {
                         message.uploadAuth = reader.int32();
                         break;
                     }
+                case 32: {
+                        message.autoUpdateEnabled = reader.bool();
+                        break;
+                    }
                 default:
                     reader.skipType(tag & 7);
                     break;
@@ -9111,7 +9107,6 @@ export const lukuid = $root.lukuid = (() => {
                     return "uploadMode: enum value expected";
                 case 0:
                 case 1:
-                case 2:
                     break;
                 }
             if (message.uploadDestination != null && message.hasOwnProperty("uploadDestination"))
@@ -9126,6 +9121,9 @@ export const lukuid = $root.lukuid = (() => {
                 case 2:
                     break;
                 }
+            if (message.autoUpdateEnabled != null && message.hasOwnProperty("autoUpdateEnabled"))
+                if (typeof message.autoUpdateEnabled !== "boolean")
+                    return "autoUpdateEnabled: boolean expected";
             return null;
         };
 
@@ -9246,10 +9244,6 @@ export const lukuid = $root.lukuid = (() => {
             case 1:
                 message.uploadMode = 1;
                 break;
-            case "UPLOAD_MODE_MQTT":
-            case 2:
-                message.uploadMode = 2;
-                break;
             }
             if (object.uploadDestination != null)
                 message.uploadDestination = String(object.uploadDestination);
@@ -9273,6 +9267,8 @@ export const lukuid = $root.lukuid = (() => {
                 message.uploadAuth = 2;
                 break;
             }
+            if (object.autoUpdateEnabled != null)
+                message.autoUpdateEnabled = Boolean(object.autoUpdateEnabled);
             return message;
         };
 
@@ -9379,6 +9375,7 @@ export const lukuid = $root.lukuid = (() => {
                 object.uploadMode = options.enums === String ? "UPLOAD_MODE_NONE" : 0;
                 object.uploadDestination = "";
                 object.uploadAuth = options.enums === String ? "UPLOAD_AUTH_NONE" : 0;
+                object.autoUpdateEnabled = false;
             }
             if (message.handshake != null && message.hasOwnProperty("handshake"))
                 object.handshake = message.handshake;
@@ -9445,6 +9442,8 @@ export const lukuid = $root.lukuid = (() => {
                 object.uploadDestination = message.uploadDestination;
             if (message.uploadAuth != null && message.hasOwnProperty("uploadAuth"))
                 object.uploadAuth = options.enums === String ? $root.lukuid.UploadAuth[message.uploadAuth] === undefined ? message.uploadAuth : $root.lukuid.UploadAuth[message.uploadAuth] : message.uploadAuth;
+            if (message.autoUpdateEnabled != null && message.hasOwnProperty("autoUpdateEnabled"))
+                object.autoUpdateEnabled = message.autoUpdateEnabled;
             return object;
         };
 
@@ -9921,15 +9920,7 @@ export const lukuid = $root.lukuid = (() => {
          * @interface INetworkConfigResponse
          * @property {string|null} [wifiSsid] NetworkConfigResponse wifiSsid
          * @property {boolean|null} [wifiPasswordSet] NetworkConfigResponse wifiPasswordSet
-         * @property {string|null} [mqttBrokerUrl] NetworkConfigResponse mqttBrokerUrl
-         * @property {number|null} [mqttPort] NetworkConfigResponse mqttPort
-         * @property {string|null} [mqttTopic] NetworkConfigResponse mqttTopic
-         * @property {string|null} [mqttUsername] NetworkConfigResponse mqttUsername
-         * @property {boolean|null} [mqttPasswordSet] NetworkConfigResponse mqttPasswordSet
-         * @property {boolean|null} [mqttBroadcastEnabled] NetworkConfigResponse mqttBroadcastEnabled
          * @property {Uint8Array|null} [csr] NetworkConfigResponse csr
-         * @property {Uint8Array|null} [mqttCertificateDer] NetworkConfigResponse mqttCertificateDer
-         * @property {Uint8Array|null} [mqttCaDer] NetworkConfigResponse mqttCaDer
          * @property {lukuid.UploadMode|null} [uploadMode] NetworkConfigResponse uploadMode
          * @property {string|null} [uploadDestination] NetworkConfigResponse uploadDestination
          * @property {lukuid.UploadAuth|null} [uploadAuth] NetworkConfigResponse uploadAuth
@@ -9937,6 +9928,7 @@ export const lukuid = $root.lukuid = (() => {
          * @property {lukuid.UploadTokenType|null} [uploadTokenType] NetworkConfigResponse uploadTokenType
          * @property {string|null} [uploadTopic] NetworkConfigResponse uploadTopic
          * @property {number|null} [uploadFrequency] NetworkConfigResponse uploadFrequency
+         * @property {boolean|null} [autoUpdateEnabled] NetworkConfigResponse autoUpdateEnabled
          */
 
         /**
@@ -9971,76 +9963,12 @@ export const lukuid = $root.lukuid = (() => {
         NetworkConfigResponse.prototype.wifiPasswordSet = false;
 
         /**
-         * NetworkConfigResponse mqttBrokerUrl.
-         * @member {string} mqttBrokerUrl
-         * @memberof lukuid.NetworkConfigResponse
-         * @instance
-         */
-        NetworkConfigResponse.prototype.mqttBrokerUrl = "";
-
-        /**
-         * NetworkConfigResponse mqttPort.
-         * @member {number} mqttPort
-         * @memberof lukuid.NetworkConfigResponse
-         * @instance
-         */
-        NetworkConfigResponse.prototype.mqttPort = 0;
-
-        /**
-         * NetworkConfigResponse mqttTopic.
-         * @member {string} mqttTopic
-         * @memberof lukuid.NetworkConfigResponse
-         * @instance
-         */
-        NetworkConfigResponse.prototype.mqttTopic = "";
-
-        /**
-         * NetworkConfigResponse mqttUsername.
-         * @member {string} mqttUsername
-         * @memberof lukuid.NetworkConfigResponse
-         * @instance
-         */
-        NetworkConfigResponse.prototype.mqttUsername = "";
-
-        /**
-         * NetworkConfigResponse mqttPasswordSet.
-         * @member {boolean} mqttPasswordSet
-         * @memberof lukuid.NetworkConfigResponse
-         * @instance
-         */
-        NetworkConfigResponse.prototype.mqttPasswordSet = false;
-
-        /**
-         * NetworkConfigResponse mqttBroadcastEnabled.
-         * @member {boolean} mqttBroadcastEnabled
-         * @memberof lukuid.NetworkConfigResponse
-         * @instance
-         */
-        NetworkConfigResponse.prototype.mqttBroadcastEnabled = false;
-
-        /**
          * NetworkConfigResponse csr.
          * @member {Uint8Array} csr
          * @memberof lukuid.NetworkConfigResponse
          * @instance
          */
         NetworkConfigResponse.prototype.csr = $util.newBuffer([]);
-
-        /**
-         * NetworkConfigResponse mqttCertificateDer.
-         * @member {Uint8Array} mqttCertificateDer
-         * @memberof lukuid.NetworkConfigResponse
-         * @instance
-         */
-        NetworkConfigResponse.prototype.mqttCertificateDer = $util.newBuffer([]);
-
-        /**
-         * NetworkConfigResponse mqttCaDer.
-         * @member {Uint8Array} mqttCaDer
-         * @memberof lukuid.NetworkConfigResponse
-         * @instance
-         */
-        NetworkConfigResponse.prototype.mqttCaDer = $util.newBuffer([]);
 
         /**
          * NetworkConfigResponse uploadMode.
@@ -10099,6 +10027,14 @@ export const lukuid = $root.lukuid = (() => {
         NetworkConfigResponse.prototype.uploadFrequency = 0;
 
         /**
+         * NetworkConfigResponse autoUpdateEnabled.
+         * @member {boolean} autoUpdateEnabled
+         * @memberof lukuid.NetworkConfigResponse
+         * @instance
+         */
+        NetworkConfigResponse.prototype.autoUpdateEnabled = false;
+
+        /**
          * Creates a new NetworkConfigResponse instance using the specified properties.
          * @function create
          * @memberof lukuid.NetworkConfigResponse
@@ -10126,24 +10062,8 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 1, wireType 2 =*/10).string(message.wifiSsid);
             if (message.wifiPasswordSet != null && Object.hasOwnProperty.call(message, "wifiPasswordSet"))
                 writer.uint32(/* id 2, wireType 0 =*/16).bool(message.wifiPasswordSet);
-            if (message.mqttBrokerUrl != null && Object.hasOwnProperty.call(message, "mqttBrokerUrl"))
-                writer.uint32(/* id 3, wireType 2 =*/26).string(message.mqttBrokerUrl);
-            if (message.mqttPort != null && Object.hasOwnProperty.call(message, "mqttPort"))
-                writer.uint32(/* id 4, wireType 0 =*/32).uint32(message.mqttPort);
-            if (message.mqttTopic != null && Object.hasOwnProperty.call(message, "mqttTopic"))
-                writer.uint32(/* id 5, wireType 2 =*/42).string(message.mqttTopic);
-            if (message.mqttUsername != null && Object.hasOwnProperty.call(message, "mqttUsername"))
-                writer.uint32(/* id 7, wireType 2 =*/58).string(message.mqttUsername);
-            if (message.mqttPasswordSet != null && Object.hasOwnProperty.call(message, "mqttPasswordSet"))
-                writer.uint32(/* id 8, wireType 0 =*/64).bool(message.mqttPasswordSet);
-            if (message.mqttBroadcastEnabled != null && Object.hasOwnProperty.call(message, "mqttBroadcastEnabled"))
-                writer.uint32(/* id 9, wireType 0 =*/72).bool(message.mqttBroadcastEnabled);
             if (message.csr != null && Object.hasOwnProperty.call(message, "csr"))
                 writer.uint32(/* id 10, wireType 2 =*/82).bytes(message.csr);
-            if (message.mqttCertificateDer != null && Object.hasOwnProperty.call(message, "mqttCertificateDer"))
-                writer.uint32(/* id 11, wireType 2 =*/90).bytes(message.mqttCertificateDer);
-            if (message.mqttCaDer != null && Object.hasOwnProperty.call(message, "mqttCaDer"))
-                writer.uint32(/* id 12, wireType 2 =*/98).bytes(message.mqttCaDer);
             if (message.uploadMode != null && Object.hasOwnProperty.call(message, "uploadMode"))
                 writer.uint32(/* id 13, wireType 0 =*/104).int32(message.uploadMode);
             if (message.uploadDestination != null && Object.hasOwnProperty.call(message, "uploadDestination"))
@@ -10158,6 +10078,8 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 18, wireType 2 =*/146).string(message.uploadTopic);
             if (message.uploadFrequency != null && Object.hasOwnProperty.call(message, "uploadFrequency"))
                 writer.uint32(/* id 19, wireType 0 =*/152).uint32(message.uploadFrequency);
+            if (message.autoUpdateEnabled != null && Object.hasOwnProperty.call(message, "autoUpdateEnabled"))
+                writer.uint32(/* id 20, wireType 0 =*/160).bool(message.autoUpdateEnabled);
             return writer;
         };
 
@@ -10202,40 +10124,8 @@ export const lukuid = $root.lukuid = (() => {
                         message.wifiPasswordSet = reader.bool();
                         break;
                     }
-                case 3: {
-                        message.mqttBrokerUrl = reader.string();
-                        break;
-                    }
-                case 4: {
-                        message.mqttPort = reader.uint32();
-                        break;
-                    }
-                case 5: {
-                        message.mqttTopic = reader.string();
-                        break;
-                    }
-                case 7: {
-                        message.mqttUsername = reader.string();
-                        break;
-                    }
-                case 8: {
-                        message.mqttPasswordSet = reader.bool();
-                        break;
-                    }
-                case 9: {
-                        message.mqttBroadcastEnabled = reader.bool();
-                        break;
-                    }
                 case 10: {
                         message.csr = reader.bytes();
-                        break;
-                    }
-                case 11: {
-                        message.mqttCertificateDer = reader.bytes();
-                        break;
-                    }
-                case 12: {
-                        message.mqttCaDer = reader.bytes();
                         break;
                     }
                 case 13: {
@@ -10264,6 +10154,10 @@ export const lukuid = $root.lukuid = (() => {
                     }
                 case 19: {
                         message.uploadFrequency = reader.uint32();
+                        break;
+                    }
+                case 20: {
+                        message.autoUpdateEnabled = reader.bool();
                         break;
                     }
                 default:
@@ -10307,40 +10201,15 @@ export const lukuid = $root.lukuid = (() => {
             if (message.wifiPasswordSet != null && message.hasOwnProperty("wifiPasswordSet"))
                 if (typeof message.wifiPasswordSet !== "boolean")
                     return "wifiPasswordSet: boolean expected";
-            if (message.mqttBrokerUrl != null && message.hasOwnProperty("mqttBrokerUrl"))
-                if (!$util.isString(message.mqttBrokerUrl))
-                    return "mqttBrokerUrl: string expected";
-            if (message.mqttPort != null && message.hasOwnProperty("mqttPort"))
-                if (!$util.isInteger(message.mqttPort))
-                    return "mqttPort: integer expected";
-            if (message.mqttTopic != null && message.hasOwnProperty("mqttTopic"))
-                if (!$util.isString(message.mqttTopic))
-                    return "mqttTopic: string expected";
-            if (message.mqttUsername != null && message.hasOwnProperty("mqttUsername"))
-                if (!$util.isString(message.mqttUsername))
-                    return "mqttUsername: string expected";
-            if (message.mqttPasswordSet != null && message.hasOwnProperty("mqttPasswordSet"))
-                if (typeof message.mqttPasswordSet !== "boolean")
-                    return "mqttPasswordSet: boolean expected";
-            if (message.mqttBroadcastEnabled != null && message.hasOwnProperty("mqttBroadcastEnabled"))
-                if (typeof message.mqttBroadcastEnabled !== "boolean")
-                    return "mqttBroadcastEnabled: boolean expected";
             if (message.csr != null && message.hasOwnProperty("csr"))
                 if (!(message.csr && typeof message.csr.length === "number" || $util.isString(message.csr)))
                     return "csr: buffer expected";
-            if (message.mqttCertificateDer != null && message.hasOwnProperty("mqttCertificateDer"))
-                if (!(message.mqttCertificateDer && typeof message.mqttCertificateDer.length === "number" || $util.isString(message.mqttCertificateDer)))
-                    return "mqttCertificateDer: buffer expected";
-            if (message.mqttCaDer != null && message.hasOwnProperty("mqttCaDer"))
-                if (!(message.mqttCaDer && typeof message.mqttCaDer.length === "number" || $util.isString(message.mqttCaDer)))
-                    return "mqttCaDer: buffer expected";
             if (message.uploadMode != null && message.hasOwnProperty("uploadMode"))
                 switch (message.uploadMode) {
                 default:
                     return "uploadMode: enum value expected";
                 case 0:
                 case 1:
-                case 2:
                     break;
                 }
             if (message.uploadDestination != null && message.hasOwnProperty("uploadDestination"))
@@ -10374,6 +10243,9 @@ export const lukuid = $root.lukuid = (() => {
             if (message.uploadFrequency != null && message.hasOwnProperty("uploadFrequency"))
                 if (!$util.isInteger(message.uploadFrequency))
                     return "uploadFrequency: integer expected";
+            if (message.autoUpdateEnabled != null && message.hasOwnProperty("autoUpdateEnabled"))
+                if (typeof message.autoUpdateEnabled !== "boolean")
+                    return "autoUpdateEnabled: boolean expected";
             return null;
         };
 
@@ -10393,33 +10265,11 @@ export const lukuid = $root.lukuid = (() => {
                 message.wifiSsid = String(object.wifiSsid);
             if (object.wifiPasswordSet != null)
                 message.wifiPasswordSet = Boolean(object.wifiPasswordSet);
-            if (object.mqttBrokerUrl != null)
-                message.mqttBrokerUrl = String(object.mqttBrokerUrl);
-            if (object.mqttPort != null)
-                message.mqttPort = object.mqttPort >>> 0;
-            if (object.mqttTopic != null)
-                message.mqttTopic = String(object.mqttTopic);
-            if (object.mqttUsername != null)
-                message.mqttUsername = String(object.mqttUsername);
-            if (object.mqttPasswordSet != null)
-                message.mqttPasswordSet = Boolean(object.mqttPasswordSet);
-            if (object.mqttBroadcastEnabled != null)
-                message.mqttBroadcastEnabled = Boolean(object.mqttBroadcastEnabled);
             if (object.csr != null)
                 if (typeof object.csr === "string")
                     $util.base64.decode(object.csr, message.csr = $util.newBuffer($util.base64.length(object.csr)), 0);
                 else if (object.csr.length >= 0)
                     message.csr = object.csr;
-            if (object.mqttCertificateDer != null)
-                if (typeof object.mqttCertificateDer === "string")
-                    $util.base64.decode(object.mqttCertificateDer, message.mqttCertificateDer = $util.newBuffer($util.base64.length(object.mqttCertificateDer)), 0);
-                else if (object.mqttCertificateDer.length >= 0)
-                    message.mqttCertificateDer = object.mqttCertificateDer;
-            if (object.mqttCaDer != null)
-                if (typeof object.mqttCaDer === "string")
-                    $util.base64.decode(object.mqttCaDer, message.mqttCaDer = $util.newBuffer($util.base64.length(object.mqttCaDer)), 0);
-                else if (object.mqttCaDer.length >= 0)
-                    message.mqttCaDer = object.mqttCaDer;
             switch (object.uploadMode) {
             default:
                 if (typeof object.uploadMode === "number") {
@@ -10434,10 +10284,6 @@ export const lukuid = $root.lukuid = (() => {
             case "UPLOAD_MODE_HTTP":
             case 1:
                 message.uploadMode = 1;
-                break;
-            case "UPLOAD_MODE_MQTT":
-            case 2:
-                message.uploadMode = 2;
                 break;
             }
             if (object.uploadDestination != null)
@@ -10492,6 +10338,8 @@ export const lukuid = $root.lukuid = (() => {
                 message.uploadTopic = String(object.uploadTopic);
             if (object.uploadFrequency != null)
                 message.uploadFrequency = object.uploadFrequency >>> 0;
+            if (object.autoUpdateEnabled != null)
+                message.autoUpdateEnabled = Boolean(object.autoUpdateEnabled);
             return message;
         };
 
@@ -10511,32 +10359,12 @@ export const lukuid = $root.lukuid = (() => {
             if (options.defaults) {
                 object.wifiSsid = "";
                 object.wifiPasswordSet = false;
-                object.mqttBrokerUrl = "";
-                object.mqttPort = 0;
-                object.mqttTopic = "";
-                object.mqttUsername = "";
-                object.mqttPasswordSet = false;
-                object.mqttBroadcastEnabled = false;
                 if (options.bytes === String)
                     object.csr = "";
                 else {
                     object.csr = [];
                     if (options.bytes !== Array)
                         object.csr = $util.newBuffer(object.csr);
-                }
-                if (options.bytes === String)
-                    object.mqttCertificateDer = "";
-                else {
-                    object.mqttCertificateDer = [];
-                    if (options.bytes !== Array)
-                        object.mqttCertificateDer = $util.newBuffer(object.mqttCertificateDer);
-                }
-                if (options.bytes === String)
-                    object.mqttCaDer = "";
-                else {
-                    object.mqttCaDer = [];
-                    if (options.bytes !== Array)
-                        object.mqttCaDer = $util.newBuffer(object.mqttCaDer);
                 }
                 object.uploadMode = options.enums === String ? "UPLOAD_MODE_NONE" : 0;
                 object.uploadDestination = "";
@@ -10545,29 +10373,14 @@ export const lukuid = $root.lukuid = (() => {
                 object.uploadTokenType = options.enums === String ? "UPLOAD_TOKEN_TYPE_HEADER" : 0;
                 object.uploadTopic = "";
                 object.uploadFrequency = 0;
+                object.autoUpdateEnabled = false;
             }
             if (message.wifiSsid != null && message.hasOwnProperty("wifiSsid"))
                 object.wifiSsid = message.wifiSsid;
             if (message.wifiPasswordSet != null && message.hasOwnProperty("wifiPasswordSet"))
                 object.wifiPasswordSet = message.wifiPasswordSet;
-            if (message.mqttBrokerUrl != null && message.hasOwnProperty("mqttBrokerUrl"))
-                object.mqttBrokerUrl = message.mqttBrokerUrl;
-            if (message.mqttPort != null && message.hasOwnProperty("mqttPort"))
-                object.mqttPort = message.mqttPort;
-            if (message.mqttTopic != null && message.hasOwnProperty("mqttTopic"))
-                object.mqttTopic = message.mqttTopic;
-            if (message.mqttUsername != null && message.hasOwnProperty("mqttUsername"))
-                object.mqttUsername = message.mqttUsername;
-            if (message.mqttPasswordSet != null && message.hasOwnProperty("mqttPasswordSet"))
-                object.mqttPasswordSet = message.mqttPasswordSet;
-            if (message.mqttBroadcastEnabled != null && message.hasOwnProperty("mqttBroadcastEnabled"))
-                object.mqttBroadcastEnabled = message.mqttBroadcastEnabled;
             if (message.csr != null && message.hasOwnProperty("csr"))
                 object.csr = options.bytes === String ? $util.base64.encode(message.csr, 0, message.csr.length) : options.bytes === Array ? Array.prototype.slice.call(message.csr) : message.csr;
-            if (message.mqttCertificateDer != null && message.hasOwnProperty("mqttCertificateDer"))
-                object.mqttCertificateDer = options.bytes === String ? $util.base64.encode(message.mqttCertificateDer, 0, message.mqttCertificateDer.length) : options.bytes === Array ? Array.prototype.slice.call(message.mqttCertificateDer) : message.mqttCertificateDer;
-            if (message.mqttCaDer != null && message.hasOwnProperty("mqttCaDer"))
-                object.mqttCaDer = options.bytes === String ? $util.base64.encode(message.mqttCaDer, 0, message.mqttCaDer.length) : options.bytes === Array ? Array.prototype.slice.call(message.mqttCaDer) : message.mqttCaDer;
             if (message.uploadMode != null && message.hasOwnProperty("uploadMode"))
                 object.uploadMode = options.enums === String ? $root.lukuid.UploadMode[message.uploadMode] === undefined ? message.uploadMode : $root.lukuid.UploadMode[message.uploadMode] : message.uploadMode;
             if (message.uploadDestination != null && message.hasOwnProperty("uploadDestination"))
@@ -10582,6 +10395,8 @@ export const lukuid = $root.lukuid = (() => {
                 object.uploadTopic = message.uploadTopic;
             if (message.uploadFrequency != null && message.hasOwnProperty("uploadFrequency"))
                 object.uploadFrequency = message.uploadFrequency;
+            if (message.autoUpdateEnabled != null && message.hasOwnProperty("autoUpdateEnabled"))
+                object.autoUpdateEnabled = message.autoUpdateEnabled;
             return object;
         };
 
@@ -16428,11 +16243,11 @@ export const lukuid = $root.lukuid = (() => {
 
         /**
          * EnvironmentPayload vocRaw.
-         * @member {number} vocRaw
+         * @member {number|null|undefined} vocRaw
          * @memberof lukuid.EnvironmentPayload
          * @instance
          */
-        EnvironmentPayload.prototype.vocRaw = 0;
+        EnvironmentPayload.prototype.vocRaw = null;
 
         /**
          * EnvironmentPayload accelG.
@@ -16516,11 +16331,11 @@ export const lukuid = $root.lukuid = (() => {
 
         /**
          * EnvironmentPayload vocIndex.
-         * @member {number} vocIndex
+         * @member {number|null|undefined} vocIndex
          * @memberof lukuid.EnvironmentPayload
          * @instance
          */
-        EnvironmentPayload.prototype.vocIndex = 0;
+        EnvironmentPayload.prototype.vocIndex = null;
 
         /**
          * EnvironmentPayload gpsLat.
@@ -16686,8 +16501,20 @@ export const lukuid = $root.lukuid = (() => {
         let $oneOfFields;
 
         // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_vocRaw", {
+            get: $util.oneOfGetter($oneOfFields = ["vocRaw"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
         Object.defineProperty(EnvironmentPayload.prototype, "_initialTempC", {
             get: $util.oneOfGetter($oneOfFields = ["initialTempC"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(EnvironmentPayload.prototype, "_vocIndex", {
+            get: $util.oneOfGetter($oneOfFields = ["vocIndex"]),
             set: $util.oneOfSetter($oneOfFields)
         });
 
@@ -17180,9 +17007,11 @@ export const lukuid = $root.lukuid = (() => {
             if (message.pressureHpa != null && message.hasOwnProperty("pressureHpa"))
                 if (typeof message.pressureHpa !== "number")
                     return "pressureHpa: number expected";
-            if (message.vocRaw != null && message.hasOwnProperty("vocRaw"))
+            if (message.vocRaw != null && message.hasOwnProperty("vocRaw")) {
+                properties._vocRaw = 1;
                 if (!$util.isInteger(message.vocRaw))
                     return "vocRaw: integer expected";
+            }
             if (message.accelG != null && message.hasOwnProperty("accelG")) {
                 let error = $root.lukuid.EnvironmentPayload.Accel.verify(message.accelG);
                 if (error)
@@ -17217,9 +17046,11 @@ export const lukuid = $root.lukuid = (() => {
             if (message.drift != null && message.hasOwnProperty("drift"))
                 if (!$util.isInteger(message.drift))
                     return "drift: integer expected";
-            if (message.vocIndex != null && message.hasOwnProperty("vocIndex"))
+            if (message.vocIndex != null && message.hasOwnProperty("vocIndex")) {
+                properties._vocIndex = 1;
                 if (!$util.isInteger(message.vocIndex))
                     return "vocIndex: integer expected";
+            }
             if (message.gpsLat != null && message.hasOwnProperty("gpsLat")) {
                 properties._gpsLat = 1;
                 if (typeof message.gpsLat !== "number")
@@ -17479,7 +17310,6 @@ export const lukuid = $root.lukuid = (() => {
                 object.tempC = 0;
                 object.humidityPct = 0;
                 object.pressureHpa = 0;
-                object.vocRaw = 0;
                 object.accelG = null;
                 object.tamper = false;
                 object.wakeEvent = false;
@@ -17489,7 +17319,6 @@ export const lukuid = $root.lukuid = (() => {
                 object.vbus = 0;
                 object.clkVar = 0;
                 object.drift = 0;
-                object.vocIndex = 0;
             }
             if (message.ctr != null && message.hasOwnProperty("ctr"))
                 if (typeof message.ctr === "number")
@@ -17518,8 +17347,11 @@ export const lukuid = $root.lukuid = (() => {
                 object.humidityPct = options.json && !isFinite(message.humidityPct) ? String(message.humidityPct) : message.humidityPct;
             if (message.pressureHpa != null && message.hasOwnProperty("pressureHpa"))
                 object.pressureHpa = options.json && !isFinite(message.pressureHpa) ? String(message.pressureHpa) : message.pressureHpa;
-            if (message.vocRaw != null && message.hasOwnProperty("vocRaw"))
+            if (message.vocRaw != null && message.hasOwnProperty("vocRaw")) {
                 object.vocRaw = message.vocRaw;
+                if (options.oneofs)
+                    object._vocRaw = "vocRaw";
+            }
             if (message.accelG != null && message.hasOwnProperty("accelG"))
                 object.accelG = $root.lukuid.EnvironmentPayload.Accel.toObject(message.accelG, options);
             if (message.tamper != null && message.hasOwnProperty("tamper"))
@@ -17543,8 +17375,11 @@ export const lukuid = $root.lukuid = (() => {
                 object.clkVar = message.clkVar;
             if (message.drift != null && message.hasOwnProperty("drift"))
                 object.drift = message.drift;
-            if (message.vocIndex != null && message.hasOwnProperty("vocIndex"))
+            if (message.vocIndex != null && message.hasOwnProperty("vocIndex")) {
                 object.vocIndex = message.vocIndex;
+                if (options.oneofs)
+                    object._vocIndex = "vocIndex";
+            }
             if (message.gpsLat != null && message.hasOwnProperty("gpsLat")) {
                 object.gpsLat = options.json && !isFinite(message.gpsLat) ? String(message.gpsLat) : message.gpsLat;
                 if (options.oneofs)

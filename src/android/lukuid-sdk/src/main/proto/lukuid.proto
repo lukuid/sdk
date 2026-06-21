@@ -16,7 +16,7 @@ enum Status {
 enum UploadMode {
   UPLOAD_MODE_NONE = 0;
   UPLOAD_MODE_HTTP = 1;
-  UPLOAD_MODE_MQTT = 2;
+  reserved 2;
 }
 
 enum UploadAuth {
@@ -91,15 +91,7 @@ message ConfigRequest {
   optional string name = 1;
   optional string wifi_ssid = 2;
   optional string wifi_password = 3;
-  optional string mqtt_broker_url = 4;
-  optional uint32 mqtt_port = 5;
-  optional string mqtt_topic = 6;
-  reserved 7; // Previously mqtt_broadcast_frequency_seconds
-  optional string mqtt_username = 8;
-  optional string mqtt_password = 9;
-  optional bytes mqtt_certificate_der = 10;
-  optional bytes mqtt_ca_der = 11;
-  optional bool mqtt_broadcast_enabled = 12;
+  reserved 4 to 12;
   optional string custom_heartbeat_url = 13;
   optional bool network_participation_enabled = 14;
   optional UploadMode upload_mode = 15;
@@ -308,16 +300,9 @@ message StatusResponse {
 message NetworkConfigResponse {
   string wifi_ssid = 1;
   bool wifi_password_set = 2;
-  string mqtt_broker_url = 3;
-  uint32 mqtt_port = 4;
-  string mqtt_topic = 5;
-  reserved 6; // Previously mqtt_broadcast_frequency_seconds
-  string mqtt_username = 7;
-  bool mqtt_password_set = 8;
-  bool mqtt_broadcast_enabled = 9;
+  reserved 3 to 9;
   bytes csr = 10;
-  bytes mqtt_certificate_der = 11;
-  bytes mqtt_ca_der = 12;
+  reserved 11, 12;
 
   UploadMode upload_mode = 13;
   string upload_destination = 14;

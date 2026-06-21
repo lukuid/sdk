@@ -222,22 +222,24 @@ export function encodeCommandRequest(frame: DeviceFrame): Uint8Array {
     if (typeof source.name === 'string') writeString(nested, 1, source.name);
     if (typeof source.wifi_ssid === 'string') writeString(nested, 2, source.wifi_ssid);
     if (typeof source.wifi_password === 'string') writeString(nested, 3, source.wifi_password);
-    if (typeof source.mqtt_broker_url === 'string') writeString(nested, 4, source.mqtt_broker_url);
-    if (typeof source.mqtt_port === 'number') writeUint32(nested, 5, source.mqtt_port);
-    if (typeof source.mqtt_topic === 'string') writeString(nested, 6, source.mqtt_topic);
-    if (typeof source.mqtt_broadcast_frequency_seconds === 'number') writeUint32(nested, 7, source.mqtt_broadcast_frequency_seconds);
-    if (typeof source.mqtt_username === 'string') writeString(nested, 8, source.mqtt_username);
-    if (typeof source.mqtt_password === 'string') writeString(nested, 9, source.mqtt_password);
-    
-    const cert = normalizeBytesValue(source.mqtt_certificate_der);
-    if (cert) writeBytesField(nested, 10, cert);
-
-    const ca = normalizeBytesValue(source.mqtt_ca_der);
-    if (ca) writeBytesField(nested, 11, ca);
-
-    if (typeof source.mqtt_broadcast_enabled === 'boolean') writeBool(nested, 12, source.mqtt_broadcast_enabled);
     if (typeof source.custom_heartbeat_url === 'string') writeString(nested, 13, source.custom_heartbeat_url);
     if (typeof source.network_participation_enabled === 'boolean') writeBool(nested, 14, source.network_participation_enabled);
+    if (typeof source.upload_mode === 'number') writeUint32(nested, 15, source.upload_mode);
+    if (typeof source.upload_destination === 'string') writeString(nested, 16, source.upload_destination);
+    if (typeof source.upload_auth === 'number') writeUint32(nested, 17, source.upload_auth);
+    if (typeof source.upload_token_key === 'string') writeString(nested, 18, source.upload_token_key);
+    if (typeof source.upload_token_value === 'string') writeString(nested, 19, source.upload_token_value);
+    if (typeof source.upload_token_type === 'number') writeUint32(nested, 20, source.upload_token_type);
+    if (typeof source.upload_topic === 'string') writeString(nested, 21, source.upload_topic);
+
+    const uploadCert = normalizeBytesValue(source.upload_certificate_der);
+    if (uploadCert) writeBytesField(nested, 22, uploadCert);
+
+    const uploadCa = normalizeBytesValue(source.upload_ca_der);
+    if (uploadCa) writeBytesField(nested, 23, uploadCa);
+
+    if (typeof source.upload_frequency === 'number') writeUint32(nested, 24, source.upload_frequency);
+    if (typeof source.auto_update_enabled === 'boolean') writeBool(nested, 25, source.auto_update_enabled);
     writeMessage(chunks, 5, nested);
   } else if (action === 'ota_begin') {
     const nested: number[] = [];
@@ -1083,16 +1085,15 @@ function decodeNetworkConfigResponse(payload: Uint8Array): JsonRecord {
     switch (field) {
       case 1: assignString(payload, cursor, wireType, out, 'wifi_ssid'); break;
       case 2: assignBool(payload, cursor, wireType, out, 'wifi_password_set'); break;
-      case 3: assignString(payload, cursor, wireType, out, 'mqtt_broker_url'); break;
-      case 4: assignUint32(payload, cursor, wireType, out, 'mqtt_port'); break;
-      case 5: assignString(payload, cursor, wireType, out, 'mqtt_topic'); break;
-      case 6: assignUint32(payload, cursor, wireType, out, 'mqtt_broadcast_frequency_seconds'); break;
-      case 7: assignString(payload, cursor, wireType, out, 'mqtt_username'); break;
-      case 8: assignBool(payload, cursor, wireType, out, 'mqtt_password_set'); break;
-      case 9: assignBool(payload, cursor, wireType, out, 'mqtt_broadcast_enabled'); break;
       case 10: assignBytes(payload, cursor, wireType, out, 'csr'); break;
-      case 11: assignBytes(payload, cursor, wireType, out, 'mqtt_certificate_der'); break;
-      case 12: assignBytes(payload, cursor, wireType, out, 'mqtt_ca_der'); break;
+      case 13: assignUint32(payload, cursor, wireType, out, 'upload_mode'); break;
+      case 14: assignString(payload, cursor, wireType, out, 'upload_destination'); break;
+      case 15: assignUint32(payload, cursor, wireType, out, 'upload_auth'); break;
+      case 16: assignString(payload, cursor, wireType, out, 'upload_token_key'); break;
+      case 17: assignUint32(payload, cursor, wireType, out, 'upload_token_type'); break;
+      case 18: assignString(payload, cursor, wireType, out, 'upload_topic'); break;
+      case 19: assignUint32(payload, cursor, wireType, out, 'upload_frequency'); break;
+      case 20: assignBool(payload, cursor, wireType, out, 'auto_update_enabled'); break;
       default: skipField(payload, cursor, wireType); break;
     }
   }

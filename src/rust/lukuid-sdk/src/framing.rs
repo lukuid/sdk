@@ -220,33 +220,6 @@ fn encode_command_request(input: &Value) -> Option<Vec<u8>> {
             if let Some(v) = source.get("wifi_password").and_then(Value::as_str) {
                 write_string(&mut nested, 3, v);
             }
-            if let Some(v) = source.get("mqtt_broker_url").and_then(Value::as_str) {
-                write_string(&mut nested, 4, v);
-            }
-            if let Some(v) = as_u32(source.get("mqtt_port")) {
-                write_u32(&mut nested, 5, v);
-            }
-            if let Some(v) = source.get("mqtt_topic").and_then(Value::as_str) {
-                write_string(&mut nested, 6, v);
-            }
-            if let Some(v) = source.get("mqtt_username").and_then(Value::as_str) {
-                write_string(&mut nested, 8, v);
-            }
-            if let Some(v) = source.get("mqtt_password").and_then(Value::as_str) {
-                write_string(&mut nested, 9, v);
-            }
-            if let Some(v) = source.get("mqtt_certificate_der").and_then(as_bytes) {
-                write_bytes(&mut nested, 10, &v);
-            }
-            if let Some(v) = source.get("mqtt_ca_der").and_then(as_bytes) {
-                write_bytes(&mut nested, 11, &v);
-            }
-            if let Some(v) = source
-                .get("mqtt_broadcast_enabled")
-                .and_then(Value::as_bool)
-            {
-                write_bool(&mut nested, 12, v);
-            }
             if let Some(v) = source.get("custom_heartbeat_url").and_then(Value::as_str) {
                 write_string(&mut nested, 13, v);
             }
@@ -285,6 +258,9 @@ fn encode_command_request(input: &Value) -> Option<Vec<u8>> {
             }
             if let Some(v) = as_u32(source.get("upload_frequency")) {
                 write_u32(&mut nested, 24, v);
+            }
+            if let Some(v) = source.get("auto_update_enabled").and_then(Value::as_bool) {
+                write_bool(&mut nested, 25, v);
             }
             write_message(&mut out, 5, &nested);
         }
@@ -1340,27 +1316,7 @@ fn decode_network_config_response(bytes: &[u8]) -> Option<Value> {
         match field {
             1 => insert_string(bytes, &mut cursor, wire_type, &mut out, "wifi_ssid")?,
             2 => insert_bool(bytes, &mut cursor, wire_type, &mut out, "wifi_password_set")?,
-            3 => insert_string(bytes, &mut cursor, wire_type, &mut out, "mqtt_broker_url")?,
-            4 => insert_u32(bytes, &mut cursor, wire_type, &mut out, "mqtt_port")?,
-            5 => insert_string(bytes, &mut cursor, wire_type, &mut out, "mqtt_topic")?,
-            7 => insert_string(bytes, &mut cursor, wire_type, &mut out, "mqtt_username")?,
-            8 => insert_bool(bytes, &mut cursor, wire_type, &mut out, "mqtt_password_set")?,
-            9 => insert_bool(
-                bytes,
-                &mut cursor,
-                wire_type,
-                &mut out,
-                "mqtt_broadcast_enabled",
-            )?,
             10 => insert_string(bytes, &mut cursor, wire_type, &mut out, "csr")?,
-            11 => insert_string(
-                bytes,
-                &mut cursor,
-                wire_type,
-                &mut out,
-                "mqtt_certificate_der",
-            )?,
-            12 => insert_string(bytes, &mut cursor, wire_type, &mut out, "mqtt_ca_der")?,
             13 => insert_u32(bytes, &mut cursor, wire_type, &mut out, "upload_mode")?,
             14 => insert_string(
                 bytes,
@@ -1374,6 +1330,7 @@ fn decode_network_config_response(bytes: &[u8]) -> Option<Value> {
             17 => insert_u32(bytes, &mut cursor, wire_type, &mut out, "upload_token_type")?,
             18 => insert_string(bytes, &mut cursor, wire_type, &mut out, "upload_topic")?,
             19 => insert_u32(bytes, &mut cursor, wire_type, &mut out, "upload_frequency")?,
+            20 => insert_bool(bytes, &mut cursor, wire_type, &mut out, "auto_update_enabled")?,
             _ => skip_field(bytes, &mut cursor, wire_type)?,
         }
     }
