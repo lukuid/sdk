@@ -282,7 +282,7 @@ fn encode_command_request(input: &Value) -> Option<Vec<u8>> {
             }
             write_message(&mut out, 17, &nested);
         }
-        "ota_begin" => {
+         "ota_begin" => {
             if let Some(v) = as_u32(source.get("size")) {
                 write_u32(&mut nested, 1, v);
             }
@@ -291,6 +291,30 @@ fn encode_command_request(input: &Value) -> Option<Vec<u8>> {
             }
             if let Some(v) = source.get("binary_mode").and_then(Value::as_bool) {
                 write_bool(&mut nested, 3, v);
+            }
+            if let Some(v) = source.get("update_uid").and_then(Value::as_str) {
+                write_string(&mut nested, 4, v);
+            }
+            if let Some(v) = source.get("from_version").and_then(Value::as_str) {
+                write_string(&mut nested, 5, v);
+            }
+            if let Some(v) = source.get("target_version").and_then(Value::as_str) {
+                write_string(&mut nested, 6, v);
+            }
+            if let Some(v) = source.get("sha256").and_then(Value::as_str) {
+                write_string(&mut nested, 7, v);
+            }
+            if let Some(v) = as_u64(source.get("counter")) {
+                write_u64(&mut nested, 8, v);
+            }
+            if let Some(v) = source.get("certificate_der").and_then(as_bytes) {
+                write_bytes(&mut nested, 9, &v);
+            }
+            if let Some(v) = source.get("intermediate_der").and_then(as_bytes) {
+                write_bytes(&mut nested, 10, &v);
+            }
+            if let Some(v) = source.get("ota_start_signature").and_then(as_bytes) {
+                write_bytes(&mut nested, 11, &v);
             }
             write_message(&mut out, 6, &nested);
         }

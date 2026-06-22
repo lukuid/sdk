@@ -560,6 +560,14 @@ internal class LukuCodec(
                     asInt("size")?.let { ota.size = it }
                     asBytes("public_key")?.let { ota.publicKey = it }
                     asBool("binary_mode")?.let { ota.binaryMode = it }
+                    asString("update_uid")?.let { ota.updateUid = it }
+                    asString("from_version")?.let { ota.fromVersion = it }
+                    asString("target_version")?.let { ota.targetVersion = it }
+                    asString("sha256")?.let { ota.sha256 = it }
+                    asLong("counter")?.let { ota.counter = it }
+                    asBytes("certificate_der")?.let { ota.certificateDer = it }
+                    asBytes("intermediate_der")?.let { ota.intermediateDer = it }
+                    asBytes("ota_start_signature")?.let { ota.otaStartSignature = it }
                     builder.otaBegin = ota.build()
                 }
                 "ota_data" -> {

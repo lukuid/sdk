@@ -258,6 +258,14 @@ final class LukuCodec {
             if let v = asUInt32("size") { ota.size = v }
             if let v = asData("public_key") { ota.publicKey = v }
             if let v = asBool("binary_mode") { ota.binaryMode = v }
+            if let v = asString("update_uid") { ota.updateUid = v }
+            if let v = asString("from_version") { ota.fromVersion = v }
+            if let v = asString("target_version") { ota.targetVersion = v }
+            if let v = asString("sha256") { ota.sha256 = v }
+            if let v = asInt64("counter") { ota.counter = UInt64(v) }
+            if let v = asData("certificate_der") { ota.certificateDer = v }
+            if let v = asData("intermediate_der") { ota.intermediateDer = v }
+            if let v = asData("ota_start_signature") { ota.otaStartSignature = v }
             request.otaBegin = ota
         case "ota_data":
             var ota = LukuIDOtaDataRequest()

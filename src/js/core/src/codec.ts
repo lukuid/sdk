@@ -247,6 +247,19 @@ export function encodeCommandRequest(frame: DeviceFrame): Uint8Array {
     const pubkey = source.public_key;
     if (pubkey instanceof Uint8Array) writeBytesField(nested, 2, pubkey);
     if (typeof source.binary_mode === 'boolean') writeBool(nested, 3, source.binary_mode);
+    if (typeof source.update_uid === 'string') writeString(nested, 4, source.update_uid);
+    if (typeof source.from_version === 'string') writeString(nested, 5, source.from_version);
+    if (typeof source.target_version === 'string') writeString(nested, 6, source.target_version);
+    if (typeof source.sha256 === 'string') writeString(nested, 7, source.sha256);
+    if (typeof source.counter === 'number' || typeof source.counter === 'bigint') {
+      writeVarintField(nested, 8, Number(source.counter));
+    }
+    const cert = normalizeBytesValue(source.certificate_der);
+    if (cert) writeBytesField(nested, 9, cert);
+    const inter = normalizeBytesValue(source.intermediate_der);
+    if (inter) writeBytesField(nested, 10, inter);
+    const otaSig = normalizeBytesValue(source.ota_start_signature);
+    if (otaSig) writeBytesField(nested, 11, otaSig);
     writeMessage(chunks, 6, nested);
   } else if (action === 'ota_data') {
     const nested: number[] = [];
