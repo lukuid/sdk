@@ -14,7 +14,7 @@ plugins {
 }
 
 group = "com.lukuid"
-version = (findProperty("VERSION_NAME") as String?) ?: "1.0.17"
+version = (findProperty("VERSION_NAME") as String?) ?: "1.0.18"
 
 jacoco {
     toolVersion = "0.8.12"
