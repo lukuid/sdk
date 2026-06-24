@@ -4,7 +4,7 @@
     "rootDir": "src",
     "outDir": "dist",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["w3c-web-usb"]
+    "types": ["w3c-web-serial"]
   },
   "include": ["src"]
 }
