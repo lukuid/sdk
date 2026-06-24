@@ -745,12 +745,35 @@ export async function validateCertificateChain(
           } catch {
             stepVerified = false;
           }
+          if (!stepVerified) {
+            try {
+              const parsed = parseDerCertificate(current.raw);
+              stepVerified = await verifySignatureFallback(
+                parsed.tbsDer,
+                parsed.signatureBits,
+                parsed.signatureAlgorithmOid,
+                certSpkis[i + 1]
+              );
+            } catch {}
+          }
         } else {
           for (const root of roots) {
             try {
               stepVerified = current.verify(root.publicKey) || root.fingerprint === current.fingerprint;
             } catch {
-              continue;
+              stepVerified = false;
+            }
+            if (!stepVerified) {
+              try {
+                const parsed = parseDerCertificate(current.raw);
+                const rootParsed = parseDerCertificate(root.raw);
+                stepVerified = await verifySignatureFallback(
+                  parsed.tbsDer,
+                  parsed.signatureBits,
+                  parsed.signatureAlgorithmOid,
+                  rootParsed.spkiDer
+                );
+              } catch {}
             }
             if (stepVerified) break;
           }
