@@ -78,6 +78,12 @@ async function createSignedEnvironmentEnvelope(canonicalString: string): Promise
     id: 'ENV-VOC-1',
     device_id: 'GC-TEST-1',
     public_key: publicKeyBase64,
+    vendor: 'LUKUID',
+    device: {
+      vendor: 'LUKUID',
+      device_id: 'GC-TEST-1',
+      public_key: publicKeyBase64,
+    },
     signature: Buffer.from(new Uint8Array(signature)).toString('base64'),
     previous_signature: 'genesis_fake',
     canonical_string: canonicalString,

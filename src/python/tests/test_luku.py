@@ -60,7 +60,7 @@ class LukuArchiveTests(unittest.TestCase):
 
     def create_valid_export(self, device_id: str):
         signer = self.create_test_signer()
-        identity = LukuDeviceIdentity(device_id=device_id, public_key=signer.public_key_base64)
+        identity = LukuDeviceIdentity(device_id=device_id, public_key=signer.public_key_base64, vendor="LUKUID")
 
         sig1 = self.sign_canonical(signer, "can1")
         sig2 = self.sign_canonical(signer, "can2")
@@ -100,7 +100,7 @@ class LukuArchiveTests(unittest.TestCase):
 
     def test_exports_and_reopens_archives(self):
         signer = self.create_test_signer()
-        identity = LukuDeviceIdentity(device_id="LUK-TEST", public_key=signer.public_key_base64)
+        identity = LukuDeviceIdentity(device_id="LUK-TEST", public_key=signer.public_key_base64, vendor="LUKUID")
         exported = LukuFile.export(
             [
                 {
@@ -122,7 +122,7 @@ class LukuArchiveTests(unittest.TestCase):
 
     def test_preserves_temporal_continuity_manifest_metadata(self):
         signer = self.create_test_signer()
-        identity = LukuDeviceIdentity(device_id="LUK-META", public_key=signer.public_key_base64)
+        identity = LukuDeviceIdentity(device_id="LUK-META", public_key=signer.public_key_base64, vendor="LUKUID")
         canonical = "manifest-extra-scan"
         block = LukuFile.build_block_from_records(
             block_id=0,
@@ -188,7 +188,7 @@ class LukuArchiveTests(unittest.TestCase):
 
     def test_requires_native_continuity_when_requested(self):
         signer = self.create_test_signer()
-        identity = LukuDeviceIdentity(device_id="LUK-CONT", public_key=signer.public_key_base64)
+        identity = LukuDeviceIdentity(device_id="LUK-CONT", public_key=signer.public_key_base64, vendor="LUKUID")
         archive = LukuFile.export_with_identity(
             [
                 {
@@ -224,7 +224,7 @@ class LukuArchiveTests(unittest.TestCase):
     def test_rejects_untrusted_external_identity_endorsements(self):
         fixture = self.external_identity_fixture()
         signer = self.create_test_signer()
-        identity = LukuDeviceIdentity(device_id="LUK-EXT", public_key=signer.public_key_base64)
+        identity = LukuDeviceIdentity(device_id="LUK-EXT", public_key=signer.public_key_base64, vendor="LUKUID")
         canonical = "attachment-ext"
         archive = LukuFile.export_with_identity(
             [{
@@ -309,11 +309,11 @@ class LukuArchiveTests(unittest.TestCase):
             block_id=0,
             timestamp_utc=1003,
             previous_block_hash=None,
-            default_device=LukuDeviceIdentity(device_id=device_id, public_key=signer.public_key_base64),
+            default_device=LukuDeviceIdentity(device_id=device_id, public_key=signer.public_key_base64, vendor="LUKUID"),
             batch=[
-                {"type": "scan", "id": "SCAN-ATTEST-1", "device_id": device_id, "public_key": signer.public_key_base64, "signature": scan_sig, "previous_signature": "genesis_fake", "canonical_string": "attested-scan", "payload": {"ctr": 1, "timestamp_utc": 1000, "genesis_hash": "genesis_fake"}},
-                {"type": "attachment", "id": "ATT-ATTEST-1", "parent_record_id": "SCAN-ATTEST-1", "device_id": device_id, "public_key": signer.public_key_base64, "signature": self.sign_canonical(signer, "attested-attachment"), "parent_signature": scan_sig, "canonical_string": "attested-attachment", "timestamp_utc": 1001, "checksum": checksum, "mime": "text/plain", "title": "Desktop Note"},
-                {"type": "environment","id": "ENV-ATTEST-1", "device_id": device_id, "public_key": signer.public_key_base64, "signature": self.sign_canonical(signer, "attested-environment"), "previous_signature": scan_sig, "canonical_string": "attested-environment", "payload": {"ctr": 2, "timestamp_utc": 1002}},
+                {"type": "scan", "id": "SCAN-ATTEST-1", "device_id": device_id, "public_key": signer.public_key_base64, "vendor": "LUKUID", "signature": scan_sig, "previous_signature": "genesis_fake", "canonical_string": "attested-scan", "payload": {"ctr": 1, "timestamp_utc": 1000, "genesis_hash": "genesis_fake"}},
+                {"type": "attachment", "id": "ATT-ATTEST-1", "parent_record_id": "SCAN-ATTEST-1", "device_id": device_id, "public_key": signer.public_key_base64, "vendor": "LUKUID", "signature": self.sign_canonical(signer, "attested-attachment"), "parent_signature": scan_sig, "canonical_string": "attested-attachment", "timestamp_utc": 1001, "checksum": checksum, "mime": "text/plain", "title": "Desktop Note"},
+                {"type": "environment","id": "ENV-ATTEST-1", "device_id": device_id, "public_key": signer.public_key_base64, "vendor": "LUKUID", "signature": self.sign_canonical(signer, "attested-environment"), "previous_signature": scan_sig, "canonical_string": "attested-environment", "payload": {"ctr": 2, "timestamp_utc": 1002}},
             ],
             common_certs=None,
         )
@@ -331,11 +331,11 @@ class LukuArchiveTests(unittest.TestCase):
             block_id=0,
             timestamp_utc=1003,
             previous_block_hash=None,
-            default_device=LukuDeviceIdentity(device_id=device_id, public_key=signer.public_key_base64),
+            default_device=LukuDeviceIdentity(device_id=device_id, public_key=signer.public_key_base64, vendor="LUKUID"),
             batch=[
-                {"type": "scan","id": "SCAN-CUSTODY-1", "device_id": device_id, "public_key": signer.public_key_base64, "signature": scan_sig, "previous_signature": "genesis_fake", "canonical_string": "custody-scan", "payload": {"ctr": 1, "timestamp_utc": 1000, "genesis_hash": "genesis_fake"}},
-                {"type": "custody", "id": "CUSTODY-1", "parent_record_id": "SCAN-CUSTODY-1", "device_id": device_id, "public_key": signer.public_key_base64, "signature": self.sign_canonical(signer, "custody-checkpoint"), "parent_signature": scan_sig, "canonical_string": "custody-checkpoint", "timestamp_utc": 1001, "payload": {"event": "handoff", "status": "received", "context_ref": "shipment-123"}},
-                {"type": "environment", "id": "ENV-CUSTODY-1", "device_id": device_id, "public_key": signer.public_key_base64, "signature": self.sign_canonical(signer, "custody-environment"), "previous_signature": scan_sig, "canonical_string": "custody-environment", "payload": {"ctr": 2, "timestamp_utc": 1002}},
+                {"type": "scan","id": "SCAN-CUSTODY-1", "device_id": device_id, "public_key": signer.public_key_base64, "vendor": "LUKUID", "signature": scan_sig, "previous_signature": "genesis_fake", "canonical_string": "custody-scan", "payload": {"ctr": 1, "timestamp_utc": 1000, "genesis_hash": "genesis_fake"}},
+                {"type": "custody", "id": "CUSTODY-1", "parent_record_id": "SCAN-CUSTODY-1", "device_id": device_id, "public_key": signer.public_key_base64, "vendor": "LUKUID", "signature": self.sign_canonical(signer, "custody-checkpoint"), "parent_signature": scan_sig, "canonical_string": "custody-checkpoint", "timestamp_utc": 1001, "payload": {"event": "handoff", "status": "received", "context_ref": "shipment-123"}},
+                {"type": "environment", "id": "ENV-CUSTODY-1", "device_id": device_id, "public_key": signer.public_key_base64, "vendor": "LUKUID", "signature": self.sign_canonical(signer, "custody-environment"), "previous_signature": scan_sig, "canonical_string": "custody-environment", "payload": {"ctr": 2, "timestamp_utc": 1002}},
             ],
             common_certs=None,
         )

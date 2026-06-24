@@ -79,7 +79,7 @@ fn create_valid_export(temp_dir: &std::path::Path, device_id: &str) -> (LukuFile
     let identity = LukuDeviceIdentity {
         device_id: device_id.to_string(),
         public_key: pub_b64,
-        vendor: None,
+        vendor: Some("LUKUID".to_string()),
     };
 
     let canonical1 = "can1";
@@ -94,6 +94,7 @@ fn create_valid_export(temp_dir: &std::path::Path, device_id: &str) -> (LukuFile
     let records = vec![
         json!({
             "type": "scan",
+            "vendor": "LUKUID",
             "signature": sig1,
             "previous_signature": "genesis_fake",
             "canonical_string": canonical1,
@@ -105,6 +106,7 @@ fn create_valid_export(temp_dir: &std::path::Path, device_id: &str) -> (LukuFile
         }),
         json!({
             "type": "scan",
+            "vendor": "LUKUID",
             "signature": sig2,
             "previous_signature": sig1,
             "canonical_string": canonical2,
@@ -116,6 +118,7 @@ fn create_valid_export(temp_dir: &std::path::Path, device_id: &str) -> (LukuFile
         }),
         json!({
             "type": "scan",
+            "vendor": "LUKUID",
             "signature": sig3,
             "previous_signature": sig2,
             "canonical_string": canonical3,
@@ -575,9 +578,10 @@ fn test_luku_verify_attested_attachment_does_not_advance_device_chain() {
     };
 
     let records = vec![
-        json!({
-            "type": "scan",
-            "id": "SCAN-ATTEST-1",
+            json!({
+                "type": "scan",
+                "vendor": "LUKUID",
+                "id": "SCAN-ATTEST-1",
             "device_id": device_id,
             "public_key": pub_b64.clone(),
             "signature": scan_sig,
@@ -589,9 +593,10 @@ fn test_luku_verify_attested_attachment_does_not_advance_device_chain() {
                 "genesis_hash": "genesis_fake"
             }
         }),
-        json!({
-            "type": "attachment",
-            "id": "ATT-ATTEST-1",
+            json!({
+                "type": "attachment",
+                "vendor": "LUKUID",
+                "id": "ATT-ATTEST-1",
             "parent_record_id": "SCAN-ATTEST-1",
             "device_id": device_id,
             "public_key": device.public_key.clone(),
@@ -603,9 +608,10 @@ fn test_luku_verify_attested_attachment_does_not_advance_device_chain() {
             "mime": "text/plain",
             "title": "Desktop Note"
         }),
-        json!({
-            "type": "environment",
-            "id": "ENV-ATTEST-1",
+            json!({
+                "type": "environment",
+                "vendor": "LUKUID",
+                "id": "ENV-ATTEST-1",
             "device_id": device_id,
             "public_key": device.public_key,
             "signature": env_sig,
@@ -672,9 +678,10 @@ fn test_luku_verify_attested_custody_does_not_advance_device_chain() {
     };
 
     let records = vec![
-        json!({
-            "type": "scan",
-            "id": "SCAN-CUSTODY-1",
+            json!({
+                "type": "scan",
+                "vendor": "LUKUID",
+                "id": "SCAN-CUSTODY-1",
             "device_id": device_id,
             "public_key": pub_b64.clone(),
             "signature": scan_sig,
@@ -686,9 +693,10 @@ fn test_luku_verify_attested_custody_does_not_advance_device_chain() {
                 "genesis_hash": "genesis_fake"
             }
         }),
-        json!({
-            "type": "custody",
-            "id": "CUSTODY-1",
+            json!({
+                "type": "custody",
+                "vendor": "LUKUID",
+                "id": "CUSTODY-1",
             "parent_record_id": "SCAN-CUSTODY-1",
             "device_id": device_id,
             "public_key": pub_b64.clone(),
@@ -702,9 +710,10 @@ fn test_luku_verify_attested_custody_does_not_advance_device_chain() {
                 "context_ref": "shipment-123"
             }
         }),
-        json!({
-            "type": "environment",
-            "id": "ENV-CUSTODY-1",
+            json!({
+                "type": "environment",
+                "vendor": "LUKUID",
+                "id": "ENV-CUSTODY-1",
             "device_id": device_id,
             "public_key": device.public_key.clone(),
             "signature": env_sig,

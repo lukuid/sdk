@@ -79,10 +79,15 @@ fn dac_attestation_uses_dac_start_anchor_instead_of_record_time() {
         &DeviceAttestationInputs {
             id: device.get("device_id").and_then(Value::as_str).unwrap().to_string(),
             key: device.get("public_key").and_then(Value::as_str).unwrap().to_string(),
-            attestation_sig: identity.get("signature").and_then(Value::as_str).unwrap().to_string(),
-            ctr: None,
-            vendor: None,
-            record_id: None,
+            attestation_sig: identity
+                .get("dac_signature")
+                .or_else(|| identity.get("signature"))
+                .and_then(Value::as_str)
+                .unwrap()
+                .to_string(),
+            ctr: envelope.get("payload").and_then(|p| p.get("ctr")).and_then(Value::as_u64),
+            vendor: device.get("vendor").and_then(Value::as_str).map(String::from),
+            record_id: envelope.get("id").and_then(Value::as_str).map(String::from),
             certificate_chain: Some(chain),
             created: Some(4102444800),
             attestation_alg: None,

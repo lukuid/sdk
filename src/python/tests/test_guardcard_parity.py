@@ -35,7 +35,9 @@ def verify(envelope: dict):
 class TestLukuIDEnvironmentParity(unittest.TestCase):
     def test_missing_detached_dac_signature_fails(self):
         envelope = get_valid_envelope()
+        envelope.pop("attestation_dac_signature", None)
         envelope.pop("attestation_signature", None)
+        envelope["identity"].pop("dac_signature", None)
         envelope["identity"].pop("signature", None)
 
         issues = verify(envelope)
@@ -46,7 +48,7 @@ class TestLukuIDEnvironmentParity(unittest.TestCase):
 
     def test_heartbeat_signature_requires_trusted_heartbeat_timestamp(self):
         envelope = get_valid_envelope()
-        envelope["heartbeat_signature"] = envelope["identity"]["signature"]
+        # envelope["heartbeat_signature"] is already present
         envelope["identity"].pop("last_sync_utc", None)
         envelope.pop("last_sync_utc", None)
 
@@ -58,7 +60,7 @@ class TestLukuIDEnvironmentParity(unittest.TestCase):
 
     def test_heartbeat_signature_must_match_heartbeat_payload(self):
         envelope = get_valid_envelope()
-        envelope["heartbeat_signature"] = envelope["identity"]["signature"]
+        envelope["heartbeat_signature"] = envelope["identity"].get("dac_signature") or envelope["identity"].get("signature")
         envelope["identity"]["last_sync_utc"] = 1777286310
 
         issues = verify(envelope)
@@ -69,8 +71,8 @@ class TestLukuIDEnvironmentParity(unittest.TestCase):
 
     def test_last_sync_cannot_be_after_record_timestamp(self):
         envelope = get_valid_envelope()
-        envelope["heartbeat_signature"] = envelope["identity"]["signature"]
-        envelope["identity"]["last_sync_utc"] = 1777286312
+        # envelope["heartbeat_signature"] is already present
+        envelope["identity"]["last_sync_utc"] = 1781119207 # record is 1781119206 in valid_envelope.json
 
         issues = verify(envelope)
         self.assertTrue(

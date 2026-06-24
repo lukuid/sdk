@@ -70,7 +70,10 @@ class TestAttestationMetadata(unittest.TestCase):
             DeviceAttestationInputs(
                 id=envelope["device"]["device_id"],
                 key=envelope["device"]["public_key"],
-                attestation_sig=identity["signature"],
+                attestation_sig=identity.get("dac_signature") or identity.get("signature"),
+                vendor=envelope["device"].get("vendor"),
+                ctr=envelope["payload"].get("ctr"),
+                record_id=envelope.get("id"),
                 certificate_chain=chain,
                 created=4102444800,
                 trust_profile="dev",

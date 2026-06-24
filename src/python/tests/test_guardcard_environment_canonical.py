@@ -26,9 +26,15 @@ class TestLukuIDEnvironmentEnvironmentCanonical(unittest.TestCase):
 
         envelope = {
             "type": "environment",
- "id": "...",
+            "id": "ENV-VOC-1",
             "device_id": "GC-TEST-1",
             "public_key": public_key_base64,
+            "vendor": "LUKUID",
+            "device": {
+                "vendor": "LUKUID",
+                "device_id": "GC-TEST-1",
+                "public_key": public_key_base64,
+            },
             "signature": signature,
             "previous_signature": "genesis_fake",
             "canonical_string": canonical,

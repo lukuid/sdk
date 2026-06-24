@@ -57,7 +57,9 @@ describe('LukuID Environment Envelope Parity', () => {
   it('fails when DAC detached attestation signature fields are missing', async () => {
     const envelope = await getValidEnvelope();
     const identity = envelope.identity as JsonObject;
+    delete envelope.attestation_dac_signature;
     delete envelope.attestation_signature;
+    delete identity.dac_signature;
     delete identity.signature;
 
     const issues = await runWithBrowserCrypto(() => LukuFile.verifyEnvelope(envelope, {
@@ -75,7 +77,7 @@ describe('LukuID Environment Envelope Parity', () => {
   it('fails when a heartbeat signature is present without a trusted heartbeat timestamp', async () => {
     const envelope = await getValidEnvelope();
     const identity = envelope.identity as JsonObject;
-    envelope.heartbeat_signature = identity.signature;
+    // envelope.heartbeat_signature is already present in the valid envelope
     delete identity.last_sync_utc;
     delete envelope.last_sync_utc;
 
@@ -94,7 +96,7 @@ describe('LukuID Environment Envelope Parity', () => {
   it('fails when a heartbeat signature reuses the DAC payload signature even with a timestamp', async () => {
     const envelope = await getValidEnvelope();
     const identity = envelope.identity as JsonObject;
-    envelope.heartbeat_signature = identity.signature;
+    envelope.heartbeat_signature = (identity.dac_signature ?? identity.signature) as string;
     identity.last_sync_utc = 1777286310;
 
     const issues = await runWithBrowserCrypto(() => LukuFile.verifyEnvelope(envelope, {
@@ -112,8 +114,8 @@ describe('LukuID Environment Envelope Parity', () => {
   it('fails when trusted heartbeat time is later than the record timestamp', async () => {
     const envelope = await getValidEnvelope();
     const identity = envelope.identity as JsonObject;
-    envelope.heartbeat_signature = identity.signature;
-    identity.last_sync_utc = 1777286312;
+    // envelope.heartbeat_signature is already present in the valid envelope
+    identity.last_sync_utc = 1781119207; // record timestamp is 1781119206 in valid_envelope.json
 
     const issues = await runWithBrowserCrypto(() => LukuFile.verifyEnvelope(envelope, {
       allowUntrustedRoots: false,

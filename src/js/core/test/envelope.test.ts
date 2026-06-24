@@ -129,7 +129,9 @@ describe('LukuFile.verifyEnvelope', () => {
 
   it('should fail when DAC detached signature is absent even if the cert chain still binds the device key', async () => {
     const envelope = await getValidEnvelope();
+    delete (envelope.identity as JsonObject).dac_signature;
     delete (envelope.identity as JsonObject).signature;
+    delete envelope.attestation_dac_signature;
     delete envelope.attestation_signature;
 
     const issues = await runWithBrowserCrypto(() => LukuFile.verifyEnvelope(envelope, {
@@ -145,7 +147,10 @@ describe('LukuFile.verifyEnvelope', () => {
 
   it('should fail if a heartbeat signature is present without a trusted heartbeat timestamp', async () => {
     const envelope = await getValidEnvelope();
-    envelope.heartbeat_signature = (envelope.identity as JsonObject).signature as string;
+    const identity = envelope.identity as JsonObject;
+    // envelope.heartbeat_signature is already present in the valid envelope
+    delete identity.last_sync_utc;
+    delete envelope.last_sync_utc;
 
     const issues = await runWithBrowserCrypto(() => LukuFile.verifyEnvelope(envelope, {
       allowUntrustedRoots: false,

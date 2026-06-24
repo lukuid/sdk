@@ -80,7 +80,7 @@ class LukuArchiveHardeningTest {
         val archive = LukuArchive.exportWithIdentity(
             records = listOf(
                 JSONObject()
-                    .put("type", "scan")
+                    .put("type", "scan").put("vendor", "LUKUID")
                     .put("signature", signCanonical(signer.privateKey, "scan-can"))
                     .put("previous_signature", "genesis_fake")
                     .put("canonical_string", "scan-can")
@@ -92,7 +92,7 @@ class LukuArchiveHardeningTest {
                             .put("genesis_hash", "genesis_fake")
                     )
             ),
-            device = LukuDeviceIdentity(deviceId, signer.publicKeyBase64),
+            device = LukuDeviceIdentity(deviceId, signer.publicKeyBase64, "LUKUID"),
             attachments = emptyMap(),
             signer = LukuSigner(signer.privateKey, signer.publicKeyBase64)
         )

@@ -100,7 +100,7 @@ class LukuArchiveTest {
 
     private fun createValidExport(deviceId: String): Pair<LukuArchive, TestSigner> {
         val signer = createTestSigner()
-        val identity = LukuDeviceIdentity(deviceId, signer.publicKeyBase64)
+        val identity = LukuDeviceIdentity(deviceId, signer.publicKeyBase64, "LUKUID")
 
         val sig1 = signCanonical(signer.privateKey, "can1")
         val sig2 = signCanonical(signer.privateKey, "can2")
@@ -108,15 +108,15 @@ class LukuArchiveTest {
 
         val archive = LukuArchive.exportWithIdentity(
             records = listOf(
-                JSONObject().put("type", "scan").put("signature", sig1).put("previous_signature", "genesis_fake").put("canonical_string", "can1").put(
+                JSONObject().put("type", "scan").put("vendor", "LUKUID").put("signature", sig1).put("previous_signature", "genesis_fake").put("canonical_string", "can1").put(
                     "payload",
                     JSONObject().put("ctr", 1).put("timestamp_utc", 1000).put("genesis_hash", "genesis_fake")
                 ),
-                JSONObject().put("type", "scan").put("signature", sig2).put("previous_signature", sig1).put("canonical_string", "can2").put(
+                JSONObject().put("type", "scan").put("vendor", "LUKUID").put("signature", sig2).put("previous_signature", sig1).put("canonical_string", "can2").put(
                     "payload",
                     JSONObject().put("ctr", 2).put("timestamp_utc", 1005).put("genesis_hash", "genesis_fake")
                 ),
-                JSONObject().put("type", "scan").put("signature", sig3).put("previous_signature", sig2).put("canonical_string", "can3").put(
+                JSONObject().put("type", "scan").put("vendor", "LUKUID").put("signature", sig3).put("previous_signature", sig2).put("canonical_string", "can3").put(
                     "payload",
                     JSONObject().put("ctr", 3).put("timestamp_utc", 1010).put("genesis_hash", "genesis_fake")
                 )
@@ -134,12 +134,12 @@ class LukuArchiveTest {
         val signer = createTestSigner()
         val exported = LukuArchive.export(
             records = listOf(
-                JSONObject().put("type", "scan").put("signature", signCanonical(signer.privateKey, "can1")).put("previous_signature", "genesis_fake").put("canonical_string", "can1").put(
+                JSONObject().put("type", "scan").put("vendor", "LUKUID").put("signature", signCanonical(signer.privateKey, "can1")).put("previous_signature", "genesis_fake").put("canonical_string", "can1").put(
                     "payload",
                     JSONObject().put("ctr", 1).put("timestamp_utc", 1000)
                 )
             ),
-            device = LukuDeviceIdentity("LUK-TEST", signer.publicKeyBase64),
+            device = LukuDeviceIdentity("LUK-TEST", signer.publicKeyBase64, "LUKUID"),
             attachments = emptyMap(),
             signer = LukuSigner(signer.privateKey, signer.publicKeyBase64)
         )
@@ -150,9 +150,9 @@ class LukuArchiveTest {
     }
 
     @Test
-    fun preservesTemporalContinuityManifestMetadata() {
+    fun testPreservesTemporalContinuityManifestMetadata() {
         val signer = createTestSigner()
-        val identity = LukuDeviceIdentity("LUK-META", signer.publicKeyBase64)
+        val identity = LukuDeviceIdentity("LUK-META", signer.publicKeyBase64, "LUKUID")
         val canonical = "manifest-extra-scan"
 
         val block = LukuArchive.buildBlockFromRecords(
@@ -162,7 +162,7 @@ class LukuArchiveTest {
             defaultDevice = identity,
             batch = listOf(
                 JSONObject()
-                    .put("type", "scan")
+                    .put("type", "scan").put("vendor", "LUKUID")
                     .put("signature", signCanonical(signer.privateKey, canonical))
                     .put("previous_signature", "genesis_fake")
                     .put("canonical_string", canonical)
@@ -210,9 +210,9 @@ class LukuArchiveTest {
             blockId = 0,
             timestampUtc = 1000,
             previousBlockHash = null,
-            defaultDevice = LukuDeviceIdentity("LUK-TEST", Base64.getEncoder().encodeToString(ByteArray(32))),
+            defaultDevice = LukuDeviceIdentity("LUK-TEST", Base64.getEncoder().encodeToString(ByteArray(32)), "LUKUID"),
             batch = listOf(
-                JSONObject().put("type", "scan").put("signature", "sig1").put("canonical_string", "can1").put(
+                JSONObject().put("type", "scan").put("vendor", "LUKUID").put("signature", "sig1").put("canonical_string", "can1").put(
                     "payload",
                     JSONObject().put("ctr", 1).put("timestamp_utc", 1000)
                 )
@@ -230,20 +230,20 @@ class LukuArchiveTest {
     }
 
     @Test
-    fun enforcesRequestedNativeContinuityChecks() {
+    fun testEnforcesRequestedNativeContinuityChecks() {
         val signer = createTestSigner()
         val archive = LukuArchive.exportWithIdentity(
             records = listOf(
-                JSONObject().put("type", "environment").put("signature", signCanonical(signer.privateKey, "env-1")).put("previous_signature", "genesis_fake").put("canonical_string", "env-1").put(
+                JSONObject().put("type", "environment").put("vendor", "LUKUID").put("signature", signCanonical(signer.privateKey, "env-1")).put("previous_signature", "genesis_fake").put("canonical_string", "env-1").put(
                     "payload",
                     JSONObject().put("ctr", 1).put("timestamp_utc", 1000).put("genesis_hash", "genesis_fake")
                 ),
-                JSONObject().put("type", "environment").put("signature", signCanonical(signer.privateKey, "env-2")).put("previous_signature", signCanonical(signer.privateKey, "env-1")).put("canonical_string", "env-2").put(
+                JSONObject().put("type", "environment").put("vendor", "LUKUID").put("signature", signCanonical(signer.privateKey, "env-2")).put("previous_signature", signCanonical(signer.privateKey, "env-1")).put("canonical_string", "env-2").put(
                     "payload",
                     JSONObject().put("ctr", 2).put("timestamp_utc", 2000).put("genesis_hash", "genesis_fake")
                 )
             ),
-            device = LukuDeviceIdentity("LUK-CONT", signer.publicKeyBase64),
+            device = LukuDeviceIdentity("LUK-CONT", signer.publicKeyBase64, "LUKUID"),
             attachments = emptyMap(),
             signer = LukuSigner(signer.privateKey, signer.publicKeyBase64),
             options = LukuExportOptions(policy = LukuPolicy(name = "environment", nativeContinuityGapSeconds = 600))
@@ -260,7 +260,7 @@ class LukuArchiveTest {
         val archive = LukuArchive.exportWithIdentity(
             records = listOf(
                 JSONObject()
-                    .put("type", "attachment")
+                    .put("type", "attachment").put("vendor", "LUKUID")
                     .put("id", "ATT-EXT-1")
                     .put("signature", signCanonical(signer.privateKey, "attachment-ext"))
                     .put("previous_signature", "")
@@ -275,7 +275,7 @@ class LukuArchiveTest {
                             .put("signature", fixture.getString("signature"))
                     )
             ),
-            device = LukuDeviceIdentity("LUK-EXT", signer.publicKeyBase64),
+            device = LukuDeviceIdentity("LUK-EXT", signer.publicKeyBase64, "LUKUID"),
             attachments = mapOf(checksum to fixture.getString("attachment_utf8").toByteArray(StandardCharsets.UTF_8)),
             signer = LukuSigner(signer.privateKey, signer.publicKeyBase64)
         )
@@ -301,7 +301,7 @@ class LukuArchiveTest {
         val (archive, _) = createValidExport("LUK-INJ")
         archive.blocks[0].batch.add(
             1,
-            JSONObject().put("type", "scan").put("signature", "fake_sig").put("previous_signature", "doesnt_matter").put(
+            JSONObject().put("type", "scan").put("vendor", "LUKUID").put("signature", "fake_sig").put("previous_signature", "doesnt_matter").put(
                 "payload",
                 JSONObject().put("ctr", 2).put("timestamp_utc", 1002)
             )
@@ -335,7 +335,7 @@ class LukuArchiveTest {
     fun detectsAttachmentCorruption() {
         val (archive, _) = createValidExport("LUK-ATT")
         val checksum = archive.addAttachment("valid_data".toByteArray(StandardCharsets.UTF_8))
-        archive.blocks[0].batch += JSONObject().put("type", "attachment").put("checksum", checksum).put("payload", JSONObject().put("ctr", 3))
+        archive.blocks[0].batch += JSONObject().put("type", "attachment").put("vendor", "LUKUID").put("checksum", checksum).put("payload", JSONObject().put("ctr", 3))
         archive.attachments[checksum] = "tampered_data".toByteArray(StandardCharsets.UTF_8)
         assertTrue(hasIssue(archive.verify(testOptions()), "ATTACHMENT_CORRUPT"))
     }
@@ -352,14 +352,14 @@ class LukuArchiveTest {
             blockId = 0,
             timestampUtc = 1003,
             previousBlockHash = null,
-            defaultDevice = LukuDeviceIdentity(deviceId, signer.publicKeyBase64),
+            defaultDevice = LukuDeviceIdentity(deviceId, signer.publicKeyBase64, "LUKUID"),
             batch = listOf(
-                JSONObject().put("type", "scan").put("id", "SCAN-ATTEST-1").put("device_id", deviceId).put("public_key", signer.publicKeyBase64).put("signature", scanSig).put("previous_signature", "genesis_fake").put("canonical_string", "attested-scan").put(
+                JSONObject().put("type", "scan").put("vendor", "LUKUID").put("id", "SCAN-ATTEST-1").put("device_id", deviceId).put("public_key", signer.publicKeyBase64).put("signature", scanSig).put("previous_signature", "genesis_fake").put("canonical_string", "attested-scan").put(
                     "payload",
                     JSONObject().put("ctr", 1).put("timestamp_utc", 1000).put("genesis_hash", "genesis_fake")
                 ),
-                JSONObject().put("type", "attachment").put("id", "ATT-ATTEST-1").put("parent_record_id", "SCAN-ATTEST-1").put("device_id", deviceId).put("public_key", signer.publicKeyBase64).put("signature", signCanonical(signer.privateKey, "attested-attachment")).put("parent_signature", scanSig).put("canonical_string", "attested-attachment").put("timestamp_utc", 1001).put("checksum", checksum).put("mime", "text/plain").put("title", "Desktop Note"),
-                JSONObject().put("type", "environment").put("id", "ENV-ATTEST-1").put("device_id", deviceId).put("public_key", signer.publicKeyBase64).put("signature", signCanonical(signer.privateKey, "attested-environment")).put("previous_signature", scanSig).put("canonical_string", "attested-environment").put(
+                JSONObject().put("type", "attachment").put("vendor", "LUKUID").put("id", "ATT-ATTEST-1").put("parent_record_id", "SCAN-ATTEST-1").put("device_id", deviceId).put("public_key", signer.publicKeyBase64).put("signature", signCanonical(signer.privateKey, "attested-attachment")).put("parent_signature", scanSig).put("canonical_string", "attested-attachment").put("timestamp_utc", 1001).put("checksum", checksum).put("mime", "text/plain").put("title", "Desktop Note"),
+                JSONObject().put("type", "environment").put("vendor", "LUKUID").put("id", "ENV-ATTEST-1").put("device_id", deviceId).put("public_key", signer.publicKeyBase64).put("signature", signCanonical(signer.privateKey, "attested-environment")).put("previous_signature", scanSig).put("canonical_string", "attested-environment").put(
                     "payload",
                     JSONObject().put("ctr", 2).put("timestamp_utc", 1002)
                 )
@@ -390,17 +390,17 @@ class LukuArchiveTest {
             blockId = 0,
             timestampUtc = 1003,
             previousBlockHash = null,
-            defaultDevice = LukuDeviceIdentity(deviceId, signer.publicKeyBase64),
+            defaultDevice = LukuDeviceIdentity(deviceId, signer.publicKeyBase64, "LUKUID"),
             batch = listOf(
-                JSONObject().put("type", "scan").put("id", "SCAN-CUSTODY-1").put("device_id", deviceId).put("public_key", signer.publicKeyBase64).put("signature", scanSig).put("previous_signature", "genesis_fake").put("canonical_string", "custody-scan").put(
+                JSONObject().put("type", "scan").put("vendor", "LUKUID").put("id", "SCAN-CUSTODY-1").put("device_id", deviceId).put("public_key", signer.publicKeyBase64).put("signature", scanSig).put("previous_signature", "genesis_fake").put("canonical_string", "custody-scan").put(
                     "payload",
                     JSONObject().put("ctr", 1).put("timestamp_utc", 1000).put("genesis_hash", "genesis_fake")
                 ),
-                JSONObject().put("type", "custody").put("id", "CUSTODY-1").put("parent_record_id", "SCAN-CUSTODY-1").put("device_id", deviceId).put("public_key", signer.publicKeyBase64).put("signature", signCanonical(signer.privateKey, "custody-checkpoint")).put("parent_signature", scanSig).put("canonical_string", "custody-checkpoint").put("timestamp_utc", 1001).put(
+                JSONObject().put("type", "custody").put("vendor", "LUKUID").put("id", "CUSTODY-1").put("parent_record_id", "SCAN-CUSTODY-1").put("device_id", deviceId).put("public_key", signer.publicKeyBase64).put("signature", signCanonical(signer.privateKey, "custody-checkpoint")).put("parent_signature", scanSig).put("canonical_string", "custody-checkpoint").put("timestamp_utc", 1001).put(
                     "payload",
                     JSONObject().put("event", "handoff").put("status", "received").put("context_ref", "shipment-123")
                 ),
-                JSONObject().put("type", "environment").put("id", "ENV-CUSTODY-1").put("device_id", deviceId).put("public_key", signer.publicKeyBase64).put("signature", signCanonical(signer.privateKey, "custody-environment")).put("previous_signature", scanSig).put("canonical_string", "custody-environment").put(
+                JSONObject().put("type", "environment").put("vendor", "LUKUID").put("id", "ENV-CUSTODY-1").put("device_id", deviceId).put("public_key", signer.publicKeyBase64).put("signature", signCanonical(signer.privateKey, "custody-environment")).put("previous_signature", scanSig).put("canonical_string", "custody-environment").put(
                     "payload",
                     JSONObject().put("ctr", 2).put("timestamp_utc", 1002)
                 )

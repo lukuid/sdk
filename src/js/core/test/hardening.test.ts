@@ -99,7 +99,8 @@ describe('Archive Hardening', () => {
       ],
       {
         device_id: 'LUK-JS-HARDEN',
-        public_key: signer.publicKeyBase64
+        public_key: signer.publicKeyBase64,
+        vendor: 'LUKUID'
       },
       {},
       { privateKey: signer.privateKey }

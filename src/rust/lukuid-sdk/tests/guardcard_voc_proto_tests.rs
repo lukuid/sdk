@@ -102,9 +102,15 @@ fn test_verify_envelope_accepts_new_voc_canonical_and_rejects_old_format() {
 
     let envelope = json!({
         "type": "environment",
- "id": "...",
+        "id": "ENV-VOC-1",
         "device_id": "GC-TEST-1",
         "public_key": public_key,
+        "vendor": "LUKUID",
+        "device": {
+            "vendor": "LUKUID",
+            "device_id": "GC-TEST-1",
+            "public_key": public_key
+        },
         "signature": signature,
         "previous_signature": "genesis_fake",
         "canonical_string": canonical,

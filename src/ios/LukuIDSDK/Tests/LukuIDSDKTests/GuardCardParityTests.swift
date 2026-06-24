@@ -38,8 +38,10 @@ final class LukuIDEnvironmentParityTests: XCTestCase {
 
     func testMissingDetachedDacSignatureFails() {
         var envelope = getValidEnvelope()
+        envelope.removeValue(forKey: "attestation_dac_signature")
         envelope.removeValue(forKey: "attestation_signature")
         if var identity = envelope["identity"] as? [String: Any] {
+            identity.removeValue(forKey: "dac_signature")
             identity.removeValue(forKey: "signature")
             envelope["identity"] = identity
         }
@@ -53,13 +55,12 @@ final class LukuIDEnvironmentParityTests: XCTestCase {
 
     func testHeartbeatSignatureRequiresTrustedHeartbeatTimestamp() {
         var envelope = getValidEnvelope()
-        guard var identity = envelope["identity"] as? [String: Any],
-              let signature = identity["signature"] as? String else {
-            XCTFail("Missing identity signature")
+        guard var identity = envelope["identity"] as? [String: Any] else {
+            XCTFail("Missing identity")
             return
         }
 
-        envelope["heartbeat_signature"] = signature
+        // heartbeat_signature is already present in the valid envelope
         identity.removeValue(forKey: "last_sync_utc")
         envelope["identity"] = identity
         envelope.removeValue(forKey: "last_sync_utc")
@@ -73,13 +74,12 @@ final class LukuIDEnvironmentParityTests: XCTestCase {
 
     func testHeartbeatSignatureMustMatchHeartbeatPayload() {
         var envelope = getValidEnvelope()
-        guard var identity = envelope["identity"] as? [String: Any],
-              let signature = identity["signature"] as? String else {
-            XCTFail("Missing identity signature")
+        guard var identity = envelope["identity"] as? [String: Any] else {
+            XCTFail("Missing identity")
             return
         }
 
-        envelope["heartbeat_signature"] = signature
+        // heartbeat_signature is already present
         identity["last_sync_utc"] = 1777286310
         envelope["identity"] = identity
 
@@ -92,14 +92,13 @@ final class LukuIDEnvironmentParityTests: XCTestCase {
 
     func testLastSyncCannotBeAfterRecordTimestamp() {
         var envelope = getValidEnvelope()
-        guard var identity = envelope["identity"] as? [String: Any],
-              let signature = identity["signature"] as? String else {
-            XCTFail("Missing identity signature")
+        guard var identity = envelope["identity"] as? [String: Any] else {
+            XCTFail("Missing identity")
             return
         }
 
-        envelope["heartbeat_signature"] = signature
-        identity["last_sync_utc"] = 1777286312
+        // heartbeat_signature is already present
+        identity["last_sync_utc"] = 1781119207
         envelope["identity"] = identity
 
         let issues = verify(envelope)

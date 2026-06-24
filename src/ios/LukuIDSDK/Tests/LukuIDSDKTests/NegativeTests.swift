@@ -88,11 +88,10 @@ final class NegativeTamperingTests: XCTestCase {
         let archive = try LukuFile.open(data: data)
         
         // Tamper with root fingerprint
-        if let fp = archive.blocks[0].attestationRootFingerprint {
-            let index = fp.index(fp.startIndex, offsetBy: 10)
-            let replacement = fp[index] == "a" ? "b" : "a"
-            archive.blocks[0].attestationRootFingerprint = String(fp.prefix(10) + String(replacement) + fp.dropFirst(11))
-        }
+        let fp = archive.blocks[0].attestationRootFingerprint ?? String(repeating: "0", count: 64)
+        let index = fp.index(fp.startIndex, offsetBy: 10)
+        let replacement = fp[index] == "a" ? "b" : "a"
+        archive.blocks[0].attestationRootFingerprint = String(fp.prefix(10) + String(replacement) + fp.dropFirst(11))
         
         let issues = archive.verify(options: LukuVerifyOptions(allowUntrustedRoots: false, trustProfile: "dev"))
         XCTAssertTrue(issues.contains { $0.code == "ATTESTATION_FAILED" || $0.code == "BLOCK_HASH_INVALID" })

@@ -99,7 +99,8 @@ async function createValidExport(deviceId: string): Promise<{
   const signer = await createTestSigner();
   const identity: LukuDeviceIdentity = {
     device_id: deviceId,
-    public_key: signer.publicKeyBase64
+    public_key: signer.publicKeyBase64,
+    vendor: 'LUKUID'
   };
 
   const canonical1 = 'can1';
@@ -156,7 +157,8 @@ describe('LukuFile', () => {
     const signer = await createTestSigner();
     const identity: LukuDeviceIdentity = {
       device_id: 'LUK-TEST',
-      public_key: signer.publicKeyBase64
+      public_key: signer.publicKeyBase64,
+      vendor: 'LUKUID'
     };
     const canonical = 'can1';
 
@@ -185,7 +187,8 @@ describe('LukuFile', () => {
     const signer = await createTestSigner();
     const identity: LukuDeviceIdentity = {
       device_id: 'LUK-META',
-      public_key: signer.publicKeyBase64
+      public_key: signer.publicKeyBase64,
+      vendor: 'LUKUID'
     };
     const canonical = 'manifest-extra-scan';
     const signature = await signCanonical(signer.signer.privateKey, canonical);
@@ -281,7 +284,8 @@ describe('LukuFile', () => {
     const signer = await createTestSigner();
     const identity: LukuDeviceIdentity = {
       device_id: 'LUK-CONT',
-      public_key: signer.publicKeyBase64
+      public_key: signer.publicKeyBase64,
+      vendor: 'LUKUID'
     };
 
     const archive = await LukuFile.exportWithIdentity(
@@ -328,7 +332,8 @@ describe('LukuFile', () => {
     const signer = await createTestSigner();
     const identity: LukuDeviceIdentity = {
       device_id: 'LUK-EXT',
-      public_key: signer.publicKeyBase64
+      public_key: signer.publicKeyBase64,
+      vendor: 'LUKUID'
     };
 
     const archive = await LukuFile.exportWithIdentity(
@@ -437,7 +442,7 @@ describe('LukuFile', () => {
       0,
       1003,
       null,
-      { device_id: deviceId, public_key: signer.publicKeyBase64 },
+      { device_id: deviceId, public_key: signer.publicKeyBase64, vendor: 'LUKUID' },
       [
         {
           type: 'scan',
@@ -505,7 +510,7 @@ describe('LukuFile', () => {
       0,
       1003,
       null,
-      { device_id: deviceId, public_key: signer.publicKeyBase64 },
+      { device_id: deviceId, public_key: signer.publicKeyBase64, vendor: 'LUKUID' },
       [
         {
           type: 'scan',

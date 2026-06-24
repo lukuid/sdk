@@ -26,12 +26,13 @@ async fn create_valid_export(device_id: &str) -> LukuFile {
 
     let device = LukuDeviceIdentity {
         device_id: device_id.to_string(),
-        public_key: public_key.clone(),
-        vendor: None,
+        public_key: public_key,
+        vendor: Some("LUKUID".to_string()),
     };
 
     let records = vec![json!({
         "type": "scan",
+        "vendor": "LUKUID",
         "signature": base64::Engine::encode(&base64::engine::general_purpose::STANDARD, signing_key.sign(b"can1").to_bytes()),
         "previous_signature": "genesis_fake",
         "canonical_string": "can1",

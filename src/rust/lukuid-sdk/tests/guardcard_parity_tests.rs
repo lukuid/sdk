@@ -40,9 +40,11 @@ fn verify(envelope: &Value) -> Vec<lukuid_sdk::VerificationIssue> {
 fn test_missing_detached_dac_signature_fails() {
     let mut envelope = get_valid_envelope();
     if let Some(object) = envelope.as_object_mut() {
+        object.remove("attestation_dac_signature");
         object.remove("attestation_signature");
     }
     if let Some(identity) = envelope.get_mut("identity").and_then(|v| v.as_object_mut()) {
+        identity.remove("dac_signature");
         identity.remove("signature");
     }
 
@@ -57,8 +59,7 @@ fn test_missing_detached_dac_signature_fails() {
 #[test]
 fn test_heartbeat_signature_requires_trusted_heartbeat_timestamp() {
     let mut envelope = get_valid_envelope();
-    let signature = envelope["identity"]["signature"].as_str().unwrap().to_string();
-    envelope["heartbeat_signature"] = Value::String(signature);
+    // heartbeat_signature is already present in valid_envelope.json
     if let Some(identity) = envelope.get_mut("identity").and_then(|v| v.as_object_mut()) {
         identity.remove("last_sync_utc");
     }
@@ -77,8 +78,7 @@ fn test_heartbeat_signature_requires_trusted_heartbeat_timestamp() {
 #[test]
 fn test_heartbeat_signature_must_match_heartbeat_payload() {
     let mut envelope = get_valid_envelope();
-    let signature = envelope["identity"]["signature"].as_str().unwrap().to_string();
-    envelope["heartbeat_signature"] = Value::String(signature);
+    // heartbeat_signature is already present
     if let Some(identity) = envelope.get_mut("identity").and_then(|v| v.as_object_mut()) {
         identity.insert("last_sync_utc".to_string(), Value::from(1777286310_i64));
     }
@@ -94,10 +94,9 @@ fn test_heartbeat_signature_must_match_heartbeat_payload() {
 #[test]
 fn test_last_sync_cannot_be_after_record_timestamp() {
     let mut envelope = get_valid_envelope();
-    let signature = envelope["identity"]["signature"].as_str().unwrap().to_string();
-    envelope["heartbeat_signature"] = Value::String(signature);
+    // heartbeat_signature is already present
     if let Some(identity) = envelope.get_mut("identity").and_then(|v| v.as_object_mut()) {
-        identity.insert("last_sync_utc".to_string(), Value::from(1777286312_i64));
+        identity.insert("last_sync_utc".to_string(), Value::from(1781119207_i64)); // record is 1781119206
     }
 
     let issues = verify(&envelope);

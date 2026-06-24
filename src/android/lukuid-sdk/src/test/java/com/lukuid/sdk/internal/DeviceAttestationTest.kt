@@ -99,11 +99,15 @@ class DeviceAttestationTest {
             envelope.getString("attestation_intermediate_der")
         ).joinToString("") { pemFromDerBase64(it) }
 
+        val payload = envelope.getJSONObject("payload")
         val result = verifyDeviceAttestation(
             DeviceAttestationInput(
                 id = device.getString("device_id"),
                 key = device.getString("public_key"),
-                attestationSig = identity.getString("signature"),
+                attestationSig = identity.optString("dac_signature", identity.optString("signature", "")),
+                vendor = device.optString("vendor", null),
+                ctr = if (payload.has("ctr")) payload.getLong("ctr") else null,
+                recordId = envelope.optString("id", null),
                 certificateChain = chain,
                 created = 4102444800L,
                 trustProfile = "dev"

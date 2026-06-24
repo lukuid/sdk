@@ -49,6 +49,12 @@ final class LukuIDEnvironmentVocTests: XCTestCase {
             "id": "ENV-VOC-1",
             "device_id": "GC-TEST-1",
             "public_key": publicKeyBase64,
+            "vendor": "LUKUID",
+            "device": [
+                "vendor": "LUKUID",
+                "device_id": "GC-TEST-1",
+                "public_key": publicKeyBase64
+            ],
             "signature": signature,
             "previous_signature": "genesis_fake",
             "canonical_string": canonical,

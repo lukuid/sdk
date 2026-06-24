@@ -100,10 +100,14 @@ final class AttestationTests: XCTestCase {
             envelope["attestation_intermediate_der"] as? String
         ].compactMap { $0 }.map(pemFromDerBase64).joined()
 
+        let payload = envelope["payload"] as! [String: Any]
         let input = DeviceAttestationInputs(
             id: device["device_id"] as! String,
             key: device["public_key"] as! String,
-            attestationSig: identity["signature"] as! String,
+            attestationSig: (identity["dac_signature"] as? String) ?? (identity["signature"] as? String) ?? "",
+            ctr: payload["ctr"] as? UInt64,
+            vendor: device["vendor"] as? String,
+            recordID: envelope["id"] as? String,
             certificateChain: chain,
             created: 4_102_444_800,
             attestationAlg: nil,

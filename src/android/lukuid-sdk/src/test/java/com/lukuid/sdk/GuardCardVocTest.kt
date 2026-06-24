@@ -62,6 +62,12 @@ class LukuIDEnvironmentVocTest {
             "event_id" to "ENV-VOC-1",
             "device_id" to "GC-TEST-1",
             "public_key" to publicKeyBase64,
+            "vendor" to "LUKUID",
+            "device" to mapOf(
+                "vendor" to "LUKUID",
+                "device_id" to "GC-TEST-1",
+                "public_key" to publicKeyBase64
+            ),
             "signature" to signature,
             "previous_signature" to "genesis_fake",
             "canonical_string" to canonical,

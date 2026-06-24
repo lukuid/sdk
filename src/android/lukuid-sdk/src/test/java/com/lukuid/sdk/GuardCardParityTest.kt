@@ -26,8 +26,11 @@ class LukuIDEnvironmentParityTest {
     @Test
     fun testMissingDetachedDacSignatureFails() {
         val json = JSONObject(getValidEnvelopeStr())
+        json.remove("attestation_dac_signature")
         json.remove("attestation_signature")
-        json.getJSONObject("identity").remove("signature")
+        val identity = json.getJSONObject("identity")
+        identity.remove("dac_signature")
+        identity.remove("signature")
 
         val issues = verify(json)
         val summary = issues.joinToString { "${it.code}:${it.message}" }
@@ -41,7 +44,7 @@ class LukuIDEnvironmentParityTest {
     fun testHeartbeatSignatureRequiresTrustedHeartbeatTimestamp() {
         val json = JSONObject(getValidEnvelopeStr())
         val identity = json.getJSONObject("identity")
-        json.put("heartbeat_signature", identity.getString("signature"))
+        // heartbeat_signature is already present in the valid envelope
         identity.remove("last_sync_utc")
         json.remove("last_sync_utc")
 
@@ -57,7 +60,8 @@ class LukuIDEnvironmentParityTest {
     fun testHeartbeatSignatureMustMatchHeartbeatPayload() {
         val json = JSONObject(getValidEnvelopeStr())
         val identity = json.getJSONObject("identity")
-        json.put("heartbeat_signature", identity.getString("signature"))
+        // Use an intentional mismatch: the signature in the envelope matches the payload, 
+        // but if we change the payload (by changing last_sync_utc) it should fail.
         identity.put("last_sync_utc", 1777286310L)
 
         val issues = verify(json)
@@ -72,8 +76,8 @@ class LukuIDEnvironmentParityTest {
     fun testLastSyncCannotBeAfterRecordTimestamp() {
         val json = JSONObject(getValidEnvelopeStr())
         val identity = json.getJSONObject("identity")
-        json.put("heartbeat_signature", identity.getString("signature"))
-        identity.put("last_sync_utc", 1777286312L)
+        // heartbeat_signature is already present
+        identity.put("last_sync_utc", 1781119207L)
 
         val issues = verify(json)
         val summary = issues.joinToString { "${it.code}:${it.message}" }

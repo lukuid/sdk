@@ -32,7 +32,7 @@ final class LukuArchiveTests: XCTestCase {
 
     private func createValidExport(deviceID: String) throws -> (archive: LukuArchive, signer: TestSigner) {
         let signer = createTestSigner()
-        let identity = LukuDeviceIdentity(deviceID: deviceID, publicKey: signer.publicKeyBase64)
+        let identity = LukuDeviceIdentity(deviceID: deviceID, publicKey: signer.publicKeyBase64, vendor: "LUKUID")
 
         let canonical1 = "can1"
         let canonical2 = "can2"
@@ -136,7 +136,7 @@ final class LukuArchiveTests: XCTestCase {
 
     func testExportsAndReopensArchives() throws {
         let signer = createTestSigner()
-        let identity = LukuDeviceIdentity(deviceID: "LUK-TEST", publicKey: signer.publicKeyBase64)
+        let identity = LukuDeviceIdentity(deviceID: "LUK-TEST", publicKey: signer.publicKeyBase64, vendor: "LUKUID")
         let canonical = "can1"
 
         let exported = try LukuFile.export(
@@ -163,7 +163,7 @@ final class LukuArchiveTests: XCTestCase {
 
     func testPreservesTemporalContinuityManifestMetadata() throws {
         let signer = createTestSigner()
-        let identity = LukuDeviceIdentity(deviceID: "LUK-META", publicKey: signer.publicKeyBase64)
+        let identity = LukuDeviceIdentity(deviceID: "LUK-META", publicKey: signer.publicKeyBase64, vendor: "LUKUID")
         let canonical = "manifest-extra-scan"
 
         let block = try LukuFile.buildBlockFromRecords(
@@ -211,7 +211,7 @@ final class LukuArchiveTests: XCTestCase {
     }
 
     func testBuildsBlockFallbackCertFields() throws {
-        let identity = LukuDeviceIdentity(deviceID: "LUK-TEST", publicKey: Data(repeating: 0, count: 32).base64EncodedString())
+        let identity = LukuDeviceIdentity(deviceID: "LUK-TEST", publicKey: Data(repeating: 0, count: 32).base64EncodedString(), vendor: "LUKUID")
         let block = try LukuFile.buildBlockFromRecords(
             blockID: 0,
             timestampUTC: 1000,
@@ -268,7 +268,7 @@ final class LukuArchiveTests: XCTestCase {
                     ]
                 ]
             ],
-            device: LukuDeviceIdentity(deviceID: "LUK-CONT", publicKey: signer.publicKeyBase64),
+            device: LukuDeviceIdentity(deviceID: "LUK-CONT", publicKey: signer.publicKeyBase64, vendor: "LUKUID"),
             attachments: [:],
             signer: LukuSigner(privateKey: signer.privateKey, publicKeyBase64: signer.publicKeyBase64),
             options: LukuExportOptions(policy: LukuPolicy(name: "environment", nativeContinuityGapSeconds: 600))
@@ -304,7 +304,7 @@ final class LukuArchiveTests: XCTestCase {
                     "signature": fixture["signature"] as? String ?? ""
                 ]
             ]],
-            device: LukuDeviceIdentity(deviceID: "LUK-EXT", publicKey: signer.publicKeyBase64),
+            device: LukuDeviceIdentity(deviceID: "LUK-EXT", publicKey: signer.publicKeyBase64, vendor: "LUKUID"),
             attachments: [checksum: Data((fixture["attachment_utf8"] as? String ?? "").utf8)],
             signer: LukuSigner(privateKey: signer.privateKey, publicKeyBase64: signer.publicKeyBase64)
         )
@@ -394,7 +394,7 @@ final class LukuArchiveTests: XCTestCase {
             blockID: 0,
             timestampUTC: 1003,
             previousBlockHash: nil,
-            defaultDevice: LukuDeviceIdentity(deviceID: deviceID, publicKey: signer.publicKeyBase64),
+            defaultDevice: LukuDeviceIdentity(deviceID: deviceID, publicKey: signer.publicKeyBase64, vendor: "LUKUID"),
             batch: [
                 [
                     "type": "scan",
@@ -466,7 +466,7 @@ final class LukuArchiveTests: XCTestCase {
             blockID: 0,
             timestampUTC: 1003,
             previousBlockHash: nil,
-            defaultDevice: LukuDeviceIdentity(deviceID: deviceID, publicKey: signer.publicKeyBase64),
+            defaultDevice: LukuDeviceIdentity(deviceID: deviceID, publicKey: signer.publicKeyBase64, vendor: "LUKUID"),
             batch: [
                 [
                     "type": "scan",

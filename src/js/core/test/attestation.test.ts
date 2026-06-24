@@ -118,7 +118,10 @@ describe('Device Attestation', () => {
             const result = await verifyDeviceAttestation({
                 id: typeof record.device_id === 'string' ? record.device_id : block.device.device_id,
                 key: typeof record.public_key === 'string' ? record.public_key : block.device.public_key,
-                attestationSig: typeof identity?.signature === 'string' ? identity.signature : '',
+                attestationSig: (typeof identity?.dac_signature === 'string' ? identity.dac_signature : (typeof identity?.signature === 'string' ? identity.signature : '')),
+                vendor: typeof record.vendor === 'string' ? record.vendor : block.device.vendor,
+                ctr: typeof record.payload === 'object' && record.payload !== null ? (record.payload as any).ctr : undefined,
+                recordId: record.id as string,
                 certificateChain,
                 trustProfile: 'dev'
             });
@@ -147,7 +150,10 @@ describe('Device Attestation', () => {
         const result = await verifyDeviceAttestation({
             id: typeof record.device_id === 'string' ? record.device_id : block.device.device_id,
             key: typeof record.public_key === 'string' ? record.public_key : block.device.public_key,
-            attestationSig: typeof identity?.signature === 'string' ? identity.signature : '',
+            attestationSig: (typeof identity?.dac_signature === 'string' ? identity.dac_signature : (typeof identity?.signature === 'string' ? identity.signature : '')),
+            vendor: typeof record.vendor === 'string' ? record.vendor : block.device.vendor,
+            ctr: typeof record.payload === 'object' && record.payload !== null ? (record.payload as any).ctr : undefined,
+            recordId: record.id as string,
             certificateChain,
             created: 4102444800,
             trustProfile: 'dev'
