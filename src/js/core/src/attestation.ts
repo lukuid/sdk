@@ -422,6 +422,7 @@ function parsePemChain(chainPem: string): ParsedCertificate[] {
 }
 
 interface NodeLikeX509Certificate {
+  raw: Uint8Array;
   subject: string;
   validFrom: string;
   validTo: string;
