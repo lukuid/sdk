@@ -776,7 +776,8 @@ class LukuArchive private constructor(
             val device = if (deviceJson != null) {
                 LukuDeviceIdentity(
                     deviceId = deviceJson.optString("device_id", defaultDevice.deviceId),
-                    publicKey = deviceJson.optString("public_key", defaultDevice.publicKey)
+                    publicKey = deviceJson.optString("public_key", defaultDevice.publicKey),
+                    vendor = deviceJson.optString("vendor").takeIf { it.isNotBlank() } ?: defaultDevice.vendor
                 )
             } else {
                 defaultDevice

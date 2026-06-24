@@ -963,7 +963,8 @@ export class LukuFile {
     const device: LukuDeviceIdentity = recordLevelDevice
       ? {
           device_id: asString(recordLevelDevice.device_id) ?? defaultDevice.device_id,
-          public_key: asString(recordLevelDevice.public_key) ?? defaultDevice.public_key
+          public_key: asString(recordLevelDevice.public_key) ?? defaultDevice.public_key,
+          vendor: asString(recordLevelDevice.vendor) ?? defaultDevice.vendor
         }
       : defaultDevice;
 

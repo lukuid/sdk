@@ -166,7 +166,10 @@ class LukuDeviceIdentity:
         )
 
     def json_object(self) -> dict[str, Any]:
-        return {"device_id": self.device_id, "public_key": self.public_key}
+        obj = {"device_id": self.device_id, "public_key": self.public_key}
+        if self.vendor:
+            obj["vendor"] = self.vendor
+        return obj
 
 
 @dataclass(slots=True)
@@ -1049,6 +1052,7 @@ class LukuFile:
         device = LukuDeviceIdentity(
             device_id=str(record_device.get("device_id", default_device.device_id)),
             public_key=str(record_device.get("public_key", default_device.public_key)),
+            vendor=str(record_device["vendor"]) if record_device.get("vendor") else default_device.vendor,
         )
 
         def common_identity_value(key: str) -> str | None:
