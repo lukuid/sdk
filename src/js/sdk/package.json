@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts src/env.ts src/env.browser.ts --format esm,cjs --dts --sourcemap --outDir dist",
-    "lint": "pnpm --dir ../core build && pnpm --dir ../transport-webble build && pnpm --dir ../transport-webusb build && pnpm --dir ../transport-ble-node build && pnpm --dir ../transport-serial-node build && tsc --noEmit",
+    "lint": "pnpm --dir ../core build && pnpm --dir ../transport-webble build && pnpm --dir ../transport-webusb build && pnpm --dir ../transport-webserial build && pnpm --dir ../transport-ble-node build && pnpm --dir ../transport-serial-node build && tsc --noEmit",
     "test": "echo 'No tests yet'"
   },
   "exports": {
