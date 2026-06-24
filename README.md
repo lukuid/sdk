@@ -61,7 +61,9 @@ When you want to cut a new SDK release:
 
 1. Update the canonical semver and sync every derived manifest:
    `python3 scripts/version_sync.py apply 1.0.8`
-2. Verify that every managed package file matches:
+2. Update the Rust lockfile to match the new version:
+   `cargo check --manifest-path src/rust/lukuid-sdk/Cargo.toml`
+3. Verify that every managed package file matches:
    `python3 scripts/version_sync.py check`
 3. Review the resulting manifest changes and commit them normally.
 4. Create the release tag as `v1.0.8` after the release commit is on `main`.
