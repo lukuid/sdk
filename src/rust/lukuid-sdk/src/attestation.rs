@@ -534,6 +534,8 @@ fn validate_certificate_chain_with_anchor(
                 if attr.attr_type().to_string() == "2.5.4.10" { // OID for organizationName
                     if let Ok(value) = attr.attr_value().as_str() {
                         leaf_vendor = Some(value.to_string());
+                    } else if let Ok(value) = std::str::from_utf8(attr.attr_value().data) {
+                        leaf_vendor = Some(value.to_string());
                     }
                 }
             }
@@ -762,17 +764,58 @@ fn verify_signature_robust(sig: &[u8], msg: &[u8], pubkey_spki: &[u8]) -> bool {
             let mut sig_arr = [0u8; 64];
             sig_arr.copy_from_slice(sig);
             let s = ed25519::Signature::from_bytes(&sig_arr);
-            return vk.verify(msg, &s).is_ok();
+            if vk.verify(msg, &s).is_ok() {
+                return true;
+            }
         }
     }
 
     // 3. Try ECDSA (P-256) via ring
     if pubkey_spki.len() >= 64 {
         use ring::signature;
+        if sig.len() == 64 {
+            let peer_public_key =
+                signature::UnparsedPublicKey::new(&signature::ECDSA_P256_SHA256_FIXED, pubkey_spki);
+            if peer_public_key.verify(msg, sig).is_ok() {
+                return true;
+            }
+        }
         let peer_public_key =
             signature::UnparsedPublicKey::new(&signature::ECDSA_P256_SHA256_ASN1, pubkey_spki);
-        return peer_public_key.verify(msg, sig).is_ok();
+        if peer_public_key.verify(msg, sig).is_ok() {
+            return true;
+        }
     }
 
     false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_verify_signature_robust_p256_fixed() {
+        use ring::signature::{self, EcdsaKeyPair, KeyPair};
+        let rng = ring::rand::SystemRandom::new();
+        let pkcs8_bytes = signature::EcdsaKeyPair::generate_pkcs8(
+            &signature::ECDSA_P256_SHA256_FIXED_SIGNING,
+            &rng,
+        ).unwrap();
+
+        let key_pair = EcdsaKeyPair::from_pkcs8(
+            &signature::ECDSA_P256_SHA256_FIXED_SIGNING,
+            pkcs8_bytes.as_ref(),
+            &rng,
+        ).unwrap();
+
+        let msg = b"hello world";
+        let sig = key_pair.sign(&rng, msg).unwrap();
+        let pubkey = key_pair.public_key().as_ref();
+
+        assert_eq!(sig.as_ref().len(), 64);
+        assert!(pubkey.len() >= 64);
+
+        assert!(verify_signature_robust(sig.as_ref(), msg, pubkey));
+    }
 }

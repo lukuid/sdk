@@ -368,6 +368,7 @@ internal class LukuCodec(
         val map = mutableMapOf<String, Any?>()
         map["version"] = record.version
         map["scan_id"] = record.id
+        map["id"] = record.id
         map["signature"] = record.signature
         map["previous_signature"] = record.previousSignature
         if (record.hasPayload()) {
@@ -401,6 +402,7 @@ internal class LukuCodec(
         val map = mutableMapOf<String, Any?>()
         map["version"] = record.version
         map["event_id"] = record.id
+        map["id"] = record.id
         map["signature"] = record.signature
         map["previous_signature"] = record.previousSignature
         map["canonical_string"] = record.canonicalString

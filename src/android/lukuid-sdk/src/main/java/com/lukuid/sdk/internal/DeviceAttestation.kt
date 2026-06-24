@@ -255,14 +255,12 @@ internal fun verifyDeviceAttestation(input: DeviceAttestationInput, revocationMa
     }
 
     if (leafPublicKey != null) {
-        try {
-            for (payloadString in payloads) {
-                val sig = Signature.getInstance("Ed25519", BouncyCastleProvider.PROVIDER_NAME)
-                sig.initVerify(leafPublicKey)
-                sig.update(payloadString.toByteArray(StandardCharsets.UTF_8))
-                if (sig.verify(signatureBytes)) return VerificationResult(true, null)
+        for (payloadString in payloads) {
+            val payloadBytes = payloadString.toByteArray(StandardCharsets.UTF_8)
+            if (verifySignatureRobust(signatureBytes, payloadBytes, leafPublicKey)) {
+                return VerificationResult(true, null)
             }
-        } catch (e: Exception) { /* Try fallback */ }
+        }
     }
     
     // Legacy fallback
@@ -271,10 +269,10 @@ internal fun verifyDeviceAttestation(input: DeviceAttestationInput, revocationMa
             val cf = CertificateFactory.getInstance("X.509", BouncyCastleProvider.PROVIDER_NAME)
             val root = cf.generateCertificate(ByteArrayInputStream(rootPem.toByteArray())) as X509Certificate
             for (payloadString in payloads) {
-                val sig = Signature.getInstance("Ed25519", BouncyCastleProvider.PROVIDER_NAME)
-                sig.initVerify(root.publicKey)
-                sig.update(payloadString.toByteArray(StandardCharsets.UTF_8))
-                if (sig.verify(signatureBytes)) return VerificationResult(true, null)
+                val payloadBytes = payloadString.toByteArray(StandardCharsets.UTF_8)
+                if (verifySignatureRobust(signatureBytes, payloadBytes, root.publicKey)) {
+                    return VerificationResult(true, null)
+                }
             }
         } catch (e: Exception) { continue }
     }
@@ -316,32 +314,18 @@ internal fun verifyHeartbeatAttestation(input: HeartbeatAttestationInput, revoca
     }
 
     if (leafPublicKey != null) {
-        try {
-            for (payloadString in payloads) {
-                val rawPublicKey = extractRawPublicKey(leafPublicKey)
-                val algorithm = when {
-                    rawPublicKey.size == 32 -> "Ed25519"
-                    signatureBytes.size == 3309 -> "ML-DSA"
-                    else -> "SHA256withECDSA"
-                }
-                val sig = Signature.getInstance(algorithm, BouncyCastleProvider.PROVIDER_NAME)
-                sig.initVerify(leafPublicKey)
-                sig.update(payloadString.toByteArray(StandardCharsets.UTF_8))
-                if (sig.verify(signatureBytes)) return VerificationResult(true, null)
+        for (payloadString in payloads) {
+            val payloadBytes = payloadString.toByteArray(StandardCharsets.UTF_8)
+            if (verifySignatureRobust(signatureBytes, payloadBytes, leafPublicKey)) {
+                return VerificationResult(true, null)
             }
-        } catch (e: Exception) {
-            return VerificationResult(false, "Heartbeat verification failed: ${e.message}")
         }
     }
 
     if (authorityPublicKey != null) {
-        try {
-            val sig = Signature.getInstance("Ed25519", BouncyCastleProvider.PROVIDER_NAME)
-            sig.initVerify(authorityPublicKey)
-            sig.update("heartbeat:${input.id}:${input.lastSyncUtc}".toByteArray(StandardCharsets.UTF_8))
-            if (sig.verify(signatureBytes)) return VerificationResult(true, null)
-        } catch (e: Exception) {
-            return VerificationResult(false, "Heartbeat verification failed: ${e.message}")
+        val payloadBytes = "heartbeat:${input.id}:${input.lastSyncUtc}".toByteArray(StandardCharsets.UTF_8)
+        if (verifySignatureRobust(signatureBytes, payloadBytes, authorityPublicKey)) {
+            return VerificationResult(true, null)
         }
     }
 
@@ -442,25 +426,12 @@ internal fun publicKeyMatchesEd25519CertificateLeaf(certificate: X509Certificate
 }
 
 internal fun verifyPayloadSignatureWithPublicKey(publicKey: PublicKey, signatureBase64: String, payload: String): VerificationResult {
-    if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
-        Security.insertProviderAt(BouncyCastleProvider(), 1)
-    }
-
     val signatureBytes = decodeBase64(signatureBase64)
         ?: return VerificationResult(false, "signature is not valid base64")
 
-    return try {
-        val rawPublicKey = extractRawPublicKey(publicKey)
-        val algorithm = when {
-            rawPublicKey.size == 32 -> "Ed25519"
-            else -> "SHA256withECDSA"
-        }
-        val sig = Signature.getInstance(algorithm, BouncyCastleProvider.PROVIDER_NAME)
-        sig.initVerify(publicKey)
-        sig.update(payload.toByteArray(StandardCharsets.UTF_8))
-        if (sig.verify(signatureBytes)) VerificationResult(true, null)
-        else VerificationResult(false, "Signature verification failed against certificate public key")
-    } catch (e: Exception) {
+    return if (verifySignatureRobust(signatureBytes, payload.toByteArray(StandardCharsets.UTF_8), publicKey)) {
+        VerificationResult(true, null)
+    } else {
         VerificationResult(false, "Signature verification failed against certificate public key")
     }
 }
@@ -538,11 +509,12 @@ internal fun verifyExternalIdentity(input: ExternalIdentityInput, revocationMana
     if (!isTrusted) return VerificationResult(false, "Root fingerprint $actualRootFingerprint is not in the trusted list")
 
     return try {
-        val sig = Signature.getInstance("Ed25519", BouncyCastleProvider.PROVIDER_NAME)
-        sig.initVerify(certs[0].publicKey)
-        sig.update(input.expectedPayload.toByteArray(StandardCharsets.UTF_8))
-        if (sig.verify(signatureBytes)) VerificationResult(true, null)
-        else VerificationResult(false, "External identity signature verification failed")
+        val payloadBytes = input.expectedPayload.toByteArray(StandardCharsets.UTF_8)
+        if (verifySignatureRobust(signatureBytes, payloadBytes, certs[0].publicKey)) {
+            VerificationResult(true, null)
+        } else {
+            VerificationResult(false, "External identity signature verification failed")
+        }
     } catch (e: Exception) {
         VerificationResult(false, "External identity verification failed: ${e.message}")
     }
@@ -564,4 +536,118 @@ private fun extractRawPublicKey(publicKey: PublicKey): ByteArray {
 private fun sha256Hex(input: ByteArray): String {
     val digest = java.security.MessageDigest.getInstance("SHA-256").digest(input)
     return digest.joinToString("") { "%02x".format(it) }
+}
+
+private fun verifySignatureRobust(signatureBytes: ByteArray, payloadBytes: ByteArray, publicKey: PublicKey): Boolean {
+    if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+        Security.insertProviderAt(BouncyCastleProvider(), 1)
+    }
+
+    // 1. Try ML-DSA-65 if signature length is 3309
+    if (signatureBytes.size == 3309) {
+        try {
+            val sig = Signature.getInstance("ML-DSA", BouncyCastleProvider.PROVIDER_NAME)
+            sig.initVerify(publicKey)
+            sig.update(payloadBytes)
+            if (sig.verify(signatureBytes)) return true
+        } catch (e: Exception) { /* Try next */ }
+    }
+
+    // 2. Try Ed25519 if key size suggests Ed25519 (size 32 for raw public key)
+    val rawKey = try { extractRawPublicKey(publicKey) } catch (e: Exception) { publicKey.encoded }
+    if (rawKey.size == 32) {
+        try {
+            val sig = Signature.getInstance("Ed25519", BouncyCastleProvider.PROVIDER_NAME)
+            sig.initVerify(publicKey)
+            sig.update(payloadBytes)
+            if (sig.verify(signatureBytes)) return true
+        } catch (e: Exception) { /* Try next */ }
+    }
+
+    // 3. Try ECDSA P-256 (SHA256withECDSA)
+    try {
+        val sig = Signature.getInstance("SHA256withECDSA", BouncyCastleProvider.PROVIDER_NAME)
+        sig.initVerify(publicKey)
+        sig.update(payloadBytes)
+        if (sig.verify(signatureBytes)) return true
+    } catch (e: Exception) { /* Try next */ }
+
+    if (signatureBytes.size == 64) {
+        try {
+            val derSignature = rawSignatureToDer(signatureBytes)
+            if (derSignature != null) {
+                val sig = Signature.getInstance("SHA256withECDSA", BouncyCastleProvider.PROVIDER_NAME)
+                sig.initVerify(publicKey)
+                sig.update(payloadBytes)
+                if (sig.verify(derSignature)) return true
+            }
+        } catch (e: Exception) { /* Try next */ }
+    }
+
+    // 4. Try all algorithms as fallback in case rawKey size detection was off
+    for (alg in listOf("Ed25519", "ML-DSA", "SHA256withECDSA")) {
+        try {
+            val sig = Signature.getInstance(alg, BouncyCastleProvider.PROVIDER_NAME)
+            sig.initVerify(publicKey)
+            sig.update(payloadBytes)
+            if (sig.verify(signatureBytes)) return true
+        } catch (e: Exception) { /* Try next */ }
+
+        if (alg == "SHA256withECDSA" && signatureBytes.size == 64) {
+            try {
+                val derSignature = rawSignatureToDer(signatureBytes)
+                if (derSignature != null) {
+                    val sig = Signature.getInstance(alg, BouncyCastleProvider.PROVIDER_NAME)
+                    sig.initVerify(publicKey)
+                    sig.update(payloadBytes)
+                    if (sig.verify(derSignature)) return true
+                }
+            } catch (e: Exception) { /* Try next */ }
+        }
+    }
+
+    return false
+}
+
+private fun rawSignatureToDer(raw: ByteArray): ByteArray? {
+    if (raw.size != 64) return null
+    val r = raw.sliceArray(0 until 32)
+    val s = raw.sliceArray(32 until 64)
+
+    fun makeInteger(data: ByteArray): ByteArray {
+        var idx = 0
+        while (idx < data.size && data[idx] == 0.toByte()) {
+            idx++
+        }
+        if (idx == data.size) {
+            return byteArrayOf(0x02, 0x01, 0x00)
+        }
+
+        val len = data.size - idx
+        val firstByte = data[idx].toInt() and 0xFF
+        return if (firstByte >= 0x80) {
+            val res = ByteArray(3 + len)
+            res[0] = 0x02
+            res[1] = (len + 1).toByte()
+            res[2] = 0x00
+            System.arraycopy(data, idx, res, 3, len)
+            res
+        } else {
+            val res = ByteArray(2 + len)
+            res[0] = 0x02
+            res[1] = len.toByte()
+            System.arraycopy(data, idx, res, 2, len)
+            res
+        }
+    }
+
+    val rDer = makeInteger(r)
+    val sDer = makeInteger(s)
+
+    val der = ByteArray(2 + rDer.size + sDer.size)
+    der[0] = 0x30
+    der[1] = (rDer.size + sDer.size).toByte()
+    System.arraycopy(rDer, 0, der, 2, rDer.size)
+    System.arraycopy(sDer, 0, der, 2 + rDer.size, sDer.size)
+    return der
 }

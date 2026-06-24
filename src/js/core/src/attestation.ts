@@ -532,12 +532,35 @@ export async function verifyDeviceAttestation(
       const signature = decodeBase64(inputs.attestationSig);
       if (!signature) return { ok: false, reason: 'Invalid signature base64' };
       const subtle = getSubtleCrypto();
-      const importedKey = await subtle.importKey('spki', toArrayBuffer(leafSpki), { name: 'Ed25519' }, false, ['verify']);
-      for (const payloadString of payloadCandidates) {
-        const verified = await subtle.verify('Ed25519', importedKey, toArrayBuffer(signature), toArrayBuffer(textEncoder.encode(payloadString)));
-        if (verified) {
-          return { ok: true };
+      
+      let verified = false;
+      // Try Ed25519
+      try {
+        const importedKey = await subtle.importKey('spki', toArrayBuffer(leafSpki), { name: 'Ed25519' }, false, ['verify']);
+        for (const payloadString of payloadCandidates) {
+          if (await subtle.verify('Ed25519', importedKey, toArrayBuffer(signature), toArrayBuffer(textEncoder.encode(payloadString)))) {
+            verified = true;
+            break;
+          }
         }
+      } catch {}
+
+      // Try ECDSA P-256
+      if (!verified) {
+        try {
+          const importedKey = await subtle.importKey('spki', toArrayBuffer(leafSpki), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+          const rawSignature = signature.length === 64 ? signature : derToRawEcSignature(signature, 32);
+          for (const payloadString of payloadCandidates) {
+            if (await subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, importedKey, toArrayBuffer(rawSignature), toArrayBuffer(textEncoder.encode(payloadString)))) {
+              verified = true;
+              break;
+            }
+          }
+        } catch {}
+      }
+
+      if (verified) {
+        return { ok: true };
       }
       return { ok: false, reason: 'Signature verification failed against leaf' };
     } catch (error) {
@@ -555,20 +578,28 @@ export async function verifyDeviceAttestation(
           forge.asn1.toDer(forge.pki.publicKeyToAsn1(root.publicKey)).getBytes()
         ));
         
-        const importedKey = await subtle.importKey(
-          'spki',
-          spki,
-          { name: 'Ed25519' },
-          false,
-          ['verify']
-        );
-
-        for (const payloadString of payloadCandidates) {
-          const payload = toArrayBuffer(textEncoder.encode(payloadString));
-          if (await subtle.verify({ name: 'Ed25519' }, importedKey, toArrayBuffer(signature), payload)) {
-            return { ok: true };
+        // Try Ed25519
+        try {
+          const importedKey = await subtle.importKey('spki', spki, { name: 'Ed25519' }, false, ['verify']);
+          for (const payloadString of payloadCandidates) {
+            const payload = toArrayBuffer(textEncoder.encode(payloadString));
+            if (await subtle.verify({ name: 'Ed25519' }, importedKey, toArrayBuffer(signature), payload)) {
+              return { ok: true };
+            }
           }
-        }
+        } catch {}
+
+        // Try ECDSA P-256
+        try {
+          const importedKey = await subtle.importKey('spki', spki, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+          const rawSignature = signature.length === 64 ? signature : derToRawEcSignature(signature, 32);
+          for (const payloadString of payloadCandidates) {
+            const payload = toArrayBuffer(textEncoder.encode(payloadString));
+            if (await subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, importedKey, toArrayBuffer(rawSignature), payload)) {
+              return { ok: true };
+            }
+          }
+        } catch {}
       } catch { continue; }
     }
   }

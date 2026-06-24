@@ -647,8 +647,18 @@ def _verify_signature_with_public_key(public_key: object, payload: bytes, signat
             public_key.verify(signature, payload)
             return True
         if isinstance(public_key, ec.EllipticCurvePublicKey):
-            public_key.verify(signature, payload, ec.ECDSA(hashes.SHA256()))
-            return True
+            try:
+                public_key.verify(signature, payload, ec.ECDSA(hashes.SHA256()))
+                return True
+            except InvalidSignature:
+                if len(signature) == 64:
+                    from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
+                    r = int.from_bytes(signature[:32], byteorder='big')
+                    s = int.from_bytes(signature[32:], byteorder='big')
+                    der_signature = encode_dss_signature(r, s)
+                    public_key.verify(der_signature, payload, ec.ECDSA(hashes.SHA256()))
+                    return True
+                raise
         if isinstance(public_key, rsa.RSAPublicKey):
             public_key.verify(signature, payload, padding.PKCS1v15(), hashes.SHA256())
             return True

@@ -555,9 +555,51 @@ private func verifySignatureRobust(signature: Data, tbs: Data, publicKey: Data) 
         if SecKeyVerifySignature(secKey, alg, tbs as CFData, signature as CFData, &error) {
             return true
         }
+        if signature.count == 64 {
+            if let derSig = derSignature(from: signature) {
+                if SecKeyVerifySignature(secKey, alg, tbs as CFData, derSig as CFData, &error) {
+                    return true
+                }
+            }
+        }
     }
 
     return false
+}
+
+private func derSignature(from raw: Data) -> Data? {
+    guard raw.count == 64 else { return nil }
+    let r = raw.subdata(in: 0..<32)
+    let s = raw.subdata(in: 32..<64)
+    
+    func makeInteger(_ data: Data) -> Data {
+        var idx = 0
+        while idx < data.count && data[idx] == 0 {
+            idx += 1
+        }
+        if idx == data.count {
+            return Data([0x02, 0x01, 0x00])
+        }
+        
+        let sub = data.subdata(in: idx..<data.count)
+        if sub[0] >= 0x80 {
+            var res = Data([0x02, UInt8(sub.count + 1), 0x00])
+            res.append(sub)
+            return res
+        } else {
+            var res = Data([0x02, UInt8(sub.count)])
+            res.append(sub)
+            return res
+        }
+    }
+    
+    let rDer = makeInteger(r)
+    let sDer = makeInteger(s)
+    
+    var der = Data([0x30, UInt8(rDer.count + sDer.count)])
+    der.append(rDer)
+    der.append(sDer)
+    return der
 }
 
 private func importPublicKey(_ data: Data) -> SecKey? {

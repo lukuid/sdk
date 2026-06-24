@@ -1862,8 +1862,9 @@ impl LukuFile {
                             );
                         } else if !is_aux_record || !attestation_sig.is_empty() {
                             let record_attestation_id = record
-                                .get("event_id")
+                                .get("id")
                                 .and_then(|v| v.as_str())
+                                .or_else(|| record.get("event_id").and_then(|v| v.as_str()))
                                 .or_else(|| record.get("scan_id").and_then(|v| v.as_str()))
                                 .or_else(|| record.get("attachment_id").and_then(|v| v.as_str()))
                                 .or_else(|| record.get("record_id").and_then(|v| v.as_str()));
@@ -3088,7 +3089,7 @@ mod tests {
         let identity = LukuDeviceIdentity {
             device_id: "LUK-TEST".to_string(),
             public_key: BASE64.encode([0u8; 32]),
-            vendor: None,
+            vendor: Some("lukuid".to_string()),
         };
 
         let signing_key = ed25519_dalek::SigningKey::from_bytes(&[7u8; 32]);

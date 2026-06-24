@@ -128,7 +128,8 @@ object LukuFile {
         val payload = envelope.optJSONObject("payload") ?: JSONObject()
         val recordCtr = payload.optLong("ctr").takeIf { payload.has("ctr") }
             ?: envelope.optLong("ctr").takeIf { envelope.has("ctr") }
-        val attestationRecordId = envelope.optString("event_id").ifBlank { null }
+        val attestationRecordId = envelope.optString("id").ifBlank { null }
+            ?: envelope.optString("event_id").ifBlank { null }
             ?: envelope.optString("scan_id").ifBlank { null }
             ?: envelope.optString("attachment_id").ifBlank { null }
             ?: envelope.optString("record_id").ifBlank { null }
