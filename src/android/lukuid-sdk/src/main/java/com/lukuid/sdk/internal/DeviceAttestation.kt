@@ -13,6 +13,7 @@ import java.security.cert.X509Certificate
 import java.security.spec.X509EncodedKeySpec
 import java.io.ByteArrayInputStream
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
+import java.util.concurrent.ConcurrentHashMap
 
 internal data class DeviceAttestationInput(
     val id: String,
@@ -332,7 +333,44 @@ internal fun verifyHeartbeatAttestation(input: HeartbeatAttestationInput, revoca
     return VerificationResult(false, "Heartbeat verification failed: no leaf public key")
 }
 
+private val certValidationCache = ConcurrentHashMap<String, CertificateChainValidationResult>()
+
 internal fun validateCertificateChain(
+    certificateChain: String,
+    created: Long?,
+    trustProfile: String,
+    revocationManager: RevocationManager? = null,
+    validityAnchor: CertificateValidityAnchor = CertificateValidityAnchor.CREATED
+): CertificateChainValidationResult {
+    val cacheKey = if (revocationManager == null) {
+        "$certificateChain|$created|$trustProfile|$validityAnchor"
+    } else {
+        null
+    }
+
+    if (cacheKey != null) {
+        val cached = certValidationCache[cacheKey]
+        if (cached != null) {
+            return cached
+        }
+    }
+
+    val result = validateCertificateChainInner(
+        certificateChain,
+        created,
+        trustProfile,
+        revocationManager,
+        validityAnchor
+    )
+
+    if (cacheKey != null) {
+        certValidationCache[cacheKey] = result
+    }
+
+    return result
+}
+
+internal fun validateCertificateChainInner(
     certificateChain: String,
     created: Long?,
     trustProfile: String,

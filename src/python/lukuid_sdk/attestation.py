@@ -336,7 +336,39 @@ def verify_heartbeat_attestation(
     return VerificationResult(False, "Heartbeat verification failed: no leaf public key")
 
 
+_cert_validation_cache: dict[tuple, CertificateChainValidationResult] = {}
+
 def validate_certificate_chain(
+    certificate_chain: str,
+    *,
+    created: int | None,
+    trust_profile: str,
+    allow_untrusted_roots: bool = False,
+    revocation_manager: RevocationManager | None = None,
+    validity_anchor: str = "created",
+) -> CertificateChainValidationResult:
+    cache_key = None
+    if revocation_manager is None:
+        cache_key = (certificate_chain, created, trust_profile, allow_untrusted_roots, validity_anchor)
+        if cache_key in _cert_validation_cache:
+            return _cert_validation_cache[cache_key]
+
+    result = _validate_certificate_chain_inner(
+        certificate_chain,
+        created=created,
+        trust_profile=trust_profile,
+        allow_untrusted_roots=allow_untrusted_roots,
+        revocation_manager=revocation_manager,
+        validity_anchor=validity_anchor,
+    )
+
+    if cache_key is not None:
+        _cert_validation_cache[cache_key] = result
+
+    return result
+
+
+def _validate_certificate_chain_inner(
     certificate_chain: str,
     *,
     created: int | None,

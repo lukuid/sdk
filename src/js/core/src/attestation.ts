@@ -700,7 +700,29 @@ export async function verifyHeartbeatAttestation(
   return { ok: false, reason: 'Heartbeat verification failed: no leaf public key' };
 }
 
+const certValidationCache = new Map<string, CertificateChainValidationResult>();
+
 export async function validateCertificateChain(
+  inputs: CertificateChainValidationInputs,
+  revocationManager?: RevocationManager
+): Promise<CertificateChainValidationResult> {
+  const cacheKey = !revocationManager ? `${inputs.certificateChain}|${inputs.created ?? ''}|${inputs.trustProfile ?? ''}|${inputs.validityAnchor ?? ''}` : null;
+  if (cacheKey) {
+    const cached = certValidationCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
+  const result = await validateCertificateChainInner(inputs, revocationManager);
+
+  if (cacheKey) {
+    certValidationCache.set(cacheKey, result);
+  }
+  return result;
+}
+
+async function validateCertificateChainInner(
   inputs: CertificateChainValidationInputs,
   revocationManager?: RevocationManager
 ): Promise<CertificateChainValidationResult> {

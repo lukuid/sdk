@@ -5,9 +5,12 @@ use ml_dsa::MlDsa65;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use x509_parser::prelude::*;
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
 
 const DAC_VALIDITY_ANCHOR_GRACE_SECONDS: i64 = 3600;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 enum CertificateValidityAnchor {
     Created,
     DacNotBeforePlusGrace,
@@ -34,7 +37,7 @@ pub struct VerificationResult {
     pub reason: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CertificateChainValidationResult {
     pub ok: bool,
     pub reason: Option<String>,
@@ -398,7 +401,63 @@ pub fn validate_certificate_chain(
     )
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct ValidationCacheKey {
+    chain_pem: String,
+    created: Option<i64>,
+    trust_profile: String,
+    validity_anchor: CertificateValidityAnchor,
+}
+
+static CERT_VALIDATION_CACHE: OnceLock<Mutex<HashMap<ValidationCacheKey, CertificateChainValidationResult>>> = OnceLock::new();
+
 fn validate_certificate_chain_with_anchor(
+    chain_pem: &str,
+    created: Option<i64>,
+    trust_profile: &str,
+    revocation_manager: Option<&RevocationManager>,
+    validity_anchor: CertificateValidityAnchor,
+) -> CertificateChainValidationResult {
+    if revocation_manager.is_none() {
+        let key = ValidationCacheKey {
+            chain_pem: chain_pem.to_string(),
+            created,
+            trust_profile: trust_profile.to_string(),
+            validity_anchor,
+        };
+        let cache = CERT_VALIDATION_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+        if let Ok(guard) = cache.lock() {
+            if let Some(cached) = guard.get(&key) {
+                return cached.clone();
+            }
+        }
+    }
+
+    let result = validate_certificate_chain_with_anchor_inner(
+        chain_pem,
+        created,
+        trust_profile,
+        revocation_manager,
+        validity_anchor,
+    );
+
+    if revocation_manager.is_none() {
+        let key = ValidationCacheKey {
+            chain_pem: chain_pem.to_string(),
+            created,
+            trust_profile: trust_profile.to_string(),
+            validity_anchor,
+        };
+        let cache = CERT_VALIDATION_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+        if let Ok(mut guard) = cache.lock() {
+            guard.insert(key, result.clone());
+        }
+    }
+
+    result
+}
+
+fn validate_certificate_chain_with_anchor_inner(
     chain_pem: &str,
     created: Option<i64>,
     trust_profile: &str,

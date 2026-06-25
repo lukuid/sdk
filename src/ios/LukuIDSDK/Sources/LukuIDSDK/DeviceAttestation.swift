@@ -325,7 +325,47 @@ func verifyHeartbeatAttestation(_ inputs: HeartbeatAttestationInputs, revocation
     return .failure(DeviceTrustError(id: inputs.id, reason: "Heartbeat verification failed", attemptedKeyIds: []))
 }
 
+private var certValidationCache: [String: CertificateChainValidationResult] = [:]
+private let certValidationCacheLock = NSLock()
+
 func validateCertificateChain(
+    _ chainPEM: String,
+    created: Int64?,
+    trustProfile: String,
+    revocationManager: RevocationManager? = nil,
+    validityAnchor: CertificateValidityAnchor = .created
+) -> CertificateChainValidationResult {
+    let cacheKey: String?
+    if revocationManager == nil {
+        cacheKey = "\(chainPEM)|\(created ?? -1)|\(trustProfile)|\(validityAnchor)"
+        certValidationCacheLock.lock()
+        if let cached = certValidationCache[cacheKey!] {
+            certValidationCacheLock.unlock()
+            return cached
+        }
+        certValidationCacheLock.unlock()
+    } else {
+        cacheKey = nil
+    }
+
+    let result = validateCertificateChainInner(
+        chainPEM,
+        created: created,
+        trustProfile: trustProfile,
+        revocationManager: revocationManager,
+        validityAnchor: validityAnchor
+    )
+
+    if let key = cacheKey {
+        certValidationCacheLock.lock()
+        certValidationCache[key] = result
+        certValidationCacheLock.unlock()
+    }
+
+    return result
+}
+
+func validateCertificateChainInner(
     _ chainPEM: String,
     created: Int64?,
     trustProfile: String,
