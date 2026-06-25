@@ -1,6 +1,6 @@
 {
   "name": "@lukuid/transport-webserial",
-  "version": "1.0.19",
+  "version": "1.0.20",
   "description": "WebSerial transport for Lukuid devices.",
   "private": false,
   "type": "module",
