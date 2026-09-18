@@ -789,6 +789,10 @@ public enum LukuFile {
         return try open(data: data).verify(options: options)
     }
 
+    public static func recomputeRecordCanonicalString(_ record: [String: Any], deviceID: String, publicKey: String) -> String? {
+        LukuIDSDK.recomputeRecordCanonicalString(record, deviceID: deviceID, publicKey: publicKey)
+    }
+
     public static func verifyEnvelope(envelope: [String: Any], options: LukuVerifyOptions = LukuVerifyOptions()) -> [VerificationIssue] {
         var issues: [VerificationIssue] = []
 
