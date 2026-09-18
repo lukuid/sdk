@@ -320,10 +320,7 @@ internal class LukuCodec(
                     "version" to entry.scanMin.version,
                     "record_id" to entry.scanMin.id,
                     "timestamp_utc" to entry.scanMin.timestampUtc,
-                    "tag_id" to entry.scanMin.tagId,
-                    "score_bio" to entry.scanMin.scoreBio,
-                    "score_auth" to entry.scanMin.scoreAuth,
-                    "score_env" to entry.scanMin.scoreEnv
+                    "tag_id" to entry.scanMin.tagId
                 )
             )
             LukuIDProto.DataEntry.MinRecordCase.ENVIRONMENT_MIN -> mapOf(

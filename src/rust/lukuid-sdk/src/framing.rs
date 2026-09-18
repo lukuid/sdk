@@ -650,21 +650,6 @@ fn decode_scan_record_min(bytes: &[u8]) -> Value {
                     break;
                 }
             }
-            5 => {
-                if insert_u32(bytes, &mut cursor, wire_type, &mut out, "score_bio").is_none() {
-                    cursor = bytes.len();
-                }
-            }
-            6 => {
-                if insert_u32(bytes, &mut cursor, wire_type, &mut out, "score_auth").is_none() {
-                    cursor = bytes.len();
-                }
-            }
-            7 => {
-                if insert_u32(bytes, &mut cursor, wire_type, &mut out, "score_env").is_none() {
-                    cursor = bytes.len();
-                }
-            }
             _ => {
                 if skip_field(bytes, &mut cursor, wire_type).is_none() {
                     cursor = bytes.len();
@@ -1486,15 +1471,6 @@ fn decode_scan_payload(bytes: &[u8]) -> Value {
             }
             7 => {
                 let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "firmware");
-            }
-            26 => {
-                let _ = insert_u32(bytes, &mut cursor, wire_type, &mut out, "score_bio");
-            }
-            27 => {
-                let _ = insert_u32(bytes, &mut cursor, wire_type, &mut out, "score_auth");
-            }
-            28 => {
-                let _ = insert_u32(bytes, &mut cursor, wire_type, &mut out, "score_env");
             }
             29 => {
                 let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "metrics_keys");

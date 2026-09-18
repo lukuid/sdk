@@ -979,7 +979,7 @@ class LukuArchive private constructor(
             }
         }
 
-        private val SCAN_ANIMAL_FIELDS = listOf("protocol", "scan_version", "score_auth", "score_bio", "score_env", "tag_id", "temperature_c")
+        private val SCAN_ANIMAL_FIELDS = listOf("protocol", "scan_version", "tag_id", "temperature_c")
         private val SCAN_ACCESS_FIELDS = listOf("asset_id", "credential_id", "credential_type", "protocol", "result")
         private val ENV_BASE_FIELDS = listOf(
             "battery_percent", "vbus_present", "lux", "temp_c", "humidity_pct", "pressure_hpa", "voc_raw", "voc_index",

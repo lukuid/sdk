@@ -22,9 +22,6 @@ class CanonicalFidelityTest {
         // Keys inserted out of alphabetical order on purpose.
         payload.put("temperature_c", 38.5)
         payload.put("tag_id", "981098109810981")
-        payload.put("score_env", 90)
-        payload.put("score_bio", 95)
-        payload.put("score_auth", 100)
         payload.put("scan_version", "1.0.0")
         payload.put("protocol", "FDX-B")
         payload.put("firmware", "AR-1.5.0")
@@ -40,7 +37,7 @@ class CanonicalFidelityTest {
         record.put("id", "LUKUID-1770823456-4501-981098109810981")
         record.put("payload", payload)
 
-        val expected = "LUK-1005-EU:base64_device_public_key:scan:LUKUID-1770823456-4501-981098109810981:4501:1770823456:120000000:animal:marketplace_challenge_token_xyz:AR-1.5.0:FDX-B:1.0.0:100:95:90:981098109810981:38.50:38.50,45.00,-65.00,12.00,5.00,120.00,2.00,3300.00,10.00,11.00,1.00,2000.00,50.00,1.20,1.00,5.00,-2.00,0.00:sha256_of_factory_dac"
+        val expected = "LUK-1005-EU:base64_device_public_key:scan:LUKUID-1770823456-4501-981098109810981:4501:1770823456:120000000:animal:marketplace_challenge_token_xyz:AR-1.5.0:FDX-B:1.0.0:981098109810981:38.50:38.50,45.00,-65.00,12.00,5.00,120.00,2.00,3300.00,10.00,11.00,1.00,2000.00,50.00,1.20,1.00,5.00,-2.00,0.00:sha256_of_factory_dac"
 
         val actual = LukuArchive.recomputeRecordCanonicalString(
             record, payload, "LUK-1005-EU", "base64_device_public_key", "sha256_of_factory_dac"
@@ -203,9 +200,6 @@ class CanonicalFidelityTest {
         payload.put("profile", "animal")
         payload.put("protocol", "FDX-B")
         payload.put("scan_version", "1.0.0")
-        payload.put("score_auth", 100)
-        payload.put("score_bio", 95)
-        payload.put("score_env", 90)
         payload.put("tag_id", "981098109810981")
         payload.put("temperature_c", 38.5)
         payload.put("nonce", "n")
@@ -219,8 +213,8 @@ class CanonicalFidelityTest {
         val correctCanonical = LukuArchive.recomputeRecordCanonicalString(record, payload, "D", "P", "S")
         assertEquals(false, correctCanonical.isNullOrBlank())
 
-        // Simulate a tampered payload: score_bio changed after signing, canonical_string left stale.
-        payload.put("score_bio", 1)
+        // Simulate a tampered payload: tag_id changed after signing, canonical_string left stale.
+        payload.put("tag_id", "999999999999999")
         val tamperedRecompute = LukuArchive.recomputeRecordCanonicalString(record, payload, "D", "P", "S")
         org.junit.Assert.assertNotEquals(correctCanonical, tamperedRecompute)
     }

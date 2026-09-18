@@ -430,9 +430,6 @@ const SCAN_PROFILE_CONTENT_FIELDS: Record<string, Record<string, CanonicalFieldK
   animal: {
     protocol: 'string',
     scan_version: 'string',
-    score_auth: 'int',
-    score_bio: 'int',
-    score_env: 'int',
     tag_id: 'string',
     temperature_c: 'float'
   },

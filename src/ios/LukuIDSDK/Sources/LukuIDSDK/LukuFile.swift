@@ -1371,12 +1371,11 @@ private func recomputeRecordCanonicalString(_ record: [String: Any], deviceID: S
         let profile = string(payload, "profile")
         let fields: [String]
         switch profile {
-        case "animal": fields = ["protocol", "scan_version", "score_auth", "score_bio", "score_env", "tag_id", "temperature_c"]
+        case "animal": fields = ["protocol", "scan_version", "tag_id", "temperature_c"]
         case "access": fields = ["asset_id", "credential_id", "credential_type", "protocol", "result"]
         default: return nil
         }
         let values = content(fields) { name in
-            if ["score_auth", "score_bio", "score_env"].contains(name) { return number(payload[name]) }
             if name == "temperature_c" { return number(payload[name], decimals: 2) }
             return string(payload, name)
         }

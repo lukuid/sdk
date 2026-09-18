@@ -446,18 +446,6 @@ impl LukuFile {
                             Self::format_canonical_field(payload.and_then(|p| p.get("scan_version")), CanonKind::Str),
                         ),
                         (
-                            "score_auth",
-                            Self::format_canonical_field(payload.and_then(|p| p.get("score_auth")), CanonKind::IntRaw),
-                        ),
-                        (
-                            "score_bio",
-                            Self::format_canonical_field(payload.and_then(|p| p.get("score_bio")), CanonKind::IntRaw),
-                        ),
-                        (
-                            "score_env",
-                            Self::format_canonical_field(payload.and_then(|p| p.get("score_env")), CanonKind::IntRaw),
-                        ),
-                        (
                             "tag_id",
                             Self::format_canonical_field(payload.and_then(|p| p.get("tag_id")), CanonKind::Str),
                         ),

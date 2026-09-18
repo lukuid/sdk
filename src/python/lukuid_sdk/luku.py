@@ -1351,7 +1351,7 @@ def _is_aux_record_type(record_type: str) -> bool:
 # happens to be written. This also means a payload whose keys were not
 # parsed/produced in alphabetical order still canonicalizes correctly.
 _SCAN_PROFILE_CONTENT_FIELDS: dict[str, list[str]] = {
-    "animal": ["temperature_c", "score_bio", "tag_id", "protocol", "score_auth", "scan_version", "score_env"],
+    "animal": ["protocol", "scan_version", "tag_id", "temperature_c"],
     "access": ["result", "asset_id", "credential_type", "protocol", "credential_id"],
 }
 

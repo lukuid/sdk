@@ -514,10 +514,7 @@ final class LukuCodec {
                     "version": scanMin.version,
                     "record_id": scanMin.id,
                     "timestamp_utc": scanMin.timestampUtc,
-                    "tag_id": scanMin.tagID,
-                    "score_bio": scanMin.scoreBio,
-                    "score_auth": scanMin.scoreAuth,
-                    "score_env": scanMin.scoreEnv
+                    "tag_id": scanMin.tagID
                 ]
             ]
         case .environmentMin(let envMin):
@@ -621,9 +618,6 @@ final class LukuCodec {
         dict["clk_var"] = payload.clkVar
         dict["drift"] = payload.drift
         dict["hdx_histo_csv"] = payload.hdxHistoCsv
-        dict["score_bio"] = payload.scoreBio
-        dict["score_auth"] = payload.scoreAuth
-        dict["score_env"] = payload.scoreEnv
         dict["metrics_keys"] = payload.metricsKeys
         dict["scan_version"] = payload.scanVersion
         return dict

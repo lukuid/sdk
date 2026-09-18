@@ -588,15 +588,6 @@ function decodeScanRecordMin(payload: Uint8Array): JsonRecord {
       case 4:
         assignString(payload, cursor, wireType, out, 'tag_id');
         break;
-      case 5:
-        assignUint32(payload, cursor, wireType, out, 'score_bio');
-        break;
-      case 6:
-        assignUint32(payload, cursor, wireType, out, 'score_auth');
-        break;
-      case 7:
-        assignUint32(payload, cursor, wireType, out, 'score_env');
-        break;
       default:
         if (!skipField(payload, cursor, wireType)) {
           return out;
@@ -1434,9 +1425,6 @@ function decodeScanPayload(payload: Uint8Array): JsonRecord {
       case 23: assignUint32(payload, cursor, wireType, out, 'clk_var'); break;
       case 24: assignInt32(payload, cursor, wireType, out, 'drift'); break;
       case 25: assignString(payload, cursor, wireType, out, 'hdx_histo_csv'); break;
-      case 26: assignUint32(payload, cursor, wireType, out, 'score_bio'); break;
-      case 27: assignUint32(payload, cursor, wireType, out, 'score_auth'); break;
-      case 28: assignUint32(payload, cursor, wireType, out, 'score_env'); break;
       case 29: assignString(payload, cursor, wireType, out, 'metrics_keys'); break;
       case 30: assignString(payload, cursor, wireType, out, 'scan_version'); break;
       default: skipField(payload, cursor, wireType); break;
