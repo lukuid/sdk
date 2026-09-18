@@ -1256,7 +1256,6 @@ impl LukuFile {
                 .get("attestation_dac_signature")
                 .and_then(|v| v.as_str())
                 .or_else(|| identity.and_then(|i| i.get("dac_signature")).and_then(|v| v.as_str()))
-                .or_else(|| identity.and_then(|i| i.get("signature")).and_then(|v| v.as_str()))
                 .unwrap_or("");
 
             if attestation_chain.is_empty() {
@@ -1565,17 +1564,17 @@ impl LukuFile {
                         },
                     );
                 }
-                None if r#type == "scan" => {
+                None => {
                     let profile = payload.and_then(|p| p.get("profile")).and_then(|v| v.as_str());
                     Self::push_issue(
                         &mut issues,
                         debug_logging,
                         None,
                         VerificationIssue {
-                            code: "RECORD_UNKNOWN_SCAN_PROFILE".to_string(),
+                            code: "RECORD_SCHEMA_UNRECOGNIZED".to_string(),
                             message: format!(
-                                "Scan record has unknown or missing profile {:?}; cannot verify canonical field order.",
-                                profile
+                                "Record type {} has an unknown schema or scan profile {:?}; cannot verify canonical field order.",
+                                r#type, profile
                             ),
                             criticality: Criticality::Critical,
                         },
@@ -2297,11 +2296,6 @@ impl LukuFile {
                         let attestation_sig = record
                             .get("identity")
                             .and_then(|i| i.get("dac_signature"))
-                            .or_else(|| {
-                                record
-                                    .get("identity")
-                                    .and_then(|i| i.get("signature"))
-                            })
                             .and_then(|v| v.as_str())
                             .unwrap_or("");
 
@@ -2803,13 +2797,13 @@ impl LukuFile {
                                     criticality: Criticality::Critical,
                                 });
                             }
-                            None if r#type == "scan" => {
+                None => {
                                 let profile = payload.and_then(|p| p.get("profile")).and_then(|v| v.as_str());
                                 Self::push_issue(&mut issues, debug_logging, Some(record_context.as_str()), VerificationIssue {
-                                    code: "RECORD_UNKNOWN_SCAN_PROFILE".to_string(),
+                                    code: "RECORD_SCHEMA_UNRECOGNIZED".to_string(),
                                     message: format!(
-                                        "Scan record on device {} has unknown or missing profile {:?}; cannot verify canonical field order.",
-                                        device_id, profile
+                                        "Record type {} on device {} has an unknown schema or scan profile {:?}; cannot verify canonical field order.",
+                                        r#type, device_id, profile
                                     ),
                                     criticality: Criticality::Critical,
                                 });

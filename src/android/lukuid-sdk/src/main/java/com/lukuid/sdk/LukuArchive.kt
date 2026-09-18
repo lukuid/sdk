@@ -195,13 +195,7 @@ data class LukuVerifyOptions(
     val trustProfile: String = System.getenv("LUKUID_TRUST_PROFILE") ?: "prod",
     val policy: LukuPolicy? = null,
     val requireContinuity: Boolean = false,
-    val attachments: Map<String, ByteArray>? = null,
-    // When true, every record's stored canonical_string is independently recomputed from its own
-    // structured fields (per LUKU.md's Field Order rule) and compared, instead of trusting the
-    // stored string outright. Defaults to false so archives/envelopes using synthetic or partial
-    // test fixtures (which don't carry a full structured payload) keep verifying as before; real
-    // callers verifying production archives should opt in.
-    val verifyRecordCanonicalFidelity: Boolean = true
+    val attachments: Map<String, ByteArray>? = null
 )
 
 data class LukuPolicy(
@@ -406,7 +400,6 @@ class LukuArchive private constructor(
                     }
 
                     val attestationSignature = identity?.optString("dac_signature")?.takeIf { it.isNotBlank() }
-                        ?: identity?.optString("signature")?.takeIf { it.isNotBlank() }
                         ?: ""
                     if (attestationChain.isBlank()) {
                         issues += VerificationIssue("ATTESTATION_CHAIN_MISSING", "Missing DAC attestation chain for device $deviceId.", Criticality.WARNING)
@@ -462,9 +455,11 @@ class LukuArchive private constructor(
                     }
                 }
 
-                if (options.verifyRecordCanonicalFidelity && canonicalString.isNotBlank()) {
+                if (canonicalString.isNotBlank()) {
                     val recomputedCanonical = recomputeRecordCanonicalString(record, payload, deviceId, publicKey, previousSignature)
-                    if (recomputedCanonical != null && recomputedCanonical != canonicalString) {
+                    if (recomputedCanonical == null) {
+                        issues += VerificationIssue("RECORD_SCHEMA_UNRECOGNIZED", "Record type $recordType on device $deviceId has an unrecognized type or scan profile; its canonical_string cannot be independently verified.", Criticality.CRITICAL)
+                    } else if (recomputedCanonical != canonicalString) {
                         issues += VerificationIssue("RECORD_CANONICAL_MISMATCH", "Record type $recordType on device $deviceId has a canonical_string that does not match its own fields (recomputed independently, not trusted as given).", Criticality.CRITICAL)
                     }
                 }
@@ -963,14 +958,22 @@ class LukuArchive private constructor(
             return items.joinToString(",")
         }
 
+        private val FLOAT_FIELDS = setOf(
+            "temperature_c", "confidence", "accel_g_x", "accel_g_y", "accel_g_z", "gps_accuracy_m",
+            "gps_altitude_m", "gps_heading_deg", "gps_speed_mps", "humidity_pct", "initial_temp_c", "lux",
+            "mobile_rsrq_db", "mobile_sinr_db", "pressure_hpa", "temp_c"
+        )
+        private val GEO_FIELDS = setOf("gps_lat", "gps_lng", "lat", "lng")
+
         private fun canonicalScalar(source: JSONObject?, key: String): String {
             if (source == null || !source.has(key) || source.isNull(key)) return ""
             return when (val v = source.get(key)) {
                 is Boolean -> if (v) "true" else "false"
-                is Double -> canonicalFloat(v)
-                is Float -> canonicalFloat(v.toDouble())
-                is Int -> v.toString()
-                is Long -> v.toString()
+                is Number -> when {
+                    key in GEO_FIELDS -> String.format(java.util.Locale.ROOT, "%.6f", v.toDouble())
+                    key in FLOAT_FIELDS -> canonicalFloat(v.toDouble())
+                    else -> v.toLong().toString()
+                }
                 is JSONArray -> canonicalArray(v)
                 else -> v.toString()
             }
@@ -991,9 +994,11 @@ class LukuArchive private constructor(
         private val CUSTODY_FIELDS = listOf("event", "status", "context_ref")
 
         private fun envScalar(payload: JSONObject?, name: String): String = when (name) {
-            "accel_g_x" -> canonicalScalar(payload?.optJSONObject("accel_g"), "x")
-            "accel_g_y" -> canonicalScalar(payload?.optJSONObject("accel_g"), "y")
-            "accel_g_z" -> canonicalScalar(payload?.optJSONObject("accel_g"), "z")
+            "accel_g_x", "accel_g_y", "accel_g_z" -> {
+                val axis = name.substringAfterLast('_')
+                val accel = payload?.optJSONObject("accel_g")
+                if (accel == null || !accel.has(axis) || accel.isNull(axis)) "" else canonicalFloat(accel.getDouble(axis))
+            }
             else -> canonicalScalar(payload, name)
         }
 

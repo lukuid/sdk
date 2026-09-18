@@ -462,10 +462,14 @@ public final class LukuArchive {
                 let counter = uint64(payload?["ctr"])
                 let genesisHash = payload?["genesis_hash"] as? String ?? ""
 
-                if !canonicalString.isEmpty,
-                   let recomputed = recomputeRecordCanonicalString(record, deviceID: deviceID, publicKey: publicKey),
-                   recomputed != canonicalString {
-                    issues.append(issue("RECORD_CANONICAL_MISMATCH", "Record type \(recordType) on device \(deviceID) has a canonical_string that does not match its independently recomputed alphabetical field order.", .critical))
+                if !canonicalString.isEmpty {
+                    if let recomputed = recomputeRecordCanonicalString(record, deviceID: deviceID, publicKey: publicKey) {
+                        if recomputed != canonicalString {
+                            issues.append(issue("RECORD_CANONICAL_MISMATCH", "Record type \(recordType) on device \(deviceID) has a canonical_string that does not match its independently recomputed alphabetical field order.", .critical))
+                        }
+                    } else {
+                        issues.append(issue("RECORD_SCHEMA_UNRECOGNIZED", "Record type \(recordType) on device \(deviceID) has an unrecognized type or scan profile; its canonical_string cannot be independently verified.", .critical))
+                    }
                 }
 
                 if vendor == nil || vendor?.isEmpty == true {
@@ -519,7 +523,6 @@ public final class LukuArchive {
                     }
 
                     let attestationSignature = (identity?["dac_signature"] as? String)
-                        ?? (identity?["signature"] as? String)
                         ?? ""
                     if attestationChain.isEmpty {
                         issues.append(issue("ATTESTATION_CHAIN_MISSING", "Missing DAC attestation chain for device \(deviceID).", .warning))
@@ -808,10 +811,14 @@ public enum LukuFile {
         let genesisHash = payload["genesis_hash"] as? String ?? ""
         let previousSignature = envelope["previous_signature"] as? String ?? ""
 
-        if !canonicalStringValue.isEmpty,
-           let recomputed = recomputeRecordCanonicalString(envelope, deviceID: deviceId, publicKey: publicKey),
-           recomputed != canonicalStringValue {
-            issues.append(VerificationIssue(code: "RECORD_CANONICAL_MISMATCH", message: "Record type \(recordType) has a canonical_string that does not match its independently recomputed alphabetical field order.", criticality: .critical))
+        if !canonicalStringValue.isEmpty {
+            if let recomputed = recomputeRecordCanonicalString(envelope, deviceID: deviceId, publicKey: publicKey) {
+                if recomputed != canonicalStringValue {
+                    issues.append(VerificationIssue(code: "RECORD_CANONICAL_MISMATCH", message: "Record type \(recordType) has a canonical_string that does not match its independently recomputed alphabetical field order.", criticality: .critical))
+                }
+            } else {
+                issues.append(VerificationIssue(code: "RECORD_SCHEMA_UNRECOGNIZED", message: "Record type \(recordType) has an unrecognized type or scan profile; its canonical_string cannot be independently verified.", criticality: .critical))
+            }
         }
 
         if deviceId.isEmpty || publicKey.isEmpty {
@@ -847,7 +854,6 @@ public enum LukuFile {
             
             let attestationSignature = (envelope["attestation_dac_signature"] as? String)
                 ?? (identity?["dac_signature"] as? String)
-                ?? (identity?["signature"] as? String)
 
             if attestationChain.isEmpty {
                 issues.append(VerificationIssue(code: "ATTESTATION_CHAIN_MISSING", message: "Missing DAC attestation chain for device \(deviceId).", criticality: .warning))

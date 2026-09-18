@@ -871,7 +871,6 @@ export class LukuFile {
       const attestationSignature =
         asString(envelope.attestation_dac_signature) ??
         asString(identity?.dac_signature) ??
-        asString(identity?.signature) ??
         '';
 
       if (attestationChain.length === 0) {
@@ -947,7 +946,9 @@ export class LukuFile {
     }
 
     const recomputedCanonical = publicKey && deviceId ? recomputeRecordCanonicalString(envelope, recordType, deviceId, publicKey) : null;
-    if (recomputedCanonical !== null && canonicalStringValue.length > 0 && recomputedCanonical !== canonicalStringValue) {
+    if (recomputedCanonical === null && canonicalStringValue.length > 0) {
+      issues.push(issue('RECORD_SCHEMA_UNRECOGNIZED', `Record type ${recordType} has an unrecognized type or scan profile; its canonical string cannot be independently verified.`, 'critical'));
+    } else if (recomputedCanonical !== null && canonicalStringValue.length > 0 && recomputedCanonical !== canonicalStringValue) {
       issues.push(
         issue(
           'RECORD_CANONICAL_MISMATCH',
@@ -1532,7 +1533,6 @@ export class LukuFile {
           }
           const attestationSignature =
             asString(identity?.dac_signature) ??
-            asString(identity?.signature) ??
             '';
 
           if (attestationChain.length === 0) {
@@ -1599,7 +1599,9 @@ export class LukuFile {
         }
 
         const recomputedCanonical = recomputeRecordCanonicalString(record, recordType, deviceId, publicKey);
-        if (recomputedCanonical !== null && canonicalStringValue.length > 0 && recomputedCanonical !== canonicalStringValue) {
+        if (recomputedCanonical === null && canonicalStringValue.length > 0) {
+          issues.push(issue('RECORD_SCHEMA_UNRECOGNIZED', `Record type ${recordType} on device ${deviceId} has an unrecognized type or scan profile; its canonical string cannot be independently verified.`, 'critical'));
+        } else if (recomputedCanonical !== null && canonicalStringValue.length > 0 && recomputedCanonical !== canonicalStringValue) {
           issues.push(
             issue(
               'RECORD_CANONICAL_MISMATCH',

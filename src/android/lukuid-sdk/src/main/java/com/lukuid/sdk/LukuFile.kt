@@ -178,7 +178,6 @@ object LukuFile {
             
             val attestationSignature = envelope.optString("attestation_dac_signature").takeIf { it.isNotEmpty() }
                 ?: identity?.optString("dac_signature")?.takeIf { it.isNotEmpty() }
-                ?: identity?.optString("signature")?.takeIf { it.isNotEmpty() }
 
             if (attestationChain.isEmpty()) {
                 issues.add(VerificationIssue("ATTESTATION_CHAIN_MISSING", "Missing DAC attestation chain for device $deviceId.", Criticality.WARNING))
@@ -264,9 +263,11 @@ object LukuFile {
             }
         }
 
-        if (options.verifyRecordCanonicalFidelity && canonicalStringValue.isNotEmpty()) {
+        if (canonicalStringValue.isNotEmpty()) {
             val recomputedCanonical = LukuArchive.recomputeRecordCanonicalString(envelope, payload, deviceId, publicKey, previousSignature)
-            if (recomputedCanonical != null && recomputedCanonical != canonicalStringValue) {
+            if (recomputedCanonical == null) {
+                issues.add(VerificationIssue("RECORD_SCHEMA_UNRECOGNIZED", "Record type $recordType has an unrecognized type or scan profile; its canonical_string cannot be independently verified.", Criticality.CRITICAL))
+            } else if (recomputedCanonical != canonicalStringValue) {
                 issues.add(VerificationIssue("RECORD_CANONICAL_MISMATCH", "Record type $recordType has a canonical_string that does not match its own fields (recomputed independently, not trusted as given).", Criticality.CRITICAL))
             }
         }

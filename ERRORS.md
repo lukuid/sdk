@@ -19,6 +19,7 @@ This document lists the error codes produced by LukuID SDK verification function
 | `CONTINUITY_GAP_EXCEEDED` | Critical | The time gap between two native records exceeds the threshold defined in the archive's continuity policy. |
 | `RECORD_SIGNATURE_INVALID` | Critical | A record's native signature failed verification against the device's public key. |
 | `RECORD_CANONICAL_MISMATCH` | Critical | A record's stored canonical string differs from the SDK's independently recomputed structural prefix, alphabetically ordered content fields, and structural suffix. |
+| `RECORD_SCHEMA_UNRECOGNIZED` | Critical | A record type or scan profile is not known to this SDK, so its canonical string cannot be independently reconstructed and verified. |
 | `ATTESTATION_FAILED` | Critical | Device attestation (DAC) failed (e.g., invalid signature or certificate chain issues). |
 | `ATTESTATION_CHAIN_MISSING` | Warning | The device has an attestation signature but is missing the required certificate chain (DAC). |
 | `HEARTBEAT_VERIFICATION_FAILED` | Critical | The trusted-time heartbeat (SLAC) verification failed. |

@@ -440,7 +440,7 @@ class LukuArchive:
                         ]
                         if entry
                     )
-                attestation_sig = str(identity.get("dac_signature") or identity.get("signature") or "")
+                attestation_sig = str(identity.get("dac_signature") or "")
                 record_ctr = _record_counter(record)
                 attestation_record_id = _record_attestation_id(record)
                 if not attestation_chain:
@@ -517,7 +517,7 @@ class LukuArchive:
                             issues.append(_issue(
                                 "RECORD_SCHEMA_UNRECOGNIZED",
                                 f"Record type {record_type} on device {device_id} has an unrecognized type/profile; its canonical_string could not be independently reconstructed and checked against its own payload.",
-                                Criticality.WARNING,
+                                Criticality.CRITICAL,
                             ))
                         elif recomputed_canonical != canonical_string:
                             issues.append(_issue(
@@ -682,7 +682,6 @@ class LukuFile:
         attestation_sig = str(
             envelope.get("attestation_dac_signature")
             or identity.get("dac_signature")
-            or identity.get("signature")
             or ""
         )
 
@@ -775,7 +774,7 @@ class LukuFile:
                 issues.append(_issue(
                     "RECORD_SCHEMA_UNRECOGNIZED",
                     f"Record type {record_type} has an unrecognized type/profile; its canonical_string could not be independently reconstructed and checked against its own payload.",
-                    Criticality.WARNING,
+                    Criticality.CRITICAL,
                 ))
             elif recomputed_canonical != canonical_string:
                 issues.append(_issue(
