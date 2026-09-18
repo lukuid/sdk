@@ -396,12 +396,259 @@ function expectedExternalIdentityPayload(record: JsonObject, recordType: string)
   switch (recordType) {
     case 'attachment':
       return `${asString(record.checksum) ?? ''}:${asString(record.merkle_root) ?? ''}:${endorserId}`;
-    case 'location':
-      return `${asNumber(record.lat) ?? 0}:${asNumber(record.lng) ?? 0}:${endorserId}`;
+    case 'location': {
+      // lat/lng MUST NOT default to 0 — (0, 0) is a real coordinate ("null island"),
+      // so an absent reading must serialize as empty string, not a numeric default.
+      const lat = asNumber(record.lat);
+      const lng = asNumber(record.lng);
+      return `${lat !== undefined ? lat.toFixed(6) : ''}:${lng !== undefined ? lng.toFixed(6) : ''}:${endorserId}`;
+    }
     case 'custody': {
       const payload = asJsonObject(record.payload);
-      return `${asString(payload?.event) ?? ''}:${asString(payload?.status) ?? ''}:${asString(payload?.context_ref) ?? ''}:${endorserId}`;
+      // Field order is alphabetical per LUKU.md: context_ref, event, status.
+      return `${asString(payload?.context_ref) ?? ''}:${asString(payload?.event) ?? ''}:${asString(payload?.status) ?? ''}:${endorserId}`;
     }
+    default:
+      return null;
+  }
+}
+
+/**
+ * Canonical-string recomputation for the six `.luku` record types.
+ *
+ * Per LUKU.md's Field Order rule, every type's canonical string is a fixed
+ * structural prefix, then that type's "content" fields joined in STRICT
+ * ALPHABETICAL order by field name, then a fixed structural suffix. The
+ * content-field ordering below is always derived via `.sort()` at call time
+ * (never a hand-typed literal sequence) so a verifier never has to trust
+ * that an input payload's own key order — or a stored `canonical_string` —
+ * already matches the spec.
+ */
+type CanonicalFieldKind = 'string' | 'int' | 'float' | 'geo' | 'bool' | 'stringArray' | 'floatArray';
+
+const SCAN_PROFILE_CONTENT_FIELDS: Record<string, Record<string, CanonicalFieldKind>> = {
+  animal: {
+    protocol: 'string',
+    scan_version: 'string',
+    score_auth: 'int',
+    score_bio: 'int',
+    score_env: 'int',
+    tag_id: 'string',
+    temperature_c: 'float'
+  },
+  access: {
+    asset_id: 'string',
+    credential_id: 'string',
+    credential_type: 'string',
+    protocol: 'string',
+    result: 'string'
+  }
+};
+
+const ENVIRONMENT_CONTENT_FIELDS: Record<string, CanonicalFieldKind> = {
+  accel_g_x: 'float',
+  accel_g_y: 'float',
+  accel_g_z: 'float',
+  battery_percent: 'int',
+  gps_accuracy_m: 'float',
+  gps_altitude_m: 'float',
+  gps_fix_quality: 'int',
+  gps_heading_deg: 'float',
+  gps_lat: 'geo',
+  gps_lng: 'geo',
+  gps_satellites: 'int',
+  gps_speed_mps: 'float',
+  humidity_pct: 'float',
+  initial_temp_c: 'float',
+  lux: 'float',
+  mobile_cell_id: 'string',
+  mobile_lac: 'string',
+  mobile_mcc: 'string',
+  mobile_mnc: 'string',
+  mobile_network: 'string',
+  mobile_operator: 'string',
+  mobile_radio: 'string',
+  mobile_roaming: 'bool',
+  mobile_rsrp_dbm: 'int',
+  mobile_rsrq_db: 'float',
+  mobile_rssi_dbm: 'int',
+  mobile_sinr_db: 'float',
+  pressure_hpa: 'float',
+  tamper: 'bool',
+  temp_c: 'float',
+  vbus_present: 'bool',
+  voc_index: 'int',
+  voc_raw: 'int'
+};
+
+const BIOMETRIC_CONTENT_FIELDS: Record<string, CanonicalFieldKind> = {
+  checks: 'stringArray',
+  confidence: 'float',
+  match: 'bool',
+  metrics: 'floatArray',
+  modality: 'string',
+  template_id_hash: 'string'
+};
+
+const ATTACHMENT_CONTENT_FIELDS: Record<string, CanonicalFieldKind> = {
+  checksum: 'string',
+  merkle_root: 'string',
+  mime: 'string',
+  title: 'string'
+};
+
+const LOCATION_CONTENT_FIELDS: Record<string, CanonicalFieldKind> = {
+  lat: 'geo',
+  lng: 'geo'
+};
+
+const CUSTODY_CONTENT_FIELDS: Record<string, CanonicalFieldKind> = {
+  context_ref: 'string',
+  event: 'string',
+  status: 'string'
+};
+
+function formatCanonicalField(value: JsonValue | undefined, kind: CanonicalFieldKind): string {
+  switch (kind) {
+    case 'string':
+      return typeof value === 'string' ? value : '';
+    case 'int':
+      return typeof value === 'number' ? String(Math.trunc(value)) : '';
+    case 'float':
+      return typeof value === 'number' ? value.toFixed(2) : '';
+    case 'geo':
+      return typeof value === 'number' ? value.toFixed(6) : '';
+    case 'bool':
+      return typeof value === 'boolean' ? (value ? 'true' : 'false') : '';
+    case 'stringArray':
+      return Array.isArray(value) ? value.map((entry) => (typeof entry === 'string' ? entry : String(entry))).join(',') : '';
+    case 'floatArray':
+      return Array.isArray(value)
+        ? value.map((entry) => (typeof entry === 'number' ? entry.toFixed(2) : String(entry))).join(',')
+        : '';
+    default:
+      return '';
+  }
+}
+
+/**
+ * Extracts and formats a type's content fields from `source`, always in
+ * alphabetical order of field name — the ordering is computed by `.sort()`
+ * every call, regardless of the declaration order of `fieldKinds` or the
+ * key order of `source`.
+ */
+function buildSortedContentString(source: JsonObject, fieldKinds: Record<string, CanonicalFieldKind>): string {
+  return Object.keys(fieldKinds)
+    .sort()
+    .map((name) => formatCanonicalField(source[name], fieldKinds[name]))
+    .join(':');
+}
+
+function recomputeScanCanonicalString(record: JsonObject, deviceId: string, publicKey: string): string | null {
+  const payload = asJsonObject(record.payload) ?? {};
+  const profile = asString(payload.profile);
+  const contentFields = profile ? SCAN_PROFILE_CONTENT_FIELDS[profile] : undefined;
+  if (!profile || !contentFields) {
+    return null;
+  }
+  const id = asString(record.id) ?? '';
+  const ctr = formatCanonicalField(payload.ctr, 'int');
+  const timestampUtc = formatCanonicalField(payload.timestamp_utc, 'int');
+  const uptimeUs = formatCanonicalField(payload.uptime_us, 'int');
+  const nonce = asString(payload.nonce) ?? '';
+  const firmware = asString(payload.firmware) ?? '';
+  const content = buildSortedContentString(payload, contentFields);
+  const metrics = formatCanonicalField(payload.metrics, 'floatArray');
+  const previousSignature = asString(record.previous_signature) ?? '';
+  return [deviceId, publicKey, 'scan', id, ctr, timestampUtc, uptimeUs, profile, nonce, firmware, content, metrics, previousSignature].join(
+    ':'
+  );
+}
+
+function recomputeEnvironmentCanonicalString(record: JsonObject, deviceId: string, publicKey: string): string {
+  const payload = asJsonObject(record.payload) ?? {};
+  const id = asString(record.id) ?? '';
+  const ctr = formatCanonicalField(payload.ctr, 'int');
+  const timestampUtc = formatCanonicalField(payload.timestamp_utc, 'int');
+  const uptimeUs = formatCanonicalField(payload.uptime_us, 'int');
+  const content = buildSortedContentString(payload, ENVIRONMENT_CONTENT_FIELDS);
+  const previousSignature = asString(record.previous_signature) ?? '';
+  return [deviceId, publicKey, 'environment', id, ctr, timestampUtc, uptimeUs, content, previousSignature].join(':');
+}
+
+function recomputeBiometricCanonicalString(record: JsonObject, deviceId: string, publicKey: string): string {
+  const payload = asJsonObject(record.payload) ?? {};
+  // NOTE: LUKU.md's biometric canonical order names an "event_id" structural
+  // field, but the worked JSON example has no top-level `id`/`payload.id` for
+  // biometric records — a pre-existing doc gap. We fall back through the
+  // likely locations rather than guessing a single one silently.
+  const eventId = asString(record.id) ?? asString(payload.id) ?? asString(payload.event_id) ?? '';
+  const ctr = formatCanonicalField(payload.ctr, 'int');
+  const timestampUtc = formatCanonicalField(payload.timestamp_utc, 'int');
+  const uptimeUs = formatCanonicalField(payload.uptime_us, 'int');
+  const firmware = asString(payload.firmware) ?? '';
+  const content = buildSortedContentString(payload, BIOMETRIC_CONTENT_FIELDS);
+  const previousSignature = asString(record.previous_signature) ?? '';
+  return [deviceId, publicKey, 'biometric', eventId, ctr, timestampUtc, uptimeUs, firmware, content, previousSignature].join(':');
+}
+
+function recomputeAttachmentCanonicalString(record: JsonObject, deviceId: string, publicKey: string): string {
+  const parentSignature = asString(record.parent_signature) ?? '';
+  const id = asString(record.id) ?? '';
+  const parentId = asString(record.parent_id) ?? '';
+  const timestampUtc = formatCanonicalField(record.timestamp_utc, 'int');
+  const content = buildSortedContentString(record, ATTACHMENT_CONTENT_FIELDS);
+  const externalSignature = asString(asJsonObject(record.external_identity)?.signature) ?? '';
+  return [parentSignature, deviceId, publicKey, 'attachment', id, parentId, timestampUtc, content, externalSignature].join(':');
+}
+
+function recomputeLocationCanonicalString(record: JsonObject, deviceId: string, publicKey: string): string {
+  const parentSignature = asString(record.parent_signature) ?? '';
+  const parentId = asString(record.parent_id) ?? '';
+  const timestampUtc = formatCanonicalField(record.timestamp_utc, 'int');
+  const content = buildSortedContentString(record, LOCATION_CONTENT_FIELDS);
+  const externalSignature = asString(asJsonObject(record.external_identity)?.signature) ?? '';
+  return [parentSignature, deviceId, publicKey, 'location', parentId, timestampUtc, content, externalSignature].join(':');
+}
+
+function recomputeCustodyCanonicalString(record: JsonObject, deviceId: string, publicKey: string): string {
+  const parentSignature = asString(record.parent_signature) ?? '';
+  const id = asString(record.id) ?? '';
+  const parentId = asString(record.parent_id) ?? '';
+  const timestampUtc = formatCanonicalField(record.timestamp_utc, 'int');
+  const payload = asJsonObject(record.payload) ?? {};
+  const content = buildSortedContentString(payload, CUSTODY_CONTENT_FIELDS);
+  const externalSignature = asString(asJsonObject(record.external_identity)?.signature) ?? '';
+  return [parentSignature, deviceId, publicKey, 'custody', id, parentId, timestampUtc, content, externalSignature].join(':');
+}
+
+/**
+ * Independently recomputes a record's canonical string from its own
+ * structural + content fields, per the new Field Order rule in LUKU.md.
+ * Returns null only when the record type (or, for `scan`, the `profile`)
+ * isn't one this SDK knows how to build — callers should fall back to the
+ * record's stored `canonical_string` in that case, but must never treat an
+ * unrecognized type/profile as if it were successfully verified.
+ */
+function recomputeRecordCanonicalString(
+  record: JsonObject,
+  recordType: string,
+  deviceId: string,
+  publicKey: string
+): string | null {
+  switch (recordType) {
+    case 'scan':
+      return recomputeScanCanonicalString(record, deviceId, publicKey);
+    case 'environment':
+      return recomputeEnvironmentCanonicalString(record, deviceId, publicKey);
+    case 'biometric':
+      return recomputeBiometricCanonicalString(record, deviceId, publicKey);
+    case 'attachment':
+      return recomputeAttachmentCanonicalString(record, deviceId, publicKey);
+    case 'location':
+      return recomputeLocationCanonicalString(record, deviceId, publicKey);
+    case 'custody':
+      return recomputeCustodyCanonicalString(record, deviceId, publicKey);
     default:
       return null;
   }
@@ -699,12 +946,24 @@ export class LukuFile {
       }
     }
 
-    if (canonicalStringValue.length === 0) {
+    const recomputedCanonical = publicKey && deviceId ? recomputeRecordCanonicalString(envelope, recordType, deviceId, publicKey) : null;
+    if (recomputedCanonical !== null && canonicalStringValue.length > 0 && recomputedCanonical !== canonicalStringValue) {
+      issues.push(
+        issue(
+          'RECORD_CANONICAL_MISMATCH',
+          `Record type ${recordType} has a canonical_string that does not match the value independently recomputed from its own fields.`,
+          'critical'
+        )
+      );
+    }
+    const canonicalForSignature = recomputedCanonical ?? canonicalStringValue;
+
+    if (canonicalForSignature.length === 0) {
       issues.push(issue('RECORD_CANONICAL_MISSING', `Record type ${recordType} does not include a canonical_string.`, 'critical'));
     } else if (signature.length === 0) {
       issues.push(issue('RECORD_SIGNATURE_MISSING', `Record type ${recordType} is missing a signature.`, 'critical'));
     } else if (publicKey) {
-      const verified = await verifyRecordSignature(publicKey, signature, canonicalStringValue);
+      const verified = await verifyRecordSignature(publicKey, signature, canonicalForSignature);
       if (!verified) {
         issues.push(issue('RECORD_SIGNATURE_INVALID', `Invalid signature for record type ${recordType}.`, 'critical'));
       }
@@ -1339,12 +1598,24 @@ export class LukuFile {
           }
         }
 
-        if (canonicalStringValue.length === 0) {
+        const recomputedCanonical = recomputeRecordCanonicalString(record, recordType, deviceId, publicKey);
+        if (recomputedCanonical !== null && canonicalStringValue.length > 0 && recomputedCanonical !== canonicalStringValue) {
+          issues.push(
+            issue(
+              'RECORD_CANONICAL_MISMATCH',
+              `Record type ${recordType} on device ${deviceId} has a canonical_string that does not match the value independently recomputed from its own fields.`,
+              'critical'
+            )
+          );
+        }
+        const canonicalForSignature = recomputedCanonical ?? canonicalStringValue;
+
+        if (canonicalForSignature.length === 0) {
           issues.push(issue('RECORD_CANONICAL_MISSING', `Record type ${recordType} on device ${deviceId} does not include a canonical_string.`, isCompatAttachment ? 'warning' : 'critical'));
         } else if (signature.length === 0) {
           issues.push(issue('RECORD_SIGNATURE_MISSING', `Record type ${recordType} on device ${deviceId} is missing a signature.`, isCompatAttachment ? 'warning' : 'critical'));
         } else {
-          const verified = await verifyRecordSignature(publicKey, signature, canonicalStringValue);
+          const verified = await verifyRecordSignature(publicKey, signature, canonicalForSignature);
           if (!verified) {
             issues.push(issue('RECORD_SIGNATURE_INVALID', `Invalid signature for record type ${recordType} on device ${deviceId}.`, 'critical'));
           }

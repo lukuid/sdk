@@ -462,6 +462,12 @@ public final class LukuArchive {
                 let counter = uint64(payload?["ctr"])
                 let genesisHash = payload?["genesis_hash"] as? String ?? ""
 
+                if !canonicalString.isEmpty,
+                   let recomputed = recomputeRecordCanonicalString(record, deviceID: deviceID, publicKey: publicKey),
+                   recomputed != canonicalString {
+                    issues.append(issue("RECORD_CANONICAL_MISMATCH", "Record type \(recordType) on device \(deviceID) has a canonical_string that does not match its independently recomputed alphabetical field order.", .critical))
+                }
+
                 if vendor == nil || vendor?.isEmpty == true {
                     issues.append(issue("DEVICE_VENDOR_MISSING", "Device vendor is missing for device \(deviceID).", .critical))
                 }
@@ -801,6 +807,12 @@ public enum LukuFile {
         let attestationRecordId = (envelope["id"] as? String)
         let genesisHash = payload["genesis_hash"] as? String ?? ""
         let previousSignature = envelope["previous_signature"] as? String ?? ""
+
+        if !canonicalStringValue.isEmpty,
+           let recomputed = recomputeRecordCanonicalString(envelope, deviceID: deviceId, publicKey: publicKey),
+           recomputed != canonicalStringValue {
+            issues.append(VerificationIssue(code: "RECORD_CANONICAL_MISMATCH", message: "Record type \(recordType) has a canonical_string that does not match its independently recomputed alphabetical field order.", criticality: .critical))
+        }
 
         if deviceId.isEmpty || publicKey.isEmpty {
             issues.append(VerificationIssue(code: "DEVICE_IDENTITY_MISSING", message: "Envelope is missing device_id or public_key.", criticality: .critical))
@@ -1322,6 +1334,76 @@ private func uint64(_ value: Any?) -> UInt64? {
         return value.rounded() == value && value >= 0 ? UInt64(value) : nil
     default:
         return nil
+    }
+}
+
+// Rebuild record canonical strings from structured values. Content field names are
+// sorted at runtime: JSON member order and declaration order are never trusted.
+private func recomputeRecordCanonicalString(_ record: [String: Any], deviceID: String, publicKey: String) -> String? {
+    let type = record["type"] as? String ?? ""
+    let payload = record["payload"] as? [String: Any] ?? [:]
+    func string(_ source: [String: Any], _ name: String) -> String { source[name] as? String ?? "" }
+    func number(_ value: Any?, decimals: Int? = nil) -> String {
+        guard let value, !(value is NSNull) else { return "" }
+        guard let n = value as? NSNumber else { return "" }
+        if let decimals { return String(format: "%.*f", locale: Locale(identifier: "en_US_POSIX"), decimals, n.doubleValue) }
+        return String(n.int64Value)
+    }
+    func bool(_ value: Any?) -> String {
+        guard let value = value as? Bool else { return "" }
+        return value ? "true" : "false"
+    }
+    func array(_ value: Any?, numeric: Bool) -> String {
+        guard let values = value as? [Any] else { return "" }
+        return values.map { numeric ? number($0, decimals: 2) : ($0 as? String ?? "") }.joined(separator: ",")
+    }
+    func content(_ fields: [String], _ value: (String) -> String) -> [String] { fields.sorted().map(value) }
+    let previous = string(record, "previous_signature")
+    let external = (record["external_identity"] as? [String: Any]).flatMap { $0["signature"] as? String } ?? ""
+    switch type {
+    case "scan":
+        let profile = string(payload, "profile")
+        let fields: [String]
+        switch profile {
+        case "animal": fields = ["protocol", "scan_version", "score_auth", "score_bio", "score_env", "tag_id", "temperature_c"]
+        case "access": fields = ["asset_id", "credential_id", "credential_type", "protocol", "result"]
+        default: return nil
+        }
+        let values = content(fields) { name in
+            if ["score_auth", "score_bio", "score_env"].contains(name) { return number(payload[name]) }
+            if name == "temperature_c" { return number(payload[name], decimals: 2) }
+            return string(payload, name)
+        }
+        return ([deviceID, publicKey, "scan", string(record, "id"), number(payload["ctr"]), number(payload["timestamp_utc"]), number(payload["uptime_us"]), profile, string(payload, "nonce"), string(payload, "firmware")] + values + [array(payload["metrics"], numeric: true), previous]).joined(separator: ":")
+    case "environment":
+        var fields = ["accel_g_x", "accel_g_y", "accel_g_z", "battery_percent", "gps_accuracy_m", "gps_altitude_m", "gps_fix_quality", "gps_heading_deg", "gps_lat", "gps_lng", "gps_satellites", "gps_speed_mps", "humidity_pct", "lux", "mobile_cell_id", "mobile_lac", "mobile_mcc", "mobile_mnc", "mobile_network", "mobile_operator", "mobile_radio", "mobile_roaming", "mobile_rsrp_dbm", "mobile_rsrq_db", "mobile_rssi_dbm", "mobile_sinr_db", "pressure_hpa", "tamper", "temp_c", "vbus_present", "voc_index", "voc_raw"]
+        if payload["initial_temp_c"] != nil { fields.append("initial_temp_c") }
+        let accel = payload["accel_g"] as? [String: Any] ?? [:]
+        let values = content(fields) { name in
+            if name.hasPrefix("accel_g_") { return number(accel[String(name.dropFirst("accel_g_".count))], decimals: 2) }
+            if ["battery_percent", "gps_fix_quality", "gps_satellites", "mobile_rsrp_dbm", "mobile_rssi_dbm", "voc_index", "voc_raw"].contains(name) { return number(payload[name]) }
+            if ["gps_lat", "gps_lng"].contains(name) { return number(payload[name], decimals: 6) }
+            if ["mobile_roaming", "tamper", "vbus_present"].contains(name) { return bool(payload[name]) }
+            if name.hasPrefix("mobile_") { return string(payload, name) }
+            return number(payload[name], decimals: 2)
+        }
+        return ([deviceID, publicKey, "environment", string(record, "id"), number(payload["ctr"]), number(payload["timestamp_utc"]), number(payload["uptime_us"])] + values + [previous]).joined(separator: ":")
+    case "biometric":
+        let values = content(["checks", "confidence", "match", "metrics", "modality", "template_id_hash"]) { name in
+            switch name { case "checks": return array(payload[name], numeric: false); case "confidence": return number(payload[name], decimals: 2); case "match": return bool(payload[name]); case "metrics": return array(payload[name], numeric: true); default: return string(payload, name) }
+        }
+        let eventID = string(record, "id").isEmpty ? string(payload, "event_id") : string(record, "id")
+        return ([deviceID, publicKey, "biometric", eventID, number(payload["ctr"]), number(payload["timestamp_utc"]), number(payload["uptime_us"]), string(payload, "firmware")] + values + [previous]).joined(separator: ":")
+    case "attachment":
+        let values = content(["checksum", "merkle_root", "mime", "title"]) { string(record, $0) }
+        return ([string(record, "parent_signature"), deviceID, publicKey, "attachment", string(record, "id"), string(record, "parent_id"), number(record["timestamp_utc"])] + values + [external]).joined(separator: ":")
+    case "location":
+        let values = content(["lat", "lng"]) { number(record[$0], decimals: 6) }
+        return ([string(record, "parent_signature"), deviceID, publicKey, "location", string(record, "parent_id"), number(record["timestamp_utc"])] + values + [external]).joined(separator: ":")
+    case "custody":
+        let values = content(["context_ref", "event", "status"]) { string(payload, $0) }
+        return ([string(record, "parent_signature"), deviceID, publicKey, "custody", string(record, "id"), string(record, "parent_id"), number(record["timestamp_utc"])] + values + [external]).joined(separator: ":")
+    default: return nil
     }
 }
 

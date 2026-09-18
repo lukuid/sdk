@@ -502,8 +502,33 @@ class LukuArchive:
                     issues.append(_issue("RECORD_CANONICAL_MISSING", f"Record type {record_type} on device {device_id} does not include a canonical_string.", Criticality.WARNING if is_compat_attachment else Criticality.CRITICAL))
                 elif not signature:
                     issues.append(_issue("RECORD_SIGNATURE_MISSING", f"Record type {record_type} on device {device_id} is missing a signature.", Criticality.WARNING if is_compat_attachment else Criticality.CRITICAL))
-                elif not verify_detached_signature(public_key, canonical_string.encode("utf-8"), signature):
-                    issues.append(_issue("RECORD_SIGNATURE_INVALID", f"Invalid signature for record type {record_type} on device {device_id}.", Criticality.CRITICAL))
+                else:
+                    verify_target = canonical_string
+                    if not is_compat_attachment:
+                        # Never trust the stored field ordering: independently
+                        # rebuild the canonical string from the record's own
+                        # structured fields (content fields re-sorted
+                        # alphabetically at runtime, per LUKU.md's Field Order
+                        # rule) and require it to match what was actually
+                        # signed, rather than assuming canonical_string is
+                        # already correctly ordered.
+                        recomputed_canonical = _recompute_record_canonical_string(record, record_type, device_id, public_key)
+                        if recomputed_canonical is None:
+                            issues.append(_issue(
+                                "RECORD_SCHEMA_UNRECOGNIZED",
+                                f"Record type {record_type} on device {device_id} has an unrecognized type/profile; its canonical_string could not be independently reconstructed and checked against its own payload.",
+                                Criticality.WARNING,
+                            ))
+                        elif recomputed_canonical != canonical_string:
+                            issues.append(_issue(
+                                "RECORD_CANONICAL_MISMATCH",
+                                f"Record type {record_type} on device {device_id} has a stored canonical_string that does not match the value independently recomputed from its own payload fields under the alphabetical Field Order rule.",
+                                Criticality.CRITICAL,
+                            ))
+                        else:
+                            verify_target = recomputed_canonical
+                    if not verify_detached_signature(public_key, verify_target.encode("utf-8"), signature):
+                        issues.append(_issue("RECORD_SIGNATURE_INVALID", f"Invalid signature for record type {record_type} on device {device_id}.", Criticality.CRITICAL))
 
                 if not is_aux and signature:
                     last_signatures[device_id] = signature
@@ -739,8 +764,29 @@ class LukuFile:
             issues.append(_issue("RECORD_CANONICAL_MISSING", f"Record type {record_type} does not include a canonical_string.", Criticality.CRITICAL))
         elif not signature:
             issues.append(_issue("RECORD_SIGNATURE_MISSING", f"Record type {record_type} is missing a signature.", Criticality.CRITICAL))
-        elif public_key and not verify_detached_signature(public_key, canonical_string.encode("utf-8"), signature):
-            issues.append(_issue("RECORD_SIGNATURE_INVALID", f"Invalid signature for record type {record_type}.", Criticality.CRITICAL))
+        else:
+            verify_target = canonical_string
+            # Never trust the stored field ordering: independently rebuild
+            # the canonical string from the envelope's own structured
+            # fields (content fields re-sorted alphabetically at runtime)
+            # and require it to match what was actually signed.
+            recomputed_canonical = _recompute_record_canonical_string(envelope, record_type, device_id, public_key)
+            if recomputed_canonical is None:
+                issues.append(_issue(
+                    "RECORD_SCHEMA_UNRECOGNIZED",
+                    f"Record type {record_type} has an unrecognized type/profile; its canonical_string could not be independently reconstructed and checked against its own payload.",
+                    Criticality.WARNING,
+                ))
+            elif recomputed_canonical != canonical_string:
+                issues.append(_issue(
+                    "RECORD_CANONICAL_MISMATCH",
+                    f"Record type {record_type} has a stored canonical_string that does not match the value independently recomputed from its own payload fields under the alphabetical Field Order rule.",
+                    Criticality.CRITICAL,
+                ))
+            else:
+                verify_target = recomputed_canonical
+            if public_key and not verify_detached_signature(public_key, verify_target.encode("utf-8"), signature):
+                issues.append(_issue("RECORD_SIGNATURE_INVALID", f"Invalid signature for record type {record_type}.", Criticality.CRITICAL))
 
         if record_type == "attachment":
             checksum = envelope.get("checksum")
@@ -1297,6 +1343,200 @@ def _is_aux_record_type(record_type: str) -> bool:
     return record_type in {"attachment", "location", "custody"}
 
 
+# Content-field lists below are deliberately NOT written in alphabetical
+# order in source. Per dotluku/LUKU.md's Field Order rule, a record type's
+# content fields (the segment between the fixed structural prefix and
+# suffix) MUST be serialized in strict lexicographic order of their field
+# names -- and that ordering is derived at runtime via sorted(), never
+# assumed from how the list (or an incoming payload dict's own key order)
+# happens to be written. This also means a payload whose keys were not
+# parsed/produced in alphabetical order still canonicalizes correctly.
+_SCAN_PROFILE_CONTENT_FIELDS: dict[str, list[str]] = {
+    "animal": ["temperature_c", "score_bio", "tag_id", "protocol", "score_auth", "scan_version", "score_env"],
+    "access": ["result", "asset_id", "credential_type", "protocol", "credential_id"],
+}
+
+_ENVIRONMENT_CONTENT_FIELDS: list[str] = [
+    "battery_percent", "vbus_present", "lux", "temp_c", "humidity_pct", "pressure_hpa",
+    "voc_raw", "voc_index", "tamper", "accel_g_x", "accel_g_y", "accel_g_z",
+    "gps_lat", "gps_lng", "gps_accuracy_m", "gps_altitude_m", "gps_speed_mps", "gps_heading_deg",
+    "gps_satellites", "gps_fix_quality", "mobile_network", "mobile_radio", "mobile_operator",
+    "mobile_mcc", "mobile_mnc", "mobile_lac", "mobile_cell_id", "mobile_rssi_dbm", "mobile_rsrp_dbm",
+    "mobile_rsrq_db", "mobile_sinr_db", "mobile_roaming",
+]
+
+_BIOMETRIC_CONTENT_FIELDS: list[str] = ["modality", "match", "confidence", "checks", "template_id_hash", "metrics"]
+
+_ATTACHMENT_CONTENT_FIELDS: list[str] = ["mime", "title", "checksum", "merkle_root"]
+
+_LOCATION_CONTENT_FIELDS: list[str] = ["lng", "lat"]
+
+_CUSTODY_CONTENT_FIELDS: list[str] = ["event", "status", "context_ref"]
+
+_NUMERIC_ARRAY_FIELDS = {"metrics"}
+# Pre-existing, documented-by-example precision/format quirks that predate
+# this rewrite (see LUKU.md's environment vs. location canonical string
+# examples) -- preserved as-is rather than silently "corrected", since that
+# would diverge from the archive format's worked examples.
+_FLOAT_PRECISION_OVERRIDES = {"gps_lat": 6, "gps_lng": 6}
+_RAW_FLOAT_FIELDS = {"lat", "lng"}
+
+
+def _canonical_scalar(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, float):
+        return f"{value:.2f}"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (list, tuple)):
+        return ",".join(_canonical_scalar(item) for item in value)
+    return str(value)
+
+
+def _canonical_numeric_array(value: Any) -> str:
+    if not isinstance(value, list) or not value:
+        return ""
+    return ",".join(f"{float(item):.2f}" for item in value)
+
+
+def _canonical_field(name: str, value: Any) -> str:
+    if name in _NUMERIC_ARRAY_FIELDS:
+        return _canonical_numeric_array(value)
+    if name in _RAW_FLOAT_FIELDS:
+        return "" if value is None else str(value)
+    if name in _FLOAT_PRECISION_OVERRIDES and isinstance(value, (int, float)) and not isinstance(value, bool):
+        return f"{float(value):.{_FLOAT_PRECISION_OVERRIDES[name]}f}"
+    return _canonical_scalar(value)
+
+
+def _canonical_content_string(fields: list[str], source: dict[str, Any]) -> str:
+    # Always re-sort here -- `fields` is intentionally NOT pre-sorted in
+    # source, and `source` (a parsed payload dict) is never trusted to
+    # have been produced with alphabetically-ordered keys either.
+    return ":".join(_canonical_field(name, source.get(name)) for name in sorted(fields))
+
+
+def _recompute_record_canonical_string(
+    record: dict[str, Any],
+    record_type: str,
+    device_id: str,
+    public_key: str,
+) -> str | None:
+    """Rebuild a record's canonical_string from its own structured fields,
+    per dotluku/LUKU.md's Field Order rule, instead of trusting whatever
+    ordering the stored canonical_string field happens to already have.
+    Returns None when the record type/profile is not recognized (e.g. a
+    future/unknown scan profile), in which case the caller cannot verify
+    conformance and should fall back to a warning rather than a hard
+    mismatch.
+    """
+    payload = record.get("payload") if isinstance(record.get("payload"), dict) else {}
+
+    if record_type == "scan":
+        profile = payload.get("profile")
+        profile_fields = _SCAN_PROFILE_CONTENT_FIELDS.get(profile) if isinstance(profile, str) else None
+        if profile_fields is None:
+            return None
+        return ":".join([
+            device_id,
+            public_key,
+            "scan",
+            str(record.get("id", "")),
+            _canonical_scalar(payload.get("ctr")),
+            _canonical_scalar(payload.get("timestamp_utc")),
+            _canonical_scalar(payload.get("uptime_us")),
+            _canonical_scalar(profile),
+            _canonical_scalar(payload.get("nonce")),
+            _canonical_scalar(payload.get("firmware")),
+            _canonical_content_string(profile_fields, payload),
+            _canonical_numeric_array(payload.get("metrics")),
+            str(record.get("previous_signature", "")),
+        ])
+
+    if record_type == "environment":
+        accel = payload.get("accel_g") if isinstance(payload.get("accel_g"), dict) else {}
+        content_source = dict(payload)
+        content_source["accel_g_x"] = accel.get("x")
+        content_source["accel_g_y"] = accel.get("y")
+        content_source["accel_g_z"] = accel.get("z")
+        fields = list(_ENVIRONMENT_CONTENT_FIELDS)
+        if "initial_temp_c" in payload:
+            fields.append("initial_temp_c")
+        return ":".join([
+            device_id,
+            public_key,
+            "environment",
+            str(record.get("id", "")),
+            _canonical_scalar(payload.get("ctr")),
+            _canonical_scalar(payload.get("timestamp_utc")),
+            _canonical_scalar(payload.get("uptime_us")),
+            _canonical_content_string(fields, content_source),
+            str(record.get("previous_signature", "")),
+        ])
+
+    if record_type == "biometric":
+        return ":".join([
+            device_id,
+            public_key,
+            "biometric",
+            str(record.get("id") or payload.get("id") or ""),
+            _canonical_scalar(payload.get("ctr")),
+            _canonical_scalar(payload.get("timestamp_utc")),
+            _canonical_scalar(payload.get("uptime_us")),
+            _canonical_scalar(payload.get("firmware")),
+            _canonical_content_string(_BIOMETRIC_CONTENT_FIELDS, payload),
+            str(record.get("previous_signature", "")),
+        ])
+
+    external_identity = record.get("external_identity") if isinstance(record.get("external_identity"), dict) else {}
+    external_signature = str(external_identity.get("signature") or "")
+
+    if record_type == "attachment":
+        return ":".join([
+            str(record.get("parent_signature") or ""),
+            device_id,
+            public_key,
+            "attachment",
+            str(record.get("id", "")),
+            str(record.get("parent_id") or ""),
+            _canonical_scalar(record.get("timestamp_utc")),
+            _canonical_content_string(_ATTACHMENT_CONTENT_FIELDS, record),
+            external_signature,
+        ])
+
+    if record_type == "location":
+        return ":".join([
+            str(record.get("parent_signature") or ""),
+            device_id,
+            public_key,
+            "location",
+            str(record.get("parent_id") or ""),
+            _canonical_scalar(record.get("timestamp_utc")),
+            _canonical_content_string(_LOCATION_CONTENT_FIELDS, record),
+            external_signature,
+        ])
+
+    if record_type == "custody":
+        return ":".join([
+            str(record.get("parent_signature") or ""),
+            device_id,
+            public_key,
+            "custody",
+            str(record.get("id", "")),
+            str(record.get("parent_id") or ""),
+            _canonical_scalar(record.get("timestamp_utc")),
+            _canonical_content_string(_CUSTODY_CONTENT_FIELDS, payload),
+            external_signature,
+        ])
+
+    return None
+
+
 def _manifest_policy(extra: dict[str, Any]) -> LukuPolicy | None:
     policy = extra.get("policy")
     if isinstance(policy, dict):
@@ -1326,13 +1566,19 @@ def _expected_external_identity_payload(record: dict[str, Any], record_type: str
     if record_type == "location":
         lat = record.get("lat")
         lng = record.get("lng")
-        return f"{lat if isinstance(lat, (int, float)) else 0}:{lng if isinstance(lng, (int, float)) else 0}:{endorser_id}"
+        # No Silent Numeric Defaults: an absent lat/lng must serialize as
+        # "", not 0 -- (0, 0) is a real coordinate, so defaulting would make
+        # "not reported" indistinguishable from "reported as exactly zero".
+        lat_str = lat if isinstance(lat, (int, float)) and not isinstance(lat, bool) else ""
+        lng_str = lng if isinstance(lng, (int, float)) and not isinstance(lng, bool) else ""
+        return f"{lat_str}:{lng_str}:{endorser_id}"
     if record_type == "custody":
         payload = record.get("payload") if isinstance(record.get("payload"), dict) else {}
         event = payload.get("event")
         status = payload.get("status")
         context_ref = payload.get("context_ref")
-        return f"{event if isinstance(event, str) else ''}:{status if isinstance(status, str) else ''}:{context_ref if isinstance(context_ref, str) else ''}:{endorser_id}"
+        # Alphabetical per LUKU.md: context_ref, event, status.
+        return f"{context_ref if isinstance(context_ref, str) else ''}:{event if isinstance(event, str) else ''}:{status if isinstance(status, str) else ''}:{endorser_id}"
     return None
 
 

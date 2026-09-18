@@ -264,6 +264,13 @@ object LukuFile {
             }
         }
 
+        if (options.verifyRecordCanonicalFidelity && canonicalStringValue.isNotEmpty()) {
+            val recomputedCanonical = LukuArchive.recomputeRecordCanonicalString(envelope, payload, deviceId, publicKey, previousSignature)
+            if (recomputedCanonical != null && recomputedCanonical != canonicalStringValue) {
+                issues.add(VerificationIssue("RECORD_CANONICAL_MISMATCH", "Record type $recordType has a canonical_string that does not match its own fields (recomputed independently, not trusted as given).", Criticality.CRITICAL))
+            }
+        }
+
         if (canonicalStringValue.isEmpty()) {
             issues.add(VerificationIssue("RECORD_CANONICAL_MISSING", "Record type $recordType does not include a canonical_string.", Criticality.CRITICAL))
         } else if (signature.isEmpty()) {

@@ -138,6 +138,24 @@ pub struct LukuFile {
     mimetype_is_stored: bool,
 }
 
+/// Formatting kind for one canonical-string field, per LUKU.md's Canonical
+/// Serialization Rules.
+#[derive(Clone, Copy)]
+enum CanonKind {
+    Str,
+    Bool,
+    IntRaw,
+    Float2,
+    /// Geospatial coordinate exception per LUKU.md's Canonical Serialization
+    /// Rules: `gps_lat`/`gps_lng` (environment) and `lat`/`lng` (location)
+    /// MUST be formatted to exactly 6 decimal places, not the general
+    /// 2-decimal float rule. This is the only field-name-based exception to
+    /// the two-decimal rule.
+    Float6,
+    ArrayFloat2,
+    ArrayStr,
+}
+
 impl LukuFile {
     pub fn from_parts(
         manifest: LukuManifest,
@@ -335,6 +353,403 @@ impl LukuFile {
         };
 
         public_key.verify(payload, &signature).is_ok()
+    }
+
+    /// Formats one field's JSON value per its CanonKind. Returns the empty
+    /// string when the field is absent or null (per "No Silent Numeric
+    /// Defaults" — never defaults a missing numeric field to `0`).
+    fn format_canonical_field(value: Option<&Value>, kind: CanonKind) -> String {
+        let Some(value) = value else {
+            return String::new();
+        };
+        if value.is_null() {
+            return String::new();
+        }
+        match kind {
+            CanonKind::Str => value.as_str().unwrap_or("").to_string(),
+            CanonKind::Bool => value
+                .as_bool()
+                .map(|b| if b { "true" } else { "false" }.to_string())
+                .unwrap_or_default(),
+            CanonKind::IntRaw => {
+                if let Some(i) = value.as_i64() {
+                    i.to_string()
+                } else if let Some(u) = value.as_u64() {
+                    u.to_string()
+                } else if let Some(f) = value.as_f64() {
+                    format!("{}", f as i64)
+                } else {
+                    String::new()
+                }
+            }
+            CanonKind::Float2 => value
+                .as_f64()
+                .map(|f| format!("{:.2}", f))
+                .unwrap_or_default(),
+            CanonKind::Float6 => value
+                .as_f64()
+                .map(|f| format!("{:.6}", f))
+                .unwrap_or_default(),
+            CanonKind::ArrayFloat2 => value
+                .as_array()
+                .map(|arr| {
+                    arr.iter()
+                        .map(|v| v.as_f64().map(|f| format!("{:.2}", f)).unwrap_or_default())
+                        .collect::<Vec<_>>()
+                        .join(",")
+                })
+                .unwrap_or_default(),
+            CanonKind::ArrayStr => value
+                .as_array()
+                .map(|arr| {
+                    arr.iter()
+                        .map(|v| v.as_str().unwrap_or("").to_string())
+                        .collect::<Vec<_>>()
+                        .join(",")
+                })
+                .unwrap_or_default(),
+        }
+    }
+
+    /// Recomputes the expected `canonical_string` for one of the six `.luku`
+    /// record types directly from its structured fields, per LUKU.md's Field
+    /// Order rule: a fixed structural prefix, then that type's (or scan
+    /// profile's) content fields, then a fixed structural suffix.
+    ///
+    /// The content-field list below is written in whatever order is
+    /// convenient, then explicitly `.sort_by(...)` at runtime by field name —
+    /// so this stays correct even if a future edit appends a field out of
+    /// alphabetical order, and even if the input payload's own key order
+    /// differs. Never trust "looks alphabetical" from source order alone.
+    ///
+    /// Returns `None` when the record type (or, for `scan`, the `profile`) is
+    /// not recognized — callers should treat that as "cannot verify this
+    /// record's canonical field order", not as "matches".
+    fn expected_canonical_string(record: &Value, device_id: &str, public_key: &str) -> Option<String> {
+        let record_type = record.get("type").and_then(Value::as_str)?;
+        let payload = record.get("payload");
+        let mut parts: Vec<String> = Vec::new();
+
+        match record_type {
+            "scan" => {
+                let profile = payload
+                    .and_then(|p| p.get("profile"))
+                    .and_then(Value::as_str)?;
+                let mut content: Vec<(&str, String)> = match profile {
+                    "animal" => vec![
+                        (
+                            "protocol",
+                            Self::format_canonical_field(payload.and_then(|p| p.get("protocol")), CanonKind::Str),
+                        ),
+                        (
+                            "scan_version",
+                            Self::format_canonical_field(payload.and_then(|p| p.get("scan_version")), CanonKind::Str),
+                        ),
+                        (
+                            "score_auth",
+                            Self::format_canonical_field(payload.and_then(|p| p.get("score_auth")), CanonKind::IntRaw),
+                        ),
+                        (
+                            "score_bio",
+                            Self::format_canonical_field(payload.and_then(|p| p.get("score_bio")), CanonKind::IntRaw),
+                        ),
+                        (
+                            "score_env",
+                            Self::format_canonical_field(payload.and_then(|p| p.get("score_env")), CanonKind::IntRaw),
+                        ),
+                        (
+                            "tag_id",
+                            Self::format_canonical_field(payload.and_then(|p| p.get("tag_id")), CanonKind::Str),
+                        ),
+                        (
+                            "temperature_c",
+                            Self::format_canonical_field(payload.and_then(|p| p.get("temperature_c")), CanonKind::Float2),
+                        ),
+                    ],
+                    "access" => vec![
+                        (
+                            "asset_id",
+                            Self::format_canonical_field(payload.and_then(|p| p.get("asset_id")), CanonKind::Str),
+                        ),
+                        (
+                            "credential_id",
+                            Self::format_canonical_field(payload.and_then(|p| p.get("credential_id")), CanonKind::Str),
+                        ),
+                        (
+                            "credential_type",
+                            Self::format_canonical_field(payload.and_then(|p| p.get("credential_type")), CanonKind::Str),
+                        ),
+                        (
+                            "protocol",
+                            Self::format_canonical_field(payload.and_then(|p| p.get("protocol")), CanonKind::Str),
+                        ),
+                        (
+                            "result",
+                            Self::format_canonical_field(payload.and_then(|p| p.get("result")), CanonKind::Str),
+                        ),
+                    ],
+                    _ => return None,
+                };
+                content.sort_by(|a, b| a.0.cmp(b.0));
+
+                parts.push(device_id.to_string());
+                parts.push(public_key.to_string());
+                parts.push("scan".to_string());
+                parts.push(record.get("id").and_then(Value::as_str).unwrap_or("").to_string());
+                parts.push(Self::format_canonical_field(payload.and_then(|p| p.get("ctr")), CanonKind::IntRaw));
+                parts.push(Self::format_canonical_field(payload.and_then(|p| p.get("timestamp_utc")), CanonKind::IntRaw));
+                parts.push(Self::format_canonical_field(payload.and_then(|p| p.get("uptime_us")), CanonKind::IntRaw));
+                parts.push(profile.to_string());
+                parts.push(Self::format_canonical_field(payload.and_then(|p| p.get("nonce")), CanonKind::Str));
+                parts.push(Self::format_canonical_field(payload.and_then(|p| p.get("firmware")), CanonKind::Str));
+                parts.extend(content.into_iter().map(|(_, v)| v));
+                parts.push(Self::format_canonical_field(payload.and_then(|p| p.get("metrics")), CanonKind::ArrayFloat2));
+                parts.push(record.get("previous_signature").and_then(Value::as_str).unwrap_or("").to_string());
+            }
+            "environment" => {
+                let accel = payload.and_then(|p| p.get("accel_g"));
+                let mut content: Vec<(&str, String)> = vec![
+                    ("accel_g_x", Self::format_canonical_field(accel.and_then(|a| a.get("x")), CanonKind::Float2)),
+                    ("accel_g_y", Self::format_canonical_field(accel.and_then(|a| a.get("y")), CanonKind::Float2)),
+                    ("accel_g_z", Self::format_canonical_field(accel.and_then(|a| a.get("z")), CanonKind::Float2)),
+                    (
+                        "battery_percent",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("battery_percent")), CanonKind::IntRaw),
+                    ),
+                    (
+                        "gps_accuracy_m",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("gps_accuracy_m")), CanonKind::Float2),
+                    ),
+                    (
+                        "gps_altitude_m",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("gps_altitude_m")), CanonKind::Float2),
+                    ),
+                    (
+                        "gps_fix_quality",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("gps_fix_quality")), CanonKind::IntRaw),
+                    ),
+                    (
+                        "gps_heading_deg",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("gps_heading_deg")), CanonKind::Float2),
+                    ),
+                    ("gps_lat", Self::format_canonical_field(payload.and_then(|p| p.get("gps_lat")), CanonKind::Float6)),
+                    ("gps_lng", Self::format_canonical_field(payload.and_then(|p| p.get("gps_lng")), CanonKind::Float6)),
+                    (
+                        "gps_satellites",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("gps_satellites")), CanonKind::IntRaw),
+                    ),
+                    (
+                        "gps_speed_mps",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("gps_speed_mps")), CanonKind::Float2),
+                    ),
+                    (
+                        "humidity_pct",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("humidity_pct")), CanonKind::Float2),
+                    ),
+                    ("lux", Self::format_canonical_field(payload.and_then(|p| p.get("lux")), CanonKind::Float2)),
+                    (
+                        "mobile_cell_id",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("mobile_cell_id")), CanonKind::Str),
+                    ),
+                    (
+                        "mobile_lac",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("mobile_lac")), CanonKind::Str),
+                    ),
+                    (
+                        "mobile_mcc",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("mobile_mcc")), CanonKind::Str),
+                    ),
+                    (
+                        "mobile_mnc",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("mobile_mnc")), CanonKind::Str),
+                    ),
+                    (
+                        "mobile_network",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("mobile_network")), CanonKind::Str),
+                    ),
+                    (
+                        "mobile_operator",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("mobile_operator")), CanonKind::Str),
+                    ),
+                    (
+                        "mobile_radio",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("mobile_radio")), CanonKind::Str),
+                    ),
+                    (
+                        "mobile_roaming",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("mobile_roaming")), CanonKind::Bool),
+                    ),
+                    (
+                        "mobile_rsrp_dbm",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("mobile_rsrp_dbm")), CanonKind::IntRaw),
+                    ),
+                    (
+                        "mobile_rsrq_db",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("mobile_rsrq_db")), CanonKind::Float2),
+                    ),
+                    (
+                        "mobile_rssi_dbm",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("mobile_rssi_dbm")), CanonKind::IntRaw),
+                    ),
+                    (
+                        "mobile_sinr_db",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("mobile_sinr_db")), CanonKind::Float2),
+                    ),
+                    (
+                        "pressure_hpa",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("pressure_hpa")), CanonKind::Float2),
+                    ),
+                    ("tamper", Self::format_canonical_field(payload.and_then(|p| p.get("tamper")), CanonKind::Bool)),
+                    ("temp_c", Self::format_canonical_field(payload.and_then(|p| p.get("temp_c")), CanonKind::Float2)),
+                    (
+                        "vbus_present",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("vbus_present")), CanonKind::Bool),
+                    ),
+                    (
+                        "voc_index",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("voc_index")), CanonKind::IntRaw),
+                    ),
+                    (
+                        "voc_raw",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("voc_raw")), CanonKind::IntRaw),
+                    ),
+                ];
+                if let Some(initial_temp) = payload.and_then(|p| p.get("initial_temp_c")) {
+                    content.push((
+                        "initial_temp_c",
+                        Self::format_canonical_field(Some(initial_temp), CanonKind::Float2),
+                    ));
+                }
+                content.sort_by(|a, b| a.0.cmp(b.0));
+
+                parts.push(device_id.to_string());
+                parts.push(public_key.to_string());
+                parts.push("environment".to_string());
+                parts.push(record.get("id").and_then(Value::as_str).unwrap_or("").to_string());
+                parts.push(Self::format_canonical_field(payload.and_then(|p| p.get("ctr")), CanonKind::IntRaw));
+                parts.push(Self::format_canonical_field(payload.and_then(|p| p.get("timestamp_utc")), CanonKind::IntRaw));
+                parts.push(Self::format_canonical_field(payload.and_then(|p| p.get("uptime_us")), CanonKind::IntRaw));
+                parts.extend(content.into_iter().map(|(_, v)| v));
+                parts.push(record.get("previous_signature").and_then(Value::as_str).unwrap_or("").to_string());
+            }
+            "biometric" => {
+                let mut content: Vec<(&str, String)> = vec![
+                    ("checks", Self::format_canonical_field(payload.and_then(|p| p.get("checks")), CanonKind::ArrayStr)),
+                    (
+                        "confidence",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("confidence")), CanonKind::Float2),
+                    ),
+                    ("match", Self::format_canonical_field(payload.and_then(|p| p.get("match")), CanonKind::Bool)),
+                    (
+                        "metrics",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("metrics")), CanonKind::ArrayFloat2),
+                    ),
+                    ("modality", Self::format_canonical_field(payload.and_then(|p| p.get("modality")), CanonKind::Str)),
+                    (
+                        "template_id_hash",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("template_id_hash")), CanonKind::Str),
+                    ),
+                ];
+                content.sort_by(|a, b| a.0.cmp(b.0));
+
+                let event_id = record
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .or_else(|| payload.and_then(|p| p.get("id")).and_then(Value::as_str))
+                    .unwrap_or("");
+
+                parts.push(device_id.to_string());
+                parts.push(public_key.to_string());
+                parts.push("biometric".to_string());
+                parts.push(event_id.to_string());
+                parts.push(Self::format_canonical_field(payload.and_then(|p| p.get("ctr")), CanonKind::IntRaw));
+                parts.push(Self::format_canonical_field(payload.and_then(|p| p.get("timestamp_utc")), CanonKind::IntRaw));
+                parts.push(Self::format_canonical_field(payload.and_then(|p| p.get("uptime_us")), CanonKind::IntRaw));
+                parts.push(Self::format_canonical_field(payload.and_then(|p| p.get("firmware")), CanonKind::Str));
+                parts.extend(content.into_iter().map(|(_, v)| v));
+                parts.push(record.get("previous_signature").and_then(Value::as_str).unwrap_or("").to_string());
+            }
+            "attachment" => {
+                let mut content: Vec<(&str, String)> = vec![
+                    ("checksum", Self::format_canonical_field(record.get("checksum"), CanonKind::Str)),
+                    ("merkle_root", Self::format_canonical_field(record.get("merkle_root"), CanonKind::Str)),
+                    ("mime", Self::format_canonical_field(record.get("mime"), CanonKind::Str)),
+                    ("title", Self::format_canonical_field(record.get("title"), CanonKind::Str)),
+                ];
+                content.sort_by(|a, b| a.0.cmp(b.0));
+
+                let parent_signature = record.get("parent_signature").and_then(Value::as_str).unwrap_or("");
+                let external_signature = record
+                    .get("external_identity")
+                    .and_then(|e| e.get("signature"))
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+
+                parts.push(parent_signature.to_string());
+                parts.push(device_id.to_string());
+                parts.push(public_key.to_string());
+                parts.push("attachment".to_string());
+                parts.push(record.get("id").and_then(Value::as_str).unwrap_or("").to_string());
+                parts.push(record.get("parent_id").and_then(Value::as_str).unwrap_or("").to_string());
+                parts.push(Self::format_canonical_field(record.get("timestamp_utc"), CanonKind::IntRaw));
+                parts.extend(content.into_iter().map(|(_, v)| v));
+                parts.push(external_signature.to_string());
+            }
+            "location" => {
+                let mut content: Vec<(&str, String)> = vec![
+                    ("lat", Self::format_canonical_field(record.get("lat"), CanonKind::Float6)),
+                    ("lng", Self::format_canonical_field(record.get("lng"), CanonKind::Float6)),
+                ];
+                content.sort_by(|a, b| a.0.cmp(b.0));
+
+                let parent_signature = record.get("parent_signature").and_then(Value::as_str).unwrap_or("");
+                let external_signature = record
+                    .get("external_identity")
+                    .and_then(|e| e.get("signature"))
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+
+                parts.push(parent_signature.to_string());
+                parts.push(device_id.to_string());
+                parts.push(public_key.to_string());
+                parts.push("location".to_string());
+                parts.push(record.get("parent_id").and_then(Value::as_str).unwrap_or("").to_string());
+                parts.push(Self::format_canonical_field(record.get("timestamp_utc"), CanonKind::IntRaw));
+                parts.extend(content.into_iter().map(|(_, v)| v));
+                parts.push(external_signature.to_string());
+            }
+            "custody" => {
+                let mut content: Vec<(&str, String)> = vec![
+                    (
+                        "context_ref",
+                        Self::format_canonical_field(payload.and_then(|p| p.get("context_ref")), CanonKind::Str),
+                    ),
+                    ("event", Self::format_canonical_field(payload.and_then(|p| p.get("event")), CanonKind::Str)),
+                    ("status", Self::format_canonical_field(payload.and_then(|p| p.get("status")), CanonKind::Str)),
+                ];
+                content.sort_by(|a, b| a.0.cmp(b.0));
+
+                let parent_signature = record.get("parent_signature").and_then(Value::as_str).unwrap_or("");
+                let external_signature = record
+                    .get("external_identity")
+                    .and_then(|e| e.get("signature"))
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+
+                parts.push(parent_signature.to_string());
+                parts.push(device_id.to_string());
+                parts.push(public_key.to_string());
+                parts.push("custody".to_string());
+                parts.push(record.get("id").and_then(Value::as_str).unwrap_or("").to_string());
+                parts.push(record.get("parent_id").and_then(Value::as_str).unwrap_or("").to_string());
+                parts.push(Self::format_canonical_field(record.get("timestamp_utc"), CanonKind::IntRaw));
+                parts.extend(content.into_iter().map(|(_, v)| v));
+                parts.push(external_signature.to_string());
+            }
+            _ => return None,
+        }
+
+        Some(parts.join(":"))
     }
 
     fn is_aux_record_type(record_type: &str) -> bool {
@@ -1123,6 +1538,50 @@ impl LukuFile {
                         criticality: Criticality::Critical,
                     },
                 );
+            }
+        }
+
+        // Always independently recompute the canonical string from the
+        // envelope's own structured fields (sorting content fields
+        // alphabetically at runtime) and compare it to the stored
+        // canonical_string, rather than trusting that the stored string was
+        // itself correctly ordered. This catches a payload whose fields were
+        // tampered with independently of canonical_string/signature, and a
+        // producer that got the field order wrong.
+        if !canonical.is_empty() {
+            match Self::expected_canonical_string(envelope, device_id, public_key) {
+                Some(expected) if expected != canonical => {
+                    Self::push_issue(
+                        &mut issues,
+                        debug_logging,
+                        None,
+                        VerificationIssue {
+                            code: "RECORD_CANONICAL_MISMATCH".to_string(),
+                            message: format!(
+                                "Recomputed canonical string for record type {} does not match the stored canonical_string.",
+                                r#type
+                            ),
+                            criticality: Criticality::Critical,
+                        },
+                    );
+                }
+                None if r#type == "scan" => {
+                    let profile = payload.and_then(|p| p.get("profile")).and_then(|v| v.as_str());
+                    Self::push_issue(
+                        &mut issues,
+                        debug_logging,
+                        None,
+                        VerificationIssue {
+                            code: "RECORD_UNKNOWN_SCAN_PROFILE".to_string(),
+                            message: format!(
+                                "Scan record has unknown or missing profile {:?}; cannot verify canonical field order.",
+                                profile
+                            ),
+                            criticality: Criticality::Critical,
+                        },
+                    );
+                }
+                _ => {}
             }
         }
 
@@ -2327,6 +2786,38 @@ impl LukuFile {
                         );
                     }
 
+                    // Always independently recompute the canonical string from the
+                    // record's own structured fields (sorting content fields
+                    // alphabetically at runtime) and compare it to the stored
+                    // canonical_string, rather than trusting that the stored string
+                    // was itself correctly ordered.
+                    if !canonical.is_empty() {
+                        match Self::expected_canonical_string(record, device_id, public_key) {
+                            Some(expected) if expected != canonical => {
+                                Self::push_issue(&mut issues, debug_logging, Some(record_context.as_str()), VerificationIssue {
+                                    code: "RECORD_CANONICAL_MISMATCH".to_string(),
+                                    message: format!(
+                                        "Recomputed canonical string for record type {} on device {} does not match the stored canonical_string.",
+                                        r#type, device_id
+                                    ),
+                                    criticality: Criticality::Critical,
+                                });
+                            }
+                            None if r#type == "scan" => {
+                                let profile = payload.and_then(|p| p.get("profile")).and_then(|v| v.as_str());
+                                Self::push_issue(&mut issues, debug_logging, Some(record_context.as_str()), VerificationIssue {
+                                    code: "RECORD_UNKNOWN_SCAN_PROFILE".to_string(),
+                                    message: format!(
+                                        "Scan record on device {} has unknown or missing profile {:?}; cannot verify canonical field order.",
+                                        device_id, profile
+                                    ),
+                                    criticality: Criticality::Critical,
+                                });
+                            }
+                            _ => {}
+                        }
+                    }
+
                     if !is_aux_record && !sig.is_empty() {
                         last_sigs.insert(device_id.to_string(), sig.to_string());
                     }
@@ -3082,7 +3573,8 @@ mod tests {
             "canonical_string": "can1",
             "payload": {
                 "ctr": 1,
-                "timestamp_utc": 1000
+                "timestamp_utc": 1000,
+                "profile": "animal"
             }
         })];
 
@@ -3124,6 +3616,7 @@ mod tests {
                 issue.code == "BLOCK_HASH_MISSING"
                     || issue.code == "MANIFEST_SIGNATURE_MISSING"
                     || issue.code == "RECORD_SIGNATURE_INVALID"
+                    || issue.code == "RECORD_CANONICAL_MISMATCH"
             }),
             "unexpected issues: {:?}",
             issues
@@ -3144,7 +3637,8 @@ mod tests {
             "canonical_string": "can1",
             "payload": {
                 "ctr": 1,
-                "timestamp_utc": 1000
+                "timestamp_utc": 1000,
+                "profile": "animal"
             }
         })];
 

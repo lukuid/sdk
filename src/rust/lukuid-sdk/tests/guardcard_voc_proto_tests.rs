@@ -95,8 +95,11 @@ fn test_decoder_maps_voc_raw_and_voc_index_from_environment_frames() {
 fn test_verify_envelope_accepts_new_voc_canonical_and_rejects_old_format() {
     let signing_key = SigningKey::from_bytes(&rand::random::<[u8; 32]>());
     let public_key = BASE64.encode(signing_key.verifying_key().as_bytes());
+    // Content fields alphabetical per LUKU.md: accel_g_x, accel_g_y, accel_g_z,
+    // battery_percent, gps_*(absent), humidity_pct, lux, mobile_*(absent),
+    // pressure_hpa, tamper, temp_c, vbus_present, voc_index, voc_raw.
     let canonical = format!(
-        "GC-TEST-1:{public_key}:environment:ENV-VOC-1:4502:1770823456:3600000000:85:false:350.50:22.40:45.20:1013.20:30000:110:false:0.01:0.02:1.00:genesis_fake"
+        "GC-TEST-1:{public_key}:environment:ENV-VOC-1:4502:1770823456:3600000000:0.01:0.02:1.00:85:::::::::45.20:350.50:::::::::::::1013.20:false:22.40:false:110:30000:genesis_fake"
     );
     let signature = BASE64.encode(signing_key.sign(canonical.as_bytes()).to_bytes());
 
@@ -140,8 +143,10 @@ fn test_verify_envelope_accepts_new_voc_canonical_and_rejects_old_format() {
     let valid_issues = LukuFile::verify_envelope(&envelope, options.clone());
     assert!(valid_issues.is_empty(), "Expected no issues, got {valid_issues:?}");
 
+    // Same field order, but voc_raw omitted — regression guard against the
+    // pre-VOC-raw wire format being silently accepted.
     let old_canonical = format!(
-        "GC-TEST-1:{public_key}:environment:ENV-VOC-1:4502:1770823456:3600000000:85:false:350.50:22.40:45.20:1013.20:110:false:0.01:0.02:1.00:genesis_fake"
+        "GC-TEST-1:{public_key}:environment:ENV-VOC-1:4502:1770823456:3600000000:0.01:0.02:1.00:85:::::::::45.20:350.50:::::::::::::1013.20:false:22.40:false:110::genesis_fake"
     );
     let mut invalid_envelope = envelope.clone();
     invalid_envelope["canonical_string"] = json!(old_canonical);

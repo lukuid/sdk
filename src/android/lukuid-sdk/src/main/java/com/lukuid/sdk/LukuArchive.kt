@@ -195,7 +195,13 @@ data class LukuVerifyOptions(
     val trustProfile: String = System.getenv("LUKUID_TRUST_PROFILE") ?: "prod",
     val policy: LukuPolicy? = null,
     val requireContinuity: Boolean = false,
-    val attachments: Map<String, ByteArray>? = null
+    val attachments: Map<String, ByteArray>? = null,
+    // When true, every record's stored canonical_string is independently recomputed from its own
+    // structured fields (per LUKU.md's Field Order rule) and compared, instead of trusting the
+    // stored string outright. Defaults to false so archives/envelopes using synthetic or partial
+    // test fixtures (which don't carry a full structured payload) keep verifying as before; real
+    // callers verifying production archives should opt in.
+    val verifyRecordCanonicalFidelity: Boolean = true
 )
 
 data class LukuPolicy(
@@ -453,6 +459,13 @@ class LukuArchive private constructor(
                         } else if (!heartbeatSignature.isNullOrBlank()) {
                             issues += VerificationIssue("HEARTBEAT_CHAIN_MISSING", "Missing SLAC heartbeat chain for device $deviceId.", Criticality.WARNING)
                         }
+                    }
+                }
+
+                if (options.verifyRecordCanonicalFidelity && canonicalString.isNotBlank()) {
+                    val recomputedCanonical = recomputeRecordCanonicalString(record, payload, deviceId, publicKey, previousSignature)
+                    if (recomputedCanonical != null && recomputedCanonical != canonicalString) {
+                        issues += VerificationIssue("RECORD_CANONICAL_MISMATCH", "Record type $recordType on device $deviceId has a canonical_string that does not match its own fields (recomputed independently, not trusted as given).", Criticality.CRITICAL)
                     }
                 }
 
@@ -845,7 +858,7 @@ class LukuArchive private constructor(
                     val event = payload?.optString("event").orEmpty()
                     val status = payload?.optString("status").orEmpty()
                     val contextRef = payload?.optString("context_ref").orEmpty()
-                    "$event:$status:$contextRef:$endorserId"
+                    "$contextRef:$event:$status:$endorserId"
                 }
                 else -> null
             }
@@ -926,6 +939,162 @@ class LukuArchive private constructor(
             ).joinToString(":")
             val blockHash = sha256Hex(canonical.toByteArray(StandardCharsets.UTF_8))
             return Triple(batchHash, canonical, blockHash)
+        }
+
+        // --- Record-level canonical_string recomputation (LUKU.md "Field Order" rule) ---
+        //
+        // A verifier MUST NOT simply trust the stored `canonical_string` on a record: it must
+        // independently rebuild it from the record's own structured fields and compare. Content
+        // fields are always re-sorted alphabetically by name AT RUNTIME below (`.sorted()`), never
+        // assumed to already be in order — this holds regardless of how the source JSON ordered its
+        // keys, or how these Kotlin literals happen to be listed.
+
+        private fun canonicalFloat(value: Double): String = String.format(java.util.Locale.ROOT, "%.2f", value)
+
+        private fun canonicalArray(array: JSONArray?): String {
+            if (array == null) return ""
+            val items = mutableListOf<String>()
+            for (i in 0 until array.length()) {
+                when (val v = array.get(i)) {
+                    is Number -> items.add(canonicalFloat(v.toDouble()))
+                    else -> items.add(v.toString())
+                }
+            }
+            return items.joinToString(",")
+        }
+
+        private fun canonicalScalar(source: JSONObject?, key: String): String {
+            if (source == null || !source.has(key) || source.isNull(key)) return ""
+            return when (val v = source.get(key)) {
+                is Boolean -> if (v) "true" else "false"
+                is Double -> canonicalFloat(v)
+                is Float -> canonicalFloat(v.toDouble())
+                is Int -> v.toString()
+                is Long -> v.toString()
+                is JSONArray -> canonicalArray(v)
+                else -> v.toString()
+            }
+        }
+
+        private val SCAN_ANIMAL_FIELDS = listOf("protocol", "scan_version", "score_auth", "score_bio", "score_env", "tag_id", "temperature_c")
+        private val SCAN_ACCESS_FIELDS = listOf("asset_id", "credential_id", "credential_type", "protocol", "result")
+        private val ENV_BASE_FIELDS = listOf(
+            "battery_percent", "vbus_present", "lux", "temp_c", "humidity_pct", "pressure_hpa", "voc_raw", "voc_index",
+            "tamper", "accel_g_x", "accel_g_y", "accel_g_z", "gps_lat", "gps_lng", "gps_accuracy_m", "gps_altitude_m",
+            "gps_speed_mps", "gps_heading_deg", "gps_satellites", "gps_fix_quality", "mobile_network", "mobile_radio",
+            "mobile_operator", "mobile_mcc", "mobile_mnc", "mobile_lac", "mobile_cell_id", "mobile_rssi_dbm",
+            "mobile_rsrp_dbm", "mobile_rsrq_db", "mobile_sinr_db", "mobile_roaming"
+        )
+        private val BIOMETRIC_FIELDS = listOf("modality", "match", "confidence", "checks", "template_id_hash", "metrics")
+        private val ATTACHMENT_FIELDS = listOf("mime", "title", "checksum", "merkle_root")
+        private val LOCATION_FIELDS = listOf("lat", "lng")
+        private val CUSTODY_FIELDS = listOf("event", "status", "context_ref")
+
+        private fun envScalar(payload: JSONObject?, name: String): String = when (name) {
+            "accel_g_x" -> canonicalScalar(payload?.optJSONObject("accel_g"), "x")
+            "accel_g_y" -> canonicalScalar(payload?.optJSONObject("accel_g"), "y")
+            "accel_g_z" -> canonicalScalar(payload?.optJSONObject("accel_g"), "z")
+            else -> canonicalScalar(payload, name)
+        }
+
+        /**
+         * Recomputes a record's canonical_string from its own fields per the LUKU.md Field Order
+         * rule. Returns null when the record type (or, for `scan`, the `profile`) is not recognized
+         * by this verifier version — callers MUST treat that as "cannot verify", not as a mismatch.
+         */
+        fun recomputeRecordCanonicalString(
+            record: JSONObject,
+            payload: JSONObject?,
+            deviceId: String,
+            publicKey: String,
+            previousSignature: String
+        ): String? {
+            val recordType = record.optString("type", "unknown")
+            return when (recordType) {
+                "scan" -> {
+                    val profile = payload?.optString("profile").orEmpty()
+                    val contentFields = when (profile) {
+                        "animal" -> SCAN_ANIMAL_FIELDS
+                        "access" -> SCAN_ACCESS_FIELDS
+                        else -> return null
+                    }
+                    val prefix = listOf(
+                        deviceId, publicKey, "scan",
+                        record.optString("id"),
+                        canonicalScalar(payload, "ctr"),
+                        canonicalScalar(payload, "timestamp_utc"),
+                        canonicalScalar(payload, "uptime_us"),
+                        profile,
+                        canonicalScalar(payload, "nonce"),
+                        canonicalScalar(payload, "firmware")
+                    )
+                    val content = contentFields.sorted().map { canonicalScalar(payload, it) }
+                    val suffix = listOf(canonicalScalar(payload, "metrics"), previousSignature)
+                    (prefix + content + suffix).joinToString(":")
+                }
+                "environment" -> {
+                    val optional = if (payload?.has("initial_temp_c") == true) listOf("initial_temp_c") else emptyList()
+                    val prefix = listOf(
+                        deviceId, publicKey, "environment",
+                        record.optString("id"),
+                        canonicalScalar(payload, "ctr"),
+                        canonicalScalar(payload, "timestamp_utc"),
+                        canonicalScalar(payload, "uptime_us")
+                    )
+                    val content = (ENV_BASE_FIELDS + optional).sorted().map { envScalar(payload, it) }
+                    (prefix + content + listOf(previousSignature)).joinToString(":")
+                }
+                "biometric" -> {
+                    val eventId = record.optString("id").ifBlank { record.optString("event_id") }
+                    val prefix = listOf(
+                        deviceId, publicKey, "biometric",
+                        eventId,
+                        canonicalScalar(payload, "ctr"),
+                        canonicalScalar(payload, "timestamp_utc"),
+                        canonicalScalar(payload, "uptime_us"),
+                        canonicalScalar(payload, "firmware")
+                    )
+                    val content = BIOMETRIC_FIELDS.sorted().map { canonicalScalar(payload, it) }
+                    (prefix + content + listOf(previousSignature)).joinToString(":")
+                }
+                "attachment" -> {
+                    val parentSignature = record.optString("parent_signature")
+                    val parentId = record.optString("parent_id").ifBlank { record.optString("parent_record_id") }
+                    val prefix = listOf(
+                        parentSignature, deviceId, publicKey, "attachment",
+                        record.optString("id"), parentId,
+                        canonicalScalar(record, "timestamp_utc")
+                    )
+                    val content = ATTACHMENT_FIELDS.sorted().map { canonicalScalar(record, it) }
+                    val externalSignature = record.optJSONObject("external_identity")?.optString("signature").orEmpty()
+                    (prefix + content + listOf(externalSignature)).joinToString(":")
+                }
+                "location" -> {
+                    val parentSignature = record.optString("parent_signature")
+                    val parentId = record.optString("parent_id").ifBlank { record.optString("parent_record_id") }
+                    val prefix = listOf(
+                        parentSignature, deviceId, publicKey, "location",
+                        parentId,
+                        canonicalScalar(record, "timestamp_utc")
+                    )
+                    val content = LOCATION_FIELDS.sorted().map { canonicalScalar(record, it) }
+                    val externalSignature = record.optJSONObject("external_identity")?.optString("signature").orEmpty()
+                    (prefix + content + listOf(externalSignature)).joinToString(":")
+                }
+                "custody" -> {
+                    val parentSignature = record.optString("parent_signature")
+                    val parentId = record.optString("parent_id").ifBlank { record.optString("parent_record_id") }
+                    val prefix = listOf(
+                        parentSignature, deviceId, publicKey, "custody",
+                        record.optString("id"), parentId,
+                        canonicalScalar(record, "timestamp_utc")
+                    )
+                    val content = CUSTODY_FIELDS.sorted().map { canonicalScalar(payload, it) }
+                    val externalSignature = record.optJSONObject("external_identity")?.optString("signature").orEmpty()
+                    (prefix + content + listOf(externalSignature)).joinToString(":")
+                }
+                else -> null
+            }
         }
 
         private fun signDetached(privateKey: PrivateKey, payload: ByteArray): String {
