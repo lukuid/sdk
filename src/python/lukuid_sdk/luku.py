@@ -1373,12 +1373,10 @@ _LOCATION_CONTENT_FIELDS: list[str] = ["lng", "lat"]
 _CUSTODY_CONTENT_FIELDS: list[str] = ["event", "status", "context_ref"]
 
 _NUMERIC_ARRAY_FIELDS = {"metrics"}
-# Pre-existing, documented-by-example precision/format quirks that predate
-# this rewrite (see LUKU.md's environment vs. location canonical string
-# examples) -- preserved as-is rather than silently "corrected", since that
-# would diverge from the archive format's worked examples.
-_FLOAT_PRECISION_OVERRIDES = {"gps_lat": 6, "gps_lng": 6}
-_RAW_FLOAT_FIELDS = {"lat", "lng"}
+# LUKU.md: "gps_lat, gps_lng, lat, and lng MUST be formatted to exactly six
+# decimal places" -- the only field-name-based exception to the two-decimal
+# rule used for every other float field.
+_FLOAT_PRECISION_OVERRIDES = {"gps_lat": 6, "gps_lng": 6, "lat": 6, "lng": 6}
 _FLOAT_FIELDS = {
     "accel_g_x", "accel_g_y", "accel_g_z", "gps_accuracy_m", "gps_altitude_m",
     "gps_heading_deg", "gps_speed_mps", "humidity_pct", "initial_temp_c", "lux",
@@ -1411,8 +1409,6 @@ def _canonical_numeric_array(value: Any) -> str:
 def _canonical_field(name: str, value: Any) -> str:
     if name in _NUMERIC_ARRAY_FIELDS:
         return _canonical_numeric_array(value)
-    if name in _RAW_FLOAT_FIELDS:
-        return "" if value is None else str(value)
     if name in _FLOAT_PRECISION_OVERRIDES and isinstance(value, (int, float)) and not isinstance(value, bool):
         return f"{float(value):.{_FLOAT_PRECISION_OVERRIDES[name]}f}"
     if name in _FLOAT_FIELDS and isinstance(value, (int, float)) and not isinstance(value, bool):
@@ -1573,8 +1569,8 @@ def _expected_external_identity_payload(record: dict[str, Any], record_type: str
         # No Silent Numeric Defaults: an absent lat/lng must serialize as
         # "", not 0 -- (0, 0) is a real coordinate, so defaulting would make
         # "not reported" indistinguishable from "reported as exactly zero".
-        lat_str = lat if isinstance(lat, (int, float)) and not isinstance(lat, bool) else ""
-        lng_str = lng if isinstance(lng, (int, float)) and not isinstance(lng, bool) else ""
+        lat_str = f"{float(lat):.6f}" if isinstance(lat, (int, float)) and not isinstance(lat, bool) else ""
+        lng_str = f"{float(lng):.6f}" if isinstance(lng, (int, float)) and not isinstance(lng, bool) else ""
         return f"{lat_str}:{lng_str}:{endorser_id}"
     if record_type == "custody":
         payload = record.get("payload") if isinstance(record.get("payload"), dict) else {}
