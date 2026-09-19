@@ -103,44 +103,22 @@ async function createValidExport(deviceId: string): Promise<{
     vendor: 'LUKUID'
   };
 
-  const canonical1 = 'can1';
-  const canonical2 = 'can2';
-  const canonical3 = 'can3';
+  const p1 = { ctr: 1, timestamp_utc: 1000, profile: 'animal', protocol: 'FDX-B', scan_version: 'v1.0', tag_id: '982000000000001', temperature_c: 38.5, genesis_hash: 'genesis_fake' };
+  const c1 = `${deviceId}:${signer.publicKeyBase64}:scan:1:1:1000::animal:::FDX-B:v1.0:982000000000001:38.50::genesis_fake`;
+  const s1 = await signCanonical(signer.signer.privateKey, c1);
+
+  const p2 = { ctr: 2, timestamp_utc: 1005, profile: 'animal', protocol: 'FDX-B', scan_version: 'v1.0', tag_id: '982000000000002', temperature_c: 38.6, genesis_hash: 'genesis_fake' };
+  const c2 = `${deviceId}:${signer.publicKeyBase64}:scan:2:2:1005::animal:::FDX-B:v1.0:982000000000002:38.60::${s1}`;
+  const s2 = await signCanonical(signer.signer.privateKey, c2);
+
+  const p3 = { ctr: 3, timestamp_utc: 1010, profile: 'animal', protocol: 'FDX-B', scan_version: 'v1.0', tag_id: '982000000000003', temperature_c: 38.7, genesis_hash: 'genesis_fake' };
+  const c3 = `${deviceId}:${signer.publicKeyBase64}:scan:3:3:1010::animal:::FDX-B:v1.0:982000000000003:38.70::${s2}`;
+  const s3 = await signCanonical(signer.signer.privateKey, c3);
 
   const records: JsonObject[] = [
-    {
-      type: 'scan',
-      signature: await signCanonical(signer.signer.privateKey, canonical1),
-      previous_signature: 'genesis_fake',
-      canonical_string: canonical1,
-      payload: {
-        ctr: 1,
-        timestamp_utc: 1000,
-        genesis_hash: 'genesis_fake'
-      }
-    },
-    {
-      type: 'scan',
-      signature: await signCanonical(signer.signer.privateKey, canonical2),
-      previous_signature: await signCanonical(signer.signer.privateKey, canonical1),
-      canonical_string: canonical2,
-      payload: {
-        ctr: 2,
-        timestamp_utc: 1005,
-        genesis_hash: 'genesis_fake'
-      }
-    },
-    {
-      type: 'scan',
-      signature: await signCanonical(signer.signer.privateKey, canonical3),
-      previous_signature: await signCanonical(signer.signer.privateKey, canonical2),
-      canonical_string: canonical3,
-      payload: {
-        ctr: 3,
-        timestamp_utc: 1010,
-        genesis_hash: 'genesis_fake'
-      }
-    }
+    { id: '1', type: 'scan', signature: s1, previous_signature: 'genesis_fake', canonical_string: c1, payload: p1 },
+    { id: '2', type: 'scan', signature: s2, previous_signature: s1, canonical_string: c2, payload: p2 },
+    { id: '3', type: 'scan', signature: s3, previous_signature: s2, canonical_string: c3, payload: p3 }
   ];
 
   const exported = await LukuFile.exportWithIdentity(records, identity, {}, signer.signer);
@@ -429,14 +407,21 @@ describe('LukuFile', () => {
 
   it('keeps attested attachments out of the native chain', async () => {
     const signer = await createTestSigner();
-    const deviceId = 'LUK-ATTEST';
-    const attachmentBytes = new TextEncoder().encode('desktop-added-attachment');
+    const deviceId = 'LUK-ATTACH';
+    const attachmentBytes = new TextEncoder().encode('attestation file content');
     const attachmentHash = await crypto.subtle.digest('SHA-256', attachmentBytes);
     const checksum = Buffer.from(new Uint8Array(attachmentHash)).toString('hex');
-    const scanCanonical = 'attested-scan';
-    const envCanonical = 'attested-environment';
-    const attCanonical = 'attested-attachment';
+
+    const scanPayload = { ctr: 1, timestamp_utc: 1000, profile: 'animal', protocol: 'FDX-B', scan_version: 'v1.0', tag_id: '982000000000001', temperature_c: 38.5, genesis_hash: 'genesis_fake' };
+    const scanCanonical = `${deviceId}:${signer.publicKeyBase64}:scan:SCAN-ATTEST-1:1:1000::animal:::FDX-B:v1.0:982000000000001:38.50::genesis_fake`;
     const scanSig = await signCanonical(signer.signer.privateKey, scanCanonical);
+
+    const attCanonical = `${scanSig}:${deviceId}:${signer.publicKeyBase64}:attachment:ATT-ATTEST-1:SCAN-ATTEST-1:1001:${checksum}::text/plain:Desktop Note:`;
+    const attSig = await signCanonical(signer.signer.privateKey, attCanonical);
+
+    const envPayload = { ctr: 2, timestamp_utc: 1002, battery_percent: 100, vbus_present: true, lux: 0, temp_c: 20.0, humidity_pct: 40.0, pressure_hpa: 1000.0, voc_raw: 0, voc_index: 0, tamper: false, accel_g_x: 0, accel_g_y: 0, accel_g_z: 1.0 };
+    const envCanonical = `${deviceId}:${signer.publicKeyBase64}:environment:ENV-ATTEST-1:2:1002::0.00:0.00:1.00:100:::::::::40.00::0.00:::::::::::::1000.00:false:20.00:true:0:0:${scanSig}`;
+    const envSig = await signCanonical(signer.signer.privateKey, envCanonical);
 
     const block = await LukuFile.buildBlockFromRecords(
       0,
@@ -452,7 +437,7 @@ describe('LukuFile', () => {
           signature: scanSig,
           previous_signature: 'genesis_fake',
           canonical_string: scanCanonical,
-          payload: { ctr: 1, timestamp_utc: 1000, genesis_hash: 'genesis_fake' }
+          payload: scanPayload
         },
         {
           type: 'attachment',
@@ -460,7 +445,7 @@ describe('LukuFile', () => {
           parent_record_id: 'SCAN-ATTEST-1',
           device_id: deviceId,
           public_key: signer.publicKeyBase64,
-          signature: await signCanonical(signer.signer.privateKey, attCanonical),
+          signature: attSig,
           parent_signature: scanSig,
           canonical_string: attCanonical,
           timestamp_utc: 1001,
@@ -473,10 +458,10 @@ describe('LukuFile', () => {
           id: 'ENV-ATTEST-1',
           device_id: deviceId,
           public_key: signer.publicKeyBase64,
-          signature: await signCanonical(signer.signer.privateKey, envCanonical),
+          signature: envSig,
           previous_signature: scanSig,
           canonical_string: envCanonical,
-          payload: { ctr: 2, timestamp_utc: 1002 }
+          payload: envPayload
         }
       ],
       undefined
@@ -501,10 +486,17 @@ describe('LukuFile', () => {
   it('keeps attested custody records out of the native chain', async () => {
     const signer = await createTestSigner();
     const deviceId = 'LUK-CUSTODY';
-    const scanCanonical = 'custody-scan';
-    const envCanonical = 'custody-environment';
-    const custodyCanonical = 'custody-checkpoint';
+
+    const scanPayload = { ctr: 1, timestamp_utc: 1000, profile: 'animal', protocol: 'FDX-B', scan_version: 'v1.0', tag_id: '982000000000001', temperature_c: 38.5, genesis_hash: 'genesis_fake' };
+    const scanCanonical = `${deviceId}:${signer.publicKeyBase64}:scan:SCAN-CUSTODY-1:1:1000::animal:::FDX-B:v1.0:982000000000001:38.50::genesis_fake`;
     const scanSig = await signCanonical(signer.signer.privateKey, scanCanonical);
+
+    const custodyCanonical = `${scanSig}:${deviceId}:${signer.publicKeyBase64}:custody:CUSTODY-1:SCAN-CUSTODY-1:1001:shipment-123:handoff:received:`;
+    const custodySig = await signCanonical(signer.signer.privateKey, custodyCanonical);
+
+    const envPayload = { ctr: 2, timestamp_utc: 1002, battery_percent: 100, vbus_present: true, lux: 0, temp_c: 20.0, humidity_pct: 40.0, pressure_hpa: 1000.0, voc_raw: 0, voc_index: 0, tamper: false, accel_g_x: 0, accel_g_y: 0, accel_g_z: 1.0 };
+    const envCanonical = `${deviceId}:${signer.publicKeyBase64}:environment:ENV-CUSTODY-1:2:1002::0.00:0.00:1.00:100:::::::::40.00::0.00:::::::::::::1000.00:false:20.00:true:0:0:${scanSig}`;
+    const envSig = await signCanonical(signer.signer.privateKey, envCanonical);
 
     const block = await LukuFile.buildBlockFromRecords(
       0,
@@ -520,7 +512,7 @@ describe('LukuFile', () => {
           signature: scanSig,
           previous_signature: 'genesis_fake',
           canonical_string: scanCanonical,
-          payload: { ctr: 1, timestamp_utc: 1000, genesis_hash: 'genesis_fake' }
+          payload: scanPayload
         },
         {
           type: 'custody',
@@ -528,7 +520,7 @@ describe('LukuFile', () => {
           parent_record_id: 'SCAN-CUSTODY-1',
           device_id: deviceId,
           public_key: signer.publicKeyBase64,
-          signature: await signCanonical(signer.signer.privateKey, custodyCanonical),
+          signature: custodySig,
           parent_signature: scanSig,
           canonical_string: custodyCanonical,
           timestamp_utc: 1001,
@@ -539,10 +531,10 @@ describe('LukuFile', () => {
           id: 'ENV-CUSTODY-1',
           device_id: deviceId,
           public_key: signer.publicKeyBase64,
-          signature: await signCanonical(signer.signer.privateKey, envCanonical),
+          signature: envSig,
           previous_signature: scanSig,
           canonical_string: envCanonical,
-          payload: { ctr: 2, timestamp_utc: 1002 }
+          payload: envPayload
         }
       ],
       undefined
@@ -599,7 +591,7 @@ describe('LukuFile', () => {
 
     const mutatedCanonical = await LukuFile.openBytes(new Uint8Array(sampleBytes));
     mutatedCanonical.blocks[0].batch[0].canonical_string = `${mutatedCanonical.blocks[0].batch[0].canonical_string as string}X`;
-    assert.ok(hasIssue(await mutatedCanonical.verify(testOptions()), 'RECORD_SIGNATURE_INVALID'));
+    assert.ok(hasIssue(await mutatedCanonical.verify(testOptions()), 'RECORD_CANONICAL_MISMATCH', 'RECORD_SIGNATURE_INVALID'));
 
     if (original.blocks[0].batch.length > 1) {
       const brokenChain = await LukuFile.openBytes(new Uint8Array(sampleBytes));

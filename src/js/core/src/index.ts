@@ -7,3 +7,5 @@ export { RevocationManager, type RevocationManagerOptions } from './revocation.j
 export { encodeFrame, encodeCommandRequest, LukuDecoder } from './codec.js';
 export * from './luku.js';
 export * from './parser.js';
+export * from './attestation.js';
+

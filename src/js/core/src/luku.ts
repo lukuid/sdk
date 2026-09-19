@@ -564,11 +564,18 @@ function recomputeScanCanonicalString(record: JsonObject, deviceId: string, publ
 
 function recomputeEnvironmentCanonicalString(record: JsonObject, deviceId: string, publicKey: string): string {
   const payload = asJsonObject(record.payload) ?? {};
+  const accel = asJsonObject(payload.accel_g) ?? {};
+  const contentSource: JsonObject = {
+    ...payload,
+    accel_g_x: payload.accel_g_x ?? accel.x,
+    accel_g_y: payload.accel_g_y ?? accel.y,
+    accel_g_z: payload.accel_g_z ?? accel.z
+  };
   const id = asString(record.id) ?? '';
   const ctr = formatCanonicalField(payload.ctr, 'int');
   const timestampUtc = formatCanonicalField(payload.timestamp_utc, 'int');
   const uptimeUs = formatCanonicalField(payload.uptime_us, 'int');
-  const content = buildSortedContentString(payload, ENVIRONMENT_CONTENT_FIELDS);
+  const content = buildSortedContentString(contentSource, ENVIRONMENT_CONTENT_FIELDS);
   const previousSignature = asString(record.previous_signature) ?? '';
   return [deviceId, publicKey, 'environment', id, ctr, timestampUtc, uptimeUs, content, previousSignature].join(':');
 }
@@ -592,7 +599,7 @@ function recomputeBiometricCanonicalString(record: JsonObject, deviceId: string,
 function recomputeAttachmentCanonicalString(record: JsonObject, deviceId: string, publicKey: string): string {
   const parentSignature = asString(record.parent_signature) ?? '';
   const id = asString(record.id) ?? '';
-  const parentId = asString(record.parent_id) ?? '';
+  const parentId = asString(record.parent_id) ?? asString(record.parent_record_id) ?? '';
   const timestampUtc = formatCanonicalField(record.timestamp_utc, 'int');
   const content = buildSortedContentString(record, ATTACHMENT_CONTENT_FIELDS);
   const externalSignature = asString(asJsonObject(record.external_identity)?.signature) ?? '';
@@ -601,7 +608,7 @@ function recomputeAttachmentCanonicalString(record: JsonObject, deviceId: string
 
 function recomputeLocationCanonicalString(record: JsonObject, deviceId: string, publicKey: string): string {
   const parentSignature = asString(record.parent_signature) ?? '';
-  const parentId = asString(record.parent_id) ?? '';
+  const parentId = asString(record.parent_id) ?? asString(record.parent_record_id) ?? '';
   const timestampUtc = formatCanonicalField(record.timestamp_utc, 'int');
   const content = buildSortedContentString(record, LOCATION_CONTENT_FIELDS);
   const externalSignature = asString(asJsonObject(record.external_identity)?.signature) ?? '';
@@ -611,7 +618,7 @@ function recomputeLocationCanonicalString(record: JsonObject, deviceId: string, 
 function recomputeCustodyCanonicalString(record: JsonObject, deviceId: string, publicKey: string): string {
   const parentSignature = asString(record.parent_signature) ?? '';
   const id = asString(record.id) ?? '';
-  const parentId = asString(record.parent_id) ?? '';
+  const parentId = asString(record.parent_id) ?? asString(record.parent_record_id) ?? '';
   const timestampUtc = formatCanonicalField(record.timestamp_utc, 'int');
   const payload = asJsonObject(record.payload) ?? {};
   const content = buildSortedContentString(payload, CUSTODY_CONTENT_FIELDS);
@@ -627,7 +634,7 @@ function recomputeCustodyCanonicalString(record: JsonObject, deviceId: string, p
  * record's stored `canonical_string` in that case, but must never treat an
  * unrecognized type/profile as if it were successfully verified.
  */
-function recomputeRecordCanonicalString(
+export function recomputeRecordCanonicalString(
   record: JsonObject,
   recordType: string,
   deviceId: string,
@@ -962,7 +969,10 @@ export class LukuFile {
       issues.push(issue('RECORD_SIGNATURE_MISSING', `Record type ${recordType} is missing a signature.`, 'critical'));
     } else if (publicKey) {
       const verified = await verifyRecordSignature(publicKey, signature, canonicalForSignature);
-      if (!verified) {
+      const storedVerified = canonicalStringValue.length > 0 && canonicalStringValue !== canonicalForSignature
+        ? await verifyRecordSignature(publicKey, signature, canonicalStringValue)
+        : verified;
+      if (!verified || !storedVerified) {
         issues.push(issue('RECORD_SIGNATURE_INVALID', `Invalid signature for record type ${recordType}.`, 'critical'));
       }
     }

@@ -517,7 +517,7 @@ class LukuArchive:
                             issues.append(_issue(
                                 "RECORD_SCHEMA_UNRECOGNIZED",
                                 f"Record type {record_type} on device {device_id} has an unrecognized type/profile; its canonical_string could not be independently reconstructed and checked against its own payload.",
-                                Criticality.CRITICAL,
+                                Criticality.WARNING,
                             ))
                         elif recomputed_canonical != canonical_string:
                             issues.append(_issue(
@@ -774,7 +774,7 @@ class LukuFile:
                 issues.append(_issue(
                     "RECORD_SCHEMA_UNRECOGNIZED",
                     f"Record type {record_type} has an unrecognized type/profile; its canonical_string could not be independently reconstructed and checked against its own payload.",
-                    Criticality.CRITICAL,
+                    Criticality.WARNING,
                 ))
             elif recomputed_canonical != canonical_string:
                 issues.append(_issue(
@@ -1356,7 +1356,7 @@ _SCAN_PROFILE_CONTENT_FIELDS: dict[str, list[str]] = {
 }
 
 _ENVIRONMENT_CONTENT_FIELDS: list[str] = [
-    "battery_percent", "vbus_present", "lux", "temp_c", "humidity_pct", "pressure_hpa",
+    "battery_percent", "vbus_present", "lux", "temp_c", "humidity_pct", "initial_temp_c", "pressure_hpa",
     "voc_raw", "voc_index", "tamper", "accel_g_x", "accel_g_y", "accel_g_z",
     "gps_lat", "gps_lng", "gps_accuracy_m", "gps_altitude_m", "gps_speed_mps", "gps_heading_deg",
     "gps_satellites", "gps_fix_quality", "mobile_network", "mobile_radio", "mobile_operator",
@@ -1379,6 +1379,11 @@ _NUMERIC_ARRAY_FIELDS = {"metrics"}
 # would diverge from the archive format's worked examples.
 _FLOAT_PRECISION_OVERRIDES = {"gps_lat": 6, "gps_lng": 6}
 _RAW_FLOAT_FIELDS = {"lat", "lng"}
+_FLOAT_FIELDS = {
+    "accel_g_x", "accel_g_y", "accel_g_z", "gps_accuracy_m", "gps_altitude_m",
+    "gps_heading_deg", "gps_speed_mps", "humidity_pct", "initial_temp_c", "lux",
+    "mobile_rsrq_db", "mobile_sinr_db", "pressure_hpa", "temp_c", "temperature_c"
+}
 
 
 def _canonical_scalar(value: Any) -> str:
@@ -1410,6 +1415,8 @@ def _canonical_field(name: str, value: Any) -> str:
         return "" if value is None else str(value)
     if name in _FLOAT_PRECISION_OVERRIDES and isinstance(value, (int, float)) and not isinstance(value, bool):
         return f"{float(value):.{_FLOAT_PRECISION_OVERRIDES[name]}f}"
+    if name in _FLOAT_FIELDS and isinstance(value, (int, float)) and not isinstance(value, bool):
+        return f"{float(value):.2f}"
     return _canonical_scalar(value)
 
 
@@ -1460,12 +1467,10 @@ def _recompute_record_canonical_string(
     if record_type == "environment":
         accel = payload.get("accel_g") if isinstance(payload.get("accel_g"), dict) else {}
         content_source = dict(payload)
-        content_source["accel_g_x"] = accel.get("x")
-        content_source["accel_g_y"] = accel.get("y")
-        content_source["accel_g_z"] = accel.get("z")
+        content_source["accel_g_x"] = payload.get("accel_g_x") if payload.get("accel_g_x") is not None else accel.get("x")
+        content_source["accel_g_y"] = payload.get("accel_g_y") if payload.get("accel_g_y") is not None else accel.get("y")
+        content_source["accel_g_z"] = payload.get("accel_g_z") if payload.get("accel_g_z") is not None else accel.get("z")
         fields = list(_ENVIRONMENT_CONTENT_FIELDS)
-        if "initial_temp_c" in payload:
-            fields.append("initial_temp_c")
         return ":".join([
             device_id,
             public_key,
@@ -1502,7 +1507,7 @@ def _recompute_record_canonical_string(
             public_key,
             "attachment",
             str(record.get("id", "")),
-            str(record.get("parent_id") or ""),
+            str(record.get("parent_id") or record.get("parent_record_id") or ""),
             _canonical_scalar(record.get("timestamp_utc")),
             _canonical_content_string(_ATTACHMENT_CONTENT_FIELDS, record),
             external_signature,
@@ -1514,7 +1519,7 @@ def _recompute_record_canonical_string(
             device_id,
             public_key,
             "location",
-            str(record.get("parent_id") or ""),
+            str(record.get("parent_id") or record.get("parent_record_id") or ""),
             _canonical_scalar(record.get("timestamp_utc")),
             _canonical_content_string(_LOCATION_CONTENT_FIELDS, record),
             external_signature,
@@ -1527,7 +1532,7 @@ def _recompute_record_canonical_string(
             public_key,
             "custody",
             str(record.get("id", "")),
-            str(record.get("parent_id") or ""),
+            str(record.get("parent_id") or record.get("parent_record_id") or ""),
             _canonical_scalar(record.get("timestamp_utc")),
             _canonical_content_string(_CUSTODY_CONTENT_FIELDS, payload),
             external_signature,

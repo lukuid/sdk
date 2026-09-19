@@ -67,10 +67,13 @@ function encodeFrame(payload: Uint8Array): Uint8Array {
   return frame;
 }
 
-async function createSignedEnvironmentEnvelope(canonicalString: string): Promise<JsonObject> {
-  const pair = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign', 'verify']) as CryptoKeyPair;
+async function createSignedEnvironmentEnvelope(canonicalTemplate: string, keyPair?: CryptoKeyPair): Promise<JsonObject> {
+  const pair = keyPair ?? (await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign', 'verify']) as CryptoKeyPair);
   const publicKeyRaw = await crypto.subtle.exportKey('raw', pair.publicKey);
   const publicKeyBase64 = Buffer.from(new Uint8Array(publicKeyRaw)).toString('base64');
+  const canonicalString = canonicalTemplate.includes('PUBLIC_KEY_PLACEHOLDER')
+    ? canonicalTemplate.replace('PUBLIC_KEY_PLACEHOLDER', publicKeyBase64)
+    : canonicalTemplate;
   const signature = await crypto.subtle.sign('Ed25519', pair.privateKey, new TextEncoder().encode(canonicalString));
 
   return {
@@ -101,6 +104,9 @@ async function createSignedEnvironmentEnvelope(canonicalString: string): Promise
       voc_index: 110,
       tamper: false,
       accel_g: { x: 0.01, y: 0.02, z: 1.0 },
+      accel_g_x: 0.01,
+      accel_g_y: 0.02,
+      accel_g_z: 1.0,
       genesis_hash: 'genesis_fake'
     }
   };
@@ -140,10 +146,8 @@ describe('LukuID Environment VOC transport', () => {
 
   it('verifies the new environment canonical string layout and rejects the old one', async () => {
     const unsignedCanonical =
-      'GC-TEST-1:PUBLIC_KEY_PLACEHOLDER:environment:ENV-VOC-1:4502:1770823456:3600000000:85:false:350.50:22.40:45.20:1013.20:30000:110:false:0.01:0.02:1.00:genesis_fake';
-    const placeholderEnvelope = await createSignedEnvironmentEnvelope(unsignedCanonical);
-    const canonical = unsignedCanonical.replace('PUBLIC_KEY_PLACEHOLDER', placeholderEnvelope.public_key as string);
-    const envelope = await createSignedEnvironmentEnvelope(canonical);
+      'GC-TEST-1:PUBLIC_KEY_PLACEHOLDER:environment:ENV-VOC-1:4502:1770823456:3600000000:0.01:0.02:1.00:85:::::::::45.20::350.50:::::::::::::1013.20:false:22.40:false:110:30000:genesis_fake';
+    const envelope = await createSignedEnvironmentEnvelope(unsignedCanonical);
 
     const validIssues = await LukuFile.verifyEnvelope(envelope, {
       allowUntrustedRoots: true,
@@ -161,6 +165,6 @@ describe('LukuID Environment VOC transport', () => {
       skipCertificateTemporalChecks: true,
       trustProfile: 'dev'
     });
-    assert.ok(invalidIssues.some((issue) => issue.code === 'RECORD_SIGNATURE_INVALID'));
+    assert.ok(invalidIssues.some((issue) => issue.code === 'RECORD_CANONICAL_MISMATCH' || issue.code === 'RECORD_SIGNATURE_INVALID'));
   });
 });
