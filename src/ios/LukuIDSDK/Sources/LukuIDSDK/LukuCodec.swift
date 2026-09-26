@@ -438,8 +438,8 @@ final class LukuCodec {
             break
         case .chainResponse(_):
             break
-        case .historicalExport(_):
-            break
+        case .historicalExport(let export):
+            dict["historical_export"] = mapHistoricalExportResponse(export)
         case .none:
             break
         }
@@ -573,6 +573,84 @@ final class LukuCodec {
         }
         dict["environment_records"] = batch.environmentRecords.map { mapEnvRecord($0) }
         dict["scan_records"] = batch.scanRecords.map { mapScanRecord($0) }
+        if !batch.attachmentRecords.isEmpty {
+            dict["attachment_records"] = batch.attachmentRecords.map { mapAttachmentRecord($0) }
+        }
+        if !batch.attestationRootFingerprint.isEmpty {
+            dict["attestation_root_fingerprint"] = batch.attestationRootFingerprint
+        }
+        if !batch.heartbeatRootFingerprint.isEmpty {
+            dict["heartbeat_root_fingerprint"] = batch.heartbeatRootFingerprint
+        }
+        return dict
+    }
+
+    private func mapAttachmentRecord(_ record: LukuIDAttachmentRecord) -> [String: Any] {
+        var dict: [String: Any] = [
+            "version": record.version,
+            "id": record.id,
+            "parent_record_id": record.parentID,
+            "signature": record.signature,
+            "parent_signature": record.parentSignature,
+            "checksum": record.checksum,
+            "timestamp_utc": record.timestampUtc,
+            "mime": record.mime,
+            "type": record.type,
+            "title": record.title,
+            "lat": record.lat,
+            "lng": record.lng,
+            "content": record.content,
+            "merkle_root": record.merkleRoot,
+            "alg": record.alg,
+            "canonical_string": record.canonicalString
+        ]
+        if record.hasExternalIdentity {
+            dict["external_identity"] = mapExternalIdentity(record.externalIdentity)
+        }
+        // Custody-kind attachment records carry their event/status/context fields nested
+        // under "payload", matching the JS/Rust SDK decoders' shape for this record type.
+        if record.type == "custody" {
+            dict["payload"] = [
+                "event": record.event,
+                "status": record.status,
+                "context_ref": record.contextRef
+            ]
+        }
+        return dict
+    }
+
+    private func mapHistoricalExportResponse(_ response: LukuIDHistoricalExportResponse) -> [String: Any] {
+        return [
+            "entries": response.entries.map { mapHistoricalExportEntry($0) },
+            "has_more": response.hasMore_p
+        ]
+    }
+
+    private func mapHistoricalExportEntry(_ entry: LukuIDHistoricalExportEntry) -> [String: Any] {
+        var dict: [String: Any] = [
+            "device_id": entry.deviceID,
+            "public_key": entry.publicKey,
+            "attestation_dac_ref": entry.attestationDacRef,
+            "attestation_manufacturer_ref": entry.attestationManufacturerRef,
+            "attestation_intermediate_ref": entry.attestationIntermediateRef,
+            "heartbeat_slac_ref": entry.heartbeatSlacRef,
+            "heartbeat_ref": entry.heartbeatRef,
+            "heartbeat_intermediate_ref": entry.heartbeatIntermediateRef,
+            "attestation_root_fingerprint": entry.attestationRootFingerprint,
+            "heartbeat_root_fingerprint": entry.heartbeatRootFingerprint
+        ]
+        switch entry.record {
+        case .env(let env):
+            var record = mapEnvRecord(env)
+            record["type"] = "environment"
+            dict["record"] = record
+        case .scan(let scan):
+            var record = mapScanRecord(scan)
+            record["type"] = "scan"
+            dict["record"] = record
+        default:
+            break
+        }
         return dict
     }
 

@@ -255,6 +255,12 @@ internal class LukuCodec(
             LukuIDProto.CommandResponse.PayloadCase.FULL_RECORD_RESPONSE -> {
                 map["full_record"] = fullRecordToMap(response.fullRecordResponse)
             }
+            LukuIDProto.CommandResponse.PayloadCase.RECORD_BATCHES -> {
+                map["record_batches"] = recordBatchesToMap(response.recordBatches)
+            }
+            LukuIDProto.CommandResponse.PayloadCase.HISTORICAL_EXPORT -> {
+                map["historical_export"] = historicalExportResponseToMap(response.historicalExport)
+            }
             LukuIDProto.CommandResponse.PayloadCase.HEARTBEAT_INIT -> {
                 val heartbeat = response.heartbeatInit
                 if (heartbeat.signatureB64.isNotEmpty()) map["signature"] = heartbeat.signatureB64
@@ -365,6 +371,117 @@ internal class LukuCodec(
             else -> out["view"] = "unknown"
         }
         return out
+    }
+
+    private fun recordBatchesToMap(batches: LukuIDProto.RecordBatches): Map<String, Any?> {
+        return mapOf("batches" to batches.batchesList.map { recordBatchToMap(it) })
+    }
+
+    private fun recordBatchToMap(batch: LukuIDProto.RecordBatch): Map<String, Any?> {
+        val map = mutableMapOf<String, Any?>(
+            "environment_records" to batch.environmentRecordsList.map { envRecordToMap(it) },
+            "scan_records" to batch.scanRecordsList.map { scanRecordToMap(it) }
+        )
+        if (!batch.attestationDacDer.isEmpty) map["attestation_dac_der"] = batch.attestationDacDer.toByteArray()
+        if (!batch.attestationManufacturerDer.isEmpty) map["attestation_manufacturer_der"] = batch.attestationManufacturerDer.toByteArray()
+        if (!batch.attestationIntermediateDer.isEmpty) map["attestation_intermediate_der"] = batch.attestationIntermediateDer.toByteArray()
+        if (!batch.heartbeatSlacDer.isEmpty) map["heartbeat_slac_der"] = batch.heartbeatSlacDer.toByteArray()
+        if (!batch.heartbeatDer.isEmpty) map["heartbeat_der"] = batch.heartbeatDer.toByteArray()
+        if (!batch.heartbeatIntermediateDer.isEmpty) map["heartbeat_intermediate_der"] = batch.heartbeatIntermediateDer.toByteArray()
+        if (batch.attestationRootFingerprint.isNotEmpty()) map["attestation_root_fingerprint"] = batch.attestationRootFingerprint
+        if (batch.heartbeatRootFingerprint.isNotEmpty()) map["heartbeat_root_fingerprint"] = batch.heartbeatRootFingerprint
+        if (batch.hasDevice()) {
+            map["device"] = mapOf(
+                "device_id" to batch.device.deviceId,
+                "public_key" to batch.device.publicKey.toByteArray()
+            )
+        }
+        if (batch.attachmentRecordsCount > 0) {
+            map["attachment_records"] = batch.attachmentRecordsList.map { attachmentRecordToMap(it) }
+        }
+        return map
+    }
+
+    private fun attachmentRecordToMap(record: LukuIDProto.AttachmentRecord): Map<String, Any?> {
+        val map = mutableMapOf<String, Any?>(
+            "version" to record.version,
+            "id" to record.id,
+            "parent_record_id" to record.parentId,
+            "signature" to record.signature.toByteArray(),
+            "parent_signature" to record.parentSignature.toByteArray(),
+            "checksum" to record.checksum,
+            "timestamp_utc" to record.timestampUtc,
+            "mime" to record.mime,
+            "type" to record.type,
+            "title" to record.title,
+            "lat" to record.lat,
+            "lng" to record.lng,
+            "content" to record.content,
+            "merkle_root" to record.merkleRoot,
+            "alg" to record.alg,
+            "canonical_string" to record.canonicalString
+        )
+        if (record.hasExternalIdentity()) {
+            map["external_identity"] = externalIdentityToMap(record.externalIdentity)
+        }
+        // Custody-kind attachment records carry their event/status/context fields nested
+        // under "payload", matching the JS/Rust SDK decoders' shape for this record type.
+        if (record.type == "custody") {
+            map["payload"] = mapOf(
+                "event" to record.event,
+                "status" to record.status,
+                "context_ref" to record.contextRef
+            )
+        }
+        return map
+    }
+
+    private fun externalIdentityToMap(identity: LukuIDProto.ExternalIdentity): Map<String, Any?> {
+        val map = mutableMapOf<String, Any?>(
+            "endorser_id" to identity.endorserId,
+            "root_fingerprint" to identity.rootFingerprint,
+            "signature" to identity.signature.toByteArray()
+        )
+        if (identity.certChainDerCount > 0) {
+            map["cert_chain_der"] = identity.certChainDerList.map { it.toByteArray() }
+        }
+        return map
+    }
+
+    private fun historicalExportResponseToMap(response: LukuIDProto.HistoricalExportResponse): Map<String, Any?> {
+        return mapOf(
+            "entries" to response.entriesList.map { historicalExportEntryToMap(it) },
+            "has_more" to response.hasMore
+        )
+    }
+
+    private fun historicalExportEntryToMap(entry: LukuIDProto.HistoricalExportEntry): Map<String, Any?> {
+        val map = mutableMapOf<String, Any?>(
+            "device_id" to entry.deviceId,
+            "public_key" to entry.publicKey.toByteArray(),
+            "attestation_dac_ref" to entry.attestationDacRef,
+            "attestation_manufacturer_ref" to entry.attestationManufacturerRef,
+            "attestation_intermediate_ref" to entry.attestationIntermediateRef,
+            "heartbeat_slac_ref" to entry.heartbeatSlacRef,
+            "heartbeat_ref" to entry.heartbeatRef,
+            "heartbeat_intermediate_ref" to entry.heartbeatIntermediateRef,
+            "attestation_root_fingerprint" to entry.attestationRootFingerprint,
+            "heartbeat_root_fingerprint" to entry.heartbeatRootFingerprint
+        )
+        when (entry.recordCase) {
+            LukuIDProto.HistoricalExportEntry.RecordCase.ENV -> {
+                val record = envRecordToMap(entry.env).toMutableMap()
+                record["type"] = "environment"
+                map["record"] = record
+            }
+            LukuIDProto.HistoricalExportEntry.RecordCase.SCAN -> {
+                val record = scanRecordToMap(entry.scan).toMutableMap()
+                record["type"] = "scan"
+                map["record"] = record
+            }
+            else -> {}
+        }
+        return map
     }
 
     private fun scanRecordToMap(record: LukuIDProto.ScanRecord): Map<String, Any?> {
