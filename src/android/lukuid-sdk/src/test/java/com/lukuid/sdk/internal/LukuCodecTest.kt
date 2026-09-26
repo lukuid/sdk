@@ -55,6 +55,30 @@ class LukuCodecTest {
         assertTrue(response["ok"] as Boolean)
     }
 
+    @Test
+    fun `encodes request_id and id correctly in command request`() {
+        val encodedWithRequestId = LukuCodec.encode(
+            mapOf(
+                "action" to "status",
+                "request_id" to "req-123"
+            )
+        )
+        // Extract payload from framed buffer (magic(8) + len(4) + payload + magic(8))
+        val payloadWithRequestId = encodedWithRequestId.copyOfRange(12, encodedWithRequestId.size - 8)
+        val protoWithRequestId = LukuIDProto.CommandRequest.parseFrom(payloadWithRequestId)
+        assertEquals("req-123", protoWithRequestId.requestId)
+
+        val encodedWithId = LukuCodec.encode(
+            mapOf(
+                "action" to "status",
+                "id" to "req-456"
+            )
+        )
+        val payloadWithId = encodedWithId.copyOfRange(12, encodedWithId.size - 8)
+        val protoWithId = LukuIDProto.CommandRequest.parseFrom(payloadWithId)
+        assertEquals("req-456", protoWithId.requestId)
+    }
+
     private fun framePayload(payload: ByteArray): ByteArray {
         val magic = byteArrayOf(0x4C, 0x55, 0x4B, 0x55, 0x49, 0x44, 0x01, 0x7E)
         val framed = ByteArray(magic.size + 4 + payload.size + magic.size)

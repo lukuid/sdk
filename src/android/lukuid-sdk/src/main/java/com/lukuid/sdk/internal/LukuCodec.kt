@@ -582,7 +582,7 @@ internal class LukuCodec(
             val action = map["action"] as? String ?: ""
             builder.action = action
 
-            (map["id"] as? String)?.let { builder.requestId = it }
+            ((map["request_id"] as? String) ?: (map["id"] as? String))?.let { builder.requestId = it }
 
             val opts = map["opts"] as? Map<String, Any?>
             val source = opts ?: map

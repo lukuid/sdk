@@ -295,7 +295,10 @@ internal class SerialDeviceSession(
 ) : Device, SerialInputOutputManager.Listener {
     private data class PendingCall(
         val action: String,
-        val deferred: CompletableDeferred<Map<String, Any?>>
+        val deferred: CompletableDeferred<Map<String, Any?>>,
+        val accumulatedData: MutableList<Any?> = mutableListOf(),
+        val accumulatedBatches: MutableList<Any?> = mutableListOf(),
+        val accumulatedExportEntries: MutableList<Any?> = mutableListOf()
     )
 
     private val eventCallbacks = CopyOnWriteArraySet<(DeviceEventPayload) -> Unit>()
@@ -432,33 +435,82 @@ internal class SerialDeviceSession(
 
     private fun handleMessage(message: Map<String, Any?>) {
         val action = message["action"] as? String ?: return
-        val id = message["id"] as? String
-        var handled = false
+        val requestId = (message["request_id"] as? String) ?: (message["id"] as? String)
+        val hasMore = message["has_more"] as? Boolean ?: false
+        val ok = message["ok"] as? Boolean ?: (message["success"] as? Boolean ?: true)
+        val error = message["message"] as? String
+            ?: message["error"] as? String
+            ?: (message["err"] as? Map<*, *>)?.get("msg")?.toString()
 
-        if (id != null) {
-            val pending = pendingCalls.remove(id)
-            if (pending != null) {
-                pending.deferred.complete(message)
-                handled = true
-            }
-        }
+        var entryKey: String? = null
+        var entry: PendingCall? = null
 
-        if (!handled) {
-            val entry = pendingCalls.entries.find { it.value.action == action }
+        if (requestId != null) {
+            entry = pendingCalls[requestId]
             if (entry != null) {
-                pendingCalls.remove(entry.key)?.deferred?.complete(message)
-                handled = true
+                entryKey = requestId
             }
         }
 
-        if (!handled) {
-            val payload = DeviceEventPayload(
-                key = action,
-                data = (message["data"] as? Map<String, Any?>)
-                    ?: message.filterKeys { it != "action" && it != "ok" && it != "success" }
-            )
-            eventCallbacks.forEach { it(payload) }
+        if (entry == null) {
+            val matched = pendingCalls.entries.find { it.value.action == action }
+            if (matched != null) {
+                entryKey = matched.key
+                entry = matched.value
+            }
         }
+
+        if (entry != null && entryKey != null) {
+            if (!ok) {
+                pendingCalls.remove(entryKey)
+                entry.deferred.completeExceptionally(IOException(error ?: "Command failed"))
+                return
+            }
+
+            val dataList = message["data"] as? List<*>
+            if (dataList != null) entry.accumulatedData.addAll(dataList)
+            val recordBatches = message["record_batches"] as? Map<*, *>
+            val batchesList = recordBatches?.get("batches") as? List<*>
+            if (batchesList != null) entry.accumulatedBatches.addAll(batchesList)
+            val historicalExport = message["historical_export"] as? Map<*, *>
+            val exportEntries = historicalExport?.get("entries") as? List<*>
+            if (exportEntries != null) entry.accumulatedExportEntries.addAll(exportEntries)
+
+            if (hasMore) {
+                return
+            }
+
+            pendingCalls.remove(entryKey)
+
+            val hasAccumulated = entry.accumulatedData.isNotEmpty() ||
+                entry.accumulatedBatches.isNotEmpty() ||
+                entry.accumulatedExportEntries.isNotEmpty()
+
+            if (!hasAccumulated) {
+                entry.deferred.complete(message)
+                return
+            }
+
+            val merged = message.toMutableMap()
+            if (entry.accumulatedData.isNotEmpty() || dataList != null) {
+                merged["data"] = entry.accumulatedData
+            }
+            if (entry.accumulatedBatches.isNotEmpty() || recordBatches != null) {
+                merged["record_batches"] = mapOf("batches" to entry.accumulatedBatches)
+            }
+            if (entry.accumulatedExportEntries.isNotEmpty() || historicalExport != null) {
+                merged["historical_export"] = mapOf("entries" to entry.accumulatedExportEntries)
+            }
+            entry.deferred.complete(merged)
+            return
+        }
+
+        val payload = DeviceEventPayload(
+            key = action,
+            data = (message["data"] as? Map<String, Any?>)
+                ?: message.filterKeys { it != "action" && it != "ok" && it != "success" }
+        )
+        eventCallbacks.forEach { it(payload) }
 
         messageCallbacks.forEach { it(message) }
     }
@@ -493,18 +545,22 @@ internal class SerialDeviceSession(
         
         sendFrame(payload)
 
-        return kotlinx.coroutines.withTimeout(timeoutMillis) {
-            val response = deferred.await()
-            if (response["ok"] == true) {
-                JsonUtils.fromJsonValue(response["data"] ?: response)
-            } else {
-                throw Exception(
-                    response["message"] as? String
-                        ?: response["error"] as? String
-                        ?: (response["err"] as? Map<*, *>)?.get("msg")?.toString()
-                        ?: "Command failed"
-                )
+        return try {
+            kotlinx.coroutines.withTimeout(timeoutMillis) {
+                val response = deferred.await()
+                if (response["ok"] == true) {
+                    JsonUtils.fromJsonValue(response["data"] ?: response)
+                } else {
+                    throw Exception(
+                        response["message"] as? String
+                            ?: response["error"] as? String
+                            ?: (response["err"] as? Map<*, *>)?.get("msg")?.toString()
+                            ?: "Command failed"
+                    )
+                }
             }
+        } finally {
+            pendingCalls.remove(id)
         }
     }
 

@@ -106,6 +106,7 @@ internal class BleDeviceSession(
     
     private val eventCallbacks = CopyOnWriteArraySet<(DeviceEventPayload) -> Unit>()
     private val messageCallbacks = CopyOnWriteArraySet<(Map<String, Any?>) -> Unit>()
+    private val frameWriteLock = Mutex()
     private val pendingWrite = Mutex()
     private val writeAck = AtomicReference<CompletableDeferred<Unit>?>(null)
 
@@ -601,12 +602,14 @@ internal class BleDeviceSession(
     }
 
     private suspend fun writeRaw(payload: ByteArray) {
-        val chunkSize = 180
-        var offset = 0
-        while (offset < payload.size) {
-            val end = minOf(offset + chunkSize, payload.size)
-            writeChunk(payload.copyOfRange(offset, end))
-            offset = end
+        frameWriteLock.withLock {
+            val chunkSize = 180
+            var offset = 0
+            while (offset < payload.size) {
+                val end = minOf(offset + chunkSize, payload.size)
+                writeChunk(payload.copyOfRange(offset, end))
+                offset = end
+            }
         }
     }
 
