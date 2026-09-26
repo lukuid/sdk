@@ -166,7 +166,7 @@ final class LukuCodec {
         let action = dict["action"] as? String ?? ""
         request.action = action
 
-        if let requestId = dict["id"] as? String, !requestId.isEmpty {
+        if let requestId = (dict["request_id"] as? String) ?? (dict["id"] as? String), !requestId.isEmpty {
             request.requestID = requestId
         }
 

@@ -47,6 +47,24 @@ final class LukuCodecTests: XCTestCase {
         XCTAssertEqual(messages.first?["ok"] as? Bool, true)
     }
 
+    func testEncodesRequestIdAndIdCorrectlyInCommandRequest() throws {
+        let encodedWithRequestId = try LukuCodec.encode([
+            "action": "status",
+            "request_id": "req-123"
+        ])
+        let payloadWithRequestId = encodedWithRequestId.subdata(in: 12..<(encodedWithRequestId.count - 8))
+        let protoWithRequestId = try LukuIDCommandRequest(serializedBytes: payloadWithRequestId)
+        XCTAssertEqual(protoWithRequestId.requestID, "req-123")
+
+        let encodedWithId = try LukuCodec.encode([
+            "action": "status",
+            "id": "req-456"
+        ])
+        let payloadWithId = encodedWithId.subdata(in: 12..<(encodedWithId.count - 8))
+        let protoWithId = try LukuIDCommandRequest(serializedBytes: payloadWithId)
+        XCTAssertEqual(protoWithId.requestID, "req-456")
+    }
+
     private func framePayload(_ payload: Data) -> Data {
         let magic = Data([0x4C, 0x55, 0x4B, 0x55, 0x49, 0x44, 0x01, 0x7E])
         var framed = Data()

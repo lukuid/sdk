@@ -55,7 +55,38 @@ private func assembleInfoCertificateChain(_ info: DeviceInfo) -> String? {
     return parts.isEmpty ? nil : parts.joined()
 }
 
+private actor BleAsyncLock {
+    private var isLocked = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func lock() async {
+        if !isLocked {
+            isLocked = true
+            return
+        }
+        await withCheckedContinuation { continuation in
+            waiters.append(continuation)
+        }
+    }
+
+    func unlock() {
+        if !waiters.isEmpty {
+            let next = waiters.removeFirst()
+            next.resume()
+        } else {
+            isLocked = false
+        }
+    }
+
+    func withLock<T>(_ operation: () async throws -> T) async throws -> T {
+        await lock()
+        defer { unlock() }
+        return try await operation()
+    }
+}
+
 final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
+    private let writeLock = BleAsyncLock()
     private let bleWriteChunkSize = 180
     private let peripheral: CBPeripheral
     private unowned let central: CBCentralManager
@@ -554,13 +585,15 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
     }
 
     private func sendRaw(data: Data) async throws {
-        let maxWriteSize = max(20, min(bleWriteChunkSize, peripheral.maximumWriteValueLength(for: .withResponse)))
-        var offset = 0
-        while offset < data.count {
-            let end = min(offset + maxWriteSize, data.count)
-            let chunk = data.subdata(in: offset..<end)
-            try await sendChunk(data: chunk)
-            offset = end
+        try await writeLock.withLock {
+            let maxWriteSize = max(20, min(bleWriteChunkSize, peripheral.maximumWriteValueLength(for: .withResponse)))
+            var offset = 0
+            while offset < data.count {
+                let end = min(offset + maxWriteSize, data.count)
+                let chunk = data.subdata(in: offset..<end)
+                try await sendChunk(data: chunk)
+                offset = end
+            }
         }
     }
 
