@@ -132,4 +132,77 @@ describe('encodeFrame', () => {
     }
     assert.ok(foundAttest, 'Should have found attest message');
   });
+
+  it('decodes request_id without overwriting status device id and decodes historical_export and attachment_records', () => {
+    const payload: number[] = [];
+    writeString(payload, 1, 'status');
+    writeU32(payload, 2, 0); // status 0 (OK)
+    writeBool(payload, 3, true); // success
+
+    // StatusResponse (field 16) with device id "GC-SERIAL-1"
+    const statusPayload: number[] = [];
+    writeString(statusPayload, 1, 'GC-SERIAL-1');
+    writeString(statusPayload, 2, 'LukuGuard');
+    writeKey(payload, 16, 2);
+    writeVarint(payload, statusPayload.length);
+    payload.push(...statusPayload);
+
+    // request_id (field 22)
+    writeString(payload, 22, 'req-uuid-1234');
+
+    // RecordBatches (field 15) with an AttachmentRecord (field 13)
+    const batchesPayload: number[] = [];
+    const batchPayload: number[] = [];
+    const attachPayload: number[] = [];
+    writeString(attachPayload, 1, '1.0');
+    writeString(attachPayload, 2, 'ATTACH-1');
+    writeString(attachPayload, 3, 'PARENT-1');
+    writeString(attachPayload, 9, 'custody');
+    writeString(attachPayload, 19, 'handoff');
+    writeString(attachPayload, 21, 'received');
+    writeString(attachPayload, 22, 'shipment-999');
+
+    writeKey(batchPayload, 13, 2);
+    writeVarint(batchPayload, attachPayload.length);
+    batchPayload.push(...attachPayload);
+    writeString(batchPayload, 10, 'root-att-fp');
+    writeString(batchPayload, 11, 'root-hb-fp');
+
+    writeKey(batchesPayload, 1, 2);
+    writeVarint(batchesPayload, batchPayload.length);
+    batchesPayload.push(...batchPayload);
+
+    writeKey(payload, 15, 2);
+    writeVarint(payload, batchesPayload.length);
+    payload.push(...batchesPayload);
+
+    const magic = new Uint8Array([0x4c, 0x55, 0x4b, 0x55, 0x49, 0x44, 0x01, 0x7e]);
+    const body = Uint8Array.from(payload);
+    const framed = new Uint8Array(magic.length + 4 + body.length + magic.length);
+    framed.set(magic, 0);
+    new DataView(framed.buffer).setUint32(magic.length, body.length, true);
+    framed.set(body, magic.length + 4);
+    framed.set(magic, magic.length + 4 + body.length);
+
+    const decoder = new LukuDecoder();
+    const frames = decoder.push(framed);
+    assert.strictEqual(frames.length, 1);
+    const res = frames[0] as Record<string, unknown>;
+
+    assert.strictEqual(res.id, 'GC-SERIAL-1');
+    assert.strictEqual(res.request_id, 'req-uuid-1234');
+
+    const batches = (res.record_batches as any)?.batches;
+    assert.ok(Array.isArray(batches) && batches.length === 1);
+    assert.strictEqual(batches[0].attestation_root_fingerprint, 'root-att-fp');
+    assert.strictEqual(batches[0].heartbeat_root_fingerprint, 'root-hb-fp');
+
+    const attachmentRecords = batches[0].attachment_records;
+    assert.ok(Array.isArray(attachmentRecords) && attachmentRecords.length === 1);
+    assert.strictEqual(attachmentRecords[0].type, 'custody');
+    assert.strictEqual(attachmentRecords[0].parent_record_id, 'PARENT-1');
+    assert.strictEqual((attachmentRecords[0].payload as any)?.event, 'handoff');
+    assert.strictEqual((attachmentRecords[0].payload as any)?.status, 'received');
+    assert.strictEqual((attachmentRecords[0].payload as any)?.context_ref, 'shipment-999');
+  });
 });

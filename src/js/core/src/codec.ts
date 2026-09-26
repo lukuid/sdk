@@ -177,7 +177,7 @@ export function encodeCommandRequest(frame: DeviceFrame): Uint8Array {
 
   writeString(chunks, 1, action);
 
-  const requestId = typeof record.id === 'string' ? record.id : '';
+  const requestId = typeof record.request_id === 'string' ? record.request_id : (typeof record.id === 'string' ? record.id : '');
   if (requestId) writeString(chunks, 18, requestId);
 
   if (action === 'fetch' || action === 'history') {
@@ -459,15 +459,22 @@ function decodeCommandResponse(payload: Uint8Array): JsonRecord | null {
         const message = readLengthDelimited(payload, cursor, wireType);
         if (message === null) return null;
         const exportObj = decodeHistoricalExportResponse(message);
-        Object.assign(out, exportObj);
+        out.historical_export = exportObj;
         break;
       }
       case 18:
         assignBool(payload, cursor, wireType, out, 'has_more');
         break;
-      case 22:
-        assignString(payload, cursor, wireType, out, 'id');
+      case 22: {
+        const reqId = readStringField(payload, cursor, wireType);
+        if (reqId !== null) {
+          out.request_id = reqId;
+          if (out.id === undefined) {
+            out.id = reqId;
+          }
+        }
         break;
+      }
       default:
         if (!skipField(payload, cursor, wireType)) {
           return null;
@@ -1283,9 +1290,116 @@ function decodeRecordBatch(payload: Uint8Array): JsonRecord {
         if (message) (out.scan_records as unknown[]).push(decodeScanRecord(message));
         break;
       }
+      case 10: assignString(payload, cursor, wireType, out, 'attestation_root_fingerprint'); break;
+      case 11: assignString(payload, cursor, wireType, out, 'heartbeat_root_fingerprint'); break;
+      case 13: {
+        const message = readLengthDelimited(payload, cursor, wireType);
+        if (message) {
+          if (!out.attachment_records) out.attachment_records = [];
+          (out.attachment_records as unknown[]).push(decodeAttachmentRecord(message));
+        }
+        break;
+      }
       default: skipField(payload, cursor, wireType); break;
     }
   }
+  return out;
+}
+
+function decodeExternalIdentity(payload: Uint8Array): JsonRecord {
+  const cursor = { value: 0 };
+  const out: JsonRecord = {};
+  const certChainDer: Uint8Array[] = [];
+
+  while (cursor.value < payload.length) {
+    const key = readVarint(payload, cursor);
+    if (key === null) break;
+    const field = key >>> 3;
+    const wireType = key & 0x07;
+
+    switch (field) {
+      case 1: assignString(payload, cursor, wireType, out, 'endorser_id'); break;
+      case 2: assignString(payload, cursor, wireType, out, 'root_fingerprint'); break;
+      case 3: {
+        const message = readLengthDelimited(payload, cursor, wireType);
+        if (message) certChainDer.push(message);
+        break;
+      }
+      case 4: assignBytes(payload, cursor, wireType, out, 'signature'); break;
+      default: skipField(payload, cursor, wireType); break;
+    }
+  }
+
+  if (certChainDer.length > 0) {
+    out.cert_chain_der = certChainDer;
+  }
+
+  return out;
+}
+
+function decodeAttachmentRecord(payload: Uint8Array): JsonRecord {
+  const cursor = { value: 0 };
+  const out: JsonRecord = {};
+  let custodyEvent: string | undefined;
+  let custodyStatus: string | undefined;
+  let custodyContextRef: string | undefined;
+
+  while (cursor.value < payload.length) {
+    const key = readVarint(payload, cursor);
+    if (key === null) break;
+    const field = key >>> 3;
+    const wireType = key & 0x07;
+
+    switch (field) {
+      case 1: assignString(payload, cursor, wireType, out, 'version'); break;
+      case 2: assignString(payload, cursor, wireType, out, 'id'); break;
+      case 3: assignString(payload, cursor, wireType, out, 'parent_record_id'); break;
+      case 4: assignBytes(payload, cursor, wireType, out, 'signature'); break;
+      case 5: assignBytes(payload, cursor, wireType, out, 'parent_signature'); break;
+      case 6: assignString(payload, cursor, wireType, out, 'checksum'); break;
+      case 7: assignInt64(payload, cursor, wireType, out, 'timestamp_utc'); break;
+      case 8: assignString(payload, cursor, wireType, out, 'mime'); break;
+      case 9: assignString(payload, cursor, wireType, out, 'type'); break;
+      case 10: assignString(payload, cursor, wireType, out, 'title'); break;
+      case 11: assignFloat64(payload, cursor, wireType, out, 'lat'); break;
+      case 12: assignFloat64(payload, cursor, wireType, out, 'lng'); break;
+      case 14: assignString(payload, cursor, wireType, out, 'content'); break;
+      case 15: assignString(payload, cursor, wireType, out, 'merkle_root'); break;
+      case 16: assignString(payload, cursor, wireType, out, 'alg'); break;
+      case 17: {
+        const message = readLengthDelimited(payload, cursor, wireType);
+        if (message) out.external_identity = decodeExternalIdentity(message);
+        break;
+      }
+      case 18: assignString(payload, cursor, wireType, out, 'id'); break;
+      case 19: {
+        const val = readStringField(payload, cursor, wireType);
+        if (val !== null) custodyEvent = val;
+        break;
+      }
+      case 20: assignString(payload, cursor, wireType, out, 'canonical_string'); break;
+      case 21: {
+        const val = readStringField(payload, cursor, wireType);
+        if (val !== null) custodyStatus = val;
+        break;
+      }
+      case 22: {
+        const val = readStringField(payload, cursor, wireType);
+        if (val !== null) custodyContextRef = val;
+        break;
+      }
+      default: skipField(payload, cursor, wireType); break;
+    }
+  }
+
+  if (out.type === 'custody') {
+    const custodyPayload: JsonRecord = {};
+    if (custodyEvent !== undefined) custodyPayload.event = custodyEvent;
+    if (custodyStatus !== undefined) custodyPayload.status = custodyStatus;
+    if (custodyContextRef !== undefined) custodyPayload.context_ref = custodyContextRef;
+    out.payload = custodyPayload;
+  }
+
   return out;
 }
 

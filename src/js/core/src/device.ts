@@ -548,10 +548,11 @@ class LukuidDevice implements Device {
     let id: string | undefined;
     let entry: PendingCommand | undefined;
 
-    // 1. Try to match by ID if provided (the device echoes CommandRequest.request_id
+    // 1. Try to match by request_id if provided (the device echoes CommandRequest.request_id
     // verbatim, so this is authoritative whenever it's present).
-    if (frame.id) {
-        id = frame.id;
+    const reqId = typeof (frame as any).request_id === 'string' ? (frame as any).request_id : frame.id;
+    if (typeof reqId === 'string') {
+        id = reqId;
         entry = this.pending.get(id);
     }
 
