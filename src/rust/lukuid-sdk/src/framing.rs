@@ -121,7 +121,11 @@ fn encode_command_request(input: &Value) -> Option<Vec<u8>> {
     let mut out = Vec::new();
     write_string(&mut out, 1, action);
 
-    if let Some(request_id) = record.get("id").and_then(Value::as_str) {
+    if let Some(request_id) = record
+        .get("request_id")
+        .or_else(|| record.get("id"))
+        .and_then(Value::as_str)
+    {
         write_string(&mut out, 18, request_id);
     }
 
@@ -489,7 +493,7 @@ fn decode_command_response(bytes: &[u8]) -> Option<Value> {
             20 => {
                 let message = read_length_delimited(bytes, &mut cursor, wire_type)?;
                 let export = decode_historical_export_response(message)?;
-                out.extend(export);
+                out.insert("historical_export".to_string(), Value::Object(export));
             }
             18 => insert_bool(bytes, &mut cursor, wire_type, &mut out, "has_more")?,
             14 => {
@@ -505,7 +509,14 @@ fn decode_command_response(bytes: &[u8]) -> Option<Value> {
                 "response_signature",
             )?,
             13 => insert_bytes(bytes, &mut cursor, wire_type, &mut out, "response_key")?,
-            22 => insert_string(bytes, &mut cursor, wire_type, &mut out, "id")?,
+            22 => {
+                if let Some(req_id) = read_string_field(bytes, &mut cursor, wire_type) {
+                    out.insert("request_id".to_string(), Value::String(req_id.clone()));
+                    if !out.contains_key("id") {
+                        out.insert("id".to_string(), Value::String(req_id));
+                    }
+                }
+            }
             _ => skip_field(bytes, &mut cursor, wire_type)?,
         }
     }
@@ -2834,6 +2845,38 @@ mod tests {
         assert_eq!(field, 14);
         assert_eq!(wire_type, WIRE_VARINT);
         assert_eq!(read_varint(&config_message, &mut config_cursor), Some(1));
+    }
+
+    #[test]
+    fn test_decode_command_response_maps_request_id_and_historical_export() {
+        let mut status = Vec::new();
+        write_string(&mut status, 1, "DEV-SERIAL-1");
+        write_string(&mut status, 2, "TestDevice");
+
+        let mut entry = Vec::new();
+        write_string(&mut entry, 3, "DEV-SERIAL-1");
+        let mut export = Vec::new();
+        write_message(&mut export, 1, &entry);
+        write_bool(&mut export, 2, true);
+
+        let mut response = Vec::new();
+        write_string(&mut response, 1, "status");
+        write_u32(&mut response, 2, 0);
+        write_bool(&mut response, 3, true);
+        write_message(&mut response, 16, &status);
+        write_message(&mut response, 20, &export);
+        write_string(&mut response, 22, "req-uuid-999");
+
+        let decoded = decode_command_response(&response).expect("decoded response");
+
+        assert_eq!(decoded.get("id").and_then(Value::as_str), Some("DEV-SERIAL-1"));
+        assert_eq!(decoded.get("request_id").and_then(Value::as_str), Some("req-uuid-999"));
+
+        let exp = decoded.get("historical_export").and_then(Value::as_object).expect("historical_export object");
+        assert_eq!(exp.get("has_more").and_then(Value::as_bool), Some(true));
+        let entries = exp.get("entries").and_then(Value::as_array).expect("entries array");
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].get("device_id").and_then(Value::as_str), Some("DEV-SERIAL-1"));
     }
 }
 

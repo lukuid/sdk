@@ -418,11 +418,14 @@ impl LukuidSdk {
         // 4. ML-DSA-65 (Sign, Verify, Reject)
         {
             use ml_dsa::signature::{Keypair, Signer, Verifier};
-            use ml_dsa::{KeyGen, MlDsa65};
+            #[allow(deprecated)]
+            use ml_dsa::KeyGen;
+            use ml_dsa::MlDsa65;
 
             let mut seed = [0u8; 32];
             seed[0] = 1;
 
+            #[allow(deprecated)]
             let sk = MlDsa65::from_seed(&seed.into());
             let vk = sk.verifying_key();
             let msg = b"abc";

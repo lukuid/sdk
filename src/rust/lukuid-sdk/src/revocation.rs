@@ -7,7 +7,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 use x509_parser::prelude::*;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -45,7 +45,7 @@ impl RevocationManager {
             return None;
         }
 
-        let mut path = if let Some(custom) = &self.options.crl_cache_path {
+        let path = if let Some(custom) = &self.options.crl_cache_path {
             PathBuf::from(custom)
         } else {
             dirs::home_dir()?.join(".lukuid")
@@ -71,6 +71,7 @@ impl RevocationManager {
         }
     }
 
+    #[allow(dead_code)]
     fn save_to_cache(&self) {
         if let Some(file_path) = self.get_cache_file() {
             let cache = CrlCache {

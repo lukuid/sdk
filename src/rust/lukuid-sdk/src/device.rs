@@ -183,12 +183,13 @@ pub struct Device {
     pub info: Arc<DeviceInfo>,
     debug_logging: bool,
     command_timeout: u64,
-    cmd_tx: mpsc::Sender<(String, Value, CommandCallback)>,
+    cmd_tx: mpsc::Sender<(String, String, Value, CommandCallback)>,
     raw_tx: mpsc::Sender<(Vec<u8>, oneshot::Sender<Result<(), String>>)>,
     event_tx: broadcast::Sender<DeviceEventPayload>,
     close_tx: mpsc::Sender<()>,
     _event_rx: broadcast::Receiver<DeviceEventPayload>,
     cmd_mutex: tokio::sync::Mutex<()>,
+    pending_cmds: Arc<Mutex<HashMap<String, PendingCommand>>>,
     revocation_manager: Option<Arc<RevocationManager>>,
 }
 
@@ -204,6 +205,7 @@ impl Device {
             close_tx: self.close_tx.clone(),
             _event_rx: self.event_tx.subscribe(),
             cmd_mutex: tokio::sync::Mutex::new(()),
+            pending_cmds: self.pending_cmds.clone(),
             revocation_manager: self.revocation_manager.clone(),
         }
     }
@@ -230,7 +232,8 @@ impl Device {
 
         let connection = Arc::new(tokio::sync::Mutex::new(connection));
 
-        let (cmd_tx, mut cmd_rx) = mpsc::channel::<(String, Value, CommandCallback)>(32);
+        let (cmd_tx, mut cmd_rx) =
+            mpsc::channel::<(String, String, Value, CommandCallback)>(32);
         let (raw_tx, mut raw_rx) =
             mpsc::channel::<(Vec<u8>, oneshot::Sender<Result<(), String>>)>(32);
         let (close_tx, mut close_rx) = mpsc::channel(1);
@@ -263,8 +266,7 @@ impl Device {
                         }
                     }
 
-                    Some((key, opts, callback)) = cmd_rx.recv() => {
-                        let id = Uuid::new_v4().to_string();
+                    Some((id, key, opts, callback)) = cmd_rx.recv() => {
                         let frame = json!({
                             "action": key,
                             "id": id,
@@ -284,20 +286,20 @@ impl Device {
                         }
 
                         {
-                            let mut map = pending_cmds_loop.lock().unwrap();
+                            let mut map = pending_cmds_loop.lock().unwrap_or_else(|e| e.into_inner());
                             map.insert(id.clone(), PendingCommand {
                                 action: key,
                                 callback,
                                 accumulated_data: Vec::new(),
                                 accumulated_batches: Vec::new(),
                                 accumulated_full_records: Vec::new(),
-                    accumulated_export_entries: Vec::new(),
+                                accumulated_export_entries: Vec::new(),
                             });
                         }
 
                         let conn = conn_loop.lock().await;
                         if let Err(e) = conn.write(&payload).await {
-                             let mut map = pending_cmds_loop.lock().unwrap();
+                             let mut map = pending_cmds_loop.lock().unwrap_or_else(|e| e.into_inner());
                              if let Some(pending) = map.remove(&id) {
                                  let _ = pending.callback.send(Err(DeviceError::Transport(e)));
                              }
@@ -355,6 +357,7 @@ impl Device {
             close_tx: close_tx.clone(),
             _event_rx: event_rx,
             cmd_mutex: tokio::sync::Mutex::new(()),
+            pending_cmds: pending_cmds.clone(),
             revocation_manager,
         };
 
@@ -600,9 +603,10 @@ impl Device {
     }
 
     pub async fn action(&self, key: &str, opts: Value) -> Result<(), DeviceError> {
+        let id = Uuid::new_v4().to_string();
         let (tx, _rx) = oneshot::channel();
         self.cmd_tx
-            .send((key.to_string(), opts, tx))
+            .send((id, key.to_string(), opts, tx))
             .await
             .map_err(|_| DeviceError::Closed)?;
         Ok(())
@@ -852,9 +856,10 @@ impl Device {
             );
         }
 
+        let id = Uuid::new_v4().to_string();
         let (tx, rx) = oneshot::channel();
         self.cmd_tx
-            .send((key.to_string(), opts, tx))
+            .send((id.clone(), key.to_string(), opts, tx))
             .await
             .map_err(|_| DeviceError::Closed)?;
 
@@ -889,11 +894,14 @@ impl Device {
                 Err(DeviceError::Closed)
             }
             Err(_) => {
+                let mut map = self.pending_cmds.lock().unwrap_or_else(|e| e.into_inner());
+                map.remove(&id);
                 if self.debug_logging {
                     eprintln!(
-                        "[lukuid-sdk] Device call timeout target={} action={}",
+                        "[lukuid-sdk] Device call timeout target={} action={} id={}",
                         log_device_target(&self.info),
-                        key
+                        key,
+                        id
                     );
                 }
                 Err(DeviceError::Timeout)
@@ -955,11 +963,12 @@ fn process_frame(
             .unwrap_or(false);
 
         {
-            let mut map = pending.lock().unwrap();
+            let mut map = pending.lock().unwrap_or_else(|e| e.into_inner());
 
-            // 1. Try match by ID
+            // 1. Try match by ID (check request_id first, then id)
             let mut match_id = obj
-                .get("id")
+                .get("request_id")
+                .or_else(|| obj.get("id"))
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
 
