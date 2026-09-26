@@ -227,10 +227,16 @@ def verify_device_attestation(
     except Exception:
         return VerificationResult(False, "attestationSig is not valid base64")
 
-    payloads = [
-        build_record_attestation_payload(inputs.id, inputs.key, inputs.ctr, inputs.vendor, inputs.record_id),
-        f"{inputs.id}:{inputs.key}".encode("utf-8"),
-    ]
+    has_modern_attestation_binding = inputs.ctr is not None and bool(inputs.vendor) and bool(inputs.record_id)
+    if has_modern_attestation_binding:
+        payloads = [
+            build_record_attestation_payload(inputs.id, inputs.key, inputs.ctr, inputs.vendor, inputs.record_id),
+        ]
+    else:
+        payloads = [
+            build_record_attestation_payload(inputs.id, inputs.key, inputs.ctr, inputs.vendor, inputs.record_id),
+            f"{inputs.id}:{inputs.key}".encode("utf-8"),
+        ]
     leaf_public_key: object | None = None
 
     if inputs.certificate_chain:
@@ -294,10 +300,16 @@ def verify_heartbeat_attestation(
     except Exception:
         return VerificationResult(False, "heartbeat_sig is not valid base64")
 
-    payloads = [
-        build_record_heartbeat_payload(inputs.id, inputs.last_sync_utc, inputs.ctr, inputs.record_id),
-        f"heartbeat:{inputs.id}:{inputs.last_sync_utc}".encode("utf-8"),
-    ]
+    has_modern_heartbeat_binding = inputs.ctr is not None and bool(inputs.record_id)
+    if has_modern_heartbeat_binding:
+        payloads = [
+            build_record_heartbeat_payload(inputs.id, inputs.last_sync_utc, inputs.ctr, inputs.record_id),
+        ]
+    else:
+        payloads = [
+            build_record_heartbeat_payload(inputs.id, inputs.last_sync_utc, inputs.ctr, inputs.record_id),
+            f"heartbeat:{inputs.id}:{inputs.last_sync_utc}".encode("utf-8"),
+        ]
     leaf_public_key: object | None = None
     authority_public_key: object | None = None
 
@@ -328,7 +340,7 @@ def verify_heartbeat_attestation(
                 return VerificationResult(True)
         return VerificationResult(False, "Heartbeat verification failed against leaf")
 
-    if authority_public_key is not None:
+    if authority_public_key is not None and not has_modern_heartbeat_binding:
         legacy_payload = f"heartbeat:{inputs.id}:{inputs.last_sync_utc}".encode("utf-8")
         if _verify_signature_with_public_key(authority_public_key, legacy_payload, signature_bytes):
             return VerificationResult(True)

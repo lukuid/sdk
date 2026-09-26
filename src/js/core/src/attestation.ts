@@ -500,10 +500,13 @@ export async function verifyDeviceAttestation(
     return { ok: false, reason: 'Missing signature' };
   }
 
-  const payloadCandidates = [
-    buildRecordAttestationPayload(inputs.id, inputs.key, inputs.ctr, inputs.vendor, inputs.recordId),
-    `${inputs.id}:${inputs.key}`
-  ].filter((value, index, values) => values.indexOf(value) === index);
+  const hasModernAttestationBinding = inputs.ctr !== undefined && Boolean(inputs.vendor) && Boolean(inputs.recordId);
+  const payloadCandidates = hasModernAttestationBinding
+    ? [buildRecordAttestationPayload(inputs.id, inputs.key, inputs.ctr, inputs.vendor, inputs.recordId)]
+    : [
+        buildRecordAttestationPayload(inputs.id, inputs.key, inputs.ctr, inputs.vendor, inputs.recordId),
+        `${inputs.id}:${inputs.key}`
+      ].filter((value, index, values) => values.indexOf(value) === index);
   let leafSpki: Uint8Array | null = null;
 
   if (inputs.certificateChain) {
@@ -616,10 +619,13 @@ export async function verifyHeartbeatAttestation(
     return { ok: false, reason: 'Missing heartbeat signature' };
   }
 
-  const payloadCandidates = [
-    buildRecordHeartbeatPayload(inputs.id, inputs.lastSyncUtc, inputs.ctr, inputs.recordId),
-    `heartbeat:${inputs.id}:${inputs.lastSyncUtc}`
-  ].filter((value, index, values) => values.indexOf(value) === index);
+  const hasModernHeartbeatBinding = inputs.ctr !== undefined && Boolean(inputs.recordId);
+  const payloadCandidates = hasModernHeartbeatBinding
+    ? [buildRecordHeartbeatPayload(inputs.id, inputs.lastSyncUtc, inputs.ctr, inputs.recordId)]
+    : [
+        buildRecordHeartbeatPayload(inputs.id, inputs.lastSyncUtc, inputs.ctr, inputs.recordId),
+        `heartbeat:${inputs.id}:${inputs.lastSyncUtc}`
+      ].filter((value, index, values) => values.indexOf(value) === index);
   let leafSpki: Uint8Array | null = null;
   let authoritySpki: Uint8Array | null = null;
 
@@ -693,7 +699,7 @@ export async function verifyHeartbeatAttestation(
     }
   }
 
-  if (authoritySpki) {
+  if (authoritySpki && !hasModernHeartbeatBinding) {
     return verifyAgainstSpki(authoritySpki, `heartbeat:${inputs.id}:${inputs.lastSyncUtc}`);
   }
 

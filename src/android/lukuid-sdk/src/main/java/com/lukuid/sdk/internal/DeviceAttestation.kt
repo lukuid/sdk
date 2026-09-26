@@ -218,10 +218,15 @@ internal fun verifyDeviceAttestation(input: DeviceAttestationInput, revocationMa
     val signatureBytes = decodeBase64(input.attestationSig)
         ?: return VerificationResult(false, "attestationSig is not valid base64")
 
-    val payloads = linkedSetOf(
-        buildRecordAttestationPayload(input.id, input.key, input.ctr, input.vendor, input.recordId),
-        "${input.id}:${input.key}"
-    ).toList()
+    val hasModernAttestationBinding = input.ctr != null && !input.vendor.isNullOrEmpty() && !input.recordId.isNullOrBlank()
+    val payloads = if (hasModernAttestationBinding) {
+        listOf(buildRecordAttestationPayload(input.id, input.key, input.ctr, input.vendor, input.recordId))
+    } else {
+        linkedSetOf(
+            buildRecordAttestationPayload(input.id, input.key, input.ctr, input.vendor, input.recordId),
+            "${input.id}:${input.key}"
+        ).toList()
+    }
     var leafPublicKey: PublicKey? = null
 
     if (!input.certificateChain.isNullOrEmpty()) {
@@ -293,10 +298,15 @@ internal fun verifyHeartbeatAttestation(input: HeartbeatAttestationInput, revoca
     val signatureBytes = decodeBase64(input.heartbeatSig)
         ?: return VerificationResult(false, "heartbeatSig is not valid base64")
 
-    val payloads = linkedSetOf(
-        buildRecordHeartbeatPayload(input.id, input.lastSyncUtc, input.ctr, input.recordId),
-        "heartbeat:${input.id}:${input.lastSyncUtc}"
-    ).toList()
+    val hasModernHeartbeatBinding = input.ctr != null && !input.recordId.isNullOrBlank()
+    val payloads = if (hasModernHeartbeatBinding) {
+        listOf(buildRecordHeartbeatPayload(input.id, input.lastSyncUtc, input.ctr, input.recordId))
+    } else {
+        linkedSetOf(
+            buildRecordHeartbeatPayload(input.id, input.lastSyncUtc, input.ctr, input.recordId),
+            "heartbeat:${input.id}:${input.lastSyncUtc}"
+        ).toList()
+    }
     var leafPublicKey: PublicKey? = null
     var authorityPublicKey: PublicKey? = null
 
@@ -323,7 +333,7 @@ internal fun verifyHeartbeatAttestation(input: HeartbeatAttestationInput, revoca
         }
     }
 
-    if (authorityPublicKey != null) {
+    if (authorityPublicKey != null && !hasModernHeartbeatBinding) {
         val payloadBytes = "heartbeat:${input.id}:${input.lastSyncUtc}".toByteArray(StandardCharsets.UTF_8)
         if (verifySignatureRobust(signatureBytes, payloadBytes, authorityPublicKey)) {
             return VerificationResult(true, null)

@@ -225,16 +225,29 @@ pub fn verify_device_attestation(
         }
     };
 
-    let payload_candidates = [
-        build_record_attestation_payload(
+    let has_modern_attestation_binding = inputs.ctr.is_some()
+        && inputs.vendor.as_deref().is_some_and(|v| !v.is_empty())
+        && inputs.record_id.as_deref().is_some_and(|v| !v.is_empty());
+    let payload_candidates: Vec<String> = if has_modern_attestation_binding {
+        vec![build_record_attestation_payload(
             &inputs.id,
             &inputs.key,
             inputs.ctr,
             inputs.vendor.as_deref(),
             inputs.record_id.as_deref(),
-        ),
-        format!("{}:{}", inputs.id, inputs.key),
-    ];
+        )]
+    } else {
+        vec![
+            build_record_attestation_payload(
+                &inputs.id,
+                &inputs.key,
+                inputs.ctr,
+                inputs.vendor.as_deref(),
+                inputs.record_id.as_deref(),
+            ),
+            format!("{}:{}", inputs.id, inputs.key),
+        ]
+    };
 
     let mut leaf_pubkey_bytes: Option<Vec<u8>> = None;
 
@@ -326,15 +339,26 @@ pub fn verify_heartbeat_attestation(
         }
     };
 
-    let payload_candidates = [
-        build_record_heartbeat_payload(
+    let has_modern_heartbeat_binding =
+        inputs.ctr.is_some() && inputs.record_id.as_deref().is_some_and(|v| !v.is_empty());
+    let payload_candidates: Vec<String> = if has_modern_heartbeat_binding {
+        vec![build_record_heartbeat_payload(
             &inputs.id,
             inputs.last_sync_utc,
             inputs.ctr,
             inputs.record_id.as_deref(),
-        ),
-        format!("heartbeat:{}:{}", inputs.id, inputs.last_sync_utc),
-    ];
+        )]
+    } else {
+        vec![
+            build_record_heartbeat_payload(
+                &inputs.id,
+                inputs.last_sync_utc,
+                inputs.ctr,
+                inputs.record_id.as_deref(),
+            ),
+            format!("heartbeat:{}:{}", inputs.id, inputs.last_sync_utc),
+        ]
+    };
 
     let mut leaf_pubkey_bytes: Option<Vec<u8>> = None;
     let mut authority_pubkey_bytes: Option<Vec<u8>> = None;
@@ -371,12 +395,14 @@ pub fn verify_heartbeat_attestation(
     }
 
     if let Some(pubkey) = authority_pubkey_bytes {
-        let legacy_payload = format!("heartbeat:{}:{}", inputs.id, inputs.last_sync_utc);
-        if verify_signature_robust(&signature_bytes, legacy_payload.as_bytes(), &pubkey) {
-            return VerificationResult {
-                ok: true,
-                reason: None,
-            };
+        if !has_modern_heartbeat_binding {
+            let legacy_payload = format!("heartbeat:{}:{}", inputs.id, inputs.last_sync_utc);
+            if verify_signature_robust(&signature_bytes, legacy_payload.as_bytes(), &pubkey) {
+                return VerificationResult {
+                    ok: true,
+                    reason: None,
+                };
+            }
         }
     }
 

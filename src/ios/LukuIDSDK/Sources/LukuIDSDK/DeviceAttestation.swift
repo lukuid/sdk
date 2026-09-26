@@ -222,10 +222,13 @@ func verifyDeviceAttestation(_ inputs: DeviceAttestationInputs, revocationManage
         return .failure(DeviceTrustError(id: inputs.id, reason: "attestationSig is not valid base64", attemptedKeyIds: []))
     }
     
-    let payloadStrings = Array(Set([
-        buildRecordAttestationPayload(id: inputs.id, key: inputs.key, ctr: inputs.ctr, vendor: inputs.vendor, recordID: inputs.recordID),
-        "\(inputs.id):\(inputs.key)"
-    ]))
+    let hasModernAttestationBinding = inputs.ctr != nil && !(inputs.vendor ?? "").isEmpty && !(inputs.recordID ?? "").isEmpty
+    let payloadStrings: [String] = hasModernAttestationBinding
+        ? [buildRecordAttestationPayload(id: inputs.id, key: inputs.key, ctr: inputs.ctr, vendor: inputs.vendor, recordID: inputs.recordID)]
+        : Array(Set([
+            buildRecordAttestationPayload(id: inputs.id, key: inputs.key, ctr: inputs.ctr, vendor: inputs.vendor, recordID: inputs.recordID),
+            "\(inputs.id):\(inputs.key)"
+        ]))
 
     var leafPublicKeyData: Data? = nil
     
@@ -285,10 +288,13 @@ func verifyHeartbeatAttestation(_ inputs: HeartbeatAttestationInputs, revocation
         return .failure(DeviceTrustError(id: inputs.id, reason: "heartbeatSig is not valid base64", attemptedKeyIds: []))
     }
 
-    let payloadStrings = Array(Set([
-        buildRecordHeartbeatPayload(id: inputs.id, lastSyncUtc: inputs.lastSyncUtc, ctr: inputs.ctr, recordID: inputs.recordID),
-        "heartbeat:\(inputs.id):\(inputs.lastSyncUtc)"
-    ]))
+    let hasModernHeartbeatBinding = inputs.ctr != nil && !(inputs.recordID ?? "").isEmpty
+    let payloadStrings: [String] = hasModernHeartbeatBinding
+        ? [buildRecordHeartbeatPayload(id: inputs.id, lastSyncUtc: inputs.lastSyncUtc, ctr: inputs.ctr, recordID: inputs.recordID)]
+        : Array(Set([
+            buildRecordHeartbeatPayload(id: inputs.id, lastSyncUtc: inputs.lastSyncUtc, ctr: inputs.ctr, recordID: inputs.recordID),
+            "heartbeat:\(inputs.id):\(inputs.lastSyncUtc)"
+        ]))
 
     var leafPublicKeyData: Data? = nil
     var authorityPublicKeyData: Data? = nil
@@ -316,7 +322,8 @@ func verifyHeartbeatAttestation(_ inputs: HeartbeatAttestationInputs, revocation
         }
     }
 
-    if let authorityPub = authorityPublicKeyData,
+    if !hasModernHeartbeatBinding,
+       let authorityPub = authorityPublicKeyData,
        let payload = "heartbeat:\(inputs.id):\(inputs.lastSyncUtc)".data(using: .utf8),
        verifySignatureRobust(signature: signatureData, tbs: payload, publicKey: authorityPub) {
         return .success(())
