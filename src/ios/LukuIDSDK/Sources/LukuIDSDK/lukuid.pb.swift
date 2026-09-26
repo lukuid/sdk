@@ -933,6 +933,11 @@ nonisolated struct LukuIDCommandRequest: @unchecked Sendable {
     set {_uniqueStorage()._action = newValue}
   }
 
+  var requestID: String {
+    get {_storage._requestID}
+    set {_uniqueStorage()._requestID = newValue}
+  }
+
   var payload: OneOf_Payload? {
     get {return _storage._payload}
     set {_uniqueStorage()._payload = newValue}
@@ -2535,6 +2540,11 @@ nonisolated struct LukuIDCommandResponse: @unchecked Sendable {
     set {_uniqueStorage()._action = newValue}
   }
 
+  var requestID: String {
+    get {_storage._requestID}
+    set {_uniqueStorage()._requestID = newValue}
+  }
+
   var status: LukuIDStatus {
     get {_storage._status}
     set {_uniqueStorage()._status = newValue}
@@ -3957,10 +3967,11 @@ nonisolated extension LukuIDHistoricalExportResponse: SwiftProtobuf.Message, Swi
 
 nonisolated extension LukuIDCommandRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".CommandRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}action\0\u{1}fetch\0\u{1}get\0\u{1}attest\0\u{1}config\0\u{3}ota_begin\0\u{3}ota_data\0\u{3}ota_data_v2\0\u{3}set_attestation\0\u{3}set_heartbeat\0\u{4}\u{2}scan_enable\0\u{3}generate_heartbeat\0\u{3}fetch_telemetry\0\u{3}get_certificate\0\u{3}get_chain\0\u{1}configure\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}action\0\u{1}fetch\0\u{1}get\0\u{1}attest\0\u{1}config\0\u{3}ota_begin\0\u{3}ota_data\0\u{3}ota_data_v2\0\u{3}set_attestation\0\u{3}set_heartbeat\0\u{4}\u{2}scan_enable\0\u{3}generate_heartbeat\0\u{3}fetch_telemetry\0\u{3}get_certificate\0\u{3}get_chain\0\u{1}configure\0\u{3}request_id\0")
 
   fileprivate class _StorageClass {
     var _action: String = String()
+    var _requestID: String = String()
     var _payload: LukuIDCommandRequest.OneOf_Payload?
 
       // This property is used as the initial default value for new instances of the type.
@@ -3973,6 +3984,7 @@ nonisolated extension LukuIDCommandRequest: SwiftProtobuf.Message, SwiftProtobuf
 
     init(copying source: _StorageClass) {
       _action = source._action
+      _requestID = source._requestID
       _payload = source._payload
     }
   }
@@ -4188,6 +4200,7 @@ nonisolated extension LukuIDCommandRequest: SwiftProtobuf.Message, SwiftProtobuf
             _storage._payload = .configure(v)
           }
         }()
+        case 18: try { try decoder.decodeSingularStringField(value: &_storage._requestID) }()
         default: break
         }
       }
@@ -4266,6 +4279,9 @@ nonisolated extension LukuIDCommandRequest: SwiftProtobuf.Message, SwiftProtobuf
       }()
       case nil: break
       }
+      if !_storage._requestID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._requestID, fieldNumber: 18)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4276,6 +4292,7 @@ nonisolated extension LukuIDCommandRequest: SwiftProtobuf.Message, SwiftProtobuf
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._action != rhs_storage._action {return false}
+        if _storage._requestID != rhs_storage._requestID {return false}
         if _storage._payload != rhs_storage._payload {return false}
         return true
       }
@@ -6791,10 +6808,11 @@ nonisolated extension LukuIDHeartbeatInitResponse: SwiftProtobuf.Message, SwiftP
 
 nonisolated extension LukuIDCommandResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".CommandResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}action\0\u{1}status\0\u{1}success\0\u{3}error_code\0\u{1}message\0\u{3}device_info\0\u{3}network_config\0\u{3}scan_record\0\u{3}env_record\0\u{3}fetch_response\0\u{3}full_record_response\0\u{1}signature\0\u{1}key\0\u{3}heartbeat_init\0\u{3}record_batches\0\u{3}status_response\0\u{3}fetch_telemetry\0\u{3}has_more\0\u{3}certificate_response\0\u{3}historical_export\0\u{3}chain_response\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}action\0\u{1}status\0\u{1}success\0\u{3}error_code\0\u{1}message\0\u{3}device_info\0\u{3}network_config\0\u{3}scan_record\0\u{3}env_record\0\u{3}fetch_response\0\u{3}full_record_response\0\u{1}signature\0\u{1}key\0\u{3}heartbeat_init\0\u{3}record_batches\0\u{3}status_response\0\u{3}fetch_telemetry\0\u{3}has_more\0\u{3}certificate_response\0\u{3}historical_export\0\u{3}chain_response\0\u{3}request_id\0")
 
   fileprivate class _StorageClass {
     var _action: String = String()
+    var _requestID: String = String()
     var _status: LukuIDStatus = .unknown
     var _success: Bool = false
     var _errorCode: String = String()
@@ -6814,6 +6832,7 @@ nonisolated extension LukuIDCommandResponse: SwiftProtobuf.Message, SwiftProtobu
 
     init(copying source: _StorageClass) {
       _action = source._action
+      _requestID = source._requestID
       _status = source._status
       _success = source._success
       _errorCode = source._errorCode
@@ -7017,6 +7036,7 @@ nonisolated extension LukuIDCommandResponse: SwiftProtobuf.Message, SwiftProtobu
             _storage._payload = .chainResponse(v)
           }
         }()
+        case 22: try { try decoder.decodeSingularStringField(value: &_storage._requestID) }()
         default: break
         }
       }
@@ -7114,6 +7134,9 @@ nonisolated extension LukuIDCommandResponse: SwiftProtobuf.Message, SwiftProtobu
       }()
       default: break
       }
+      if !_storage._requestID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._requestID, fieldNumber: 22)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -7124,6 +7147,7 @@ nonisolated extension LukuIDCommandResponse: SwiftProtobuf.Message, SwiftProtobu
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._action != rhs_storage._action {return false}
+        if _storage._requestID != rhs_storage._requestID {return false}
         if _storage._status != rhs_storage._status {return false}
         if _storage._success != rhs_storage._success {return false}
         if _storage._errorCode != rhs_storage._errorCode {return false}

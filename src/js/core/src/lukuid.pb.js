@@ -7683,6 +7683,7 @@ export const lukuid = $root.lukuid = (() => {
          * @memberof lukuid
          * @interface ICommandRequest
          * @property {string|null} [action] CommandRequest action
+         * @property {string|null} [requestId] CommandRequest requestId
          * @property {lukuid.IFetchRequest|null} [fetch] CommandRequest fetch
          * @property {lukuid.IGetRecordRequest|null} [get] CommandRequest get
          * @property {lukuid.IAttestRequest|null} [attest] CommandRequest attest
@@ -7722,6 +7723,14 @@ export const lukuid = $root.lukuid = (() => {
          * @instance
          */
         CommandRequest.prototype.action = "";
+
+        /**
+         * CommandRequest requestId.
+         * @member {string} requestId
+         * @memberof lukuid.CommandRequest
+         * @instance
+         */
+        CommandRequest.prototype.requestId = "";
 
         /**
          * CommandRequest fetch.
@@ -7913,6 +7922,8 @@ export const lukuid = $root.lukuid = (() => {
                 $root.lukuid.GetChainRequest.encode(message.getChain, writer.uint32(/* id 16, wireType 2 =*/130).fork()).ldelim();
             if (message.configure != null && Object.hasOwnProperty.call(message, "configure"))
                 $root.lukuid.SetConfigureRequest.encode(message.configure, writer.uint32(/* id 17, wireType 2 =*/138).fork()).ldelim();
+            if (message.requestId != null && Object.hasOwnProperty.call(message, "requestId"))
+                writer.uint32(/* id 18, wireType 2 =*/146).string(message.requestId);
             return writer;
         };
 
@@ -7951,6 +7962,10 @@ export const lukuid = $root.lukuid = (() => {
                 switch (tag >>> 3) {
                 case 1: {
                         message.action = reader.string();
+                        break;
+                    }
+                case 18: {
+                        message.requestId = reader.string();
                         break;
                     }
                 case 2: {
@@ -8052,6 +8067,9 @@ export const lukuid = $root.lukuid = (() => {
             if (message.action != null && message.hasOwnProperty("action"))
                 if (!$util.isString(message.action))
                     return "action: string expected";
+            if (message.requestId != null && message.hasOwnProperty("requestId"))
+                if (!$util.isString(message.requestId))
+                    return "requestId: string expected";
             if (message.fetch != null && message.hasOwnProperty("fetch")) {
                 properties.payload = 1;
                 {
@@ -8217,6 +8235,8 @@ export const lukuid = $root.lukuid = (() => {
             let message = new $root.lukuid.CommandRequest();
             if (object.action != null)
                 message.action = String(object.action);
+            if (object.requestId != null)
+                message.requestId = String(object.requestId);
             if (object.fetch != null) {
                 if (typeof object.fetch !== "object")
                     throw TypeError(".lukuid.CommandRequest.fetch: object expected");
@@ -8308,8 +8328,10 @@ export const lukuid = $root.lukuid = (() => {
             if (!options)
                 options = {};
             let object = {};
-            if (options.defaults)
+            if (options.defaults) {
                 object.action = "";
+                object.requestId = "";
+            }
             if (message.action != null && message.hasOwnProperty("action"))
                 object.action = message.action;
             if (message.fetch != null && message.hasOwnProperty("fetch")) {
@@ -8387,6 +8409,8 @@ export const lukuid = $root.lukuid = (() => {
                 if (options.oneofs)
                     object.payload = "configure";
             }
+            if (message.requestId != null && message.hasOwnProperty("requestId"))
+                object.requestId = message.requestId;
             return object;
         };
 
@@ -19782,6 +19806,7 @@ export const lukuid = $root.lukuid = (() => {
          * @memberof lukuid
          * @interface ICommandResponse
          * @property {string|null} [action] CommandResponse action
+         * @property {string|null} [requestId] CommandResponse requestId
          * @property {lukuid.Status|null} [status] CommandResponse status
          * @property {boolean|null} [success] CommandResponse success
          * @property {string|null} [errorCode] CommandResponse errorCode
@@ -19826,6 +19851,14 @@ export const lukuid = $root.lukuid = (() => {
          * @instance
          */
         CommandResponse.prototype.action = "";
+
+        /**
+         * CommandResponse requestId.
+         * @member {string} requestId
+         * @memberof lukuid.CommandResponse
+         * @instance
+         */
+        CommandResponse.prototype.requestId = "";
 
         /**
          * CommandResponse status.
@@ -20085,6 +20118,8 @@ export const lukuid = $root.lukuid = (() => {
                 $root.lukuid.HistoricalExportResponse.encode(message.historicalExport, writer.uint32(/* id 20, wireType 2 =*/162).fork()).ldelim();
             if (message.chainResponse != null && Object.hasOwnProperty.call(message, "chainResponse"))
                 $root.lukuid.GetChainResponse.encode(message.chainResponse, writer.uint32(/* id 21, wireType 2 =*/170).fork()).ldelim();
+            if (message.requestId != null && Object.hasOwnProperty.call(message, "requestId"))
+                writer.uint32(/* id 22, wireType 2 =*/178).string(message.requestId);
             return writer;
         };
 
@@ -20123,6 +20158,10 @@ export const lukuid = $root.lukuid = (() => {
                 switch (tag >>> 3) {
                 case 1: {
                         message.action = reader.string();
+                        break;
+                    }
+                case 22: {
+                        message.requestId = reader.string();
                         break;
                     }
                 case 2: {
@@ -20244,6 +20283,9 @@ export const lukuid = $root.lukuid = (() => {
             if (message.action != null && message.hasOwnProperty("action"))
                 if (!$util.isString(message.action))
                     return "action: string expected";
+            if (message.requestId != null && message.hasOwnProperty("requestId"))
+                if (!$util.isString(message.requestId))
+                    return "requestId: string expected";
             if (message.status != null && message.hasOwnProperty("status"))
                 switch (message.status) {
                 default:
@@ -20423,6 +20465,8 @@ export const lukuid = $root.lukuid = (() => {
             let message = new $root.lukuid.CommandResponse();
             if (object.action != null)
                 message.action = String(object.action);
+            if (object.requestId != null)
+                message.requestId = String(object.requestId);
             switch (object.status) {
             default:
                 if (typeof object.status === "number") {
@@ -20552,6 +20596,7 @@ export const lukuid = $root.lukuid = (() => {
                 object.success = false;
                 object.errorCode = "";
                 object.message = "";
+                object.requestId = "";
             }
             if (message.action != null && message.hasOwnProperty("action"))
                 object.action = message.action;
@@ -20643,6 +20688,8 @@ export const lukuid = $root.lukuid = (() => {
                 if (options.oneofs)
                     object.payload = "chainResponse";
             }
+            if (message.requestId != null && message.hasOwnProperty("requestId"))
+                object.requestId = message.requestId;
             return object;
         };
 

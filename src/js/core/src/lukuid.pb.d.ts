@@ -2871,6 +2871,9 @@ export namespace lukuid {
         /** CommandRequest action */
         action?: (string|null);
 
+        /** CommandRequest requestId */
+        requestId?: (string|null);
+
         /** CommandRequest fetch */
         fetch?: (lukuid.IFetchRequest|null);
 
@@ -2928,6 +2931,9 @@ export namespace lukuid {
 
         /** CommandRequest action. */
         public action: string;
+
+        /** CommandRequest requestId. */
+        public requestId: string;
 
         /** CommandRequest fetch. */
         public fetch?: (lukuid.IFetchRequest|null);
@@ -6699,6 +6705,9 @@ export namespace lukuid {
         /** CommandResponse action */
         action?: (string|null);
 
+        /** CommandResponse requestId */
+        requestId?: (string|null);
+
         /** CommandResponse status */
         status?: (lukuid.Status|null);
 
@@ -6771,6 +6780,9 @@ export namespace lukuid {
 
         /** CommandResponse action. */
         public action: string;
+
+        /** CommandResponse requestId. */
+        public requestId: string;
 
         /** CommandResponse status. */
         public status: lukuid.Status;

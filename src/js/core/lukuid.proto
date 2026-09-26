@@ -227,6 +227,7 @@ message HistoricalExportResponse {
 
 message CommandRequest {
   string action = 1;
+  string request_id = 18;
   oneof payload {
     FetchRequest fetch = 2;
     GetRecordRequest get = 3;
@@ -603,6 +604,7 @@ message HeartbeatInitResponse {
 
 message CommandResponse {
   string action = 1;
+  string request_id = 22;
   Status status = 2;
   bool success = 3;
   string error_code = 4;
