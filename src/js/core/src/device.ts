@@ -223,30 +223,43 @@ class LukuidDevice implements Device {
     };
 
     const buffer = encodeFrame(payload);
-    
+
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        if (this.pending.has(id)) {
-          this.pending.delete(id);
-          reject(new Error(`Command ${key} (${id}) timed out after ${timeoutMs}ms`));
-        }
-      }, timeoutMs);
+      let timer: ReturnType<typeof setTimeout>;
+      const armTimeout = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          if (this.pending.has(id)) {
+            this.pending.delete(id);
+            reject(
+              new DeviceCommandError(
+                'TIMEOUT',
+                `Command ${key} (${id}) timed out after ${timeoutMs}ms`
+              )
+            );
+          }
+        }, timeoutMs);
+      };
 
       this.pending.set(id, {
         action: key,
+        chunks: { data: [], batches: [], exportEntries: [] },
+        armTimeout,
         resolve: (val) => {
-          clearTimeout(timeout);
+          clearTimeout(timer);
           resolve(val);
         },
         reject: (err) => {
-          clearTimeout(timeout);
+          clearTimeout(timer);
           reject(err);
         }
       });
 
+      armTimeout();
+
       connection.write(buffer).catch((error) => {
         this.pending.delete(id);
-        clearTimeout(timeout);
+        clearTimeout(timer);
         reject(error);
       });
     });
@@ -535,13 +548,16 @@ class LukuidDevice implements Device {
     let id: string | undefined;
     let entry: PendingCommand | undefined;
 
-    // 1. Try to match by ID if provided
+    // 1. Try to match by ID if provided (the device echoes CommandRequest.request_id
+    // verbatim, so this is authoritative whenever it's present).
     if (frame.id) {
         id = frame.id;
         entry = this.pending.get(id);
     }
 
-    // 2. If no ID or no match by ID, try to match by action name (command name)
+    // 2. Fall back to matching by action name only for responses that carry no
+    // request_id (e.g. firmware that predates this field). This is fragile under
+    // concurrent same-action calls, which is exactly why (1) exists.
     if (!entry) {
         for (const [pendingId, pendingEntry] of this.pending) {
             if (pendingEntry.action === frame.action) {
@@ -556,10 +572,8 @@ class LukuidDevice implements Device {
       return;
     }
 
-    this.pending.delete(id);
-    if (frame.ok) {
-      entry.resolve('data' in frame && frame.data !== undefined ? frame.data : frame);
-    } else {
+    if (!frame.ok) {
+      this.pending.delete(id);
       const error: Record<string, unknown> & { code: string; msg?: string } =
         frame.err && typeof frame.err === 'object'
           ? frame.err as Record<string, unknown> & { code: string; msg?: string }
@@ -568,7 +582,51 @@ class LukuidDevice implements Device {
               msg: frame.message ?? frame.error ?? 'Command failed'
             };
       entry.reject(new DeviceCommandError(error.code, error.msg, error));
+      return;
     }
+
+    const record = frame as unknown as Record<string, unknown>;
+    const hasMore = record.has_more === true;
+
+    if (Array.isArray(record.data)) {
+      entry.chunks.data.push(...record.data);
+    }
+    const recordBatches = record.record_batches as { batches?: unknown[] } | undefined;
+    if (recordBatches && Array.isArray(recordBatches.batches)) {
+      entry.chunks.batches.push(...recordBatches.batches);
+    }
+    const historicalExport = record.historical_export as { entries?: unknown[] } | undefined;
+    if (historicalExport && Array.isArray(historicalExport.entries)) {
+      entry.chunks.exportEntries.push(...historicalExport.entries);
+    }
+
+    if (hasMore) {
+      // More chunks are coming for this same request_id: keep the pending entry
+      // alive and push the timeout out so a long multi-chunk stream doesn't
+      // spuriously expire while the device is still actively sending.
+      entry.armTimeout();
+      return;
+    }
+
+    this.pending.delete(id);
+
+    const accumulated = entry.chunks;
+    if (accumulated.data.length === 0 && accumulated.batches.length === 0 && accumulated.exportEntries.length === 0) {
+      entry.resolve('data' in frame && frame.data !== undefined ? frame.data : frame);
+      return;
+    }
+
+    const merged: Record<string, unknown> = { ...record };
+    if (accumulated.data.length > 0 || Array.isArray(record.data)) {
+      merged.data = accumulated.data;
+    }
+    if (accumulated.batches.length > 0 || recordBatches) {
+      merged.record_batches = { ...recordBatches, batches: accumulated.batches };
+    }
+    if (accumulated.exportEntries.length > 0 || historicalExport) {
+      merged.historical_export = { ...historicalExport, entries: accumulated.exportEntries };
+    }
+    entry.resolve(merged);
   }
 
   private handleEvent(frame: EventFrame): void {
@@ -589,6 +647,12 @@ class LukuidDevice implements Device {
 
 interface PendingCommand {
   action: string;
+  chunks: {
+    data: unknown[];
+    batches: unknown[];
+    exportEntries: unknown[];
+  };
+  armTimeout(): void;
   resolve(value: unknown): void;
   reject(error: unknown): void;
 }

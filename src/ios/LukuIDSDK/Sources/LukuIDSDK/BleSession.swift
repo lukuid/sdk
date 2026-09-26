@@ -73,9 +73,20 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
         }
     )
 
-    private struct PendingRequest {
+    private final class PendingRequest {
         let action: String
         let continuation: CheckedContinuation<Any, Error>
+        let timeoutSeconds: TimeInterval
+        var timeoutWorkItem: DispatchWorkItem?
+        var accumulatedData: [Any] = []
+        var accumulatedBatches: [Any] = []
+        var accumulatedExportEntries: [Any] = []
+
+        init(action: String, continuation: CheckedContinuation<Any, Error>, timeoutSeconds: TimeInterval) {
+            self.action = action
+            self.continuation = continuation
+            self.timeoutSeconds = timeoutSeconds
+        }
     }
 
     private var txCharacteristic: CBCharacteristic?
@@ -153,28 +164,66 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
 
     func call(key: String, opts: [String: Any], timeout: TimeInterval) async throws -> Any {
         try await waitForReady()
-        return try await withTimeout(seconds: timeout) { [self] in
-            try await withCheckedThrowingContinuation { continuation in
-                self.queue.async { [weak self] in
-                    guard let self else { return }
-                    let requestId = UUID().uuidString
-                    self.pendingRequests[requestId] = PendingRequest(action: key, continuation: continuation)
-                    Task {
-                        do {
-                            try await self.send(frame: [
-                                "action": key,
-                                "id": requestId,
-                                "opts": opts
-                            ])
-                        } catch {
-                            self.queue.async {
-                                self.pendingRequests.removeValue(forKey: requestId)
-                                continuation.resume(throwing: error)
-                            }
+        return try await withCheckedThrowingContinuation { continuation in
+            self.queue.async { [weak self] in
+                guard let self else { return }
+                let requestId = UUID().uuidString
+                self.pendingRequests[requestId] = PendingRequest(
+                    action: key,
+                    continuation: continuation,
+                    timeoutSeconds: timeout
+                )
+                self.armTimeout(requestId: requestId)
+                Task {
+                    do {
+                        try await self.send(frame: [
+                            "action": key,
+                            "id": requestId,
+                            "opts": opts
+                        ])
+                    } catch {
+                        self.queue.async {
+                            self.completePending(requestId: requestId, result: .failure(error))
                         }
                     }
                 }
             }
+        }
+    }
+
+    /// Must be called while already executing on `queue`. Arms (or re-arms, on a
+    /// subsequent chunk) the timeout for a pending request: if nothing resolves it
+    /// within `timeoutSeconds`, it fails with a timeout error and is removed.
+    private func armTimeout(requestId: String) {
+        guard let request = pendingRequests[requestId] else { return }
+        request.timeoutWorkItem?.cancel()
+        let action = request.action
+        let seconds = request.timeoutSeconds
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.completePending(
+                requestId: requestId,
+                result: .failure(NSError(
+                    domain: "lukuid",
+                    code: -11,
+                    userInfo: [NSLocalizedDescriptionKey: "Command \(action) (\(requestId)) timed out after \(seconds)s"]
+                ))
+            )
+        }
+        request.timeoutWorkItem = workItem
+        queue.asyncAfter(deadline: .now() + seconds, execute: workItem)
+    }
+
+    /// Must be called while already executing on `queue`. Resumes and removes the
+    /// pending request exactly once; a no-op if it was already resolved (by a
+    /// response, timeout, close, or disconnect racing this call).
+    private func completePending(requestId: String, result: Result<Any, Error>) {
+        guard let request = pendingRequests.removeValue(forKey: requestId) else { return }
+        request.timeoutWorkItem?.cancel()
+        switch result {
+        case .success(let value):
+            request.continuation.resume(returning: value)
+        case .failure(let error):
+            request.continuation.resume(throwing: error)
         }
     }
 
@@ -214,10 +263,9 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
                     return
                 }
                 self.isClosed = true
-                self.pendingRequests.values.forEach { request in
-                    request.continuation.resume(throwing: NSError(domain: "lukuid", code: -1, userInfo: [NSLocalizedDescriptionKey: "Device closed"]))
+                for requestId in Array(self.pendingRequests.keys) {
+                    self.completePending(requestId: requestId, result: .failure(NSError(domain: "lukuid", code: -1, userInfo: [NSLocalizedDescriptionKey: "Device closed"])))
                 }
-                self.pendingRequests.removeAll()
                 self.pendingWrite?.resume(throwing: NSError(domain: "lukuid", code: -1, userInfo: [NSLocalizedDescriptionKey: "Device closed"]))
                 self.pendingWrite = nil
                 self.central.cancelPeripheralConnection(self.peripheral)
@@ -552,33 +600,83 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
 
     private func handleResponse(_ message: [String: Any], action: String) {
         let ok = (message["ok"] as? Bool) ?? true
-        let data = JsonCodec.normalize(message["data"] ?? message)
+        let hasMore = (message["has_more"] as? Bool) ?? false
         let errorText = (message["message"] as? String)
             ?? (message["error"] as? String)
             ?? ((message["err"] as? [String: Any])?["msg"] as? String)
             ?? "Command failed"
-        
+
+        var requestId: String?
         var request: PendingRequest?
-        
-        // 1. Try by ID
-        if let identifier = message["id"] as? String {
-            request = pendingRequests.removeValue(forKey: identifier)
+
+        // 1. Try by request_id: the device echoes CommandRequest.request_id
+        // verbatim, so this is authoritative whenever it's present.
+        if let identifier = message["request_id"] as? String, let found = pendingRequests[identifier] {
+            requestId = identifier
+            request = found
         }
-        
-        // 2. Try by action
+
+        // 2. Fall back to matching by action name only for responses that carry
+        // no request_id (e.g. firmware that predates this field). Fragile under
+        // concurrent same-action calls, which is exactly why (1) exists.
         if request == nil {
             if let pair = pendingRequests.first(where: { $0.value.action == action }) {
-                request = pendingRequests.removeValue(forKey: pair.key)
+                requestId = pair.key
+                request = pair.value
             }
         }
 
-        if let request {
-            if ok {
-                request.continuation.resume(returning: data)
-            } else {
-                request.continuation.resume(throwing: NSError(domain: "lukuid", code: -8, userInfo: [NSLocalizedDescriptionKey: errorText]))
-            }
+        guard let requestId, let request else { return }
+
+        if !ok {
+            completePending(requestId: requestId, result: .failure(NSError(domain: "lukuid", code: -8, userInfo: [NSLocalizedDescriptionKey: errorText])))
+            return
         }
+
+        if let dataArray = message["data"] as? [Any] {
+            request.accumulatedData.append(contentsOf: dataArray)
+        }
+        let recordBatches = message["record_batches"] as? [String: Any]
+        if let batches = recordBatches?["batches"] as? [Any] {
+            request.accumulatedBatches.append(contentsOf: batches)
+        }
+        let historicalExport = message["historical_export"] as? [String: Any]
+        if let entries = historicalExport?["entries"] as? [Any] {
+            request.accumulatedExportEntries.append(contentsOf: entries)
+        }
+
+        if hasMore {
+            // More chunks are coming for this same request_id: keep the pending
+            // entry alive and push the timeout out so a long multi-chunk stream
+            // doesn't spuriously expire while the device is still actively sending.
+            armTimeout(requestId: requestId)
+            return
+        }
+
+        let hasAccumulated = !request.accumulatedData.isEmpty
+            || !request.accumulatedBatches.isEmpty
+            || !request.accumulatedExportEntries.isEmpty
+
+        if !hasAccumulated {
+            completePending(requestId: requestId, result: .success(JsonCodec.normalize(message["data"] ?? message)))
+            return
+        }
+
+        var merged = message
+        if !request.accumulatedData.isEmpty || message["data"] != nil {
+            merged["data"] = request.accumulatedData
+        }
+        if !request.accumulatedBatches.isEmpty || recordBatches != nil {
+            var rb = recordBatches ?? [:]
+            rb["batches"] = request.accumulatedBatches
+            merged["record_batches"] = rb
+        }
+        if !request.accumulatedExportEntries.isEmpty || historicalExport != nil {
+            var export = historicalExport ?? [:]
+            export["entries"] = request.accumulatedExportEntries
+            merged["historical_export"] = export
+        }
+        completePending(requestId: requestId, result: .success(JsonCodec.normalize(merged)))
     }
 
     private func handleEvent(_ message: [String: Any], action: String) {
@@ -609,10 +707,9 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
             if let error {
                 self.errorSink(SdkError(whereHint: "ble.disconnect", underlying: error))
             }
-            self.pendingRequests.values.forEach { request in
-                request.continuation.resume(throwing: NSError(domain: "lukuid", code: -3, userInfo: [NSLocalizedDescriptionKey: "Disconnected"]))
+            for requestId in Array(self.pendingRequests.keys) {
+                self.completePending(requestId: requestId, result: .failure(NSError(domain: "lukuid", code: -3, userInfo: [NSLocalizedDescriptionKey: "Disconnected"])))
             }
-            self.pendingRequests.removeAll()
             self.pendingWrite?.resume(throwing: NSError(domain: "lukuid", code: -3, userInfo: [NSLocalizedDescriptionKey: "Disconnected"]))
             self.pendingWrite = nil
             self.notificationsReady = false

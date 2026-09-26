@@ -177,6 +177,9 @@ export function encodeCommandRequest(frame: DeviceFrame): Uint8Array {
 
   writeString(chunks, 1, action);
 
+  const requestId = typeof record.id === 'string' ? record.id : '';
+  if (requestId) writeString(chunks, 18, requestId);
+
   if (action === 'fetch' || action === 'history') {
     const nested: number[] = [];
     const query = firstString(source.query, source.id, source.device_id);
@@ -459,6 +462,12 @@ function decodeCommandResponse(payload: Uint8Array): JsonRecord | null {
         Object.assign(out, exportObj);
         break;
       }
+      case 18:
+        assignBool(payload, cursor, wireType, out, 'has_more');
+        break;
+      case 22:
+        assignString(payload, cursor, wireType, out, 'id');
+        break;
       default:
         if (!skipField(payload, cursor, wireType)) {
           return null;

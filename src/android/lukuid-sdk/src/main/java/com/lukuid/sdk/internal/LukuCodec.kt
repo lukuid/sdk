@@ -161,7 +161,13 @@ internal class LukuCodec(
         map["status"] = response.status.name
         map["success"] = response.success
         map["ok"] = response.success // Maintain legacy API support
-        
+
+        // Use a dedicated key: "id" is already used above for the device's own
+        // serial number (STATUS_RESPONSE/DEVICE_INFO payloads), so it can't also
+        // carry the request correlation id without colliding.
+        if (response.requestId.isNotEmpty()) map["request_id"] = response.requestId
+        if (response.hasHasMore()) map["has_more"] = response.hasMore
+
         if (response.errorCode.isNotEmpty()) map["error_code"] = response.errorCode
         if (response.message.isNotEmpty()) {
             map["message"] = response.message
@@ -458,6 +464,8 @@ internal class LukuCodec(
             val builder = LukuIDProto.CommandRequest.newBuilder()
             val action = map["action"] as? String ?: ""
             builder.action = action
+
+            (map["id"] as? String)?.let { builder.requestId = it }
 
             val opts = map["opts"] as? Map<String, Any?>
             val source = opts ?: map

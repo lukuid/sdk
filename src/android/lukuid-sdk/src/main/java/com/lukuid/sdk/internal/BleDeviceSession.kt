@@ -95,7 +95,13 @@ internal class BleDeviceSession(
     private val rxCharacteristicRef = AtomicReference<BluetoothGattCharacteristic?>()
     private val txCharacteristicRef = AtomicReference<BluetoothGattCharacteristic?>()
     
-    private data class PendingRequest(val action: String, val deferred: CompletableDeferred<Any?>)
+    private data class PendingRequest(
+        val action: String,
+        val deferred: CompletableDeferred<Any?>,
+        val accumulatedData: MutableList<Any?> = mutableListOf(),
+        val accumulatedBatches: MutableList<Any?> = mutableListOf(),
+        val accumulatedExportEntries: MutableList<Any?> = mutableListOf()
+    )
     private val pendingRequests = ConcurrentHashMap<String, PendingRequest>()
     
     private val eventCallbacks = CopyOnWriteArraySet<(DeviceEventPayload) -> Unit>()
@@ -165,8 +171,14 @@ internal class BleDeviceSession(
             deferred.completeExceptionally(t)
             throw t
         }
-        return withTimeout(timeoutMillis) {
-            deferred.await()
+        try {
+            return withTimeout(timeoutMillis) {
+                deferred.await()
+            }
+        } finally {
+            // Ensures a timed-out (or otherwise abandoned) request doesn't linger in the
+            // map until connection teardown; a no-op if handleResponse already removed it.
+            pendingRequests.remove(requestId)
         }
     }
 
@@ -464,35 +476,82 @@ internal class BleDeviceSession(
     }
 
     private fun handleResponse(message: Map<String, Any?>, action: String) {
-        val id = message["id"] as? String
+        val id = message["request_id"] as? String
         val ok = message["ok"] as? Boolean ?: true
-        val data = message["data"] ?: message
+        val hasMore = message["has_more"] as? Boolean ?: false
         val error = message["message"]?.toString()
             ?: message["error"]?.toString()
             ?: (message["err"] as? Map<*, *>)?.get("msg")?.toString()
-        
-        var deferred: CompletableDeferred<Any?>? = null
-        
-        // 1. Try by ID
+
+        var entryKey: String? = null
+        var entry: PendingRequest? = null
+
+        // 1. Try by request_id: the device echoes CommandRequest.request_id verbatim,
+        // so this is authoritative whenever it's present.
         if (id != null) {
-            deferred = pendingRequests.remove(id)?.deferred
-        }
-        
-        // 2. Try by action
-        if (deferred == null) {
-            val entry = pendingRequests.entries.find { it.value.action == action }
-            if (entry != null) {
-                deferred = pendingRequests.remove(entry.key)?.deferred
+            val found = pendingRequests[id]
+            if (found != null) {
+                entryKey = id
+                entry = found
             }
         }
 
-        if (deferred != null) {
-            if (ok) {
-                deferred.complete(JsonUtils.fromJsonValue(data))
-            } else {
-                deferred.completeExceptionally(IOException(error ?: "Command failed"))
+        // 2. Fall back to matching by action name only for responses that carry no
+        // request_id (e.g. firmware that predates this field). Fragile under
+        // concurrent same-action calls, which is exactly why (1) exists.
+        if (entry == null) {
+            val found = pendingRequests.entries.find { it.value.action == action }
+            if (found != null) {
+                entryKey = found.key
+                entry = found.value
             }
         }
+
+        if (entry == null || entryKey == null) return
+
+        if (!ok) {
+            pendingRequests.remove(entryKey)
+            entry.deferred.completeExceptionally(IOException(error ?: "Command failed"))
+            return
+        }
+
+        val dataList = message["data"] as? List<*>
+        if (dataList != null) entry.accumulatedData.addAll(dataList)
+        val recordBatches = message["record_batches"] as? Map<*, *>
+        val batchesList = recordBatches?.get("batches") as? List<*>
+        if (batchesList != null) entry.accumulatedBatches.addAll(batchesList)
+        val historicalExport = message["historical_export"] as? Map<*, *>
+        val exportEntries = historicalExport?.get("entries") as? List<*>
+        if (exportEntries != null) entry.accumulatedExportEntries.addAll(exportEntries)
+
+        if (hasMore) {
+            // More chunks are coming for this same request_id: keep the pending
+            // entry (and its deferred) alive to accumulate them.
+            return
+        }
+
+        pendingRequests.remove(entryKey)
+
+        val hasAccumulated = entry.accumulatedData.isNotEmpty() ||
+            entry.accumulatedBatches.isNotEmpty() ||
+            entry.accumulatedExportEntries.isNotEmpty()
+
+        if (!hasAccumulated) {
+            entry.deferred.complete(JsonUtils.fromJsonValue(message["data"] ?: message))
+            return
+        }
+
+        val merged = message.toMutableMap()
+        if (entry.accumulatedData.isNotEmpty() || dataList != null) {
+            merged["data"] = entry.accumulatedData
+        }
+        if (entry.accumulatedBatches.isNotEmpty() || recordBatches != null) {
+            merged["record_batches"] = mapOf("batches" to entry.accumulatedBatches)
+        }
+        if (entry.accumulatedExportEntries.isNotEmpty() || historicalExport != null) {
+            merged["historical_export"] = mapOf("entries" to entry.accumulatedExportEntries)
+        }
+        entry.deferred.complete(JsonUtils.fromJsonValue(merged))
     }
 
     private fun handleEvent(message: Map<String, Any?>, action: String) {

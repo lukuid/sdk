@@ -121,6 +121,10 @@ fn encode_command_request(input: &Value) -> Option<Vec<u8>> {
     let mut out = Vec::new();
     write_string(&mut out, 1, action);
 
+    if let Some(request_id) = record.get("id").and_then(Value::as_str) {
+        write_string(&mut out, 18, request_id);
+    }
+
     let mut nested = Vec::new();
     match action {
         "fetch" | "history" => {
@@ -501,6 +505,7 @@ fn decode_command_response(bytes: &[u8]) -> Option<Value> {
                 "response_signature",
             )?,
             13 => insert_bytes(bytes, &mut cursor, wire_type, &mut out, "response_key")?,
+            22 => insert_string(bytes, &mut cursor, wire_type, &mut out, "id")?,
             _ => skip_field(bytes, &mut cursor, wire_type)?,
         }
     }

@@ -166,6 +166,10 @@ final class LukuCodec {
         let action = dict["action"] as? String ?? ""
         request.action = action
 
+        if let requestId = dict["id"] as? String, !requestId.isEmpty {
+            request.requestID = requestId
+        }
+
         let opts = dict["opts"] as? [String: Any]
         let source = opts ?? dict
 
@@ -314,7 +318,17 @@ final class LukuCodec {
         dict["status"] = statusName(response.status)
         dict["success"] = response.success
         dict["ok"] = response.success
-        
+
+        // Dedicated key: "id" is already used below for the device's own serial
+        // number (statusResponse/deviceInfo payloads), so it can't also carry the
+        // request correlation id without colliding.
+        if !response.requestID.isEmpty {
+            dict["request_id"] = response.requestID
+        }
+        if response.hasHasMore_p {
+            dict["has_more"] = response.hasMore_p
+        }
+
         if !response.errorCode.isEmpty {
             dict["error_code"] = response.errorCode
         }
