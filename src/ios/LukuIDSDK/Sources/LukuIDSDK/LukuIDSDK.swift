@@ -47,7 +47,7 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
     private lazy var central: CBCentralManager = CBCentralManager(delegate: self, queue: queue)
     private let cache = DeviceInfoCache()
     private let options: LukuIDClientOptions
-    internal let revocationManager: RevocationManager
+    public let revocationManager: RevocationManager
 
     private var sessions: [UUID: BleSession] = [:]
     private var validated: Set<UUID> = []

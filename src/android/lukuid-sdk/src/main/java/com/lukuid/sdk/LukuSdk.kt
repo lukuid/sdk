@@ -41,7 +41,7 @@ class LukuSdk(
     private val infoCache = DeviceInfoCache()
     private val deviceListeners = CopyOnWriteArraySet<(DeviceLifecycleEvent) -> Unit>()
     private val errorListeners = CopyOnWriteArraySet<(SdkError) -> Unit>()
-    internal val revocationManager = RevocationManager(appContext, options, scope)
+    val revocationManager = RevocationManager(appContext, options, scope)
     private val bleTransport = BleTransport(appContext, scope, infoCache, options, ::emitError, { this })
     private val serialTransport = SerialTransport(appContext, scope, infoCache, options, ::emitError, revocationManager)
     private val lifecycleSubscription = bleTransport.onLifecycle(::handleLifecycle)

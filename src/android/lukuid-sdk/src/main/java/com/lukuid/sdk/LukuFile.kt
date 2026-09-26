@@ -181,6 +181,9 @@ object LukuFile {
 
             if (attestationChain.isEmpty()) {
                 issues.add(VerificationIssue("ATTESTATION_CHAIN_MISSING", "Missing DAC attestation chain for device $deviceId.", Criticality.WARNING))
+                if (attestationSignature.isNullOrEmpty()) {
+                    issues.add(VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed DAC attestation: attestationSig missing", Criticality.CRITICAL))
+                }
             } else if (attestationSignature.isNullOrEmpty()) {
                 issues.add(VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed DAC attestation: attestationSig missing", Criticality.CRITICAL))
             } else {
@@ -195,7 +198,8 @@ object LukuFile {
                         certificateChain = attestationChain,
                         created = null,
                         trustProfile = options.trustProfile
-                    )
+                    ),
+                    options.revocationManager
                 )
                 if (!result.ok) {
                     issues.add(VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed DAC attestation: ${result.reason}", Criticality.CRITICAL))
@@ -224,7 +228,8 @@ object LukuFile {
                     val chainResult = validateCertificateChain(
                         slacChain,
                         if (options.skipCertificateTemporalChecks) null else timestamp,
-                        options.trustProfile
+                        options.trustProfile,
+                        options.revocationManager
                     )
                     val slacSignature = envelope.optString("heartbeat_signature").takeIf { it.isNotEmpty() }
                         ?: identity?.optString("heartbeat_signature")?.takeIf { it.isNotEmpty() }
@@ -252,12 +257,15 @@ object LukuFile {
                                     recordId = attestationRecordId,
                                     certificateChain = slacChain,
                                     trustProfile = options.trustProfile
-                                )
+                                ),
+                                options.revocationManager
                             )
                             if (!slacResult.ok) {
                                 issues.add(VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed SLAC (heartbeat) attestation: ${slacResult.reason}", Criticality.CRITICAL))
                             }
                         }
+                    } else {
+                        issues.add(VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed SLAC (heartbeat) attestation: heartbeatSig missing", Criticality.CRITICAL))
                     }
                 }
             }

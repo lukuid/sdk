@@ -446,6 +446,8 @@ class LukuArchive:
                 if not attestation_chain:
                     if not options.allow_untrusted_roots:
                         issues.append(_issue("ATTESTATION_CHAIN_MISSING", f"Missing DAC attestation chain for device {device_id}.", Criticality.WARNING))
+                        if not is_aux and not attestation_sig:
+                            issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id} failed DAC attestation: attestationSig missing", Criticality.CRITICAL))
                 elif not is_aux or attestation_sig:
                     result = verify_device_attestation(
                         DeviceAttestationInputs(
@@ -497,6 +499,8 @@ class LukuArchive:
                             issues.append(_issue("HEARTBEAT_VERIFICATION_FAILED", f"Device {device_id} failed SLAC heartbeat verification: {hb_result.reason}", Criticality.CRITICAL))
                     elif heartbeat_sig:
                         issues.append(_issue("HEARTBEAT_CHAIN_MISSING", f"Missing SLAC heartbeat chain for device {device_id}.", Criticality.WARNING))
+                    elif heartbeat_chain and not is_aux:
+                        issues.append(_issue("HEARTBEAT_VERIFICATION_FAILED", f"Device {device_id} failed SLAC heartbeat verification: heartbeatSig missing", Criticality.CRITICAL))
 
                 if not canonical_string:
                     issues.append(_issue("RECORD_CANONICAL_MISSING", f"Record type {record_type} on device {device_id} does not include a canonical_string.", Criticality.WARNING if is_compat_attachment else Criticality.CRITICAL))
@@ -517,7 +521,7 @@ class LukuArchive:
                             issues.append(_issue(
                                 "RECORD_SCHEMA_UNRECOGNIZED",
                                 f"Record type {record_type} on device {device_id} has an unrecognized type/profile; its canonical_string could not be independently reconstructed and checked against its own payload.",
-                                Criticality.WARNING,
+                                Criticality.CRITICAL,
                             ))
                         elif recomputed_canonical != canonical_string:
                             issues.append(_issue(
@@ -688,6 +692,8 @@ class LukuFile:
         if not attestation_chain:
             if not options.allow_untrusted_roots:
                 issues.append(_issue("ATTESTATION_CHAIN_MISSING", f"Missing DAC attestation chain for device {device_id or 'unknown'}.", Criticality.WARNING))
+                if not attestation_sig:
+                    issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed DAC attestation: attestationSig missing", Criticality.CRITICAL))
         elif not attestation_sig:
             issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed DAC attestation: attestationSig missing", Criticality.CRITICAL))
         else:
@@ -758,6 +764,8 @@ class LukuFile:
                             )
                             if not slac_result.ok:
                                 issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed SLAC (heartbeat) attestation: {slac_result.reason}", Criticality.CRITICAL))
+                    else:
+                        issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id or 'unknown'} failed SLAC (heartbeat) attestation: heartbeatSig missing", Criticality.CRITICAL))
 
         if not canonical_string:
             issues.append(_issue("RECORD_CANONICAL_MISSING", f"Record type {record_type} does not include a canonical_string.", Criticality.CRITICAL))
@@ -774,7 +782,7 @@ class LukuFile:
                 issues.append(_issue(
                     "RECORD_SCHEMA_UNRECOGNIZED",
                     f"Record type {record_type} has an unrecognized type/profile; its canonical_string could not be independently reconstructed and checked against its own payload.",
-                    Criticality.WARNING,
+                    Criticality.CRITICAL,
                 ))
             elif recomputed_canonical != canonical_string:
                 issues.append(_issue(

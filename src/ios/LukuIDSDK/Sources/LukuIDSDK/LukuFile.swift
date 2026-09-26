@@ -244,6 +244,7 @@ public struct LukuVerifyOptions: Sendable {
     public let policy: LukuPolicy?
     public let requireContinuity: Bool
     public let attachments: [String: Data]?
+    public let revocationManager: RevocationManager?
 
     public init(allowUntrustedRoots: Bool = false,
                 skipCertificateTemporalChecks: Bool = false,
@@ -251,7 +252,8 @@ public struct LukuVerifyOptions: Sendable {
                 trustProfile: String = ProcessInfo.processInfo.environment["LUKUID_TRUST_PROFILE"] ?? "prod",
                 policy: LukuPolicy? = nil,
                 requireContinuity: Bool = false,
-                attachments: [String: Data]? = nil) {
+                attachments: [String: Data]? = nil,
+                revocationManager: RevocationManager? = nil) {
         self.allowUntrustedRoots = allowUntrustedRoots
         self.skipCertificateTemporalChecks = skipCertificateTemporalChecks
         self.trustedExternalFingerprints = trustedExternalFingerprints
@@ -259,6 +261,7 @@ public struct LukuVerifyOptions: Sendable {
         self.policy = policy
         self.requireContinuity = requireContinuity
         self.attachments = attachments
+        self.revocationManager = revocationManager
     }
 }
 
@@ -526,6 +529,9 @@ public final class LukuArchive {
                         ?? ""
                     if attestationChain.isEmpty {
                         issues.append(issue("ATTESTATION_CHAIN_MISSING", "Missing DAC attestation chain for device \(deviceID).", .warning))
+                        if !isAuxRecord && attestationSignature.isEmpty {
+                            issues.append(issue("ATTESTATION_FAILED", "Device \(deviceID) failed DAC attestation: attestationSig missing", .critical))
+                        }
                     } else if !isAuxRecord || !attestationSignature.isEmpty {
                         let attestationRecordId = (record["id"] as? String)
                         let inputs = DeviceAttestationInputs(
@@ -541,7 +547,7 @@ public final class LukuArchive {
                             attestationPayloadVersion: nil,
                             trustProfile: options.trustProfile
                         )
-                        if case .failure(let error) = verifyDeviceAttestation(inputs) {
+                        if case .failure(let error) = verifyDeviceAttestation(inputs, revocationManager: options.revocationManager) {
                             issues.append(issue("ATTESTATION_FAILED", "Device \(deviceID) failed DAC attestation: \(error.reason)", .critical))
                         }
                     }
@@ -568,12 +574,15 @@ public final class LukuArchive {
                                     recordID: attestationRecordId,
                                     certificateChain: heartbeatChain,
                                     trustProfile: options.trustProfile
-                                )
+                                ),
+                                revocationManager: options.revocationManager
                             ) {
                                 issues.append(issue("HEARTBEAT_VERIFICATION_FAILED", "Device \(deviceID) failed SLAC heartbeat verification: \(error.reason)", .critical))
                             }
                         } else if !heartbeatSignature.isEmpty {
                             issues.append(issue("HEARTBEAT_CHAIN_MISSING", "Missing SLAC heartbeat chain for device \(deviceID).", .warning))
+                        } else if !heartbeatChain.isEmpty && !isAuxRecord {
+                            issues.append(issue("HEARTBEAT_VERIFICATION_FAILED", "Device \(deviceID) failed SLAC heartbeat verification: heartbeatSig missing", .critical))
                         }
                     }
                 }
@@ -861,6 +870,9 @@ public enum LukuFile {
 
             if attestationChain.isEmpty {
                 issues.append(VerificationIssue(code: "ATTESTATION_CHAIN_MISSING", message: "Missing DAC attestation chain for device \(deviceId).", criticality: .warning))
+                if attestationSignature?.isEmpty != false {
+                    issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed DAC attestation: attestationSig missing", criticality: .critical))
+                }
             } else if attestationSignature?.isEmpty != false {
                 issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed DAC attestation: attestationSig missing", criticality: .critical))
             } else {
@@ -877,7 +889,8 @@ public enum LukuFile {
                         attestationAlg: nil,
                         attestationPayloadVersion: nil,
                         trustProfile: options.trustProfile
-                    )
+                    ),
+                    revocationManager: options.revocationManager
                 )
                 if case .failure(let error) = result {
                     issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed DAC attestation: \(error.reason)", criticality: .critical))
@@ -906,7 +919,8 @@ public enum LukuFile {
                     let result = validateCertificateChain(
                         slacChain,
                         created: options.skipCertificateTemporalChecks ? nil : timestamp.map(Int64.init),
-                        trustProfile: options.trustProfile
+                        trustProfile: options.trustProfile,
+                        revocationManager: options.revocationManager
                     )
                     if !result.ok {
                         issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed SLAC (heartbeat) attestation: \(result.reason ?? "unknown error")", criticality: .critical))
@@ -931,11 +945,14 @@ public enum LukuFile {
                                         recordID: attestationRecordId,
                                         certificateChain: slacChain,
                                         trustProfile: options.trustProfile
-                                    )
+                                    ),
+                                    revocationManager: options.revocationManager
                                 ) {
                                     issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed SLAC (heartbeat) attestation: \(error.reason)", criticality: .critical))
                                 }
                             }
+                        } else {
+                            issues.append(VerificationIssue(code: "ATTESTATION_FAILED", message: "Device \(deviceId) failed SLAC (heartbeat) attestation: heartbeatSig missing", criticality: .critical))
                         }
                     }
                 }

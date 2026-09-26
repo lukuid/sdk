@@ -61,32 +61,44 @@ class LukuArchiveTests(unittest.TestCase):
     def create_valid_export(self, device_id: str):
         signer = self.create_test_signer()
         identity = LukuDeviceIdentity(device_id=device_id, public_key=signer.public_key_base64, vendor="LUKUID")
+        public_key = signer.public_key_base64
 
-        sig1 = self.sign_canonical(signer, "can1")
-        sig2 = self.sign_canonical(signer, "can2")
-        sig3 = self.sign_canonical(signer, "can3")
+        p1 = {"ctr": 1, "timestamp_utc": 1000, "profile": "animal", "protocol": "FDX-B", "scan_version": "v1.0", "tag_id": "982000000000001", "temperature_c": 38.5, "genesis_hash": "genesis_fake"}
+        c1 = f"{device_id}:{public_key}:scan:1:1:1000::animal:::FDX-B:v1.0:982000000000001:38.50::genesis_fake"
+        sig1 = self.sign_canonical(signer, c1)
+
+        p2 = {"ctr": 2, "timestamp_utc": 1005, "profile": "animal", "protocol": "FDX-B", "scan_version": "v1.0", "tag_id": "982000000000002", "temperature_c": 38.6, "genesis_hash": "genesis_fake"}
+        c2 = f"{device_id}:{public_key}:scan:2:2:1005::animal:::FDX-B:v1.0:982000000000002:38.60::{sig1}"
+        sig2 = self.sign_canonical(signer, c2)
+
+        p3 = {"ctr": 3, "timestamp_utc": 1010, "profile": "animal", "protocol": "FDX-B", "scan_version": "v1.0", "tag_id": "982000000000003", "temperature_c": 38.7, "genesis_hash": "genesis_fake"}
+        c3 = f"{device_id}:{public_key}:scan:3:3:1010::animal:::FDX-B:v1.0:982000000000003:38.70::{sig2}"
+        sig3 = self.sign_canonical(signer, c3)
 
         records = [
             {
+                "id": "1",
                 "type": "scan",
                 "signature": sig1,
                 "previous_signature": "genesis_fake",
-                "canonical_string": "can1",
-                "payload": {"ctr": 1, "timestamp_utc": 1000, "genesis_hash": "genesis_fake"},
+                "canonical_string": c1,
+                "payload": p1,
             },
             {
+                "id": "2",
                 "type": "scan",
                 "signature": sig2,
                 "previous_signature": sig1,
-                "canonical_string": "can2",
-                "payload": {"ctr": 2, "timestamp_utc": 1005, "genesis_hash": "genesis_fake"},
+                "canonical_string": c2,
+                "payload": p2,
             },
             {
+                "id": "3",
                 "type": "scan",
                 "signature": sig3,
                 "previous_signature": sig2,
-                "canonical_string": "can3",
-                "payload": {"ctr": 3, "timestamp_utc": 1010, "genesis_hash": "genesis_fake"},
+                "canonical_string": c3,
+                "payload": p3,
             },
         ]
 

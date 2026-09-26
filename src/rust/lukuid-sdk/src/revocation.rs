@@ -16,6 +16,7 @@ struct CrlCache {
     fingerprints: Vec<String>,
 }
 
+#[derive(Debug)]
 pub struct RevocationManager {
     options: LukuidSdkOptions,
     revoked_fingerprints: Arc<RwLock<HashSet<String>>>,

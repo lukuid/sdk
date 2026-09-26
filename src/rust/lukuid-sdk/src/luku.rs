@@ -9,6 +9,7 @@ use std::fs::File;
 use std::io::Cursor;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use zip::write::FileOptions;
 use zip::{ZipArchive, ZipWriter};
 
@@ -108,6 +109,7 @@ pub struct LukuVerifyOptions {
     pub policy: Option<LukuPolicy>,
     pub require_continuity: bool,
     pub attachments: Option<HashMap<String, Vec<u8>>>,
+    pub revocation_manager: Option<Arc<crate::revocation::RevocationManager>>,
 }
 
 impl Default for LukuVerifyOptions {
@@ -121,6 +123,7 @@ impl Default for LukuVerifyOptions {
             policy: None,
             require_continuity: false,
             attachments: None,
+            revocation_manager: None,
         }
     }
 }
@@ -1257,6 +1260,21 @@ impl LukuFile {
                         criticality: Criticality::Warning,
                     },
                 );
+                if attestation_sig.is_empty() {
+                    Self::push_issue(
+                        &mut issues,
+                        debug_logging,
+                        None,
+                        VerificationIssue {
+                            code: "ATTESTATION_FAILED".to_string(),
+                            message: format!(
+                                "Device {} failed DAC attestation: attestationSig missing",
+                                device_id
+                            ),
+                            criticality: Criticality::Critical,
+                        },
+                    );
+                }
             } else if attestation_sig.is_empty() {
                 Self::push_issue(
                     &mut issues,
@@ -1286,7 +1304,7 @@ impl LukuFile {
                         attestation_payload_version: None,
                         trust_profile: options.trust_profile.clone(),
                     },
-                    None,
+                    options.revocation_manager.as_deref(),
                 );
                 if !result.ok {
                     Self::push_issue(
@@ -1363,7 +1381,7 @@ impl LukuFile {
                             timestamp.map(|t| t as i64)
                         },
                         &options.trust_profile,
-                        None,
+                        options.revocation_manager.as_deref(),
                     );
                     if !result.ok {
                         Self::push_issue(
@@ -1458,7 +1476,7 @@ impl LukuFile {
                                                             certificate_chain: Some(slac_chain.clone()),
                                                             trust_profile: options.trust_profile.clone(),
                                                         },
-                                                        None,
+                                                        options.revocation_manager.as_deref(),
                                                     );
                                                 if !heartbeat_result.ok {
                                                     Self::push_issue(
@@ -1478,6 +1496,20 @@ impl LukuFile {
                                                 }
                                             }
                                         }
+                                    } else {
+                                        Self::push_issue(
+                                            &mut issues,
+                                            debug_logging,
+                                            None,
+                                            VerificationIssue {
+                                                code: "ATTESTATION_FAILED".to_string(),
+                                                message: format!(
+                                                    "Device {} failed SLAC (heartbeat) attestation: heartbeatSig missing",
+                                                    device_id
+                                                ),
+                                                criticality: Criticality::Critical,
+                                            },
+                                        );
                                     }
                                 }
                             }
@@ -2301,6 +2333,21 @@ impl LukuFile {
                                     criticality: Criticality::Warning,
                                 },
                             );
+                            if !is_aux_record && attestation_sig.is_empty() {
+                                Self::push_issue(
+                                    &mut issues,
+                                    debug_logging,
+                                    Some(record_context.as_str()),
+                                    VerificationIssue {
+                                        code: "ATTESTATION_FAILED".to_string(),
+                                        message: format!(
+                                            "Device {} failed DAC attestation: attestationSig missing",
+                                            device_id
+                                        ),
+                                        criticality: Criticality::Critical,
+                                    },
+                                );
+                            }
                         } else if !is_aux_record || !attestation_sig.is_empty() {
                             let record_attestation_id = record
                                 .get("id")
@@ -2323,7 +2370,7 @@ impl LukuFile {
                                 trust_profile: options.trust_profile.clone(),
                             };
 
-                            let result = verify_device_attestation(&inputs, None);
+                            let result = verify_device_attestation(&inputs, options.revocation_manager.as_deref());
                             if !result.ok {
                                 if debug_logging {
                                     Self::debug_log(format!(
@@ -2437,7 +2484,7 @@ impl LukuFile {
                                 trust_profile: options.trust_profile.clone(),
                             };
 
-                            let result = verify_heartbeat_attestation(&inputs, None);
+                            let result = verify_heartbeat_attestation(&inputs, options.revocation_manager.as_deref());
                             if !result.ok {
                                 if debug_logging {
                                     Self::debug_log(format!(
@@ -2460,6 +2507,20 @@ impl LukuFile {
                                     },
                                 );
                             }
+                        } else if !is_aux_record {
+                            Self::push_issue(
+                                &mut issues,
+                                debug_logging,
+                                Some(record_context.as_str()),
+                                VerificationIssue {
+                                    code: "HEARTBEAT_VERIFICATION_FAILED".to_string(),
+                                    message: format!(
+                                        "Device {} failed SLAC heartbeat verification: heartbeatSig missing",
+                                        device_id
+                                    ),
+                                    criticality: Criticality::Critical,
+                                },
+                            );
                         }
                     }
 
@@ -3591,6 +3652,7 @@ mod tests {
             policy: None,
             require_continuity: false,
             attachments: None,
+            revocation_manager: None,
         });
 
         assert!(

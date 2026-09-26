@@ -10,6 +10,7 @@ import {
   spkiMatchesEd25519PublicKey
 } from './attestation.js';
 import type { SelfTestResult } from './types.js';
+import type { RevocationManager } from './revocation.js';
 
 export const LUKU_MIMETYPE = 'application/vnd.lukuid.package+zip';
 
@@ -72,6 +73,7 @@ export interface LukuVerifyOptions {
   policy?: LukuPolicy;
   require_continuity?: boolean;
   attachments?: Map<string, Uint8Array>;
+  revocationManager?: RevocationManager;
 }
 
 export interface LukuPolicy {
@@ -825,6 +827,7 @@ export class LukuFile {
     const allowUntrustedRoots = options.allowUntrustedRoots ?? false;
     const skipCertificateTemporalChecks = options.skipCertificateTemporalChecks ?? false;
     const trustProfile = options.trustProfile ?? 'prod';
+    const revocationManager = options.revocationManager;
 
     const recordType = asString(envelope.type) ?? 'unknown';
     const isAuxRecord = isAuxRecordType(recordType);
@@ -879,6 +882,9 @@ export class LukuFile {
 
       if (attestationChain.length === 0) {
         issues.push(issue('ATTESTATION_CHAIN_MISSING', `Missing DAC attestation chain for device ${deviceId ?? 'unknown'}.`, 'warning'));
+        if (attestationSignature.length === 0) {
+          issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed DAC attestation: attestationSig missing`, 'critical'));
+        }
       } else if (attestationSignature.length === 0) {
         issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed DAC attestation: attestationSig missing`, 'critical'));
       } else {
@@ -891,7 +897,7 @@ export class LukuFile {
           recordId: attestationRecordId,
           certificateChain: attestationChain,
           trustProfile
-        });
+        }, revocationManager);
         if (!attestationResult.ok) {
           issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed DAC attestation: ${attestationResult.reason ?? 'unknown error'}`, 'critical'));
         }
@@ -916,7 +922,7 @@ export class LukuFile {
             certificateChain: slacChain,
             created: skipCertificateTemporalChecks ? undefined : timestamp,
             trustProfile
-          });
+          }, revocationManager);
           if (!chainResult.ok) {
             issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed SLAC (heartbeat) attestation: ${chainResult.reason ?? 'unknown error'}`, 'critical'));
           } else if (publicKey && chainResult.certSpkis?.[0] && !spkiMatchesEd25519PublicKey(chainResult.certSpkis[0], publicKey)) {
@@ -938,11 +944,13 @@ export class LukuFile {
                   recordId: attestationRecordId,
                   certificateChain: slacChain,
                   trustProfile
-                });
+                }, revocationManager);
                 if (!slacResult.ok) {
                   issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed SLAC (heartbeat) attestation: ${slacResult.reason ?? 'unknown error'}`, 'critical'));
                 }
               }
+            } else {
+              issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId ?? 'unknown'} failed SLAC (heartbeat) attestation: heartbeatSig missing`, 'critical'));
             }
           }
         }
@@ -1383,6 +1391,7 @@ export class LukuFile {
     const allowUntrustedRoots = options.allowUntrustedRoots ?? false;
     const skipCertificateTemporalChecks = options.skipCertificateTemporalChecks ?? false;
     const trustProfile = options.trustProfile ?? 'prod';
+    const revocationManager = options.revocationManager;
     const expectedPolicy = options.policy;
     const issues: VerificationIssue[] = [];
 
@@ -1544,6 +1553,9 @@ export class LukuFile {
 
           if (attestationChain.length === 0) {
             issues.push(issue('ATTESTATION_CHAIN_MISSING', `Missing DAC attestation chain for device ${deviceId}.`, 'warning'));
+            if (!isAuxRecord && attestationSignature.length === 0) {
+              issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId} failed DAC attestation: attestationSig missing`, 'critical'));
+            }
           } else if (!isAuxRecord || attestationSignature.length > 0) {
             const result = await verifyDeviceAttestation({
               id: deviceId,
@@ -1554,7 +1566,7 @@ export class LukuFile {
               recordId: attestationRecordId,
               certificateChain: attestationChain,
               trustProfile
-            });
+            }, revocationManager);
             if (!result.ok) {
               issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId} failed DAC attestation: ${result.reason ?? 'unknown error'}`, 'critical'));
             }
@@ -1598,10 +1610,12 @@ export class LukuFile {
               recordId: attestationRecordId,
               certificateChain: heartbeatChain,
               trustProfile
-            });
+            }, revocationManager);
             if (!result.ok) {
               issues.push(issue('HEARTBEAT_VERIFICATION_FAILED', `Device ${deviceId} failed SLAC heartbeat verification: ${result.reason ?? 'unknown error'}`, 'critical'));
             }
+          } else if (!isAuxRecord) {
+            issues.push(issue('HEARTBEAT_VERIFICATION_FAILED', `Device ${deviceId} failed SLAC heartbeat verification: heartbeatSig missing`, 'critical'));
           }
         }
 

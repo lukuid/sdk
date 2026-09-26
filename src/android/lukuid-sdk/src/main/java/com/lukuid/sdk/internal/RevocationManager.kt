@@ -14,7 +14,7 @@ import java.security.cert.X509Certificate
 import java.util.concurrent.ConcurrentHashMap
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
 
-internal class RevocationManager(
+class RevocationManager(
     private val context: Context,
     private val options: LukuSdkOptions,
     private val scope: CoroutineScope

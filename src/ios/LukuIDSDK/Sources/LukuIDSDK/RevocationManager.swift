@@ -3,14 +3,14 @@ import Foundation
 import CryptoKit
 
 
-internal class RevocationManager {
+public class RevocationManager {
     private let options: LukuIDClientOptions
     private var revokedFingerprints: Set<String> = []
     private var lastSyncDate: String?
     private var refreshTimer: Timer?
     private let queue = DispatchQueue(label: "com.lukuid.sdk.revocation")
 
-    init(options: LukuIDClientOptions) {
+    public init(options: LukuIDClientOptions) {
         self.options = options
         loadFromCache()
         startAutoRefresh()
@@ -153,6 +153,8 @@ internal class RevocationManager {
         refreshTimer = nil
     }
 }
+
+extension RevocationManager: @unchecked Sendable {}
 
 // Utility function to match Android's debugLog
 private func debugLog(_ message: String) {
