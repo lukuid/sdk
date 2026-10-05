@@ -214,7 +214,7 @@ data class LukuSigner(
 )
 
 class LukuArchive private constructor(
-    val manifest: LukuManifest,
+    var manifest: LukuManifest,
     var manifestSig: String,
     val blocks: MutableList<LukuBlock>,
     val attachments: MutableMap<String, ByteArray>,
@@ -226,6 +226,41 @@ class LukuArchive private constructor(
         val hash = sha256Hex(content)
         attachments[hash] = content
         return hash
+    }
+
+    fun appendVerificationRecord(
+        record: JSONObject,
+        device: LukuDeviceIdentity,
+        signer: LukuSigner,
+        responseBytes: ByteArray? = null
+    ) {
+        require(record.optString("type") == "verification") { "record.type must be 'verification'" }
+        val response = requireNotNull(record.optJSONObject("response")) { "verification record response must be an object" }
+        val checksum = response.optString("checksum")
+        val sizeBytes = response.opt("size_bytes") as? Number
+        require(checksum.matches(Regex("[0-9a-f]{64}"))) { "response.checksum must be lowercase SHA-256 hex" }
+        require(sizeBytes != null && sizeBytes.toLong() >= 0 && sizeBytes.toDouble() == sizeBytes.toLong().toDouble()) { "response.size_bytes must be a nonnegative integer" }
+        if (responseBytes == null) {
+            require(!response.has("data") || response.isNull("data")) { "response.data requires disclosed original response bytes" }
+        } else {
+            require(sha256Hex(responseBytes) == checksum && responseBytes.size.toLong() == sizeBytes!!.toLong()) {
+                "exact response bytes do not match response.checksum/size_bytes"
+            }
+            attachments[checksum] = responseBytes
+            response.put("attachment_path", "attachments/${checksum.take(2)}/${checksum.drop(2).take(2)}/$checksum")
+        }
+        val now = Instant.now().epochSecond
+        blocks += Companion.buildBlockFromRecords(
+            blocks.size, now, blocks.lastOrNull()?.blockHash, device, listOf(record), null
+        )
+        val newBlocksRaw = blocks.joinToString("\n") { it.toJson().toString() } + "\n"
+        manifest = manifest.copy(createdAtUtc = now, blocksHash = sha256Hex(newBlocksRaw.toByteArray(StandardCharsets.UTF_8)))
+        manifest.extra.putIfAbsent("exporter_public_key", signer.publicKeyBase64)
+        manifest.extra.putIfAbsent("exporter_alg", "ED25519")
+        manifestRaw = manifest.toJson().toString(2)
+        blocksRaw = newBlocksRaw
+        manifestSig = Companion.signDetached(signer.privateKey, manifestRaw.toByteArray(StandardCharsets.UTF_8))
+        sealsRaw = ArchiveSeals.create(manifestRaw.toByteArray(StandardCharsets.UTF_8), now)
     }
 
     fun saveToBytes(): ByteArray {
@@ -340,6 +375,9 @@ class LukuArchive private constructor(
             for (record in block.batch) {
                 val recordType = record.optString("type", "unknown")
                 val isAux = recordType in setOf("attachment", "location", "custody")
+                val isVerification = recordType == "verification"
+                val isNonChainAdvancing = isAux || isVerification
+                val skipsDeviceSignature = isVerification && !record.has("collector_attestation")
                 val isCompatAttachment = record.optBoolean("_compat_nested_attachment", false)
                 val payload = record.optJSONObject("payload")
                 val deviceId = record.optString("device_id").ifBlank { block.device.deviceId }
@@ -362,11 +400,11 @@ class LukuArchive private constructor(
                     ?: record.optString("record_id").ifBlank { null }
                 val genesisHash = payload?.optString("genesis_hash").orEmpty()
 
-                if (!isAux && seenDevices.add(deviceId) && counter == 0L && genesisHash.isNotBlank() && previousSignature != genesisHash) {
+                if (!isNonChainAdvancing && seenDevices.add(deviceId) && counter == 0L && genesisHash.isNotBlank() && previousSignature != genesisHash) {
                     issues += VerificationIssue("GENESIS_HASH_MISMATCH", "Genesis record (ctr=0) for device $deviceId has previous_signature that does not match genesis_hash.", Criticality.CRITICAL)
                 }
 
-                if (!isAux) {
+                if (!isNonChainAdvancing) {
                     lastSignatures[deviceId]?.let { lastSig ->
                         if (previousSignature != lastSig) {
                             issues += VerificationIssue("RECORD_CHAIN_BROKEN", "Record chain broken for device $deviceId at record type $recordType.", Criticality.CRITICAL)
@@ -413,10 +451,10 @@ class LukuArchive private constructor(
                         ?: ""
                     if (attestationChain.isBlank()) {
                         issues += VerificationIssue("ATTESTATION_CHAIN_MISSING", "Missing DAC attestation chain for device $deviceId.", Criticality.WARNING)
-                        if (!isAux && attestationSignature.isBlank()) {
+                        if (!isAux && !isVerification && attestationSignature.isBlank()) {
                             issues += VerificationIssue("ATTESTATION_FAILED", "Device $deviceId failed DAC attestation: attestationSig missing", Criticality.CRITICAL)
                         }
-                    } else if (!isAux || attestationSignature.isNotBlank()) {
+                    } else if ((!isAux && !isVerification) || attestationSignature.isNotBlank()) {
                         val result = verifyDeviceAttestation(
                             DeviceAttestationInput(
                                 id = deviceId,
@@ -466,7 +504,7 @@ class LukuArchive private constructor(
                             }
                         } else if (!heartbeatSignature.isNullOrBlank()) {
                             issues += VerificationIssue("HEARTBEAT_CHAIN_MISSING", "Missing SLAC heartbeat chain for device $deviceId.", Criticality.WARNING)
-                        } else if (heartbeatChain.isNotBlank() && !isAux) {
+                        } else if (heartbeatChain.isNotBlank() && !isAux && !isVerification) {
                             issues += VerificationIssue("HEARTBEAT_VERIFICATION_FAILED", "Device $deviceId failed SLAC heartbeat verification: heartbeatSig missing", Criticality.CRITICAL)
                         }
                     }
@@ -481,7 +519,9 @@ class LukuArchive private constructor(
                     }
                 }
 
-                if (canonicalString.isBlank()) {
+                if (skipsDeviceSignature) {
+                    // External verification records need no device signature unless collector_attestation is present.
+                } else if (canonicalString.isBlank()) {
                     issues += VerificationIssue("RECORD_CANONICAL_MISSING", "Record type $recordType on device $deviceId does not include a canonical_string.", if (isCompatAttachment) Criticality.WARNING else Criticality.CRITICAL)
                 } else if (signature.isBlank()) {
                     issues += VerificationIssue("RECORD_SIGNATURE_MISSING", "Record type $recordType on device $deviceId is missing a signature.", if (isCompatAttachment) Criticality.WARNING else Criticality.CRITICAL)
@@ -489,11 +529,11 @@ class LukuArchive private constructor(
                     issues += VerificationIssue("RECORD_SIGNATURE_INVALID", "Invalid signature for record type $recordType on device $deviceId.", Criticality.CRITICAL)
                 }
 
-                if (!isAux && signature.isNotBlank()) lastSignatures[deviceId] = signature
-                if (!isAux && counter != null) lastCounters[deviceId] = counter
-                if (!isAux && timestamp != null) lastTimes[deviceId] = timestamp
+                if (!isNonChainAdvancing && signature.isNotBlank()) lastSignatures[deviceId] = signature
+                if (!isNonChainAdvancing && counter != null) lastCounters[deviceId] = counter
+                if (!isNonChainAdvancing && timestamp != null) lastTimes[deviceId] = timestamp
 
-                if (isAux) {
+                if (isNonChainAdvancing) {
                     val parentId = record.optString("parent_id").ifBlank { null } ?: record.optString("parent_record_id").ifBlank { null }
                     if (parentId != null && parentId !in recordIds) {
                         issues += VerificationIssue("PARENT_RECORD_MISSING", "Record type $recordType references missing parent $parentId.", Criticality.CRITICAL)
@@ -516,7 +556,7 @@ class LukuArchive private constructor(
                 }
 
                 val externalIdentity = record.optJSONObject("external_identity")
-                if (externalIdentity != null && !isAux) {
+                if (externalIdentity != null && !isAux && !isVerification) {
                     issues += VerificationIssue("EXTERNAL_IDENTITY_UNSUPPORTED_RECORD_TYPE", "Record type $recordType must not carry external_identity.", Criticality.CRITICAL)
                 }
 
@@ -557,6 +597,9 @@ class LukuArchive private constructor(
                         }
                     }
                 }
+                if (isVerification) {
+                    issues += evaluateVerificationRecord(record, attachments, block.device.deviceId, block.device.publicKey, options).second
+                }
             }
         }
 
@@ -578,7 +621,7 @@ class LukuArchive private constructor(
                     var lastNativeTimestamp: Long? = null
                     for (record in block.batch) {
                         val recordType = record.optString("type", "unknown")
-                        if (isAuxRecordType(recordType)) {
+                        if (isAuxRecordType(recordType) || recordType == "verification") {
                             continue
                         }
                         val timestamp = recordTimestamp(record) ?: continue
@@ -714,12 +757,13 @@ class LukuArchive private constructor(
             records.forEach { record ->
                 val recordType = record.optString("type", "unknown")
                 val isAux = isAuxRecordType(recordType)
+                val isNonChainAdvancing = isAux || recordType == "verification"
                 val signature = record.optString("signature")
                 val previousSignature = record.optString("previous_signature")
                 val timestamp = recordTimestamp(record)
 
                 var shouldSplit = false
-                if (!isAux) {
+                if (!isNonChainAdvancing) {
                     if (!lastSignature.isNullOrBlank() && previousSignature.isNotBlank() && previousSignature != lastSignature) {
                         shouldSplit = true
                     }
@@ -733,7 +777,7 @@ class LukuArchive private constructor(
                 }
 
                 currentBatch += JSONObject(record.toString())
-                if (!isAux) {
+                if (!isNonChainAdvancing) {
                     if (signature.isNotBlank()) {
                         lastSignature = signature
                     }
@@ -879,8 +923,101 @@ class LukuArchive private constructor(
                     val contextRef = payload?.optString("context_ref").orEmpty()
                     "$contextRef:$event:$status:$endorserId"
                 }
+                "verification" -> verificationPayload(record, endorserId)
                 else -> null
             }
+        }
+
+        private fun verificationPayload(record: JSONObject, signerId: String): String {
+            val response = record.optJSONObject("response")
+            val subject = record.optJSONObject("subject")
+            fun uint(name: String): String = (record.opt(name) as? Number)?.toLong()?.takeIf { it >= 0 }?.toString().orEmpty()
+            return listOf(
+                response?.optString("checksum").orEmpty(), record.optString("scheme"), record.optString("provider"),
+                uint("checked_at_utc"), record.optString("status"), record.optString("result_code"),
+                subject?.optString("type").orEmpty(), subject?.optString("identifier").orEmpty(),
+                subject?.optString("commitment").orEmpty(), uint("valid_from_utc"), uint("valid_until_utc"), signerId
+            ).joinToString(":")
+        }
+
+        internal fun evaluateVerificationRecord(
+            record: JSONObject,
+            attachments: Map<String, ByteArray>,
+            blockDeviceId: String,
+            blockPublicKey: String,
+            options: LukuVerifyOptions
+        ): Pair<VerificationRecordResult, List<VerificationIssue>> {
+            val issues = mutableListOf<VerificationIssue>()
+            val response = record.optJSONObject("response") ?: JSONObject()
+            val checksum = response.optString("checksum")
+            val size = response.opt("size_bytes") as? Number
+            val mime = response.optString("mime")
+            val format = response.optString("format").lowercase()
+            val id = record.optString("id", "unknown")
+            val validChecksum = checksum.matches(Regex("[0-9a-f]{64}"))
+            if (record.optString("status") !in setOf("verified", "not_verified", "not_found", "mismatch", "expired", "revoked", "unavailable", "unsupported", "indeterminate")) {
+                issues += VerificationIssue("RECORD_VERIFICATION_STATUS_INVALID", "verification record $id has an unrecognized status.", Criticality.CRITICAL)
+            }
+            if (!validChecksum) issues += VerificationIssue("RECORD_VERIFICATION_RESPONSE_CHECKSUM_MISSING", "verification record $id has an invalid response.checksum.", Criticality.CRITICAL)
+            if (size == null || size.toDouble() != size.toLong().toDouble() || size.toLong() < 0 || mime.isBlank()) {
+                issues += VerificationIssue("RECORD_VERIFICATION_RESPONSE_METADATA_MISSING", "verification record $id is missing valid response.size_bytes or response.mime.", Criticality.CRITICAL)
+            }
+            var disclosure = "undisclosed"
+            val bytes = if (validChecksum) attachments[checksum] else null
+            if (bytes != null) {
+                if (sha256Hex(bytes) != checksum) {
+                    disclosure = "disclosed_mismatch"
+                    issues += VerificationIssue("RECORD_VERIFICATION_RESPONSE_DISCLOSED_MISMATCH", "verification record $id disclosed bytes do not match response.checksum.", Criticality.CRITICAL)
+                } else {
+                    disclosure = "disclosed"
+                    if (size?.toLong() != bytes.size.toLong()) issues += VerificationIssue("RECORD_VERIFICATION_RESPONSE_SIZE_MISMATCH", "verification record $id disclosed byte length differs from response.size_bytes.", Criticality.CRITICAL)
+                }
+            }
+            if (disclosure != "disclosed" && response.has("data") && !response.isNull("data")) {
+                issues += VerificationIssue("RECORD_VERIFICATION_RESPONSE_DATA_WITHOUT_DISCLOSURE", "verification record $id has response.data without disclosed original bytes.", Criticality.CRITICAL)
+            }
+            val signedFormats = setOf("jwt", "jws", "sd-jwt", "cose", "cose_sign1", "cbor", "mdoc", "xml", "xmldsig", "cms", "pkcs7", "protobuf", "opaque", "eudi_wallet")
+            val unsupported = format in signedFormats
+            if (unsupported) issues += VerificationIssue("RECORD_VERIFICATION_PROVIDER_FORMAT_UNSUPPORTED", "verification record $id uses provider format $format without a native verifier.", Criticality.WARNING)
+
+            var externalVerified: Boolean? = null
+            val external = record.optJSONObject("external_identity")
+            if (external != null && !unsupported) {
+                val chain = mutableListOf<String>()
+                external.optJSONArray("cert_chain_der")?.let { for (i in 0 until it.length()) it.optString(i).takeIf(String::isNotBlank)?.let(chain::add) }
+                val endorser = external.optString("endorser_id")
+                val result = verifyExternalIdentity(ExternalIdentityInput(
+                    endorserId = endorser,
+                    rootFingerprint = external.optString("root_fingerprint"),
+                    certChainDer = chain,
+                    signature = external.optString("signature"),
+                    expectedPayload = verificationPayload(record, endorser),
+                    trustedFingerprints = options.trustedExternalFingerprints
+                ))
+                externalVerified = result.ok
+                if (!result.ok) issues += VerificationIssue("EXTERNAL_IDENTITY_VERIFICATION_FAILED", "External identity verification failed for verification record $id: ${result.reason ?: "unknown"}", Criticality.CRITICAL)
+            }
+            val collector = record.optJSONObject("collector_attestation")
+            var collectorVerified: Boolean? = null
+            if (collector != null) {
+                val signerId = collector.optString("device_id")
+                val signature = collector.optString("signature")
+                val algorithm = collector.optString("alg")
+                val valid = signature == record.optString("signature") && algorithm == record.optString("alg") && algorithm == "ED25519" && signerId == blockDeviceId &&
+                    verifyDetachedSignature(blockPublicKey, verificationPayload(record, signerId).toByteArray(StandardCharsets.UTF_8), signature)
+                collectorVerified = valid
+                if (!valid) issues += VerificationIssue("RECORD_VERIFICATION_COLLECTOR_ATTESTATION_INVALID", "verification record $id collector signature could not be authenticated.", Criticality.CRITICAL)
+            } else if (record.has("signature") || record.has("alg")) {
+                issues += VerificationIssue("RECORD_VERIFICATION_COLLECTOR_ATTESTATION_SIGNATURE_MISMATCH", "verification record $id has signature fields without collector_attestation.", Criticality.CRITICAL)
+            }
+            val assurance = when {
+                !validChecksum -> "unverifiable"
+                externalVerified == true && collectorVerified == true -> "authority_verified_and_collector_attested"
+                externalVerified == true -> "authority_verified"
+                unsupported -> "unsupported"
+                else -> "recorded"
+            }
+            return VerificationRecordResult(disclosure, assurance, collectorVerified, externalVerified) to issues
         }
 
         private fun manifestPolicy(manifest: LukuManifest): LukuPolicy? {
@@ -945,7 +1082,11 @@ class LukuArchive private constructor(
         }
 
         private fun recomputeBlockFields(block: LukuBlock): Triple<String, String, String> {
-            val batchHash = sha256Hex(block.batch.joinToString(":") { it.optString("signature") }.toByteArray(StandardCharsets.UTF_8))
+            val batchHash = sha256Hex(block.batch.joinToString(":") {
+                it.optString("signature").ifEmpty {
+                    if (it.optString("type") == "verification") it.optJSONObject("response")?.optString("checksum").orEmpty() else ""
+                }
+            }.toByteArray(StandardCharsets.UTF_8))
             val canonical = listOf(
                 block.blockId.toString(),
                 block.timestampUtc.toString(),
@@ -1122,6 +1263,9 @@ class LukuArchive private constructor(
                     val externalSignature = record.optJSONObject("external_identity")?.optString("signature").orEmpty()
                     (prefix + content + listOf(externalSignature)).joinToString(":")
                 }
+                "verification" -> verificationPayload(record,
+                    record.optJSONObject("collector_attestation")?.optString("device_id")
+                        ?: record.optJSONObject("external_identity")?.optString("endorser_id").orEmpty())
                 else -> null
             }
         }

@@ -27,7 +27,15 @@ data class LukuItemResult(
     val type: String,
     val verified: Boolean,
     val payload: Map<String, Any?>,
-    val errors: List<String>? = null
+    val errors: List<String>? = null,
+    val verification: VerificationRecordResult? = null
+)
+
+data class VerificationRecordResult(
+    val responseDisclosureState: String,
+    val assuranceLevel: String,
+    val collectorAttestationVerified: Boolean? = null,
+    val externalIdentityVerified: Boolean? = null
 )
 
 object LukuFile {
@@ -53,7 +61,10 @@ object LukuFile {
                     type = record.optString("type", "unknown"),
                     verified = verified,
                     payload = JsonUtils.fromJson(record),
-                    errors = null
+                    errors = null,
+                    verification = if (record.optString("type") == "verification") {
+                        LukuArchive.evaluateVerificationRecord(record, archive.attachments, block.device.deviceId, block.device.publicKey, LukuVerifyOptions()).first
+                    } else null
                 )
             }
         }
@@ -138,6 +149,12 @@ object LukuFile {
     fun verifyEnvelope(envelope: JSONObject, options: LukuVerifyOptions = LukuVerifyOptions()): List<VerificationIssue> {
         val issues = mutableListOf<VerificationIssue>()
         val recordType = envelope.optString("type", "unknown")
+        if (recordType == "verification") {
+            return LukuArchive.evaluateVerificationRecord(
+                envelope, options.attachments.orEmpty(), envelope.optString("device_id"),
+                envelope.optString("public_key"), options
+            ).second
+        }
         val isAuxRecord = recordType == "attachment" || recordType == "location" || recordType == "custody"
         val payload = envelope.optJSONObject("payload") ?: JSONObject()
         val recordCtr = payload.optLong("ctr").takeIf { payload.has("ctr") }

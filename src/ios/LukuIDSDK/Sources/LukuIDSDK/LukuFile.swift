@@ -20,6 +20,14 @@ public struct LukuItemResult: Sendable {
     public let verified: Bool
     public let payload: [String: AnySendable]
     public let errors: [String]?
+    public let verification: VerificationRecordResult?
+}
+
+public struct VerificationRecordResult: Sendable {
+    public let responseDisclosureState: String
+    public let assuranceLevel: String
+    public let collectorAttestationVerified: Bool?
+    public let externalIdentityVerified: Bool?
 }
 
 public struct AnySendable: @unchecked Sendable {
@@ -367,6 +375,31 @@ public final class LukuArchive {
         try refreshManifestSignature(signer: signer)
     }
 
+    public func appendVerificationRecord(record input: [String: Any],
+                                         responseBytes: Data?,
+                                         device: LukuDeviceIdentity,
+                                         signer: LukuSigner) throws {
+        guard input["type"] as? String == "verification",
+              var response = input["response"] as? [String: Any],
+              let checksum = response["checksum"] as? String,
+              checksum.range(of: "^[0-9a-f]{64}$", options: .regularExpression) != nil,
+              let size = uint64(response["size_bytes"]) else {
+            throw NSError(domain: "lukuid", code: -90, userInfo: [NSLocalizedDescriptionKey: "verification record requires type, response.checksum, and response.size_bytes"])
+        }
+        var record = input
+        if let responseBytes {
+            guard sha256Hex(responseBytes) == checksum, UInt64(responseBytes.count) == size else {
+                throw NSError(domain: "lukuid", code: -91, userInfo: [NSLocalizedDescriptionKey: "exact response bytes do not match response.checksum/size_bytes"])
+            }
+            attachments[checksum] = responseBytes
+            response["attachment_path"] = "attachments/\(checksum.prefix(2))/\(checksum.dropFirst(2).prefix(2))/\(checksum)"
+        } else if response["data"] != nil {
+            throw NSError(domain: "lukuid", code: -92, userInfo: [NSLocalizedDescriptionKey: "response.data requires disclosed original response bytes"])
+        }
+        record["response"] = response
+        try append(records: [record], device: device, signer: signer)
+    }
+
     public func merge(_ other: LukuArchive, signer: LukuSigner) throws {
         for incoming in other.blocks {
             var normalized = incoming
@@ -462,6 +495,9 @@ public final class LukuArchive {
             for record in block.batch {
                 let recordType = record["type"] as? String ?? "unknown"
                 let isAuxRecord = ["attachment", "location", "custody"].contains(recordType)
+                let isVerificationRecord = recordType == "verification"
+                let isNonChainAdvancing = isAuxRecord || isVerificationRecord
+                let skipsDeviceSignature = isVerificationRecord && record["collector_attestation"] == nil
                 let isCompatAttachment = record["_compat_nested_attachment"] as? Bool ?? false
                 let payload = record["payload"] as? [String: Any]
                 let deviceID = (record["device_id"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? block.device.deviceID
@@ -484,18 +520,18 @@ public final class LukuArchive {
                     }
                 }
 
-                if vendor == nil || vendor?.isEmpty == true {
+                if (vendor == nil || vendor?.isEmpty == true) && !isVerificationRecord {
                     issues.append(issue("DEVICE_VENDOR_MISSING", "Device vendor is missing for device \(deviceID).", .critical))
                 }
 
-                if !isAuxRecord && !seenDevices.contains(deviceID) {
+                if !isNonChainAdvancing && !seenDevices.contains(deviceID) {
                     seenDevices.insert(deviceID)
                     if counter == 0, !genesisHash.isEmpty, previousSignature != genesisHash {
                         issues.append(issue("GENESIS_HASH_MISMATCH", "Genesis record (ctr=0) for device \(deviceID) has previous_signature that does not match genesis_hash.", .critical))
                     }
                 }
 
-                if !isAuxRecord {
+                if !isNonChainAdvancing {
                     if let lastSignature = lastSignatures[deviceID], previousSignature != lastSignature {
                         issues.append(issue("RECORD_CHAIN_BROKEN", "Record chain broken for device \(deviceID) at record type \(recordType).", .critical))
                     }
@@ -538,10 +574,10 @@ public final class LukuArchive {
                         ?? ""
                     if attestationChain.isEmpty {
                         issues.append(issue("ATTESTATION_CHAIN_MISSING", "Missing DAC attestation chain for device \(deviceID).", .warning))
-                        if !isAuxRecord && attestationSignature.isEmpty {
+                        if !isAuxRecord && !isVerificationRecord && attestationSignature.isEmpty {
                             issues.append(issue("ATTESTATION_FAILED", "Device \(deviceID) failed DAC attestation: attestationSig missing", .critical))
                         }
-                    } else if !isAuxRecord || !attestationSignature.isEmpty {
+                    } else if (!isAuxRecord && !isVerificationRecord) || !attestationSignature.isEmpty {
                         let attestationRecordId = (record["id"] as? String)
                         let inputs = DeviceAttestationInputs(
                             id: deviceID,
@@ -590,13 +626,15 @@ public final class LukuArchive {
                             }
                         } else if !heartbeatSignature.isEmpty {
                             issues.append(issue("HEARTBEAT_CHAIN_MISSING", "Missing SLAC heartbeat chain for device \(deviceID).", .warning))
-                        } else if !heartbeatChain.isEmpty && !isAuxRecord {
+                        } else if !heartbeatChain.isEmpty && !isAuxRecord && !isVerificationRecord {
                             issues.append(issue("HEARTBEAT_VERIFICATION_FAILED", "Device \(deviceID) failed SLAC heartbeat verification: heartbeatSig missing", .critical))
                         }
                     }
                 }
 
-                if canonicalString.isEmpty {
+                if skipsDeviceSignature {
+                    // No collector attestation: a verification record is not required to be device-signed.
+                } else if canonicalString.isEmpty {
                     issues.append(issue("RECORD_CANONICAL_MISSING", "Record type \(recordType) on device \(deviceID) does not include a canonical_string.", isCompatAttachment ? .warning : .critical))
                 } else if signature.isEmpty {
                     issues.append(issue("RECORD_SIGNATURE_MISSING", "Record type \(recordType) on device \(deviceID) is missing a signature.", isCompatAttachment ? .warning : .critical))
@@ -604,17 +642,17 @@ public final class LukuArchive {
                     issues.append(issue("RECORD_SIGNATURE_INVALID", "Invalid signature for record type \(recordType) on device \(deviceID).", .critical))
                 }
 
-                if !isAuxRecord, !signature.isEmpty {
+                if !isNonChainAdvancing, !signature.isEmpty {
                     lastSignatures[deviceID] = signature
                 }
-                if !isAuxRecord, let counter {
+                if !isNonChainAdvancing, let counter {
                     lastCounters[deviceID] = counter
                 }
-                if !isAuxRecord, let timestamp {
+                if !isNonChainAdvancing, let timestamp {
                     lastTimes[deviceID] = timestamp
                 }
 
-                if isAuxRecord,
+                if isNonChainAdvancing,
                    let parentRecordID = (record["parent_id"] as? String) ?? (record["parent_record_id"] as? String),
                    !parentRecordID.isEmpty,
                    !recordIDs.contains(parentRecordID) {
@@ -635,7 +673,7 @@ public final class LukuArchive {
                 }
 
                 let externalIdentity = record["external_identity"] as? [String: Any]
-                if externalIdentity != nil && !isAuxRecord {
+                if externalIdentity != nil && !isAuxRecord && !isVerificationRecord {
                     issues.append(issue("EXTERNAL_IDENTITY_UNSUPPORTED_RECORD_TYPE", "Record type \(recordType) must not carry external_identity.", .critical))
                 }
 
@@ -663,6 +701,13 @@ public final class LukuArchive {
                     if case .failure(let error) = result {
                         issues.append(issue("EXTERNAL_IDENTITY_VERIFICATION_FAILED", "External identity verification failed: \(error.reason)", .critical))
                     }
+                }
+                if isVerificationRecord {
+                    issues.append(contentsOf: evaluateVerificationRecord(
+                        record, attachments: attachments, blockDeviceID: block.device.deviceID,
+                        blockPublicKey: block.device.publicKey,
+                        trustedExternalFingerprints: options.trustedExternalFingerprints
+                    ).issues)
                 }
             }
         }
@@ -818,6 +863,14 @@ public enum LukuFile {
         var issues: [VerificationIssue] = []
 
         let recordType = envelope["type"] as? String ?? "unknown"
+        if recordType == "verification" {
+            return evaluateVerificationRecord(
+                envelope, attachments: options.attachments ?? [:],
+                blockDeviceID: envelope["device_id"] as? String ?? "",
+                blockPublicKey: envelope["public_key"] as? String ?? "",
+                trustedExternalFingerprints: options.trustedExternalFingerprints
+            ).issues
+        }
         let isAuxRecord = recordType == "attachment" || recordType == "location" || recordType == "custody"
         let payload = envelope["payload"] as? [String: Any] ?? [:]
         
@@ -1040,7 +1093,10 @@ public enum LukuFile {
                     type: record["type"] as? String ?? "unknown",
                     verified: verified,
                     payload: record.mapValues { AnySendable($0) },
-                    errors: nil
+                    errors: nil,
+                    verification: record["type"] as? String == "verification"
+                        ? evaluateVerificationRecord(record, attachments: archive.attachments, blockDeviceID: block.device.deviceID, blockPublicKey: block.device.publicKey, trustedExternalFingerprints: []).result
+                        : nil
                 )
             }
         }
@@ -1088,12 +1144,13 @@ public enum LukuFile {
         for record in records {
             let recordType = record["type"] as? String ?? "unknown"
             let isAux = ["attachment", "location", "custody"].contains(recordType)
+            let isNonChainAdvancing = isAux || recordType == "verification"
             let signature = record["signature"] as? String ?? ""
             let previousSignature = record["previous_signature"] as? String ?? ""
             let timestamp = recordTimestamp(from: record)
 
             var shouldSplit = false
-            if !isAux {
+            if !isNonChainAdvancing {
                 if let lastSig = lastSignature, !lastSig.isEmpty, !previousSignature.isEmpty, previousSignature != lastSig {
                     shouldSplit = true
                 }
@@ -1107,7 +1164,7 @@ public enum LukuFile {
             }
 
             currentBatch.append(record)
-            if !isAux {
+            if !isNonChainAdvancing {
                 if !signature.isEmpty {
                     lastSignature = signature
                 }
@@ -1270,7 +1327,12 @@ private struct BlockFields {
 }
 
 private func recomputeBlockFields(_ block: LukuBlock) throws -> BlockFields {
-    let batchHash = sha256Hex(Data(block.batch.map { $0["signature"] as? String ?? "" }.joined(separator: ":").utf8))
+    let batchHash = sha256Hex(Data(block.batch.map { record in
+        if let signature = record["signature"] as? String, !signature.isEmpty { return signature }
+        if record["type"] as? String == "verification",
+           let response = record["response"] as? [String: Any] { return response["checksum"] as? String ?? "" }
+        return ""
+    }.joined(separator: ":").utf8))
     let canonical = [
         String(block.blockID),
         String(block.timestampUTC),
@@ -1447,6 +1509,11 @@ private func recomputeRecordCanonicalString(_ record: [String: Any], deviceID: S
     case "custody":
         let values = content(["context_ref", "event", "status"]) { string(payload, $0) }
         return ([string(record, "parent_signature"), deviceID, publicKey, "custody", string(record, "id"), string(record, "parent_id"), number(record["timestamp_utc"])] + values + [external]).joined(separator: ":")
+    case "verification":
+        let collector = record["collector_attestation"] as? [String: Any]
+        let externalIdentity = record["external_identity"] as? [String: Any]
+        let signer = collector?["device_id"] as? String ?? externalIdentity?["endorser_id"] as? String ?? ""
+        return verificationSignaturePayload(record, signerID: signer)
     default: return nil
     }
 }
@@ -1498,10 +1565,105 @@ private func expectedExternalIdentityPayload(record: [String: Any], recordType: 
         let event = payload?["event"] as? String ?? ""
         let status = payload?["status"] as? String ?? ""
         let contextRef = payload?["context_ref"] as? String ?? ""
-        return "\(event):\(status):\(contextRef):\(endorserID)"
+        return "\(contextRef):\(event):\(status):\(endorserID)"
+    case "verification":
+        return verificationSignaturePayload(record, signerID: endorserID)
     default:
         return nil
     }
+}
+
+private func verificationSignaturePayload(_ record: [String: Any], signerID: String) -> String {
+    let response = record["response"] as? [String: Any] ?? [:]
+    let subject = record["subject"] as? [String: Any] ?? [:]
+    func integer(_ name: String) -> String {
+        guard let value = record[name] as? NSNumber, CFGetTypeID(value) != CFBooleanGetTypeID(), value.int64Value >= 0 else { return "" }
+        return String(value.int64Value)
+    }
+    return [
+        response["checksum"] as? String ?? "", record["scheme"] as? String ?? "",
+        record["provider"] as? String ?? "", integer("checked_at_utc"),
+        record["status"] as? String ?? "", record["result_code"] as? String ?? "",
+        subject["type"] as? String ?? "", subject["identifier"] as? String ?? "",
+        subject["commitment"] as? String ?? "", integer("valid_from_utc"), integer("valid_until_utc"), signerID
+    ].joined(separator: ":")
+}
+
+private func evaluateVerificationRecord(
+    _ record: [String: Any],
+    attachments: [String: Data],
+    blockDeviceID: String,
+    blockPublicKey: String,
+    trustedExternalFingerprints: [String]
+) -> (result: VerificationRecordResult, issues: [VerificationIssue]) {
+    var issues: [VerificationIssue] = []
+    let response = record["response"] as? [String: Any] ?? [:]
+    let checksum = response["checksum"] as? String ?? ""
+    let size = uint64(response["size_bytes"])
+    let mime = response["mime"] as? String ?? ""
+    let format = (response["format"] as? String ?? "").lowercased()
+    let id = record["id"] as? String ?? "unknown"
+    let statuses = Set(["verified", "not_verified", "not_found", "mismatch", "expired", "revoked", "unavailable", "unsupported", "indeterminate"])
+    if !statuses.contains(record["status"] as? String ?? "") {
+        issues.append(issue("RECORD_VERIFICATION_STATUS_INVALID", "verification record \(id) has an unrecognized status.", .critical))
+    }
+    let checksumValid = checksum.range(of: "^[0-9a-f]{64}$", options: .regularExpression) != nil
+    if !checksumValid { issues.append(issue("RECORD_VERIFICATION_RESPONSE_CHECKSUM_MISSING", "verification record \(id) has an invalid response.checksum.", .critical)) }
+    if size == nil || mime.isEmpty { issues.append(issue("RECORD_VERIFICATION_RESPONSE_METADATA_MISSING", "verification record \(id) is missing response.size_bytes or response.mime.", .critical)) }
+    var disclosure = "undisclosed"
+    if checksumValid, let bytes = attachments[checksum] {
+        if sha256Hex(bytes) != checksum {
+            disclosure = "disclosed_mismatch"
+            issues.append(issue("RECORD_VERIFICATION_RESPONSE_DISCLOSED_MISMATCH", "verification record \(id) disclosed bytes do not match response.checksum.", .critical))
+        } else {
+            disclosure = "disclosed"
+            if size != UInt64(bytes.count) { issues.append(issue("RECORD_VERIFICATION_RESPONSE_SIZE_MISMATCH", "verification record \(id) disclosed length does not match response.size_bytes.", .critical)) }
+        }
+    }
+    if disclosure != "disclosed", response["data"] != nil, !(response["data"] is NSNull) {
+        issues.append(issue("RECORD_VERIFICATION_RESPONSE_DATA_WITHOUT_DISCLOSURE", "verification record \(id) has response.data without disclosed original bytes.", .critical))
+    }
+    let signedFormats = Set(["jwt", "jws", "sd-jwt", "cose", "cose_sign1", "cbor", "mdoc", "xml", "xmldsig", "cms", "pkcs7", "protobuf", "opaque", "eudi_wallet"])
+    let unsupported = signedFormats.contains(format)
+    if unsupported { issues.append(issue("RECORD_VERIFICATION_PROVIDER_FORMAT_UNSUPPORTED", "verification record \(id) uses provider format \(format) without a native verifier.", .warning)) }
+
+    var externalVerified: Bool?
+    if !unsupported, let external = record["external_identity"] as? [String: Any] {
+        let endorserID = external["endorser_id"] as? String ?? ""
+        let inputs = ExternalIdentityInputs(
+            endorserID: endorserID,
+            rootFingerprint: external["root_fingerprint"] as? String ?? "",
+            certChainDer: external["cert_chain_der"] as? [String] ?? [],
+            signature: external["signature"] as? String ?? "",
+            expectedPayload: verificationSignaturePayload(record, signerID: endorserID),
+            trustedFingerprints: trustedExternalFingerprints
+        )
+        if case .success = verifyExternalIdentity(inputs) {
+            externalVerified = true
+        } else if case .failure(let error) = verifyExternalIdentity(inputs) {
+            externalVerified = false
+            issues.append(issue("EXTERNAL_IDENTITY_VERIFICATION_FAILED", "External identity verification failed for verification record \(id): \(error.reason)", .critical))
+        }
+    }
+    var collectorVerified: Bool?
+    if let collector = record["collector_attestation"] as? [String: Any] {
+        let signature = collector["signature"] as? String ?? ""
+        let algorithm = collector["alg"] as? String ?? ""
+        let signerID = collector["device_id"] as? String ?? ""
+        let valid = signature == (record["signature"] as? String ?? "") && algorithm == (record["alg"] as? String ?? "") && algorithm == "ED25519" && signerID == blockDeviceID &&
+            verifyDetachedSignature(publicKeyBase64: blockPublicKey, payload: Data(verificationSignaturePayload(record, signerID: signerID).utf8), signatureBase64: signature)
+        collectorVerified = valid
+        if !valid { issues.append(issue("RECORD_VERIFICATION_COLLECTOR_ATTESTATION_INVALID", "verification record \(id) collector signature could not be authenticated.", .critical)) }
+    } else if record["signature"] != nil || record["alg"] != nil {
+        issues.append(issue("RECORD_VERIFICATION_COLLECTOR_ATTESTATION_SIGNATURE_MISMATCH", "verification record \(id) has signature fields without collector_attestation.", .critical))
+    }
+    let assurance: String
+    if !checksumValid { assurance = "unverifiable" }
+    else if externalVerified == true && collectorVerified == true { assurance = "authority_verified_and_collector_attested" }
+    else if externalVerified == true { assurance = "authority_verified" }
+    else if unsupported { assurance = "unsupported" }
+    else { assurance = "recorded" }
+    return (VerificationRecordResult(responseDisclosureState: disclosure, assuranceLevel: assurance, collectorAttestationVerified: collectorVerified, externalIdentityVerified: externalVerified), issues)
 }
 
 private func mutableCopy(_ value: [String: Any]) -> [String: Any] {

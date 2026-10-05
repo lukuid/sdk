@@ -79,6 +79,7 @@ class LukuItemResult:
     verified: bool
     payload: dict[str, Any]
     errors: list[str] | None = None
+    verification: dict[str, Any] | None = None
 
 
 @dataclass(slots=True)
@@ -316,6 +317,38 @@ class LukuArchive:
         self.blocks.append(block)
         self._refresh_manifest_signature(signer)
 
+    def append_verification_record(
+        self,
+        record: dict[str, Any],
+        device: LukuDeviceIdentity,
+        signer: LukuSigner,
+        response_bytes: bytes | None = None,
+    ) -> None:
+        """Append a verification record after export and refresh archive commitments.
+
+        response_bytes, when supplied, must be the exact original provider bytes.
+        """
+        if record.get("type") != "verification":
+            raise ValueError("record.type must be 'verification'")
+        response = record.get("response")
+        if not isinstance(response, dict):
+            raise ValueError("verification record response must be an object")
+        checksum = response.get("checksum")
+        size_bytes = response.get("size_bytes")
+        if not isinstance(checksum, str) or len(checksum) != 64 or any(c not in "0123456789abcdef" for c in checksum):
+            raise ValueError("verification response.checksum must be lowercase SHA-256 hex")
+        if not isinstance(size_bytes, int) or isinstance(size_bytes, bool) or size_bytes < 0:
+            raise ValueError("verification response.size_bytes must be a nonnegative integer")
+        if response_bytes is None:
+            if "data" in response:
+                raise ValueError("response.data requires disclosed original response bytes")
+        else:
+            if _sha256_hex(response_bytes) != checksum or len(response_bytes) != size_bytes:
+                raise ValueError("exact response bytes do not match response.checksum/size_bytes")
+            self.attachments[checksum] = response_bytes
+            response["attachment_path"] = f"attachments/{checksum[:2]}/{checksum[2:4]}/{checksum}"
+        self.append([record], device, signer)
+
     def merge(self, other: "LukuArchive", signer: LukuSigner) -> None:
         for incoming in other.blocks:
             normalized = copy.deepcopy(incoming)
@@ -398,6 +431,9 @@ class LukuArchive:
             for record in block.batch:
                 record_type = str(record.get("type", "unknown"))
                 is_aux = record_type in {"attachment", "location", "custody"}
+                is_verification = record_type == "verification"
+                skips_device_signature = is_verification and not bool(record.get("collector_attestation"))
+                is_non_chain_advancing = is_aux or is_verification
                 is_compat_attachment = bool(record.get("_compat_nested_attachment"))
                 payload = record.get("payload") if isinstance(record.get("payload"), dict) else {}
                 device_id = str(record.get("device_id") or block.device.device_id)
@@ -414,12 +450,12 @@ class LukuArchive:
                 counter = _uint64(payload.get("ctr"))
                 genesis_hash = str(payload.get("genesis_hash", ""))
 
-                if not is_aux and device_id not in seen_devices:
+                if not is_non_chain_advancing and device_id not in seen_devices:
                     seen_devices.add(device_id)
                     if counter == 0 and genesis_hash and previous_signature != genesis_hash:
                         issues.append(_issue("GENESIS_HASH_MISMATCH", f"Genesis record (ctr=0) for device {device_id} has previous_signature that does not match genesis_hash.", Criticality.CRITICAL))
 
-                if not is_aux:
+                if not is_non_chain_advancing:
                     if device_id in last_signatures and previous_signature != last_signatures[device_id]:
                         issues.append(_issue("RECORD_CHAIN_BROKEN", f"Record chain broken for device {device_id} at record type {record_type}.", Criticality.CRITICAL))
                     if device_id in last_counters and counter is not None and counter <= last_counters[device_id]:
@@ -455,9 +491,9 @@ class LukuArchive:
                 if not attestation_chain:
                     if not options.allow_untrusted_roots:
                         issues.append(_issue("ATTESTATION_CHAIN_MISSING", f"Missing DAC attestation chain for device {device_id}.", Criticality.WARNING))
-                        if not is_aux and not attestation_sig:
+                        if not is_aux and not is_verification and not attestation_sig:
                             issues.append(_issue("ATTESTATION_FAILED", f"Device {device_id} failed DAC attestation: attestationSig missing", Criticality.CRITICAL))
-                elif not is_aux or attestation_sig:
+                elif (not is_aux and not is_verification) or attestation_sig:
                     result = verify_device_attestation(
                         DeviceAttestationInputs(
                             id=device_id,
@@ -508,10 +544,12 @@ class LukuArchive:
                             issues.append(_issue("HEARTBEAT_VERIFICATION_FAILED", f"Device {device_id} failed SLAC heartbeat verification: {hb_result.reason}", Criticality.CRITICAL))
                     elif heartbeat_sig:
                         issues.append(_issue("HEARTBEAT_CHAIN_MISSING", f"Missing SLAC heartbeat chain for device {device_id}.", Criticality.WARNING))
-                    elif heartbeat_chain and not is_aux:
+                    elif heartbeat_chain and not is_aux and not is_verification:
                         issues.append(_issue("HEARTBEAT_VERIFICATION_FAILED", f"Device {device_id} failed SLAC heartbeat verification: heartbeatSig missing", Criticality.CRITICAL))
 
-                if not canonical_string:
+                if skips_device_signature:
+                    pass
+                elif not canonical_string:
                     issues.append(_issue("RECORD_CANONICAL_MISSING", f"Record type {record_type} on device {device_id} does not include a canonical_string.", Criticality.WARNING if is_compat_attachment else Criticality.CRITICAL))
                 elif not signature:
                     issues.append(_issue("RECORD_SIGNATURE_MISSING", f"Record type {record_type} on device {device_id} is missing a signature.", Criticality.WARNING if is_compat_attachment else Criticality.CRITICAL))
@@ -543,15 +581,15 @@ class LukuArchive:
                     if not verify_detached_signature(public_key, verify_target.encode("utf-8"), signature):
                         issues.append(_issue("RECORD_SIGNATURE_INVALID", f"Invalid signature for record type {record_type} on device {device_id}.", Criticality.CRITICAL))
 
-                if not is_aux and signature:
+                if not is_non_chain_advancing and signature:
                     last_signatures[device_id] = signature
-                if not is_aux and counter is not None:
+                if not is_non_chain_advancing and counter is not None:
                     last_counters[device_id] = counter
-                if not is_aux and timestamp is not None:
+                if not is_non_chain_advancing and timestamp is not None:
                     last_times[device_id] = timestamp
 
                 parent_record_id = record.get("parent_id") or record.get("parent_record_id")
-                if is_aux and isinstance(parent_record_id, str) and parent_record_id and parent_record_id not in record_ids:
+                if is_non_chain_advancing and isinstance(parent_record_id, str) and parent_record_id and parent_record_id not in record_ids:
                     issues.append(_issue("PARENT_RECORD_MISSING", f"Record type {record_type} references missing parent {parent_record_id}.", Criticality.CRITICAL))
 
                 if record_type == "attachment":
@@ -564,7 +602,7 @@ class LukuArchive:
                             issues.append(_issue("ATTACHMENT_CORRUPT", f"Attachment with hash {checksum} is corrupt (actual hash {_sha256_hex(content)}).", Criticality.CRITICAL))
 
                 external_identity = record.get("external_identity") if isinstance(record.get("external_identity"), dict) else {}
-                if external_identity and not is_aux:
+                if external_identity and not is_aux and not is_verification:
                     issues.append(_issue("EXTERNAL_IDENTITY_UNSUPPORTED_RECORD_TYPE", f"Record type {record_type} must not carry external_identity.", Criticality.CRITICAL))
 
                 if is_aux:
@@ -598,6 +636,13 @@ class LukuArchive:
                         )
                         if not result.ok:
                             issues.append(_issue("EXTERNAL_IDENTITY_VERIFICATION_FAILED", f"External identity verification failed: {result.reason}", Criticality.CRITICAL))
+
+                if is_verification:
+                    verification_result, verification_issues = _evaluate_verification_record(
+                        record, self.attachments, device_id, public_key, options.trusted_external_fingerprints,
+                        options.revocation_manager,
+                    )
+                    issues.extend(verification_issues)
 
         if options.policy is not None:
             actual_policy = _manifest_policy(self.manifest.extra)
@@ -650,6 +695,16 @@ class LukuFile:
         issues: list[VerificationIssue] = []
 
         record_type = str(envelope.get("type", "unknown"))
+        if record_type == "verification":
+            _, verification_issues = _evaluate_verification_record(
+                envelope,
+                options.attachments or {},
+                str(envelope.get("device_id", "")),
+                str(envelope.get("public_key", "")),
+                options.trusted_external_fingerprints,
+                options.revocation_manager,
+            )
+            return verification_issues
         is_aux = _is_aux_record_type(record_type)
         payload = envelope.get("payload") if isinstance(envelope.get("payload"), dict) else {}
         
@@ -970,7 +1025,12 @@ class LukuFile:
         issues = archive.verify()
         verified = not any(issue.criticality == Criticality.CRITICAL for issue in issues)
         items = [
-            LukuItemResult(type=str(record.get("type", "unknown")), verified=verified, payload=copy.deepcopy(record))
+            LukuItemResult(
+                type=str(record.get("type", "unknown")), verified=verified, payload=copy.deepcopy(record),
+                verification=_evaluate_verification_record(
+                    record, archive.attachments, block.device.device_id, block.device.public_key, [], None
+                )[0] if record.get("type") == "verification" else None,
+            )
             for block in archive.blocks
             for record in block.batch
         ]
@@ -1023,12 +1083,13 @@ class LukuFile:
         for record in records:
             record_type = str(record.get("type", "unknown"))
             is_aux = _is_aux_record_type(record_type)
+            is_non_chain_advancing = is_aux or record_type == "verification"
             signature = record.get("signature")
             previous_signature = record.get("previous_signature")
             timestamp = _record_timestamp(record)
 
             should_split = False
-            if not is_aux:
+            if not is_non_chain_advancing:
                 if last_signature and isinstance(previous_signature, str) and previous_signature and previous_signature != last_signature:
                     should_split = True
                 if not should_split and native_gap_threshold is not None and last_native_timestamp is not None and timestamp is not None and timestamp > last_native_timestamp and (timestamp - last_native_timestamp) > native_gap_threshold:
@@ -1039,7 +1100,7 @@ class LukuFile:
 
             current_batch.append(record)
 
-            if not is_aux:
+            if not is_non_chain_advancing:
                 if isinstance(signature, str) and signature:
                     last_signature = signature
                 if timestamp is not None:
@@ -1302,7 +1363,12 @@ class LukuFile:
 
 
 def _recompute_block_fields(block: LukuBlock) -> dict[str, str]:
-    batch_hash = _sha256_hex(":".join(str(record.get("signature", "")) for record in block.batch).encode("utf-8"))
+    batch_hash = _sha256_hex(":".join(
+        str(record.get("signature") or (
+            (record.get("response") or {}).get("checksum", "")
+            if record.get("type") == "verification" else ""
+        )) for record in block.batch
+    ).encode("utf-8"))
     canonical = ":".join(
         [
             str(block.block_id),
@@ -1424,6 +1490,10 @@ def _canonical_scalar(value: Any) -> str:
     if isinstance(value, (list, tuple)):
         return ",".join(_canonical_scalar(item) for item in value)
     return str(value)
+
+
+def _canonical_uint(value: Any) -> str:
+    return str(value) if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else ""
 
 
 def _canonical_numeric_array(value: Any) -> str:
@@ -1560,6 +1630,21 @@ def _recompute_record_canonical_string(
             external_signature,
         ])
 
+    if record_type == "verification":
+        response = record.get("response") if isinstance(record.get("response"), dict) else {}
+        subject = record.get("subject") if isinstance(record.get("subject"), dict) else {}
+        collector = record.get("collector_attestation") if isinstance(record.get("collector_attestation"), dict) else {}
+        external = record.get("external_identity") if isinstance(record.get("external_identity"), dict) else {}
+        signer_id = collector.get("device_id") or external.get("endorser_id") or ""
+        return ":".join([
+            str(response.get("checksum") or ""), str(record.get("scheme") or ""),
+            str(record.get("provider") or ""), _canonical_uint(record.get("checked_at_utc")),
+            str(record.get("status") or ""), str(record.get("result_code") or ""),
+            str(subject.get("type") or ""), str(subject.get("identifier") or ""),
+            str(subject.get("commitment") or ""), _canonical_uint(record.get("valid_from_utc")),
+            _canonical_uint(record.get("valid_until_utc")), str(signer_id),
+        ])
+
     return None
 
 
@@ -1605,7 +1690,145 @@ def _expected_external_identity_payload(record: dict[str, Any], record_type: str
         context_ref = payload.get("context_ref")
         # Alphabetical per LUKU.md: context_ref, event, status.
         return f"{context_ref if isinstance(context_ref, str) else ''}:{event if isinstance(event, str) else ''}:{status if isinstance(status, str) else ''}:{endorser_id}"
+    if record_type == "verification":
+        response = record.get("response") if isinstance(record.get("response"), dict) else {}
+        subject = record.get("subject") if isinstance(record.get("subject"), dict) else {}
+        fields = [
+            str(response.get("checksum") or ""), str(record.get("scheme") or ""),
+            str(record.get("provider") or ""), _canonical_uint(record.get("checked_at_utc")),
+            str(record.get("status") or ""), str(record.get("result_code") or ""),
+            str(subject.get("type") or ""), str(subject.get("identifier") or ""),
+            str(subject.get("commitment") or ""), _canonical_uint(record.get("valid_from_utc")),
+            _canonical_uint(record.get("valid_until_utc")), endorser_id,
+        ]
+        return ":".join(fields)
     return None
+
+
+_VERIFICATION_STATUSES = {
+    "verified", "not_verified", "not_found", "mismatch", "expired", "revoked",
+    "unavailable", "unsupported", "indeterminate",
+}
+_SIGNED_PROVIDER_FORMATS = {
+    "jwt", "jws", "sd-jwt", "cose", "cose_sign1", "cbor", "mdoc", "xml",
+    "xmldsig", "cms", "pkcs7", "protobuf", "opaque", "eudi_wallet",
+}
+
+
+def _evaluate_verification_record(
+    record: dict[str, Any],
+    attachments: dict[str, bytes],
+    block_device_id: str,
+    block_public_key: str,
+    trusted_external_fingerprints: list[str],
+    revocation_manager: RevocationManager | None,
+) -> tuple[dict[str, Any], list[VerificationIssue]]:
+    """Validate archive binding and expose response disclosure/assurance independently."""
+    issues: list[VerificationIssue] = []
+    response = record.get("response") if isinstance(record.get("response"), dict) else {}
+    checksum = response.get("checksum") if isinstance(response.get("checksum"), str) else ""
+    checksum_valid = len(checksum) == 64 and all(c in "0123456789abcdef" for c in checksum)
+    size = response.get("size_bytes")
+    mime = response.get("mime")
+    fmt = response.get("format") if isinstance(response.get("format"), str) else ""
+    status = record.get("status")
+    record_id = str(record.get("id") or "unknown")
+
+    if status not in _VERIFICATION_STATUSES:
+        issues.append(_issue("RECORD_VERIFICATION_STATUS_INVALID", f"verification record {record_id} has an unrecognized status.", Criticality.CRITICAL))
+    if not isinstance(record.get("scheme"), str) or not record.get("scheme"):
+        issues.append(_issue("RECORD_VERIFICATION_FIELD_MISSING", f"verification record {record_id} is missing scheme.", Criticality.CRITICAL))
+    if not isinstance(record.get("provider"), str) or not record.get("provider"):
+        issues.append(_issue("RECORD_VERIFICATION_FIELD_MISSING", f"verification record {record_id} is missing provider.", Criticality.CRITICAL))
+    if not isinstance(record.get("checked_at_utc"), int) or isinstance(record.get("checked_at_utc"), bool) or record["checked_at_utc"] < 0:
+        issues.append(_issue("RECORD_VERIFICATION_FIELD_MISSING", f"verification record {record_id} has invalid checked_at_utc.", Criticality.CRITICAL))
+    if not checksum_valid:
+        issues.append(_issue("RECORD_VERIFICATION_RESPONSE_CHECKSUM_MISSING", f"verification record {record_id} is missing a well-formed response.checksum.", Criticality.CRITICAL))
+    if not isinstance(size, int) or isinstance(size, bool) or size < 0:
+        issues.append(_issue("RECORD_VERIFICATION_RESPONSE_SIZE_MISSING", f"verification record {record_id} is missing response.size_bytes.", Criticality.CRITICAL))
+    if not isinstance(mime, str) or not mime:
+        issues.append(_issue("RECORD_VERIFICATION_RESPONSE_MIME_MISSING", f"verification record {record_id} is missing response.mime.", Criticality.CRITICAL))
+
+    raw_bytes: bytes | None = None
+    data: Any = None
+    disclosure = "undisclosed"
+    content = attachments.get(checksum) if checksum_valid else None
+    if content is not None:
+        if _sha256_hex(content) != checksum:
+            disclosure = "disclosed_mismatch"
+            issues.append(_issue("RECORD_VERIFICATION_RESPONSE_DISCLOSED_MISMATCH", f"verification record {record_id} attachment bytes do not match response.checksum.", Criticality.CRITICAL))
+        else:
+            raw_bytes = content
+            disclosure = "disclosed"
+            if isinstance(size, int) and len(content) != size:
+                issues.append(_issue("RECORD_VERIFICATION_RESPONSE_SIZE_MISMATCH", f"verification record {record_id} disclosed response length does not match response.size_bytes.", Criticality.CRITICAL))
+            if (mime or "").lower().find("json") >= 0 or fmt.lower() == "json":
+                try:
+                    data = json.loads(content)
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    data = None
+    if disclosure != "disclosed" and response.get("data") is not None:
+        issues.append(_issue("RECORD_VERIFICATION_RESPONSE_DATA_WITHOUT_DISCLOSURE", f"verification record {record_id} has response.data without disclosed original bytes.", Criticality.CRITICAL))
+
+    native_verified: bool | None = None
+    ext_verified: bool | None = None
+    unsupported_format = fmt.lower() in _SIGNED_PROVIDER_FORMATS
+    if unsupported_format:
+        issues.append(_issue("RECORD_VERIFICATION_PROVIDER_FORMAT_UNSUPPORTED", f"verification record {record_id} uses unsupported native response format '{fmt}'.", Criticality.WARNING))
+    external = record.get("external_identity") if isinstance(record.get("external_identity"), dict) else {}
+    if external and not unsupported_format:
+        payload = _expected_external_identity_payload(record, "verification")
+        chain = external.get("cert_chain_der")
+        if payload and isinstance(chain, list) and all(isinstance(value, str) and value for value in chain):
+            check = verify_external_identity(ExternalIdentityInputs(
+                endorser_id=str(external.get("endorser_id") or ""),
+                root_fingerprint=str(external.get("root_fingerprint") or ""),
+                cert_chain_der=chain,
+                signature=str(external.get("signature") or ""),
+                expected_payload=payload,
+                trusted_fingerprints=trusted_external_fingerprints,
+            ), revocation_manager=revocation_manager)
+            ext_verified = check.ok
+            if not check.ok:
+                issues.append(_issue("EXTERNAL_IDENTITY_VERIFICATION_FAILED", f"External identity verification failed for verification record {record_id}: {check.reason}", Criticality.CRITICAL))
+
+    collector = record.get("collector_attestation") if isinstance(record.get("collector_attestation"), dict) else None
+    collector_verified: bool | None = None
+    if collector:
+        ca_signature = str(collector.get("signature") or "")
+        ca_alg = str(collector.get("alg") or "")
+        if ca_signature != record.get("signature") or ca_alg != record.get("alg"):
+            issues.append(_issue("RECORD_VERIFICATION_COLLECTOR_ATTESTATION_SIGNATURE_MISMATCH", f"verification record {record_id} collector signature/algorithm differs from top-level fields.", Criticality.CRITICAL))
+        ca_device_id = str(collector.get("device_id") or "")
+        canonical = _recompute_record_canonical_string(record, "verification", block_device_id, block_public_key)
+        if ca_alg != "ED25519" or ca_device_id != block_device_id or not canonical or not block_public_key:
+            collector_verified = False
+            issues.append(_issue("RECORD_VERIFICATION_COLLECTOR_ATTESTATION_INVALID", f"verification record {record_id} collector key cannot be established for offline verification.", Criticality.CRITICAL))
+        else:
+            collector_verified = verify_detached_signature(block_public_key, canonical.encode("utf-8"), ca_signature)
+            if not collector_verified:
+                issues.append(_issue("RECORD_VERIFICATION_COLLECTOR_ATTESTATION_INVALID", f"verification record {record_id} collector signature is invalid.", Criticality.CRITICAL))
+    elif record.get("signature") or record.get("alg"):
+        issues.append(_issue("RECORD_VERIFICATION_COLLECTOR_ATTESTATION_SIGNATURE_MISMATCH", f"verification record {record_id} has device signature fields without collector_attestation.", Criticality.CRITICAL))
+
+    authority_verified = native_verified is True or ext_verified is True
+    assurance = ("unverifiable" if not checksum_valid else
+                 "authority_verified_and_collector_attested" if authority_verified and collector_verified is True else
+                 "authority_verified" if authority_verified else
+                 "unsupported" if unsupported_format else "recorded")
+    result = {
+        "id": record.get("id"), "parent_id": record.get("parent_id"),
+        "scheme": record.get("scheme"), "provider": record.get("provider"),
+        "status": status, "result_code": record.get("result_code"),
+        "checked_at_utc": record.get("checked_at_utc"),
+        "valid_from_utc": record.get("valid_from_utc"), "valid_until_utc": record.get("valid_until_utc"),
+        "response": {"checksum": checksum, "size_bytes": size, "mime": mime, "format": fmt,
+                     "disclosure_state": disclosure, "raw_bytes": raw_bytes, "data": data},
+        "assurance_level": assurance, "collector_attestation_present": collector is not None,
+        "collector_attestation_verified": collector_verified, "external_identity_present": bool(external),
+        "external_identity_verified": ext_verified, "native_signature_verified": native_verified,
+    }
+    return result, issues
 
 
 def _is_safe_zip_entry_name(name: str) -> bool:

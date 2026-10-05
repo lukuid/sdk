@@ -38,3 +38,18 @@ This document lists the error codes produced by LukuID SDK verification function
 | `EXTERNAL_IDENTITY_VERIFICATION_FAILED` | Critical | An external identity endorsement (e.g., third-party signature) failed verification. |
 | `PARENT_RECORD_MISSING` | Critical | An auxiliary record (attachment, location, custody) references a parent record ID that is not present in the archive. |
 | `POLICY_NATIVE_TIME_GAP_UNSPLIT` | Warning | A block contains a native time gap exceeding the policy threshold that should have triggered a block split. |
+| `RECORD_VERIFICATION_STATUS_INVALID` | Critical | An external verification record has a status outside the status values defined by the `.luku` specification. |
+| `RECORD_VERIFICATION_FIELD_MISSING` | Critical | A required external verification field is absent or malformed. |
+| `RECORD_VERIFICATION_RESPONSE_CHECKSUM_MISSING` | Critical | The response does not declare a valid SHA-256 checksum. |
+| `RECORD_VERIFICATION_RESPONSE_SIZE_MISSING` | Critical | The response does not declare its required byte length. |
+| `RECORD_VERIFICATION_RESPONSE_MIME_MISSING` | Critical | The response does not declare its required MIME type. |
+| `RECORD_VERIFICATION_RESPONSE_METADATA_MISSING` | Critical | Required response size or MIME metadata is missing or malformed. |
+| `RECORD_VERIFICATION_RESPONSE_DISCLOSED_MISMATCH` | Critical | Disclosed original response bytes do not match the declared checksum. |
+| `RECORD_VERIFICATION_RESPONSE_SIZE_MISMATCH` | Critical | Disclosed original response length does not match the declared size. |
+| `RECORD_VERIFICATION_RESPONSE_DATA_WITHOUT_DISCLOSURE` | Critical | Parsed response data is included without disclosing the original response bytes. |
+| `RECORD_VERIFICATION_PROVIDER_FORMAT_UNSUPPORTED` | Warning | The SDK cannot independently verify the provider's native signed response format; it is not counted as provider-authenticated. |
+| `RECORD_VERIFICATION_NATIVE_SIGNATURE_INVALID` | Critical | A supported provider-native response signature failed cryptographic verification. |
+| `RECORD_VERIFICATION_COLLECTOR_ATTESTATION_INVALID` | Critical | The collector's detached signature failed cryptographic verification or its signing key could not be established. |
+| `RECORD_VERIFICATION_COLLECTOR_ATTESTATION_SIGNATURE_MISMATCH` | Critical | Collector signature metadata is missing, inconsistent, or not bound to the record's collector attestation. |
+| `RECORD_VERIFICATION_COLLECTOR_ATTESTATION_DEVICE_MISMATCH` | Critical | The collector attestation identifies a device other than the device key available to this verifier. |
+| `RECORD_VERIFICATION_COLLECTOR_ATTESTATION_ALG_UNSUPPORTED` | Critical | The collector attestation uses a signature algorithm this SDK cannot verify. |

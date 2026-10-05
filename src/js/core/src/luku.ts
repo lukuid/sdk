@@ -366,9 +366,29 @@ function normalizeRecordBatch(records: JsonObject[]): JsonObject[] {
   return records.map((record) => ({ ...record }));
 }
 
+/**
+ * Batch Digest Rule special case (LUKU.md, "Signature and Batch Digest Rule
+ * interaction"): a `verification` record is not required to be device-signed.
+ * When it has a top-level `signature` (because `collector_attestation` was
+ * used), it contributes that value like any other record. When it has NO
+ * top-level `signature`, its contribution MUST be `response.checksum`
+ * instead — narrowly scoped to `verification` so it never leaks into other
+ * record types' (including unrecognized ones') contribution, which stays ''.
+ */
+function batchDigestContribution(record: JsonObject): string {
+  const signature = asString(record.signature) ?? '';
+  if (signature.length > 0) {
+    return signature;
+  }
+  if (asString(record.type) === 'verification') {
+    return asString(asJsonObject(record.response)?.checksum) ?? '';
+  }
+  return '';
+}
+
 async function batchHashAsync(batch: JsonObject[]): Promise<string> {
   const joined = batch
-    .map((record) => asString(record.signature) ?? '')
+    .map((record) => batchDigestContribution(record))
     .join(':');
   return sha256Hex(utf8(joined));
 }
@@ -455,6 +475,45 @@ function isAuxRecordType(recordType: string | undefined): boolean {
   return recordType === 'attachment' || recordType === 'location' || recordType === 'custody';
 }
 
+/**
+ * `verification` records are a third record class (see LUKU.md "Record
+ * Classification"): like `attachment`/`location`/`custody` they never
+ * advance native device continuity state, but unlike those types they are
+ * NOT required to carry a device-produced signature at all. Keep this
+ * predicate separate from `isAuxRecordType()` — a `verification` record MAY
+ * carry a top-level `signature`/`alg` ONLY when `collector_attestation` is
+ * present, in which case it is verified against the block device's
+ * `public_key` exactly like an aux record's signature (see call sites below
+ * guarded by `verificationSkipsDeviceSignature`), never by lumping it into
+ * `isAuxRecordType()`.
+ */
+function isVerificationRecordType(recordType: string | undefined): boolean {
+  return recordType === 'verification';
+}
+
+/**
+ * The continuity axis: "does this record advance device continuity/counter/
+ * previous_signature?" Both aux records and `verification` records answer
+ * "no", even though they differ on the device-signature axis (see
+ * `isVerificationRecordType()`). Use this helper at continuity/counter/
+ * chain-state call sites; keep `isAuxRecordType()` reserved for the
+ * device-signature axis.
+ */
+function isNonChainAdvancingRecordType(recordType: string | undefined): boolean {
+  return isAuxRecordType(recordType) || isVerificationRecordType(recordType);
+}
+
+/**
+ * A `verification` record only claims the device-signature axis (and must
+ * therefore verify like an aux record's signature) when it carries a
+ * top-level `signature` or a `collector_attestation` — otherwise it is not
+ * required to be device-signed at all and signature checks must be skipped
+ * entirely (not treated as a failure).
+ */
+function verificationRecordHasDeviceSignature(record: JsonObject, signature: string): boolean {
+  return signature.length > 0 || Boolean(asJsonObject(record.collector_attestation));
+}
+
 function recordTimestampUtc(record: JsonObject): number | undefined {
   return asNumber(asJsonObject(record.payload)?.timestamp_utc)
     ?? asNumber(record.timestamp_utc)
@@ -512,6 +571,16 @@ function expectedExternalIdentityPayload(record: JsonObject, recordType: string)
       const payload = asJsonObject(record.payload);
       // Field order is alphabetical per LUKU.md: context_ref, event, status.
       return `${asString(payload?.context_ref) ?? ''}:${asString(payload?.event) ?? ''}:${asString(payload?.status) ?? ''}:${endorserId}`;
+    }
+    case 'verification': {
+      // This is ONLY the "plain structured response, out-of-band countersignature"
+      // sub-case from LUKU.md's "External Verification (verification)" section.
+      // Self-describing signed formats (JWS/COSE/CMS/XMLDSig/mdoc, ...) carry their
+      // own signature inside the preserved response bytes; that case is verified
+      // natively against the preserved bytes (see verifyCompactJws()) and never
+      // through this detached-payload path, even though external_identity.* MAY
+      // also be populated as a convenience projection in that case.
+      return verificationSignaturePayload(record, endorserId);
     }
     default:
       return null;
@@ -732,6 +801,36 @@ function recomputeCustodyCanonicalString(record: JsonObject, deviceId: string, p
 }
 
 /**
+ * Fixed LUKU.md 1.1.0 detached payload for external identity and collector
+ * attestation. The signer field is selected by the signature mechanism.
+ */
+function verificationSignaturePayload(record: JsonObject, signerId: string): string {
+  const response = asJsonObject(record.response);
+  const subject = asJsonObject(record.subject);
+  const scheme = asString(record.scheme) ?? '';
+  const provider = asString(record.provider) ?? '';
+  const checkedAtUtc = formatCanonicalField(record.checked_at_utc, 'int');
+  const status = asString(record.status) ?? '';
+  const fields = [
+    asString(response?.checksum) ?? '', scheme, provider, checkedAtUtc, status,
+    asString(record.result_code) ?? '', asString(subject?.type) ?? '',
+    asString(subject?.identifier) ?? '', asString(subject?.commitment) ?? '',
+    formatCanonicalField(record.valid_from_utc, 'int'),
+    formatCanonicalField(record.valid_until_utc, 'int'), signerId
+  ];
+  return fields.join(':');
+}
+
+function recomputeVerificationCanonicalString(record: JsonObject): string {
+  const collector = asJsonObject(record.collector_attestation);
+  const externalIdentity = asJsonObject(record.external_identity);
+  return verificationSignaturePayload(
+    record,
+    asString(collector?.device_id) ?? asString(externalIdentity?.endorser_id) ?? ''
+  );
+}
+
+/**
  * Independently recomputes a record's canonical string from its own
  * structural + content fields, per the new Field Order rule in LUKU.md.
  * Returns null only when the record type (or, for `scan`, the `profile`)
@@ -758,9 +857,601 @@ export function recomputeRecordCanonicalString(
       return recomputeLocationCanonicalString(record, deviceId, publicKey);
     case 'custody':
       return recomputeCustodyCanonicalString(record, deviceId, publicKey);
+    case 'verification':
+      return recomputeVerificationCanonicalString(record);
     default:
       return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// `verification` record support
+// ---------------------------------------------------------------------------
+//
+// A `verification` record captures the outcome of an external registry/
+// marketplace/authority/customs/compliance check against existing evidence
+// (see LUKU.md "External Verification (`verification`)"). It is a distinct
+// third record class: it never advances native continuity (like aux
+// records), but unlike aux records it is NOT required to carry a device
+// signature at all (see `isVerificationRecordType()` / `isAuxRecordType()`
+// above).
+
+/** The three response-disclosure states a verifier MUST distinguish for a
+ * `verification` record, independent of (never collapsed into) the
+ * assurance level below. See LUKU.md's "Critical response-preservation
+ * rule" / point 9. */
+export type VerificationResponseDisclosureState = 'disclosed' | 'undisclosed' | 'disclosed_mismatch';
+
+/**
+ * Assurance levels for a `verification` record, reported separately from
+ * (never collapsed into) general `.luku` archive validity. The first three
+ * values are exactly LUKU.md's "Assurance levels" table. `unsupported` is an
+ * explicit extension requested by this feature's implementation brief for
+ * the case where the provider's response format is a recognized
+ * signed/opaque format (JWT/JWS, COSE, CMS, XMLDSig, mdoc, ...) that this
+ * SDK does not (yet) natively verify — callers must never treat that as a
+ * silent pass nor as a hard failure of the whole record. `unverifiable`
+ * covers the degenerate case where `response.checksum` itself is missing or
+ * malformed, so even `recorded` cannot be reached.
+ */
+export type VerificationAssuranceLevel =
+  | 'recorded'
+  | 'authority_verified'
+  | 'authority_verified_and_collector_attested'
+  | 'unsupported'
+  | 'unverifiable';
+
+export interface VerificationRecordResponseResult {
+  checksum: string;
+  sizeBytes: number | null;
+  mime: string | null;
+  format: string | null;
+  disclosureState: VerificationResponseDisclosureState;
+  /** The exact original response bytes. Legitimately `null` (not an error)
+   * whenever `disclosureState !== 'disclosed'` — never an empty array. */
+  rawBytes: Uint8Array | null;
+  /** Non-authoritative convenience projection of `rawBytes`, parsed fresh
+   * from the disclosed bytes (never from the record's own stored
+   * `response.data`, and never used for cryptographic verification). `null`
+   * when undisclosed, non-JSON, or unparsable — never an error by itself. */
+  data: JsonValue | null;
+}
+
+export interface VerificationRecordResult {
+  id: string | null;
+  parentId: string | null;
+  scheme: string | null;
+  provider: string | null;
+  status: string | null;
+  resultCode: string | null;
+  checkedAtUtc: number | null;
+  validFromUtc: number | null;
+  validUntilUtc: number | null;
+  response: VerificationRecordResponseResult;
+  /** Distinct from, and reported alongside, `response.disclosureState` and
+   * overall archive validity — never inferred from either. */
+  assuranceLevel: VerificationAssuranceLevel;
+  collectorAttestationPresent: boolean;
+  collectorAttestationVerified: boolean | null;
+  externalIdentityPresent: boolean;
+  externalIdentityVerified: boolean | null;
+  /** Set only when `response.format` is a self-describing signed format this
+   * SDK natively verifies (currently JWS compact serialization). `null` when
+   * not attempted (unsupported format, or bytes undisclosed). */
+  nativeSignatureVerified: boolean | null;
+}
+
+const VERIFICATION_STATUS_VALUES = new Set([
+  'verified',
+  'not_verified',
+  'not_found',
+  'mismatch',
+  'expired',
+  'revoked',
+  'unavailable',
+  'unsupported',
+  'indeterminate'
+]);
+
+// Signed/opaque provider response formats named in LUKU.md's "Signed or
+// opaque provider formats" paragraph. This SDK currently only implements
+// native verification for JWS/JWT compact serialization; every other member
+// of this set is a recognized-but-unsupported format (assurance
+// `unsupported`, never silently verified, never a hard failure).
+const SELF_DESCRIBING_SIGNED_FORMATS = new Set([
+  'jwt', 'jws', 'sd-jwt', 'cose', 'cose_sign1', 'cbor', 'mdoc',
+  'xml', 'xmldsig', 'cms', 'pkcs7', 'protobuf', 'opaque', 'eudi_wallet'
+]);
+const NATIVELY_SUPPORTED_SIGNED_FORMATS = new Set(['jwt', 'jws']);
+
+function base64UrlDecode(value: string): Uint8Array | null {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/').replace(/\s+/g, '');
+  const padding = normalized.length % 4 === 0 ? '' : '='.repeat(4 - (normalized.length % 4));
+  return decodeBase64(normalized + padding);
+}
+
+interface JwsVerifyResult {
+  ok: boolean;
+  alg?: string;
+  reason?: string;
+}
+
+/**
+ * Native verification for JWS compact serialization (`header.payload.signature`,
+ * base64url, 3 dot-separated parts), supporting `alg: "EdDSA"` (Ed25519) and
+ * `alg: "ES256"` (ECDSA P-256 / SHA-256). Reuses exactly the WebCrypto
+ * `Ed25519`/`ECDSA P-256` primitives already used throughout this file and
+ * `attestation.ts` — no new crypto dependency.
+ *
+ * Operates on the preserved original bytes directly, per LUKU.md's "Signed or
+ * opaque provider formats" rule — never on `response.data`. The verification
+ * key is read from an embedded `jwk` header parameter (the JWS is
+ * "self-describing": the key travels with the artifact itself). Any other
+ * `alg`, or a JWS with no embedded `jwk`, is reported as unsupported/failed
+ * here and surfaces as assurance `unsupported` to the caller rather than a
+ * silent pass or a hard archive-level failure.
+ */
+async function verifyCompactJws(bytes: Uint8Array): Promise<JwsVerifyResult> {
+  let text: string;
+  try {
+    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return { ok: false, reason: 'Response bytes are not valid UTF-8 text; cannot parse as JWS compact serialization' };
+  }
+  const parts = text.trim().split('.');
+  if (parts.length !== 3) {
+    return { ok: false, reason: 'Response is not a 3-part JWS compact serialization' };
+  }
+  const [headerPart, payloadPart, signaturePart] = parts;
+  const headerBytes = base64UrlDecode(headerPart);
+  const signatureBytes = base64UrlDecode(signaturePart);
+  if (!headerBytes || !signatureBytes) {
+    return { ok: false, reason: 'JWS header or signature is not valid base64url' };
+  }
+  let header: JsonObject;
+  try {
+    header = ensureJsonObject(JSON.parse(new TextDecoder().decode(headerBytes)), 'JWS header');
+  } catch {
+    return { ok: false, reason: 'JWS header is not valid JSON' };
+  }
+  const alg = asString(header.alg);
+  if (alg !== 'EdDSA' && alg !== 'ES256') {
+    return { ok: false, alg, reason: `Unsupported JWS alg: ${alg ?? 'missing'}` };
+  }
+  const jwk = asJsonObject(header.jwk);
+  if (!jwk) {
+    return { ok: false, alg, reason: 'JWS header does not embed a "jwk" verification key' };
+  }
+  const signingInput = utf8(`${headerPart}.${payloadPart}`);
+  try {
+    const subtle = getSubtleCrypto();
+    if (alg === 'EdDSA') {
+      if (asString(jwk.kty) !== 'OKP' || asString(jwk.crv) !== 'Ed25519' || !asString(jwk.x)) {
+        return { ok: false, alg, reason: 'JWS "jwk" is not a valid Ed25519 OKP key' };
+      }
+      const key = await subtle.importKey('jwk', jwk as unknown as JsonWebKey, { name: 'Ed25519' }, false, ['verify']);
+      const verified = await subtle.verify('Ed25519', key, toArrayBuffer(signatureBytes), toArrayBuffer(signingInput));
+      return verified ? { ok: true, alg } : { ok: false, alg, reason: 'JWS Ed25519 signature verification failed' };
+    }
+    if (asString(jwk.kty) !== 'EC' || asString(jwk.crv) !== 'P-256' || !asString(jwk.x) || !asString(jwk.y)) {
+      return { ok: false, alg, reason: 'JWS "jwk" is not a valid P-256 EC key' };
+    }
+    const key = await subtle.importKey('jwk', jwk as unknown as JsonWebKey, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+    const verified = await subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, key, toArrayBuffer(signatureBytes), toArrayBuffer(signingInput));
+    return verified ? { ok: true, alg } : { ok: false, alg, reason: 'JWS ES256 signature verification failed' };
+  } catch (error) {
+    return { ok: false, alg, reason: `JWS verification error: ${error instanceof Error ? error.message : String(error)}` };
+  }
+}
+
+/**
+ * The full per-record `verification` check (LUKU.md "7a. External
+ * Verification (`verification`) Record Check"), shared by `verifyEnvelope()`
+ * and the archive-level `verify()` loop. Resolves/hashes the `response`
+ * attachment via the existing `attachments/` content-addressing map (the
+ * same map `attachment` records resolve against — no second blob store),
+ * reports the response-disclosure state, optionally verifies the provider's
+ * native signature or the `external_identity` detached-signature sub-case,
+ * optionally verifies `collector_attestation`, and computes the assurance
+ * level. Never infers authority verification from overall archive validity
+ * (LUKU.md 7a, point 10).
+ */
+async function evaluateVerificationRecord(
+  record: JsonObject,
+  attachments: Map<string, Uint8Array> | undefined,
+  blockDeviceId: string | undefined,
+  blockPublicKey: string | undefined,
+  trustedExternalFingerprints: string[]
+): Promise<{ issues: VerificationIssue[]; result: VerificationRecordResult }> {
+  const issues: VerificationIssue[] = [];
+  const id = asString(record.id) ?? null;
+  const parentId = asString(record.parent_id) ?? asString(record.parent_record_id) ?? null;
+  const scheme = asString(record.scheme) ?? null;
+  const provider = asString(record.provider) ?? null;
+  const status = asString(record.status) ?? null;
+  const resultCode = asString(record.result_code) ?? null;
+  const checkedAtUtc = asNumber(record.checked_at_utc) ?? null;
+  const validFromUtc = asNumber(record.valid_from_utc) ?? null;
+  const validUntilUtc = asNumber(record.valid_until_utc) ?? null;
+
+  if (status !== null && !VERIFICATION_STATUS_VALUES.has(status)) {
+    issues.push(issue('RECORD_VERIFICATION_STATUS_INVALID', `verification record ${id ?? 'unknown'} has an unrecognized status '${status}'.`, 'critical'));
+  }
+
+  const responseObject = asJsonObject(record.response);
+  const checksum = (asString(responseObject?.checksum) ?? '').toLowerCase();
+  const sizeBytes = asNumber(responseObject?.size_bytes) ?? null;
+  const mime = asString(responseObject?.mime) ?? null;
+  const format = asString(responseObject?.format) ?? null;
+  const storedData = responseObject?.data;
+  const checksumWellFormed = /^[0-9a-f]{64}$/.test(checksum);
+
+  if (!checksumWellFormed) {
+    issues.push(issue('RECORD_VERIFICATION_RESPONSE_CHECKSUM_MISSING', `verification record ${id ?? 'unknown'} is missing a well-formed response.checksum.`, 'critical'));
+  }
+  if (sizeBytes === null) {
+    issues.push(issue('RECORD_VERIFICATION_RESPONSE_SIZE_MISSING', `verification record ${id ?? 'unknown'} is missing response.size_bytes.`, 'critical'));
+  }
+  if (!mime) {
+    issues.push(issue('RECORD_VERIFICATION_RESPONSE_MIME_MISSING', `verification record ${id ?? 'unknown'} is missing response.mime.`, 'critical'));
+  }
+
+  let disclosureState: VerificationResponseDisclosureState = 'undisclosed';
+  let rawBytes: Uint8Array | null = null;
+  let data: JsonValue | null = null;
+
+  const content = checksumWellFormed ? attachments?.get(checksum) : undefined;
+  if (content) {
+    const actualHash = await sha256Hex(content);
+    if (actualHash !== checksum) {
+      disclosureState = 'disclosed_mismatch';
+      issues.push(issue(
+        'RECORD_VERIFICATION_RESPONSE_DISCLOSED_MISMATCH',
+        `verification record ${id ?? 'unknown'} has a disclosed response attachment whose bytes do not reproduce response.checksum.`,
+        'critical'
+      ));
+    } else {
+      disclosureState = 'disclosed';
+      rawBytes = content;
+      if (sizeBytes !== null && content.length !== sizeBytes) {
+        issues.push(issue(
+          'RECORD_VERIFICATION_RESPONSE_SIZE_MISMATCH',
+          `verification record ${id ?? 'unknown'} response.size_bytes (${sizeBytes}) does not match the disclosed attachment length (${content.length}).`,
+          'critical'
+        ));
+      }
+      const isSelfDescribingSignedFormat = format !== null && SELF_DESCRIBING_SIGNED_FORMATS.has(format.toLowerCase());
+      const looksLikeJson = (mime ?? '').toLowerCase().includes('json') || (format ?? '').toLowerCase() === 'json';
+      if (!isSelfDescribingSignedFormat && (looksLikeJson || (!mime && !format))) {
+        try {
+          const text = new TextDecoder('utf-8', { fatal: true }).decode(content);
+          data = JSON.parse(text) as JsonValue;
+        } catch {
+          data = null;
+        }
+      }
+    }
+  }
+
+  if (disclosureState !== 'disclosed' && storedData !== undefined && storedData !== null) {
+    issues.push(issue(
+      'RECORD_VERIFICATION_RESPONSE_DATA_WITHOUT_DISCLOSURE',
+      `verification record ${id ?? 'unknown'} has response.data present without a disclosed response attachment; response.data is never an independent disclosure channel.`,
+      'critical'
+    ));
+  }
+
+  let nativeSignatureVerified: boolean | null = null;
+  let externalIdentityVerified: boolean | null = null;
+  let providerFormatUnsupported = false;
+
+  if (format !== null && SELF_DESCRIBING_SIGNED_FORMATS.has(format.toLowerCase())) {
+    if (!NATIVELY_SUPPORTED_SIGNED_FORMATS.has(format.toLowerCase())) {
+      providerFormatUnsupported = true;
+      issues.push(issue(
+        'RECORD_VERIFICATION_PROVIDER_FORMAT_UNSUPPORTED',
+        `verification record ${id ?? 'unknown'} uses provider response format '${format}', which this SDK cannot natively verify; reporting assurance as unsupported rather than verified or failed.`,
+        'info'
+      ));
+    } else if (disclosureState === 'disclosed' && rawBytes) {
+      const jwsResult = await verifyCompactJws(rawBytes);
+      nativeSignatureVerified = jwsResult.ok;
+      if (!jwsResult.ok) {
+        issues.push(issue(
+          'RECORD_VERIFICATION_NATIVE_SIGNATURE_INVALID',
+          `verification record ${id ?? 'unknown'} failed native ${format} signature verification: ${jwsResult.reason ?? 'unknown error'}`,
+          'critical'
+        ));
+      }
+    }
+    // Self-describing format but bytes undisclosed: cannot be checked natively.
+    // Not a failure — simply leaves nativeSignatureVerified as null (unattempted).
+  } else {
+    // Plain response: the only remaining way to reach authority_verified is the
+    // external_identity detached-signature sub-case, which only needs
+    // response.checksum and so works even in the `undisclosed` state.
+    const externalIdentity = asJsonObject(record.external_identity);
+    if (externalIdentity) {
+      const expectedPayload = expectedExternalIdentityPayload(record, 'verification');
+      const endorserId = asString(externalIdentity.endorser_id);
+      const rootFingerprint = asString(externalIdentity.root_fingerprint);
+      const extSignature = asString(externalIdentity.signature);
+      const certChainDer = asJsonArray(externalIdentity.cert_chain_der)
+        ?.map((value) => asString(value))
+        .filter((value): value is string => Boolean(value));
+
+      if (expectedPayload && endorserId && rootFingerprint && extSignature && certChainDer?.length) {
+        const result = await verifyExternalIdentity({
+          endorserId,
+          rootFingerprint,
+          certChainDer,
+          signature: extSignature,
+          expectedPayload,
+          trustedFingerprints: trustedExternalFingerprints
+        });
+        externalIdentityVerified = result.ok;
+        if (!result.ok) {
+          issues.push(issue(
+            'EXTERNAL_IDENTITY_VERIFICATION_FAILED',
+            `External identity verification failed for verification record ${id ?? 'unknown'}: ${result.reason ?? 'unknown error'}`,
+            'critical'
+          ));
+        }
+      }
+    }
+  }
+
+  const collectorAttestation = asJsonObject(record.collector_attestation);
+  let collectorAttestationVerified: boolean | null = null;
+  if (collectorAttestation) {
+    const caDeviceId = asString(collectorAttestation.device_id);
+    const caAlg = asString(collectorAttestation.alg);
+    const caSignature = asString(collectorAttestation.signature);
+    const topSignature = asString(record.signature);
+    const topAlg = asString(record.alg);
+
+    if (caSignature !== topSignature || caAlg !== topAlg) {
+      issues.push(issue(
+        'RECORD_VERIFICATION_COLLECTOR_ATTESTATION_SIGNATURE_MISMATCH',
+        `verification record ${id ?? 'unknown'} top-level signature/alg does not equal collector_attestation.signature/alg.`,
+        'critical'
+      ));
+    }
+    if (blockDeviceId && caDeviceId && caDeviceId !== blockDeviceId) {
+      issues.push(issue(
+        'RECORD_VERIFICATION_COLLECTOR_ATTESTATION_DEVICE_MISMATCH',
+        `verification record ${id ?? 'unknown'} collector_attestation.device_id (${caDeviceId}) does not match block device ${blockDeviceId}.`,
+        'critical'
+      ));
+    }
+    if (caAlg !== 'ED25519') {
+      collectorAttestationVerified = false;
+      issues.push(issue(
+        'RECORD_VERIFICATION_COLLECTOR_ATTESTATION_ALG_UNSUPPORTED',
+        `verification record ${id ?? 'unknown'} collector_attestation uses unsupported alg '${caAlg ?? 'missing'}'.`,
+        'critical'
+      ));
+    } else if (caSignature && blockPublicKey && !!caDeviceId && !!blockDeviceId && caDeviceId === blockDeviceId) {
+      const canonical = recomputeVerificationCanonicalString(record);
+      const verified = await verifyRecordSignature(blockPublicKey, caSignature, canonical);
+      collectorAttestationVerified = verified;
+      if (!verified) {
+        issues.push(issue(
+          'RECORD_VERIFICATION_COLLECTOR_ATTESTATION_INVALID',
+          `verification record ${id ?? 'unknown'} collector_attestation signature failed to verify against the block device public key.`,
+          'critical'
+        ));
+      }
+    } else {
+      collectorAttestationVerified = false;
+      issues.push(issue(
+        'RECORD_VERIFICATION_COLLECTOR_ATTESTATION_INVALID',
+        `verification record ${id ?? 'unknown'} collector_attestation is missing signature material or no block device public key is available.`,
+        'critical'
+      ));
+    }
+  }
+
+  const authorityVerified = nativeSignatureVerified === true || externalIdentityVerified === true;
+  let assuranceLevel: VerificationAssuranceLevel;
+  if (!checksumWellFormed) {
+    assuranceLevel = 'unverifiable';
+  } else if (authorityVerified && collectorAttestationVerified === true) {
+    assuranceLevel = 'authority_verified_and_collector_attested';
+  } else if (authorityVerified) {
+    assuranceLevel = 'authority_verified';
+  } else if (providerFormatUnsupported) {
+    assuranceLevel = 'unsupported';
+  } else {
+    assuranceLevel = 'recorded';
+  }
+
+  const result: VerificationRecordResult = {
+    id,
+    parentId,
+    scheme,
+    provider,
+    status,
+    resultCode,
+    checkedAtUtc,
+    validFromUtc,
+    validUntilUtc,
+    response: { checksum, sizeBytes, mime, format, disclosureState, rawBytes, data },
+    assuranceLevel,
+    collectorAttestationPresent: Boolean(collectorAttestation),
+    collectorAttestationVerified,
+    externalIdentityPresent: Boolean(asJsonObject(record.external_identity)),
+    externalIdentityVerified,
+    nativeSignatureVerified
+  };
+
+  return { issues, result };
+}
+
+function attachmentContentAddressPath(checksum: string): string {
+  const dir1 = checksum.length >= 2 ? checksum.slice(0, 2) : '00';
+  const dir2 = checksum.length >= 4 ? checksum.slice(2, 4) : '00';
+  return `attachments/${dir1}/${dir2}/${checksum}`;
+}
+
+export interface VerificationResponseInput {
+  /** The exact original response body bytes, captured BEFORE any JSON
+   * parsing, normalization, re-encoding, or decompression. This is the only
+   * accepted primary input — there is deliberately no overload that accepts
+   * only a parsed object, so callers cannot accidentally fabricate "raw
+   * bytes" by re-serializing one (see LUKU.md's response-preservation rule).
+   */
+  rawBytes: Uint8Array;
+  mime: string;
+  format?: string;
+  statusCode?: number;
+  contentEncoding?: string;
+  providerRequestId?: string;
+  reference?: string;
+  /**
+   * Whether to additionally store `rawBytes` as a content-addressed
+   * attachment (and expose a parsed `response.data` projection of it) in
+   * this archive. Defaults to `true`. Pass `false` to commit only to
+   * `checksum`/`size_bytes`/`mime` for privacy (the `undisclosed` state) —
+   * hashing is mandatory, disclosure is optional.
+   */
+  disclose?: boolean;
+  /**
+   * Explicit parsed JSON projection to store as `response.data`. Only used
+   * when `disclose` is not `false`. If omitted and the bytes parse as JSON,
+   * `buildVerificationRecord()` derives this itself from `rawBytes` (never
+   * from a caller-supplied object with no bytes behind it).
+   */
+  data?: JsonValue;
+}
+
+export interface VerificationCollectorAttestationInput {
+  deviceId: string;
+  alg: string;
+  signature: string;
+  attestedAtUtc: number;
+}
+
+export interface BuildVerificationRecordInput {
+  id: string;
+  version?: string;
+  parentId?: string;
+  parentSignature?: string;
+  scheme: string;
+  provider: string;
+  checkedAtUtc: number;
+  validFromUtc?: number;
+  validUntilUtc?: number;
+  status: string;
+  resultCode?: string;
+  subject?: JsonObject;
+  response: VerificationResponseInput;
+  externalIdentity?: JsonObject;
+  /** Pre-computed collector attestation (sign the payload returned by
+   * `verificationCollectorAttestationPayload()` with the device's private
+   * key to produce `signature`). When present, the built record's top-level
+   * `alg`/`signature` are set to match, per LUKU.md. */
+  collectorAttestation?: VerificationCollectorAttestationInput;
+}
+
+export interface BuiltVerificationRecord {
+  record: JsonObject;
+  /** Present only when the response was disclosed; add this to the
+   * archive's attachment map (e.g. via `addAttachmentAsync()`) before
+   * exporting. */
+  attachment?: { checksum: string; bytes: Uint8Array };
+}
+
+/**
+ * Computes the exact detached canonical payload `collector_attestation.signature`
+ * must sign (LUKU.md 1.1.0 normalized verification payload), given the record
+ * as it will be built (i.e. after `buildVerificationRecord()` has computed
+ * `response.checksum`). Callers sign this payload with the collecting
+ * device's private key to produce `collectorAttestation.signature` before
+ * passing it back into `buildVerificationRecord()`.
+ */
+export function verificationCollectorAttestationPayload(record: JsonObject): string {
+  return recomputeVerificationCanonicalString(record);
+}
+
+/**
+ * Exporter/builder for `verification` records. Accepts raw response bytes as
+ * the primary input (see `VerificationResponseInput.rawBytes`) — it never
+ * reconstructs "raw bytes" by serializing a parsed object. Hashing
+ * (`response.checksum`/`size_bytes`/`mime`) is always computed; disclosing
+ * the bytes as a content-addressed attachment (and the `response.data`
+ * projection) is the caller's explicit, optional choice via
+ * `response.disclose`.
+ */
+export async function buildVerificationRecord(input: BuildVerificationRecordInput): Promise<BuiltVerificationRecord> {
+  if (!(input.response?.rawBytes instanceof Uint8Array)) {
+    throw new Error(
+      'buildVerificationRecord() requires response.rawBytes (the exact original captured response bytes) as its primary input; ' +
+      'it never derives raw bytes by serializing a parsed object.'
+    );
+  }
+  const rawBytes = input.response.rawBytes;
+  const checksum = await sha256Hex(rawBytes);
+  const disclose = input.response.disclose ?? true;
+
+  let data: JsonValue | undefined = disclose ? input.response.data : undefined;
+  if (disclose && data === undefined) {
+    try {
+      const text = new TextDecoder('utf-8', { fatal: true }).decode(rawBytes);
+      data = JSON.parse(text) as JsonValue;
+    } catch {
+      data = undefined;
+    }
+  }
+
+  const response: JsonObject = {
+    mime: input.response.mime,
+    checksum,
+    size_bytes: rawBytes.length,
+    attachment_path: disclose ? attachmentContentAddressPath(checksum) : null,
+    ...(input.response.format ? { format: input.response.format } : {}),
+    ...(input.response.statusCode !== undefined ? { status_code: input.response.statusCode } : {}),
+    ...(input.response.contentEncoding ? { content_encoding: input.response.contentEncoding } : {}),
+    ...(input.response.providerRequestId ? { provider_request_id: input.response.providerRequestId } : {}),
+    ...(input.response.reference ? { reference: input.response.reference } : {}),
+    ...(data !== undefined ? { data } : {})
+  };
+
+  const record: JsonObject = {
+    type: 'verification',
+    id: input.id,
+    version: input.version ?? '1.0.0',
+    ...(input.parentId ? { parent_id: input.parentId } : {}),
+    ...(input.parentSignature ? { parent_signature: input.parentSignature } : {}),
+    scheme: input.scheme,
+    provider: input.provider,
+    checked_at_utc: input.checkedAtUtc,
+    ...(input.validFromUtc !== undefined ? { valid_from_utc: input.validFromUtc } : {}),
+    ...(input.validUntilUtc !== undefined ? { valid_until_utc: input.validUntilUtc } : {}),
+    status: input.status,
+    ...(input.resultCode ? { result_code: input.resultCode } : {}),
+    ...(input.subject ? { subject: input.subject } : {}),
+    response,
+    ...(input.externalIdentity ? { external_identity: input.externalIdentity } : {})
+  };
+
+  if (input.collectorAttestation) {
+    record.collector_attestation = {
+      device_id: input.collectorAttestation.deviceId,
+      alg: input.collectorAttestation.alg,
+      signature: input.collectorAttestation.signature,
+      attested_at_utc: input.collectorAttestation.attestedAtUtc
+    };
+    record.alg = input.collectorAttestation.alg;
+    record.signature = input.collectorAttestation.signature;
+  }
+
+  record.canonical_string = recomputeVerificationCanonicalString(record);
+
+  return {
+    record,
+    attachment: disclose ? { checksum, bytes: rawBytes } : undefined
+  };
 }
 
 function applyExportOptionsToManifestExtra(
@@ -938,13 +1629,21 @@ export class LukuFile {
 
     const recordType = asString(envelope.type) ?? 'unknown';
     const isAuxRecord = isAuxRecordType(recordType);
+    const isVerificationRecord = isVerificationRecordType(recordType);
+    const isNonChainAdvancing = isAuxRecord || isVerificationRecord;
     const payload = asJsonObject(envelope.payload) ?? {};
-    
+
     const device = asJsonObject(envelope.device);
     const deviceId = asString(envelope.device_id) ?? asString(device?.device_id);
     const publicKey = asString(envelope.public_key) ?? asString(device?.public_key);
     const vendor = asString(envelope.vendor) ?? asString(device?.vendor);
     const signature = asString(envelope.signature) ?? '';
+    // `verification` is the one record class that is not required to carry a
+    // device signature at all — only attempt the device-signature axis
+    // (DAC/heartbeat requiredness, canonical+signature checks below) when it
+    // actually claims one (collector_attestation present, or a top-level
+    // signature already set).
+    const verificationSkipsDeviceSignature = isVerificationRecord && !verificationRecordHasDeviceSignature(envelope, signature);
 
     if (!vendor) {
       issues.push(issue('DEVICE_VENDOR_MISSING', `Device vendor is missing for device ${deviceId ?? 'unknown'}.`, 'critical'));
@@ -960,11 +1659,11 @@ export class LukuFile {
       issues.push(issue('DEVICE_IDENTITY_MISSING', 'Envelope is missing device_id or public_key.', 'critical'));
     }
 
-    if (!isAuxRecord && counter === 0 && genesisHash.length > 0 && previousSignature.length > 0 && previousSignature !== genesisHash) {
+    if (!isNonChainAdvancing && counter === 0 && genesisHash.length > 0 && previousSignature.length > 0 && previousSignature !== genesisHash) {
       issues.push(issue('GENESIS_HASH_MISMATCH', `Genesis record (ctr=0) for device ${deviceId ?? 'unknown'} has previous_signature that does not match genesis_hash.`, 'critical'));
     }
 
-    if (!allowUntrustedRoots) {
+    if (!allowUntrustedRoots && !verificationSkipsDeviceSignature) {
       const identity = asJsonObject(envelope.identity);
       let attestationChain = '';
       
@@ -1078,7 +1777,12 @@ export class LukuFile {
     }
     const canonicalForSignature = recomputedCanonical ?? canonicalStringValue;
 
-    if (canonicalForSignature.length === 0) {
+    if (verificationSkipsDeviceSignature) {
+      // A `verification` record with no collector_attestation and no
+      // top-level signature is not required to be device-signed at all
+      // (LUKU.md "External Verification (`verification`)"); skip entirely
+      // rather than flagging a missing canonical string/signature.
+    } else if (canonicalForSignature.length === 0) {
       issues.push(issue('RECORD_CANONICAL_MISSING', `Record type ${recordType} does not include a canonical_string.`, 'critical'));
     } else if (signature.length === 0) {
       issues.push(issue('RECORD_SIGNATURE_MISSING', `Record type ${recordType} is missing a signature.`, 'critical'));
@@ -1134,6 +1838,17 @@ export class LukuFile {
             ));
           }
         }
+    }
+
+    if (isVerificationRecord) {
+      const { issues: verificationIssues } = await evaluateVerificationRecord(
+        envelope,
+        options.attachments,
+        deviceId,
+        publicKey,
+        options.trustedExternalFingerprints ?? []
+      );
+      issues.push(...verificationIssues);
     }
 
     return issues;
@@ -1221,13 +1936,13 @@ export class LukuFile {
 
     for (const record of records) {
       const recordType = asString(record.type) ?? 'unknown';
-      const isAuxRecord = isAuxRecordType(recordType);
+      const isNonChainAdvancing = isNonChainAdvancingRecordType(recordType);
       const timestampUtc = recordTimestampUtc(record);
       const previousSignature = asString(record.previous_signature);
       const signature = asString(record.signature);
 
       let shouldSplit = false;
-      if (!isAuxRecord) {
+      if (!isNonChainAdvancing) {
         if (lastSignature && previousSignature && previousSignature.length > 0 && previousSignature !== lastSignature) {
           shouldSplit = true;
         }
@@ -1248,7 +1963,7 @@ export class LukuFile {
 
       currentBatch.push(record);
 
-      if (!isAuxRecord) {
+      if (!isNonChainAdvancing) {
         if (signature && signature.length > 0) {
           lastSignature = signature;
         }
@@ -1445,6 +2160,36 @@ export class LukuFile {
     this.sealsRaw = await createSelfSealFile(this.manifestRaw);
   }
 
+  async appendVerificationRecord(
+    record: JsonObject,
+    responseBytes: Uint8Array | undefined,
+    device: LukuDeviceIdentity,
+    signer: LukuExporterSigner
+  ): Promise<void> {
+    if (asString(record.type) !== 'verification') {
+      throw new Error('appendVerificationRecord() requires a verification record');
+    }
+    const response = asJsonObject(record.response);
+    const checksum = asString(response?.checksum);
+    const sizeBytes = asNumber(response?.size_bytes);
+    if (!checksum || !/^[0-9a-f]{64}$/.test(checksum) || sizeBytes === undefined || !Number.isSafeInteger(sizeBytes) || sizeBytes < 0) {
+      throw new Error('verification response requires response.checksum and response.size_bytes');
+    }
+    const appended = structuredClone(record);
+    const appendedResponse = asJsonObject(appended.response)!;
+    if (responseBytes) {
+      if (await sha256Hex(responseBytes) !== checksum || responseBytes.length !== sizeBytes) {
+        throw new Error('exact response bytes do not match response.checksum/size_bytes');
+      }
+      this.attachments.set(checksum, responseBytes);
+      appendedResponse.attachment_path = `attachments/${checksum.slice(0, 2)}/${checksum.slice(2, 4)}/${checksum}`;
+    } else if (appendedResponse.data !== undefined) {
+      throw new Error('response.data requires disclosed original response bytes');
+    }
+    appended.response = appendedResponse;
+    await this.append([appended], device, signer);
+  }
+
   async merge(other: LukuFile, signer: LukuExporterSigner): Promise<void> {
     for (const incoming of other.blocks) {
       const normalized = {
@@ -1597,13 +2342,20 @@ export class LukuFile {
 
       for (const record of block.batch) {
         const recordType = asString(record.type) ?? 'unknown';
-        const isAuxRecord = recordType === 'attachment' || recordType === 'location' || recordType === 'custody';
+        const isAuxRecord = isAuxRecordType(recordType);
+        const isVerificationRecord = isVerificationRecordType(recordType);
+        const isNonChainAdvancing = isAuxRecord || isVerificationRecord;
         const isCompatAttachment = asBoolean(record._compat_nested_attachment) ?? false;
         const payload = asJsonObject(record.payload);
         const deviceId = asString(record.device_id) ?? block.device.device_id;
         const publicKey = asString(record.public_key) ?? block.device.public_key;
         const vendor = asString(record.vendor) ?? block.device.vendor;
         const signature = asString(record.signature) ?? '';
+        // `verification` is the one record class not required to be device-signed
+        // at all; only run the device-signature axis checks below (DAC/heartbeat
+        // requiredness, canonical+signature enforcement) when it actually claims
+        // one via collector_attestation or an already-set top-level signature.
+        const verificationSkipsDeviceSignature = isVerificationRecord && !verificationRecordHasDeviceSignature(record, signature);
 
         if (!vendor) {
           issues.push(issue('DEVICE_VENDOR_MISSING', `Device vendor is missing for device ${deviceId} at block ${block.block_id}.`, 'critical'));
@@ -1615,14 +2367,14 @@ export class LukuFile {
         const attestationRecordId = recordAttestationId(record);
         const genesisHash = asString(payload?.genesis_hash) ?? '';
 
-        if (!isAuxRecord && !seenDevices.has(deviceId)) {
+        if (!isNonChainAdvancing && !seenDevices.has(deviceId)) {
           seenDevices.add(deviceId);
           if (counter === 0 && genesisHash.length > 0 && previousSignature !== genesisHash) {
             issues.push(issue('GENESIS_HASH_MISMATCH', `Genesis record (ctr=0) for device ${deviceId} has previous_signature that does not match genesis_hash.`, 'critical'));
           }
         }
 
-        if (!isAuxRecord) {
+        if (!isNonChainAdvancing) {
           const lastSignature = lastSignatures.get(deviceId);
           if (lastSignature && previousSignature !== lastSignature) {
             issues.push(issue('RECORD_CHAIN_BROKEN', `Record chain broken for device ${deviceId} at record type ${recordType}.`, 'critical'));
@@ -1676,10 +2428,10 @@ export class LukuFile {
 
           if (attestationChain.length === 0) {
             issues.push(issue('ATTESTATION_CHAIN_MISSING', `Missing DAC attestation chain for device ${deviceId}.`, 'warning'));
-            if (!isAuxRecord && attestationSignature.length === 0) {
+            if (!isAuxRecord && !verificationSkipsDeviceSignature && attestationSignature.length === 0) {
               issues.push(issue('ATTESTATION_FAILED', `Device ${deviceId} failed DAC attestation: attestationSig missing`, 'critical'));
             }
-          } else if (!isAuxRecord || attestationSignature.length > 0) {
+          } else if ((!isAuxRecord && !verificationSkipsDeviceSignature) || attestationSignature.length > 0) {
             const result = await verifyDeviceAttestation({
               id: deviceId,
               key: publicKey,
@@ -1737,7 +2489,7 @@ export class LukuFile {
             if (!result.ok) {
               issues.push(issue('HEARTBEAT_VERIFICATION_FAILED', `Device ${deviceId} failed SLAC heartbeat verification: ${result.reason ?? 'unknown error'}`, 'critical'));
             }
-          } else if (!isAuxRecord) {
+          } else if (!isAuxRecord && !verificationSkipsDeviceSignature) {
             issues.push(issue('HEARTBEAT_VERIFICATION_FAILED', `Device ${deviceId} failed SLAC heartbeat verification: heartbeatSig missing`, 'critical'));
           }
         }
@@ -1756,7 +2508,10 @@ export class LukuFile {
         }
         const canonicalForSignature = recomputedCanonical ?? canonicalStringValue;
 
-        if (canonicalForSignature.length === 0) {
+        if (verificationSkipsDeviceSignature) {
+          // No collector_attestation and no top-level signature: this
+          // `verification` record is not required to be device-signed at all.
+        } else if (canonicalForSignature.length === 0) {
           issues.push(issue('RECORD_CANONICAL_MISSING', `Record type ${recordType} on device ${deviceId} does not include a canonical_string.`, isCompatAttachment ? 'warning' : 'critical'));
         } else if (signature.length === 0) {
           issues.push(issue('RECORD_SIGNATURE_MISSING', `Record type ${recordType} on device ${deviceId} is missing a signature.`, isCompatAttachment ? 'warning' : 'critical'));
@@ -1767,17 +2522,17 @@ export class LukuFile {
           }
         }
 
-        if (!isAuxRecord && signature.length > 0) {
+        if (!isNonChainAdvancing && signature.length > 0) {
           lastSignatures.set(deviceId, signature);
         }
-        if (!isAuxRecord && counter !== undefined) {
+        if (!isNonChainAdvancing && counter !== undefined) {
           lastCounters.set(deviceId, counter);
         }
-        if (!isAuxRecord && timestamp !== undefined) {
+        if (!isNonChainAdvancing && timestamp !== undefined) {
           lastTimes.set(deviceId, timestamp);
         }
 
-        if (isAuxRecord) {
+        if (isAuxRecord || isVerificationRecord) {
           const parentRecordId = asString(record.parent_id) ?? asString(record.parent_record_id);
           if (parentRecordId && !recordIds.has(parentRecordId)) {
             issues.push(issue('PARENT_RECORD_MISSING', `Record type ${recordType} references missing parent ${parentRecordId}.`, 'critical'));
@@ -1800,7 +2555,7 @@ export class LukuFile {
         }
 
         const externalIdentity = asJsonObject(record.external_identity);
-        if (externalIdentity && !isAuxRecord) {
+        if (externalIdentity && !isAuxRecord && !isVerificationRecord) {
           issues.push(issue(
             'EXTERNAL_IDENTITY_UNSUPPORTED_RECORD_TYPE',
             `Record type ${recordType} must not carry external_identity.`,
@@ -1835,6 +2590,17 @@ export class LukuFile {
             }
           }
         }
+
+        if (isVerificationRecord) {
+          const { issues: verificationIssues } = await evaluateVerificationRecord(
+            record,
+            this.attachments,
+            deviceId,
+            publicKey,
+            options.trustedExternalFingerprints ?? []
+          );
+          issues.push(...verificationIssues);
+        }
       }
     }
 
@@ -1864,7 +2630,7 @@ export class LukuFile {
           for (let recordIndex = 0; recordIndex < block.batch.length; recordIndex += 1) {
             const record = block.batch[recordIndex];
             const recordType = asString(record.type) ?? 'unknown';
-            if (isAuxRecordType(recordType)) {
+            if (isNonChainAdvancingRecordType(recordType)) {
               continue;
             }
 
@@ -2024,6 +2790,11 @@ export interface LukuItemResult {
   verified: boolean;
   payload: JsonObject;
   errors?: string[];
+  /** Populated only for `type === 'verification'` records. Exposes
+   * `response.rawBytes`/`response.data`, the response-disclosure state, and
+   * the assurance level — all distinct from, and never collapsed into, the
+   * overall archive `verified` result above. */
+  verification?: VerificationRecordResult;
 }
 
 export interface LukuParseResult {
@@ -2034,9 +2805,9 @@ export interface LukuParseResult {
 
 export const verifyLukuFile = parseLukuFile;
 
-export async function parseLukuFile(data: Uint8Array): Promise<LukuParseResult> {
+export async function parseLukuFile(data: Uint8Array, options: LukuVerifyOptions = {}): Promise<LukuParseResult> {
   const luku = await LukuFile.openBytes(data);
-  const issues = await luku.verify();
+  const issues = await luku.verify(options);
   const itemErrors = new Map<string, string[]>();
 
   for (const entry of issues) {
@@ -2048,11 +2819,26 @@ export async function parseLukuFile(data: Uint8Array): Promise<LukuParseResult> 
   for (const block of luku.blocks) {
     for (const record of block.batch) {
       const recordId = debugRecordId(record);
+      const recordType = asString(record.type) ?? 'unknown';
+      let verificationResult: VerificationRecordResult | undefined;
+      if (recordType === 'verification') {
+        const deviceId = asString(record.device_id) ?? block.device.device_id;
+        const publicKey = asString(record.public_key) ?? block.device.public_key;
+        const evaluated = await evaluateVerificationRecord(
+          record,
+          luku.attachments,
+          deviceId,
+          publicKey,
+          options.trustedExternalFingerprints ?? []
+        );
+        verificationResult = evaluated.result;
+      }
       items.push({
-        type: asString(record.type) ?? 'unknown',
+        type: recordType,
         verified: !hasCriticalIssues(issues),
         payload: record,
-        errors: itemErrors.get(recordId)
+        errors: itemErrors.get(recordId),
+        verification: verificationResult
       });
     }
   }

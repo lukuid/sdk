@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::Path;
 
-use crate::luku::{Criticality, LukuFile, LukuVerifyOptions};
+use crate::luku::{Criticality, LukuFile, LukuVerifyOptions, VerificationRecordResult};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LukuParseResult {
@@ -18,6 +18,8 @@ pub struct LukuItemResult {
     pub payload: Value,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub errors: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verification: Option<VerificationRecordResult>,
 }
 
 pub fn parse<P: AsRef<Path>>(path: P) -> Result<LukuParseResult, String> {
@@ -39,8 +41,8 @@ fn parse_luku_file(luku: &LukuFile) -> LukuParseResult {
     let items = luku
         .blocks
         .iter()
-        .flat_map(|block| block.batch.iter())
-        .map(|record| {
+        .flat_map(|block| block.batch.iter().map(move |record| (block, record)))
+        .map(|(block, record)| {
             let record_type = record
                 .get("type")
                 .and_then(Value::as_str)
@@ -86,7 +88,7 @@ fn parse_luku_file(luku: &LukuFile) -> LukuParseResult {
                 });
 
             LukuItemResult {
-                r#type: record_type,
+                r#type: record_type.clone(),
                 verified,
                 payload: record.clone(),
                 errors: if errors.is_empty() {
@@ -94,6 +96,12 @@ fn parse_luku_file(luku: &LukuFile) -> LukuParseResult {
                 } else {
                     Some(errors)
                 },
+                verification: if record_type == "verification" {
+                    Some(LukuFile::evaluate_verification_record(
+                        record, &luku.attachments, &block.device.device_id,
+                        &block.device.public_key, &LukuVerifyOptions::default(),
+                    ).0)
+                } else { None },
             }
         })
         .collect::<Vec<_>>();
