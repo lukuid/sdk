@@ -132,6 +132,7 @@ impl Default for LukuVerifyOptions {
 pub struct LukuFile {
     pub manifest: LukuManifest,
     pub manifest_sig: String,
+    pub seals_raw: Option<String>,
     pub blocks: Vec<LukuBlock>,
     pub attachments: HashMap<String, Vec<u8>>,
     pub path: Option<PathBuf>,
@@ -168,6 +169,9 @@ impl LukuFile {
         path: Option<PathBuf>,
     ) -> Self {
         let manifest_raw = serde_json::to_string_pretty(&manifest).ok();
+        let seals_raw = manifest_raw.as_ref().and_then(|raw| {
+            crate::archive_seals::create(raw.as_bytes(), manifest.created_at_utc as i64).ok()
+        });
         let blocks_raw: String = blocks
             .iter()
             .map(|b| serde_json::to_string(b).unwrap())
@@ -177,6 +181,7 @@ impl LukuFile {
         Self {
             manifest,
             manifest_sig,
+            seals_raw,
             blocks,
             attachments,
             path,
@@ -288,6 +293,12 @@ impl LukuFile {
                 .read_to_string(&mut manifest_sig)
                 .map_err(|e| e.to_string())?;
         }
+        let mut seals_raw = None;
+        if let Ok(mut seals_file) = archive.by_name("seals.json") {
+            let mut content = String::new();
+            seals_file.read_to_string(&mut content).map_err(|e| e.to_string())?;
+            seals_raw = Some(content);
+        }
 
         let mut blocks_file = archive
             .by_name("blocks.jsonl")
@@ -317,6 +328,7 @@ impl LukuFile {
         Ok(Self {
             manifest,
             manifest_sig,
+            seals_raw,
             blocks,
             attachments,
             path,
@@ -1749,6 +1761,10 @@ impl LukuFile {
     pub fn verify(&self, options: LukuVerifyOptions) -> Vec<VerificationIssue> {
         let debug_logging = Self::debug_logging_enabled();
         let mut issues = Vec::new();
+        issues.extend(crate::archive_seals::verify(
+            self.seals_raw.as_deref(),
+            self.manifest_raw.as_deref().unwrap_or("").as_bytes(),
+        ));
 
         if !SUPPORTED_ARCHIVE_VERSIONS.contains(&self.manifest.version.as_str()) {
             Self::push_issue(
@@ -3333,10 +3349,12 @@ impl LukuFile {
 
         let manifest_json = serde_json::to_string_pretty(&manifest).unwrap();
         let manifest_sig = BASE64.encode(exporter_key.sign(manifest_json.as_bytes()).to_bytes());
+        let seals_raw = crate::archive_seals::create(manifest_json.as_bytes(), timestamp as i64)?;
 
         let luku = Self {
             manifest,
             manifest_sig,
+            seals_raw: Some(seals_raw),
             blocks,
             attachments,
             path: None,
@@ -3424,6 +3442,7 @@ impl LukuFile {
         let manifest_json = serde_json::to_string_pretty(&self.manifest).unwrap();
         let manifest_sig_bytes = exporter_key.sign(manifest_json.as_bytes()).to_bytes();
         self.manifest_sig = BASE64.encode(manifest_sig_bytes);
+        self.seals_raw = Some(crate::archive_seals::create(manifest_json.as_bytes(), timestamp as i64)?);
         self.manifest_raw = Some(manifest_json);
         self.blocks_raw = Some(blocks_content);
 
@@ -3476,6 +3495,7 @@ impl LukuFile {
         let manifest_json = serde_json::to_string_pretty(&self.manifest).unwrap();
         let manifest_sig_bytes = exporter_key.sign(manifest_json.as_bytes()).to_bytes();
         self.manifest_sig = BASE64.encode(manifest_sig_bytes);
+        self.seals_raw = Some(crate::archive_seals::create(manifest_json.as_bytes(), timestamp as i64)?);
         self.manifest_raw = Some(manifest_json);
         self.blocks_raw = Some(blocks_content);
 
@@ -3487,6 +3507,12 @@ impl LukuFile {
     }
 
     pub fn save_to<P: AsRef<Path>>(&self, path: P) -> Result<(), String> {
+        let seals_raw = self.seals_raw.as_ref().ok_or("seals.json missing: archive has not been sealed")?;
+        let manifest_raw = self.manifest_raw.as_ref().ok_or("manifest.json bytes missing")?;
+        if crate::archive_seals::verify(Some(seals_raw), manifest_raw.as_bytes())
+            .iter().any(|issue| issue.criticality == Criticality::Critical) {
+            return Err("seals.json does not contain a valid archive self seal".into());
+        }
         let file = File::create(&path).map_err(|e| e.to_string())?;
         let mut zip = ZipWriter::new(file);
 
@@ -3534,6 +3560,12 @@ impl LukuFile {
         .map_err(|e| e.to_string())?;
         zip.write_all(self.manifest_sig.as_bytes())
             .map_err(|e| e.to_string())?;
+
+        zip.start_file(
+            "seals.json",
+            FileOptions::<()>::default().compression_method(zip::CompressionMethod::Deflated),
+        ).map_err(|e| e.to_string())?;
+        zip.write_all(seals_raw.as_bytes()).map_err(|e| e.to_string())?;
 
         for (hash, content) in &self.attachments {
             let dir1 = if hash.len() >= 2 { &hash[0..2] } else { "00" };

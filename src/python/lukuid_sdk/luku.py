@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
+from . import archive_seals
 
 from .attestation import (
     DeviceAttestationInputs,
@@ -261,6 +262,7 @@ class LukuArchive:
         attachments: dict[str, bytes],
         manifest_raw: str,
         blocks_raw: str,
+        seals_raw: str | None = None,
     ) -> None:
         self.manifest = manifest
         self.manifest_sig = manifest_sig
@@ -268,6 +270,7 @@ class LukuArchive:
         self.attachments = attachments
         self._manifest_raw = manifest_raw
         self._blocks_raw = blocks_raw
+        self.seals_raw = seals_raw
 
     def add_attachment(self, content: bytes) -> str:
         checksum = _sha256_hex(content)
@@ -275,6 +278,9 @@ class LukuArchive:
         return checksum
 
     def save_to_bytes(self) -> bytes:
+        if self.seals_raw is None or any(level == "critical" for _, _, level in archive_seals.verify(
+                self.seals_raw, self._manifest_raw.encode("utf-8"))):
+            raise ValueError("seals.json does not contain a valid archive self seal")
         current_blocks_raw = self._serialized_blocks()
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, "w") as archive:
@@ -286,6 +292,7 @@ class LukuArchive:
             archive.writestr("blocks.jsonl", current_blocks_raw.encode("utf-8"), compress_type=zipfile.ZIP_DEFLATED)
             archive.writestr("manifest.json", self._manifest_raw.encode("utf-8"), compress_type=zipfile.ZIP_DEFLATED)
             archive.writestr("manifest.sig", self.manifest_sig.encode("utf-8"), compress_type=zipfile.ZIP_DEFLATED)
+            archive.writestr("seals.json", self.seals_raw.encode("utf-8"), compress_type=zipfile.ZIP_DEFLATED)
             for checksum, content in self.attachments.items():
                 dir1 = checksum[:2] or "00"
                 dir2 = checksum[2:4] or "00"
@@ -328,6 +335,8 @@ class LukuArchive:
     def verify(self, options: LukuVerifyOptions | None = None) -> list[VerificationIssue]:
         options = options or LukuVerifyOptions()
         issues: list[VerificationIssue] = []
+        issues.extend(_issue(code, message, Criticality(criticality)) for code, message, criticality in
+                      archive_seals.verify(self.seals_raw, self._manifest_raw.encode("utf-8")))
 
         exporter_public_key = self.manifest.extra.get("exporter_public_key")
         if not self.manifest_sig.strip():
@@ -624,6 +633,7 @@ class LukuArchive:
         self.manifest.created_at_utc = timestamp
         self._manifest_raw = _serialize_json(self.manifest.json_object(), pretty=True)
         self.manifest_sig = sign_detached(signer.private_key_pem, self._manifest_raw.encode("utf-8"))
+        self.seals_raw = archive_seals.create(self._manifest_raw.encode("utf-8"), timestamp)
 
     def _serialized_blocks(self) -> str:
         return "".join(f"{_serialize_json(block.json_object(), pretty=False)}\n" for block in self.blocks)
@@ -930,6 +940,11 @@ class LukuFile:
         except KeyError:
             manifest_sig = ""
 
+        try:
+            seals_raw = archive.read("seals.json").decode("utf-8")
+        except KeyError:
+            seals_raw = None
+
         attachments: dict[str, bytes] = {}
         for name in archive.namelist():
             if name.startswith("attachments/") and not name.endswith("/"):
@@ -942,6 +957,7 @@ class LukuFile:
             attachments=attachments,
             manifest_raw=manifest_raw,
             blocks_raw=blocks_raw,
+            seals_raw=seals_raw,
         )
 
     @staticmethod
@@ -1079,9 +1095,11 @@ class LukuFile:
         )
         manifest_raw = _serialize_json(manifest.json_object(), pretty=True)
         manifest_sig = sign_detached(signer.private_key_pem, manifest_raw.encode("utf-8"))
+        seals_raw = archive_seals.create(manifest_raw.encode("utf-8"), timestamp)
         return LukuArchive(
             manifest=manifest,
             manifest_sig=manifest_sig,
+            seals_raw=seals_raw,
             blocks=normalized_blocks,
             attachments=dict(attachments),
             manifest_raw=manifest_raw,

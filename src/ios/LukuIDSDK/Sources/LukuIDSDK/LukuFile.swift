@@ -296,6 +296,7 @@ public struct LukuSigner {
 public final class LukuArchive {
     public var manifest: LukuManifest
     public var manifestSig: String
+    public var sealsRaw: String?
     public var blocks: [LukuBlock]
     public var attachments: [String: Data]
 
@@ -304,12 +305,14 @@ public final class LukuArchive {
 
     public init(manifest: LukuManifest,
                 manifestSig: String,
+                sealsRaw: String? = nil,
                 blocks: [LukuBlock],
                 attachments: [String: Data],
                 manifestRaw: String,
                 blocksRaw: String) {
         self.manifest = manifest
         self.manifestSig = manifestSig
+        self.sealsRaw = sealsRaw
         self.blocks = blocks
         self.attachments = attachments
         self.manifestRaw = manifestRaw
@@ -323,6 +326,10 @@ public final class LukuArchive {
     }
 
     public func saveToData() throws -> Data {
+        guard let sealsRaw, !ArchiveSeals.verify(raw: sealsRaw, manifest: Data(manifestRaw.utf8))
+            .contains(where: { $0.criticality == .critical }) else {
+            throw NSError(domain: "lukuid", code: -81, userInfo: [NSLocalizedDescriptionKey: "seals.json does not contain a valid archive self seal"])
+        }
         let currentBlocksRaw = try serializedBlocks()
         let archive = try Archive(data: Data(), accessMode: .create)
 
@@ -330,6 +337,7 @@ public final class LukuArchive {
         try addEntry("blocks.jsonl", data: Data(currentBlocksRaw.utf8), compression: .deflate, archive: archive)
         try addEntry("manifest.json", data: Data(manifestRaw.utf8), compression: .deflate, archive: archive)
         try addEntry("manifest.sig", data: Data(manifestSig.utf8), compression: .deflate, archive: archive)
+        try addEntry("seals.json", data: Data(sealsRaw.utf8), compression: .deflate, archive: archive)
 
         for (hash, content) in attachments {
             let dir1 = String(hash.prefix(2)).isEmpty ? "00" : String(hash.prefix(2))
@@ -382,6 +390,7 @@ public final class LukuArchive {
 
     public func verify(options: LukuVerifyOptions = LukuVerifyOptions()) -> [VerificationIssue] {
         var issues: [VerificationIssue] = []
+        issues.append(contentsOf: ArchiveSeals.verify(raw: sealsRaw, manifest: Data(manifestRaw.utf8)))
 
         let exporterPublicKey = manifest.extra["exporter_public_key"] as? String
         if manifestSig.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -700,6 +709,7 @@ public final class LukuArchive {
         manifestRaw = try serializeJSONObject(manifest.jsonObject(), pretty: true)
         blocksRaw = currentBlocksRaw
         manifestSig = try detachedSignatureBase64(privateKey: signer.privateKey, payload: Data(manifestRaw.utf8))
+        sealsRaw = try ArchiveSeals.create(manifest: Data(manifestRaw.utf8), timestamp: Int64(timestamp))
     }
 
     private func serializedBlocks() throws -> String {
@@ -774,6 +784,7 @@ public enum LukuFile {
         } else {
             manifestSig = ""
         }
+        let sealsRaw = try archive["seals.json"].map { try extractString($0, from: archive) }
 
         var attachments: [String: Data] = [:]
         for entry in archive where entry.path.hasPrefix("attachments/") {
@@ -783,6 +794,7 @@ public enum LukuFile {
         return LukuArchive(
             manifest: manifest,
             manifestSig: manifestSig,
+            sealsRaw: sealsRaw,
             blocks: blocks,
             attachments: attachments,
             manifestRaw: manifestRaw,
@@ -1165,10 +1177,12 @@ public enum LukuFile {
         )
         let manifestRaw = try serializeJSONObject(manifest.jsonObject(), pretty: true)
         let manifestSig = try detachedSignatureBase64(privateKey: signer.privateKey, payload: Data(manifestRaw.utf8))
+        let sealsRaw = try ArchiveSeals.create(manifest: Data(manifestRaw.utf8), timestamp: Int64(timestamp))
 
         return LukuArchive(
             manifest: manifest,
             manifestSig: manifestSig,
+            sealsRaw: sealsRaw,
             blocks: normalizedBlocks,
             attachments: attachments,
             manifestRaw: manifestRaw,
@@ -1285,7 +1299,11 @@ private func extractData(_ entry: Entry, from archive: Archive) throws -> Data {
 }
 
 private func extractString(_ entry: Entry, from archive: Archive) throws -> String {
-    String(decoding: try extractData(entry, from: archive), as: UTF8.self)
+    guard let string = String(data: try extractData(entry, from: archive), encoding: .utf8) else {
+        throw NSError(domain: "lukuid.archive", code: -82,
+                      userInfo: [NSLocalizedDescriptionKey: "Archive text entry is not valid UTF-8"])
+    }
+    return string
 }
 
 private func addEntry(_ path: String, data: Data, compression: CompressionMethod, archive: Archive) throws {

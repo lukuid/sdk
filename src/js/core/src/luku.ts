@@ -96,6 +96,7 @@ interface StoredArchive {
   manifestRaw?: string;
   blocksRaw?: string;
   manifestSig: string;
+  sealsRaw?: string;
   attachments: Record<string, Uint8Array>;
 }
 
@@ -216,6 +217,108 @@ function bytesToHex(bytes: Uint8Array): string {
 async function sha256Hex(data: Uint8Array): Promise<string> {
   const digest = await getSubtleCrypto().digest('SHA-256', toArrayBuffer(data));
   return bytesToHex(new Uint8Array(digest));
+}
+
+function archiveSealPayload(manifestHash: string, createdAtUtc: number): Uint8Array {
+  if (!Number.isSafeInteger(createdAtUtc) || createdAtUtc < 0) {
+    throw new Error('Archive seal timestamp is invalid');
+  }
+  return utf8(`LUKUID-ARCHIVE-SEAL-V1\nmanifest_hash_alg=SHA-256\nmanifest_hash=${manifestHash}\ncreated_at_utc=${createdAtUtc}`);
+}
+
+async function createSelfSealFile(manifestRaw: string): Promise<string> {
+  const manifestHash = await sha256Hex(utf8(manifestRaw));
+  const createdAtUtc = Math.floor(Date.now() / 1000);
+  const pair = ml_dsa65.keygen();
+  const signature = ml_dsa65.sign(archiveSealPayload(manifestHash, createdAtUtc), pair.secretKey);
+  return JSON.stringify({
+    version: 1,
+    manifest_hash: { alg: 'SHA-256', value: manifestHash },
+    seals: [{
+      type: 'self',
+      alg: 'ML-DSA-65',
+      created_at_utc: createdAtUtc,
+      public_key: encodeBase64(pair.publicKey),
+      signature: encodeBase64(signature)
+    }]
+  }, null, 2);
+}
+
+async function verifySelfSeals(sealsRaw: string | undefined, manifestRaw: string, issues: VerificationIssue[]): Promise<void> {
+  if (!sealsRaw) {
+    issues.push(issue('ARCHIVE_SEALS_MISSING', 'The required seals.json file is missing.', 'critical'));
+    return;
+  }
+  try {
+    const root = ensureJsonObject(JSON.parse(sealsRaw), 'seals.json');
+    const manifestHashObject = asJsonObject(root.manifest_hash);
+    const seals = asJsonArray(root.seals);
+    if (root.version !== 1 || asString(manifestHashObject?.alg) !== 'SHA-256' || !seals || seals.length === 0) {
+      throw new Error('seals.json has an invalid version, manifest hash, or seals array');
+    }
+    const actualHash = await sha256Hex(utf8(manifestRaw));
+    if (asString(manifestHashObject?.value) !== actualHash) {
+      issues.push(issue('ARCHIVE_SEALS_MANIFEST_HASH_MISMATCH', 'seals.json does not commit to the exact manifest.json bytes.', 'critical'));
+      return;
+    }
+    let validSelfSeal = false;
+    let sharedTimestamp: number | undefined;
+    for (const value of seals) {
+      const seal = ensureJsonObject(value, 'seal');
+      const type = asString(seal.type);
+      const createdAtUtc = asNumber(seal.created_at_utc);
+      if (!type || createdAtUtc === undefined || !Number.isSafeInteger(createdAtUtc) || createdAtUtc < 0) {
+        throw new Error('A seal has invalid required fields');
+      }
+      if (sharedTimestamp !== undefined && createdAtUtc !== sharedTimestamp) {
+        throw new Error('Seals must sign the same canonical payload timestamp');
+      }
+      sharedTimestamp = createdAtUtc;
+      if (type === 'authority') {
+        if (asString(seal.alg) !== 'ML-DSA-65' || !asString(seal.key_id) || !asString(seal.root_fingerprint) || !asJsonArray(seal.certificate_chain) || !asString(seal.signature)) {
+          throw new Error('An authority seal has invalid required fields');
+        }
+        issues.push(issue('ARCHIVE_AUTHORITY_SEAL_UNSUPPORTED', 'Authority seals are reserved and are not trusted by this implementation.', 'warning'));
+        continue;
+      }
+      if (type === 'platform') {
+        if (!asString(seal.platform) || !asString(seal.alg) || !asString(seal.public_key) || !asString(seal.signature)) {
+          throw new Error('A platform seal has invalid required fields');
+        }
+        if (seal.platform === 'android' && seal.alg === 'ES256') {
+          const chain = asJsonArray(seal.certificate_chain);
+          const metadata = asJsonObject(seal.metadata);
+          const key = decodeBase64(asString(seal.public_key) ?? '');
+          const signature = decodeBase64(asString(seal.signature) ?? '');
+          if (!/^[0-9a-f]{64}$/.test(asString(seal.key_id) ?? '') || !key || !signature || signature.length !== 64 ||
+              !chain || chain.length < 2 || chain.length > 12 ||
+              !chain.every((certificate) => typeof certificate === 'string' && !!decodeBase64(certificate)) ||
+              !['strongbox', 'tee'].includes(asString(metadata?.security_level) ?? '')) {
+            throw new Error('An Android platform seal has malformed verification material');
+          }
+        }
+        issues.push(issue('ARCHIVE_PLATFORM_SEAL_UNSUPPORTED', 'This implementation cannot independently validate this platform seal.', 'warning'));
+        continue;
+      }
+      if (type !== 'self' || asString(seal.alg) !== 'ML-DSA-65') {
+        throw new Error('A seal has an unsupported type or algorithm');
+      }
+      const publicKey = decodeBase64(asString(seal.public_key) ?? '');
+      const signature = decodeBase64(asString(seal.signature) ?? '');
+      if (!publicKey || !signature || publicKey.length !== 1952 || signature.length !== 3309 ||
+          encodeBase64(publicKey) !== seal.public_key || encodeBase64(signature) !== seal.signature ||
+          !ml_dsa65.verify(signature, archiveSealPayload(actualHash, createdAtUtc), publicKey)) {
+        issues.push(issue('ARCHIVE_SELF_SEAL_INVALID', 'A required ML-DSA-65 self seal failed cryptographic verification.', 'critical'));
+      } else {
+        validSelfSeal = true;
+      }
+    }
+    if (!validSelfSeal) {
+      issues.push(issue('ARCHIVE_SELF_SEAL_MISSING', 'The archive has no valid ML-DSA-65 self seal.', 'critical'));
+    }
+  } catch (error) {
+    issues.push(issue('ARCHIVE_SEALS_MALFORMED', `seals.json is malformed: ${String(error)}`, 'critical'));
+  }
 }
 
 async function exportPublicKeyBase64(publicKey: CryptoKey): Promise<string> {
@@ -687,6 +790,7 @@ function hasCriticalIssues(issues: VerificationIssue[]): boolean {
 export class LukuFile {
   readonly manifest: LukuManifest;
   manifestSig: string;
+  sealsRaw?: string;
   readonly blocks: LukuBlock[];
   readonly attachments: Map<string, Uint8Array>;
   private manifestRaw: string;
@@ -696,6 +800,7 @@ export class LukuFile {
   constructor(args: {
     manifest: LukuManifest;
     manifestSig: string;
+    sealsRaw?: string;
     blocks: LukuBlock[];
     attachments?: Map<string, Uint8Array>;
     manifestRaw?: string;
@@ -704,6 +809,7 @@ export class LukuFile {
   }) {
     this.manifest = args.manifest;
     this.manifestSig = args.manifestSig;
+    this.sealsRaw = args.sealsRaw;
     this.blocks = args.blocks.map((block) => ({
       ...block,
       batch: normalizeRecordBatch(block.batch ?? [])
@@ -803,6 +909,7 @@ export class LukuFile {
     return new LukuFile({
       manifest,
       manifestSig: stored.manifestSig,
+      sealsRaw: stored.sealsRaw,
       blocks,
       attachments: new Map(Object.entries(stored.attachments)),
       manifestRaw: stored.manifestRaw,
@@ -1058,9 +1165,10 @@ export class LukuFile {
 
     return {
       mimetype: strFromU8(mimetypeBytes),
-      manifestRaw: manifestBytes ? strFromU8(manifestBytes) : undefined,
-      blocksRaw: blocksBytes ? strFromU8(blocksBytes) : undefined,
+      manifestRaw: manifestBytes ? new TextDecoder('utf-8', { fatal: true }).decode(manifestBytes) : undefined,
+      blocksRaw: blocksBytes ? new TextDecoder('utf-8', { fatal: true }).decode(blocksBytes) : undefined,
       manifestSig: entries['manifest.sig'] ? strFromU8(entries['manifest.sig']) : '',
+      sealsRaw: entries['seals.json'] ? new TextDecoder('utf-8', { fatal: true }).decode(entries['seals.json']) : undefined,
       attachments
     };
   }
@@ -1212,9 +1320,11 @@ export class LukuFile {
 
     const manifestRaw = JSON.stringify(manifest, null, 2);
     const manifestSig = await signDetachedBase64(signer.privateKey, manifestRaw);
+    const sealsRaw = await createSelfSealFile(manifestRaw);
     return new LukuFile({
       manifest,
       manifestSig,
+      sealsRaw,
       blocks: normalizedBlocks,
       attachments: attachments instanceof Map ? attachments : new Map(Object.entries(attachments)),
       manifestRaw,
@@ -1332,6 +1442,7 @@ export class LukuFile {
     this.manifestRaw = JSON.stringify(this.manifest, null, 2);
     this.blocksRaw = blocksRaw;
     this.manifestSig = await signDetachedBase64(signer.privateKey, this.manifestRaw);
+    this.sealsRaw = await createSelfSealFile(this.manifestRaw);
   }
 
   async merge(other: LukuFile, signer: LukuExporterSigner): Promise<void> {
@@ -1360,6 +1471,7 @@ export class LukuFile {
     this.manifestRaw = JSON.stringify(this.manifest, null, 2);
     this.blocksRaw = blocksRaw;
     this.manifestSig = await signDetachedBase64(signer.privateKey, this.manifestRaw);
+    this.sealsRaw = await createSelfSealFile(this.manifestRaw);
   }
 
   async saveToBytes(): Promise<Uint8Array> {
@@ -1370,6 +1482,15 @@ export class LukuFile {
       'manifest.json': [strToU8(this.manifestRaw), { level: 6 as const }],
       'manifest.sig': [strToU8(this.manifestSig), { level: 6 as const }]
     };
+    if (!this.sealsRaw) {
+      this.sealsRaw = await createSelfSealFile(this.manifestRaw);
+    }
+    const sealIssues: VerificationIssue[] = [];
+    await verifySelfSeals(this.sealsRaw, this.manifestRaw, sealIssues);
+    if (sealIssues.some((entry) => entry.criticality === 'critical')) {
+      throw new Error('seals.json does not contain a valid archive self seal');
+    }
+    files['seals.json'] = [strToU8(this.sealsRaw), { level: 6 as const }];
 
     for (const [hash, bytes] of this.attachments) {
       const dir1 = hash.length >= 2 ? hash.slice(0, 2) : '00';
@@ -1394,6 +1515,8 @@ export class LukuFile {
     const revocationManager = options.revocationManager;
     const expectedPolicy = options.policy;
     const issues: VerificationIssue[] = [];
+
+    await verifySelfSeals(this.sealsRaw, this.manifestRaw, issues);
 
     if (this.manifestSig.trim().length === 0) {
       issues.push(issue('MANIFEST_SIGNATURE_MISSING', 'The manifest.sig file is empty or missing.', 'critical'));

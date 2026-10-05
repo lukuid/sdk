@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 pub mod attestation;
+mod archive_seals;
 pub mod device;
 pub mod framing;
 pub mod luku;
+mod android_platform_seal;
 pub mod models;
 pub mod parser;
 pub mod revocation;

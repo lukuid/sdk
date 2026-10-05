@@ -88,6 +88,14 @@ The SDK provides:
 - trust profile support (`prod`, `test`, `development`)
 - export helpers for valid LukuID devices
 
+## `.luku` archive seals
+
+Every current export includes `seals.json` with a locally generated ML-DSA-65 self seal over SHA-256 of the exact `manifest.json` bytes. The self seal adds post-quantum archive integrity; it does not assert a trusted identity. Strict verification rejects a missing or invalid self seal. Historical archives without `seals.json` can be opened for inspection but do not pass current conformance verification.
+
+Android/Kotlin additionally attempts a StrongBox hardware seal, then a TEE seal. It includes a platform seal only when its attestation chain validates offline to a bundled Google hardware attestation root. Kotlin, Rust, and Python verify that Android seal offline; JavaScript and Swift report it as unsupported without treating it as trusted. Browser, iOS/macOS, Windows, and Linux exports currently emit only the self seal because this SDK has no complete offline-attested provider for those environments. Platform seal absence does not invalidate an archive.
+
+Python archive sealing requires a locally installed OpenSSL 3.5+ executable with ML-DSA-65 support. If unavailable, Python export fails closed rather than producing an unsealed archive. Verification makes no network calls and makes no current revocation claim.
+
 ## What this SDK does not do
 
 The SDK does not itself create production trust.

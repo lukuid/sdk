@@ -3,7 +3,7 @@
   "specVersion": "1.6",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-03-17T12:00:00Z",
+    "timestamp": "2026-10-04T13:13:50Z",
     "component": {
       "type": "library",
       "name": "lukuid-sdk",
@@ -41,6 +41,31 @@
       "version": "1.0.0",
       "description": "LukuID Protobuf Definitions",
       "licenses": [{ "license": { "id": "UNLICENSED" } }]
+    },
+    {
+      "type": "library",
+      "name": "ml-dsa",
+      "version": "0.1.0-rc.10",
+      "description": "Rust ML-DSA-65 archive self seals"
+    },
+    {
+      "type": "library",
+      "name": "x509-parser",
+      "version": "0.16.0",
+      "description": "Rust offline Android attestation certificate verification"
+    },
+    {
+      "type": "library",
+      "name": "@noble/post-quantum",
+      "version": "0.6.1",
+      "description": "JavaScript ML-DSA-65 archive self seals"
+    },
+    {
+      "type": "library",
+      "name": "bcprov-jdk18on",
+      "group": "org.bouncycastle",
+      "version": "1.79",
+      "description": "Android ML-DSA-65 archive self seals"
     }
   ]
 }

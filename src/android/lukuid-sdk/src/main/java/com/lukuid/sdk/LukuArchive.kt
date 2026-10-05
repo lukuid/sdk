@@ -219,7 +219,8 @@ class LukuArchive private constructor(
     val blocks: MutableList<LukuBlock>,
     val attachments: MutableMap<String, ByteArray>,
     private var manifestRaw: String,
-    private var blocksRaw: String
+    private var blocksRaw: String,
+    var sealsRaw: String? = null
 ) {
     fun addAttachment(content: ByteArray): String {
         val hash = sha256Hex(content)
@@ -228,6 +229,9 @@ class LukuArchive private constructor(
     }
 
     fun saveToBytes(): ByteArray {
+        val seals = requireNotNull(sealsRaw) { "seals.json missing: archive has not been sealed" }
+        require(ArchiveSeals.verify(seals, manifestRaw.toByteArray(StandardCharsets.UTF_8))
+            .none { it.criticality == Criticality.CRITICAL }) { "seals.json does not contain a valid archive self seal" }
         val blocksContent = blocks.joinToString("\n") { it.toJson().toString() } + "\n"
         val out = ByteArrayOutputStream()
         ZipOutputStream(out).use { zip ->
@@ -247,6 +251,10 @@ class LukuArchive private constructor(
             zip.write(manifestSig.toByteArray(StandardCharsets.UTF_8))
             zip.closeEntry()
 
+            zip.putNextEntry(ZipEntry("seals.json"))
+            zip.write(seals.toByteArray(StandardCharsets.UTF_8))
+            zip.closeEntry()
+
             for ((hash, bytes) in attachments) {
                 val dir1 = hash.take(2).ifBlank { "00" }
                 val dir2 = hash.drop(2).take(2).ifBlank { "00" }
@@ -264,6 +272,7 @@ class LukuArchive private constructor(
 
     fun verify(options: LukuVerifyOptions = LukuVerifyOptions()): List<VerificationIssue> {
         val issues = mutableListOf<VerificationIssue>()
+        issues += ArchiveSeals.verify(sealsRaw, manifestRaw.toByteArray(StandardCharsets.UTF_8))
         val exporterPublicKey = manifest.extra["exporter_public_key"] as? String
         if (manifestSig.isBlank()) {
             issues += VerificationIssue("MANIFEST_SIGNATURE_MISSING", "The manifest.sig file is empty or missing.", Criticality.CRITICAL)
@@ -631,9 +640,13 @@ class LukuArchive private constructor(
             if (mimetype.trim() != LUKU_MIMETYPE) {
                 error("Invalid mimetype: expected $LUKU_MIMETYPE")
             }
-            val manifestRaw = files["manifest.json"]?.toString(StandardCharsets.UTF_8)
+            fun strictUtf8(bytes: ByteArray): String = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+                .decode(java.nio.ByteBuffer.wrap(bytes)).toString()
+            val manifestRaw = files["manifest.json"]?.let(::strictUtf8)
                 ?: error("manifest.json missing")
-            val blocksRaw = files["blocks.jsonl"]?.toString(StandardCharsets.UTF_8)
+            val blocksRaw = files["blocks.jsonl"]?.let(::strictUtf8)
                 ?: error("blocks.jsonl missing")
 
             val manifestJson = JSONObject(manifestRaw)
@@ -658,7 +671,8 @@ class LukuArchive private constructor(
                 blocks = blocks,
                 attachments = attachments,
                 manifestRaw = manifestRaw,
-                blocksRaw = blocksRaw
+                blocksRaw = blocksRaw,
+                sealsRaw = files["seals.json"]?.let(::strictUtf8)
             )
         }
 
@@ -774,7 +788,9 @@ class LukuArchive private constructor(
             )
             val manifestRaw = manifest.toJson().toString(2)
             val manifestSig = signDetached(signer.privateKey, manifestRaw.toByteArray(StandardCharsets.UTF_8))
-            return LukuArchive(manifest, manifestSig, normalizedBlocks, attachments.toMutableMap(), manifestRaw, blocksRaw)
+            val archive = LukuArchive(manifest, manifestSig, normalizedBlocks, attachments.toMutableMap(), manifestRaw, blocksRaw)
+            archive.sealsRaw = ArchiveSeals.create(manifestRaw.toByteArray(StandardCharsets.UTF_8), now)
+            return archive
         }
 
         fun buildBlockFromRecords(

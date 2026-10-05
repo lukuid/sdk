@@ -19,7 +19,8 @@ import java.util.zip.ZipInputStream
 
 data class LukuParseResult(
     val verified: Boolean,
-    val items: List<LukuItemResult>
+    val items: List<LukuItemResult>,
+    val archiveSeals: List<String> = emptyList()
 )
 
 data class LukuItemResult(
@@ -56,7 +57,20 @@ object LukuFile {
                 )
             }
         }
-        return LukuParseResult(verified, items)
+        val sealFailure = issues.any { it.criticality == Criticality.CRITICAL && it.code.startsWith("ARCHIVE_") && it.code.contains("SEAL") }
+        val sealLabels = mutableListOf<String>()
+        if (archive.sealsRaw != null && !sealFailure) {
+            sealLabels += "Post-quantum self seal · ML-DSA-65"
+            val seals = JSONObject(archive.sealsRaw!!).getJSONArray("seals")
+            for (index in 0 until seals.length()) {
+                val seal = seals.optJSONObject(index) ?: continue
+                if (seal.optString("type") == "platform" && seal.optString("platform") == "android" && seal.optString("alg") == "ES256") {
+                    val level = seal.optJSONObject("metadata")?.optString("security_level")
+                    sealLabels += "Android hardware seal · ${if (level == "strongbox") "StrongBox-backed" else "TEE-backed"}"
+                }
+            }
+        }
+        return LukuParseResult(verified, items, sealLabels)
     }
 
     fun verifyFile(file: File, options: LukuVerifyOptions = LukuVerifyOptions()): List<VerificationIssue> {

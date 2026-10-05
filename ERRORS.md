@@ -6,6 +6,14 @@ This document lists the error codes produced by LukuID SDK verification function
 |------------|-------------|-------------|
 | `MANIFEST_SIGNATURE_MISSING` | Critical | The archive manifest is missing a signature or the `manifest.sig` file is empty. |
 | `MANIFEST_SIGNATURE_INVALID` | Critical | The manifest signature failed cryptographic verification against the exporter's public key. |
+| `ARCHIVE_SEALS_MISSING` | Critical | The required `seals.json` file is absent. |
+| `ARCHIVE_SEALS_MALFORMED` | Critical | The seal envelope or a seal has invalid required fields. |
+| `ARCHIVE_SEALS_MANIFEST_HASH_MISMATCH` | Critical | The seal envelope does not contain SHA-256 of the exact `manifest.json` bytes. |
+| `ARCHIVE_SELF_SEAL_MISSING` | Critical | No valid mandatory ML-DSA-65 self seal is present. |
+| `ARCHIVE_SELF_SEAL_INVALID` | Critical | An ML-DSA-65 self-seal signature or verification key is invalid. |
+| `ARCHIVE_PLATFORM_SEAL_INVALID` | Critical | A supported platform seal failed signature, pinned-root, chain, or attestation checks. |
+| `ARCHIVE_PLATFORM_SEAL_UNSUPPORTED` | Warning | The SDK cannot independently verify this platform seal. It is not counted as trusted platform evidence. |
+| `ARCHIVE_AUTHORITY_SEAL_UNSUPPORTED` | Warning | Authority seals are reserved; no authority trust policy is implemented. |
 | `EXPORTER_KEY_MISSING` | Warning | The archive does not declare an `exporter_public_key`, preventing offline manifest verification. |
 | `BLOCKS_HASH_MISMATCH` | Critical | The SHA-256 hash of the `blocks.jsonl` file does not match the hash recorded in the manifest. |
 | `BLOCK_CHAIN_BROKEN` | Critical | A block's `previous_block_hash` field does not match the hash of the preceding block. |
