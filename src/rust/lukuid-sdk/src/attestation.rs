@@ -570,6 +570,9 @@ fn validate_certificate_chain_with_anchor_inner(
     }
 
     if let Some(rm) = revocation_manager {
+        if !rm.has_verified_snapshot() {
+            return CertificateChainValidationResult { ok: false, reason: Some("No verified CRL available".to_string()), cert_public_keys: None, leaf_vendor: None };
+        }
         for cert in &certs {
             if rm.is_revoked(cert) {
                 return CertificateChainValidationResult {
@@ -710,6 +713,9 @@ pub fn verify_external_identity(
 
     // Revocation Check: Check every certificate in the chain
     if let Some(rm) = revocation_manager {
+        if !rm.has_verified_snapshot() {
+            return VerificationResult { ok: false, reason: Some("No verified CRL available".to_string()) };
+        }
         for der in &cert_ders {
             if let Ok((_, cert)) = X509Certificate::from_der(der) {
                 if rm.is_revoked(&cert) {
@@ -817,7 +823,7 @@ pub fn verify_external_identity(
     }
 }
 
-fn verify_signature_robust(sig: &[u8], msg: &[u8], pubkey_spki: &[u8]) -> bool {
+pub(crate) fn verify_signature_robust(sig: &[u8], msg: &[u8], pubkey_spki: &[u8]) -> bool {
     // 1. Try ML-DSA-65
     if sig.len() == 3309 {
         let pub_key_bytes = if pubkey_spki.len() > 1952 {

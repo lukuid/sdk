@@ -19,5 +19,12 @@ export type { ScanDialogOptions, ScanResult } from './ui/ScanDialog.js';
 export { generatePDFReport, generatePDFReportWeb } from './pdfReport.js';
 export type { EvidencePackage, PdfReportResult } from './pdfReport.js';
 
-const lukuid = new LukuidSdk();
+let defaultInstance: LukuidSdk | undefined;
+const lukuid = new Proxy({} as LukuidSdk, {
+  get(_target, property) {
+    defaultInstance ??= new LukuidSdk();
+    const value = Reflect.get(defaultInstance, property);
+    return typeof value === 'function' ? value.bind(defaultInstance) : value;
+  }
+});
 export default lukuid;

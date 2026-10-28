@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 declare module 'node-forge' {
   namespace asn1 {
-    interface Asn1 {}
+    interface Asn1 { value: Asn1[] | string; tagClass?: number; }
 
     interface DerBuffer {
       getBytes(): string;
     }
 
     function toDer(value: Asn1): DerBuffer;
+    function fromDer(value: string): Asn1;
   }
 
   namespace pki {
@@ -27,11 +28,14 @@ declare module 'node-forge' {
     function certsFromPem(pem: string): Certificate[];
     function certificateFromPem(pem: string): Certificate;
     function publicKeyToAsn1(key: PublicKey): asn1.Asn1;
+    function certificateToAsn1(cert: Certificate): asn1.Asn1;
   }
 
   interface Forge {
     asn1: typeof asn1;
     pki: typeof pki;
+    util: { decode64(value: string): string; encode64(value: string): string };
+    md: { sha256: { create(): { update(value: string): void; digest(): { toHex(): string } } } };
   }
 
   const forge: Forge;

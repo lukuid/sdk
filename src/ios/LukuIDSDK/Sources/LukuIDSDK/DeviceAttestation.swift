@@ -438,6 +438,9 @@ func validateCertificateChainInner(
     }
 
     if let rm = revocationManager {
+        if !rm.hasVerifiedSnapshot() {
+            return CertificateChainValidationResult(ok: false, reason: "No verified CRL available", certificates: [])
+        }
         for cert in certs {
             if rm.isRevoked(certificate: cert) {
                 let fp = extractRawPublicKey(from: cert).map { sha256Hex($0) } ?? "unknown"
@@ -514,6 +517,9 @@ func verifyExternalIdentity(_ inputs: ExternalIdentityInputs, revocationManager:
 
     // Revocation Check: Check every certificate in the chain
     if let rm = revocationManager {
+        if !rm.hasVerifiedSnapshot() {
+            return .failure(DeviceTrustError(id: inputs.endorserID, reason: "No verified CRL available", attemptedKeyIds: []))
+        }
         for cert in certs {
             if rm.isRevoked(certificate: cert) {
                 let fp = extractRawPublicKey(from: cert).map { sha256Hex($0) } ?? "unknown"

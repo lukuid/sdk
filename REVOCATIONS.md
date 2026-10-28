@@ -4,10 +4,10 @@ The LukuID SDKs implement a robust, low-memory certificate revocation checking m
 
 ## Core Mechanics
 
-1. **Delta Syncing**: The SDK only downloads new revocations. It tracks the `last_sync` date and appends `?from=<date>` to the API request, minimizing bandwidth and processing overhead.
-2. **Local Persistence**: The revocation list is saved locally as a JSON file. This allows for immediate, offline lookups upon application restart without waiting for a network sync.
-3. **Background Refresh**: Long-running SDK instances will automatically ping the revocation endpoint at a configurable interval (default: 4 hours).
-4. **Fingerprint Verification**: Revocations are checked by generating a SHA-256 hash of the **raw public key bytes** of each certificate in the chain.
+1. **Signed Full Snapshot**: `GET /crl` returns a Base64 payload, detached ECDSA-P256-SHA256 signature, and leaf-first PEM certificate chain. The payload contains version, generation time, and the complete set of revoked SHA-256 raw-public-key fingerprints. The SDK verifies the chain against pinned roots and the signature over the exact decoded payload bytes before replacing the active set. This permits rescinded entries to disappear safely.
+2. **Local Persistence**: The signed envelope and check time are cached locally. Cache contents are cryptographically reverified on load; an unverified cache is never used for revocation decisions.
+3. **Background Refresh**: Long-running SDK instances refresh at the configured interval (default: 4 hours). A recently checked cache suppresses the startup fetch. JavaScript SDK instances share concurrent requests for the same API origin.
+4. **Fingerprint Verification**: Revocations are checked by generating a SHA-256 hash of the **raw public key bytes** of each certificate in the chain. Verification fails closed when no authenticated snapshot is available.
 5. **Verification Order**: The SDK strictly verifies the cryptographic signatures of the certificate chain *before* checking against the revocation list.
 
 ## Configuration Options
@@ -15,8 +15,9 @@ The LukuID SDKs implement a robust, low-memory certificate revocation checking m
 All platforms expose the following CRL configuration options via their respective SDK initialization structures (e.g., `LukuSdkOptions`, `LukuIDClientOptions`):
 
 *   `crlRefreshIntervalHours` (Integer): Frequency of background syncs. Set to `0` to disable automatic refreshing. Default: `4`.
-*   `crlMemoryOnly` (Boolean): If `true`, the SDK will not write the CRL to disk. Every application restart will require a full sync. Default: `false`.
+*   `crlMemoryOnly` (Boolean): If `true`, the SDK will not write the signed snapshot to disk. Every application restart will require a full sync. Default: `false`.
 *   `crlCachePath` (String/Path): Override the default directory where `lukuid_crl.json` is stored.
+*   `trustProfile` (String, where supported): Selects the pinned certificate trust profile (`prod`, `test`, or `dev`) used to authenticate the signed snapshot. Defaults to `prod` or the platform's `LUKUID_TRUST_PROFILE` environment setting.
 
 ---
 
@@ -54,7 +55,7 @@ let sdk = LukuIDClient(options: options)
 ### JavaScript / TypeScript (Node.js & Browser)
 
 *   **Storage Location**: 
-    *   *Browser*: Uses `localStorage` under the key `lukuid_crl`.
+    *   *Browser*: Uses `localStorage` under the key `lukuid_crl_v2:<apiUrl>:<trustProfile>`.
     *   *Node.js*: Uses memory only (or requires custom implementation if `crlCachePath` is utilized depending on the environment).
 *   **Initialization**: Configured via `LukuidSdkOptions`.
 *   **Background Task**: Uses `setInterval`.

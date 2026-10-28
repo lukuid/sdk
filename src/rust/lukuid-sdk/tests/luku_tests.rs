@@ -33,6 +33,7 @@ fn test_options() -> LukuVerifyOptions {
         policy: None,
         require_continuity: false,
         attachments: None,
+        revocation_manager: None,
     }
 }
 
@@ -323,6 +324,7 @@ fn test_luku_verify_enforces_native_continuity_when_requested() {
         policy: None,
         require_continuity: true,
         attachments: None,
+        revocation_manager: None,
     });
     assert!(issues
         .iter()
@@ -394,6 +396,7 @@ fn test_luku_verify_rejects_untrusted_external_identity_endorsements() {
         policy: None,
         require_continuity: false,
         attachments: None,
+        revocation_manager: None,
     });
     assert!(!trusted
         .iter()
@@ -859,6 +862,7 @@ fn test_fixtures_valid_files() {
                     policy: None,
                     require_continuity: false,
                     attachments: None,
+                    revocation_manager: None,
                 });
 
                 let criticals: Vec<_> = issues

@@ -47,6 +47,8 @@ export interface LukuidSdkOptions {
    * Base URL for the LukuID API. Defaults to https://api.lukuid.com.
    */
   apiUrl?: string;
+  /** Certificate trust profile for CRL signing chain validation. */
+  trustProfile?: string;
   /**
    * Completely disables network calls to LukuID (e.g. heartbeats, CRL fetches).
    * Defaults to false.
@@ -212,8 +214,21 @@ export class LukuidSdk {
       crlMemoryOnly: this.options.crlMemoryOnly,
       crlCachePath: this.options.crlCachePath,
       crlRefreshIntervalHours: this.options.crlRefreshIntervalHours ?? 4,
-      debugLogging: this.options.debugLogging
+      debugLogging: this.options.debugLogging,
+      trustProfile: this.options.trustProfile
     });
+  }
+
+  close(): void {
+    this.revocationManager.close();
+  }
+
+  getRevocationManager(): RevocationManager {
+    return this.revocationManager;
+  }
+
+  syncRevocations(): Promise<void> {
+    return this.revocationManager.sync();
   }
 
   async getConnectedDevices(options?: DeviceDiscoveryOptions): Promise<Device[]> {

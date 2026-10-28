@@ -401,6 +401,7 @@ internal fun validateCertificateChainInner(
         }
 
         if (revocationManager != null) {
+            if (!revocationManager.hasVerifiedSnapshot()) return CertificateChainValidationResult(false, "No verified CRL available")
             for (cert in certs) {
                 if (revocationManager.isRevoked(cert)) {
                     return CertificateChainValidationResult(false, "Certificate is revoked: ${sha256Hex(extractRawPublicKey(cert.publicKey))}")
@@ -525,6 +526,7 @@ internal fun verifyExternalIdentity(input: ExternalIdentityInput, revocationMana
 
     // Revocation Check: Check every certificate in the chain
     if (revocationManager != null) {
+        if (!revocationManager.hasVerifiedSnapshot()) return VerificationResult(false, "No verified CRL available")
         for (cert in certs) {
             if (revocationManager.isRevoked(cert)) {
                 return VerificationResult(false, "External identity certificate is revoked: ${sha256Hex(extractRawPublicKey(cert.publicKey))}")

@@ -100,6 +100,7 @@ data class LukuSdkOptions(
      * Base URL for the LukuID API. Defaults to https://api.lukuid.com.
      */
     val apiUrl: String = "https://api.lukuid.com",
+    val trustProfile: String = System.getenv("LUKUID_TRUST_PROFILE") ?: "prod",
     /**
      * Completely disables network calls to LukuID (e.g. heartbeats, CRL fetches).
      * Defaults to false.

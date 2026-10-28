@@ -1079,13 +1079,13 @@ public enum LukuFile {
         return issues
     }
 
-    public static func parse(url: URL) throws -> LukuParseResult {
-        try parse(data: Data(contentsOf: url))
+    public static func parse(url: URL, options: LukuVerifyOptions = LukuVerifyOptions()) throws -> LukuParseResult {
+        try parse(data: Data(contentsOf: url), options: options)
     }
 
-    public static func parse(data: Data) throws -> LukuParseResult {
+    public static func parse(data: Data, options: LukuVerifyOptions = LukuVerifyOptions()) throws -> LukuParseResult {
         let archive = try open(data: data)
-        let issues = archive.verify()
+        let issues = archive.verify(options: options)
         let verified = !issues.contains { $0.criticality == .critical }
         let items = archive.blocks.flatMap { block in
             block.batch.map { record in

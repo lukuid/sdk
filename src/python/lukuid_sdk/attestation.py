@@ -442,6 +442,8 @@ def _validate_certificate_chain_inner(
             return CertificateChainValidationResult(False, f"Signature verification failed at chain level {index}")
 
     if revocation_manager:
+        if not revocation_manager.has_verified_snapshot():
+            return CertificateChainValidationResult(False, "No verified CRL available")
         for cert in certs:
             if revocation_manager.is_revoked(cert):
                 return CertificateChainValidationResult(False, f"Certificate is revoked: {revocation_manager.get_fingerprint(cert)}")
@@ -535,6 +537,8 @@ def verify_external_identity(
 
     # Revocation Check: Check every certificate in the chain
     if revocation_manager:
+        if not revocation_manager.has_verified_snapshot():
+            return VerificationResult(False, "No verified CRL available")
         for cert in certs:
             if revocation_manager.is_revoked(cert):
                 return VerificationResult(False, f"External identity certificate is revoked: {revocation_manager.get_fingerprint(cert)}")

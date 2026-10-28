@@ -43,17 +43,17 @@ object LukuFile {
 
     fun open(data: ByteArray): LukuArchive = LukuArchive.open(data)
 
-    fun parse(file: File): LukuParseResult {
-        return parse(FileInputStream(file))
+    fun parse(file: File, options: LukuVerifyOptions = LukuVerifyOptions()): LukuParseResult {
+        return parse(FileInputStream(file), options)
     }
 
-    fun parse(data: ByteArray): LukuParseResult {
-        return parse(ByteArrayInputStream(data))
+    fun parse(data: ByteArray, options: LukuVerifyOptions = LukuVerifyOptions()): LukuParseResult {
+        return parse(ByteArrayInputStream(data), options)
     }
 
-    fun parse(inputStream: InputStream): LukuParseResult {
+    fun parse(inputStream: InputStream, options: LukuVerifyOptions = LukuVerifyOptions()): LukuParseResult {
         val archive = LukuArchive.open(inputStream.readBytes())
-        val issues = archive.verify()
+        val issues = archive.verify(options)
         val verified = issues.none { it.criticality == Criticality.CRITICAL }
         val items = archive.blocks.flatMap { block ->
             block.batch.map { record ->

@@ -814,6 +814,7 @@ async function validateCertificateChainInner(
       }
 
       if (revocationManager) {
+        if (!revocationManager.hasVerifiedSnapshot()) return { ok: false, reason: 'No verified CRL available' };
         for (const cert of certPems) {
           const forgeCert = forge.pki.certificateFromPem(cert);
           if (revocationManager.isRevoked(forgeCert)) {
@@ -893,6 +894,7 @@ async function validateCertificateChainInner(
     }
 
     if (revocationManager) {
+      if (!revocationManager.hasVerifiedSnapshot()) return { ok: false, reason: 'No verified CRL available' };
       const pems = inputs.certificateChain.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [];
       for (const cert of pems) {
         const forgeCert = forge.pki.certificateFromPem(cert);
@@ -992,6 +994,7 @@ export async function verifyExternalIdentity(
 
   // Revocation Check: Check every certificate in the chain
   if (revocationManager) {
+    if (!revocationManager.hasVerifiedSnapshot()) return { ok: false, reason: 'No verified CRL available' };
     for (const derBase64 of inputs.certChainDer) {
        const der = decodeBase64(derBase64);
        if (der) {

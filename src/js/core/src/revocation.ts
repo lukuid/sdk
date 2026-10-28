@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-import forge from 'node-forge';
+import forge, { pki, asn1 } from 'node-forge';
+import { validateCertificateChain, verifyPayloadSignatureWithSpki } from './attestation.js';
 
 export interface RevocationManagerOptions {
   apiUrl: string;
@@ -8,136 +9,136 @@ export interface RevocationManagerOptions {
   crlCachePath?: string;
   crlRefreshIntervalHours?: number;
   debugLogging?: boolean;
+  trustProfile?: string;
+}
+
+interface SignedSnapshot {
+  payload: string;
+  signature: string;
+  certificate_chain: string;
+}
+
+const requests = new Map<string, Promise<SignedSnapshot>>();
+const sharedSnapshots = new Map<string, { snapshot: SignedSnapshot; checkedAt: number }>();
+const CACHE_KEY = 'lukuid_crl_v2';
+
+function certificateSpki(cert: pki.Certificate): asn1.Asn1 {
+  const certificate = forge.pki.certificateToAsn1(cert);
+  const tbs = (certificate.value as asn1.Asn1[])[0];
+  const fields = tbs.value as asn1.Asn1[];
+  return fields[fields[0].tagClass === 128 ? 6 : 5];
 }
 
 export class RevocationManager {
-  private revokedFingerprints: Set<string> = new Set();
-  private lastSyncDate: string | null = null;
-  private refreshInterval: any = null;
+  private revokedFingerprints = new Set<string>();
+  private lastSync = 0;
+  private generatedAt = 0;
+  private refreshInterval: ReturnType<typeof setInterval> | null = null;
+  private readonly ready: Promise<void>;
 
   constructor(private options: RevocationManagerOptions) {
-    this.loadFromCache();
-    this.startAutoRefresh();
-  }
-
-  private async loadFromCache() {
-    if (this.options.crlMemoryOnly) return;
-    
-    // In Web/JS environment, we might use localStorage if no crlCachePath is provided
-    if (typeof localStorage !== 'undefined') {
-      try {
-        const data = localStorage.getItem('lukuid_crl');
-        if (data) {
-          const json = JSON.parse(data);
-          this.lastSyncDate = json.last_sync;
-          if (Array.isArray(json.fingerprints)) {
-            this.revokedFingerprints = new Set(json.fingerprints.map((f: string) => f.toLowerCase()));
-          }
-        }
-      } catch (e) {
-        this.debugLog('Failed to load CRL cache from localStorage', e);
-      }
+    this.ready = this.loadFromCache();
+    const hours = options.crlRefreshIntervalHours ?? 4;
+    if (hours > 0 && !options.disableExternalCalls) {
+      const intervalMs = hours * 3600 * 1000;
+      this.refreshInterval = setInterval(() => { void this.sync().catch(e => this.debugLog('CRL sync failed', e)); }, intervalMs);
+      void this.ready.then(() => this.sync()).catch(e => this.debugLog('Initial CRL sync failed', e));
     }
   }
 
-  private saveToCache() {
-    if (this.options.crlMemoryOnly) return;
+  private cacheKey(): string {
+    return `${CACHE_KEY}:${this.options.apiUrl.replace(/\/+$/, '')}:${this.options.trustProfile ?? 'prod'}`;
+  }
 
-    if (typeof localStorage !== 'undefined') {
-      try {
-        const json = {
-          last_sync: this.lastSyncDate,
-          fingerprints: Array.from(this.revokedFingerprints)
-        };
-        localStorage.setItem('lukuid_crl', JSON.stringify(json));
-      } catch (e) {
-        this.debugLog('Failed to save CRL cache to localStorage', e);
-      }
+  private async loadFromCache(): Promise<void> {
+    if (this.options.crlMemoryOnly || typeof localStorage === 'undefined') return;
+    try {
+      const value = localStorage.getItem(this.cacheKey());
+      if (!value) return;
+      const cached = JSON.parse(value) as { snapshot: SignedSnapshot; checkedAt: number };
+      await this.applySnapshot(cached.snapshot);
+      this.lastSync = Number.isFinite(cached.checkedAt) && cached.checkedAt <= Date.now() + 300000 ? cached.checkedAt : 0;
+    } catch (error) {
+      this.debugLog('Rejected CRL cache', error);
     }
   }
 
-  private startAutoRefresh() {
-    if (!this.options.crlRefreshIntervalHours || this.options.crlRefreshIntervalHours <= 0) return;
-
-    const intervalMs = this.options.crlRefreshIntervalHours * 3600 * 1000;
-    this.refreshInterval = setInterval(() => this.sync(), intervalMs);
-    
-    // Initial sync
-    this.sync().catch(e => this.debugLog('Initial CRL sync failed', e));
+  private async applySnapshot(snapshot: SignedSnapshot): Promise<void> {
+    if (!snapshot || typeof snapshot.payload !== 'string' || typeof snapshot.signature !== 'string' || typeof snapshot.certificate_chain !== 'string') {
+      throw new Error('Malformed signed CRL');
+    }
+    const payloadBytes = forge.util.decode64(snapshot.payload);
+    if (forge.util.encode64(payloadBytes).replace(/=+$/, '') !== snapshot.payload.replace(/=+$/, '')) throw new Error('Invalid CRL payload encoding');
+    const payload = new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(payloadBytes, ch => ch.charCodeAt(0)));
+    const data = JSON.parse(payload) as { version?: number; generated_at?: string; revoked_fingerprints?: unknown };
+    const generated = Date.parse(data.generated_at ?? '');
+    if (data.version !== 1 || !Number.isFinite(generated) || generated > Date.now() + 300000 || generated < Date.now() - 86400000 || !Array.isArray(data.revoked_fingerprints) || !data.revoked_fingerprints.every(f => typeof f === 'string' && /^[a-f0-9]{64}$/.test(f))) {
+      throw new Error('Invalid signed CRL payload');
+    }
+    const chain = await validateCertificateChain({ certificateChain: snapshot.certificate_chain, created: Math.floor(generated / 1000), trustProfile: this.options.trustProfile ?? 'prod' });
+    if (!chain.ok) throw new Error(`CRL signing chain rejected: ${chain.reason}`);
+    const leafPem = snapshot.certificate_chain.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/)?.[0];
+    if (!leafPem) throw new Error('Missing CRL signing certificate');
+    const leaf = forge.pki.certificateFromPem(leafPem);
+    const spki = forge.asn1.toDer(certificateSpki(leaf)).getBytes();
+    const spkiBytes = Uint8Array.from(spki, ch => ch.charCodeAt(0));
+    const verified = await verifyPayloadSignatureWithSpki(spkiBytes, snapshot.signature, payload);
+    if (!verified.ok) throw new Error(`CRL signature rejected: ${verified.reason}`);
+    this.revokedFingerprints = new Set(data.revoked_fingerprints as string[]);
+    this.generatedAt = generated;
   }
 
-  public async sync() {
+  public async sync(): Promise<void> {
     if (this.options.disableExternalCalls) return;
-
+    await this.ready;
+    const intervalMs = (this.options.crlRefreshIntervalHours ?? 4) * 3600 * 1000;
     const apiUrl = this.options.apiUrl.replace(/\/+$/, '');
-    let url = `${apiUrl}/revocations`;
-    if (this.lastSyncDate) {
-      url += `?from=${encodeURIComponent(this.lastSyncDate)}`;
+    const sharedKey = `${apiUrl}:${this.options.trustProfile ?? 'prod'}`;
+    const shared = sharedSnapshots.get(sharedKey);
+    if (shared && Date.now() - shared.checkedAt < intervalMs) {
+      await this.applySnapshot(shared.snapshot);
+      this.lastSync = shared.checkedAt;
+      return;
     }
-
-    try {
-      const response = await fetch(url);
-      if (response.status === 200) {
-        const json = await response.json();
-        if (Array.isArray(json.revocations)) {
-          for (const item of json.revocations) {
-            if (item.identifier) {
-              this.revokedFingerprints.add(item.identifier.toLowerCase());
-            }
-          }
-        }
-        this.lastSyncDate = new Date().toISOString();
-        this.saveToCache();
-        this.debugLog(`CRL synced successfully: ${this.revokedFingerprints.size} items`);
-      } else if (response.status !== 304) {
-        this.debugLog(`CRL sync failed with status: ${response.status}`);
-      }
-    } catch (e) {
-      this.debugLog('CRL sync error', e);
+    if (intervalMs > 0 && Date.now() - this.lastSync < intervalMs) return;
+    let request = requests.get(apiUrl);
+    if (!request) {
+      request = fetch(`${apiUrl}/crl`).then(async response => {
+        if (!response.ok) throw new Error(`CRL HTTP ${response.status}`);
+        return response.json() as Promise<SignedSnapshot>;
+      });
+      requests.set(apiUrl, request);
+      void request.finally(() => { requests.delete(apiUrl); }).catch(() => {});
     }
-  }
-
-  public isRevoked(cert: any): boolean {
-    const fingerprint = this.getFingerprint(cert);
-    return this.revokedFingerprints.has(fingerprint.toLowerCase());
-  }
-
-  private getFingerprint(cert: any): String {
-    // For Ed25519, we need to extract the raw bytes.
-    // forge might not support Ed25519 natively in a way that is easy to extract.
-    // In LukuID JS SDK, we often use noble-forge or similar.
-    
-    // Fallback: extract public key bytes from SPKI
-    const f = forge as any;
-    try {
-        const spkiDer = f.asn1.toDer(f.pki.publicKeyToAsn1(cert.publicKey)).getBytes();
-        const asn1 = f.asn1.fromDer(spkiDer);
-        // SPKI: SEQUENCE { algorithm SEQUENCE { oid OID, params ANY }, publicKey BIT STRING }
-        const publicKeyBitString = asn1.value[1].value;
-        const rawBytes = publicKeyBitString.slice(1); // Drop unused bits byte
-        
-        const md = f.md.sha256.create();
-        md.update(rawBytes);
-        return md.digest().toHex();
-    } catch (e) {
-        // Fallback to full cert hash
-        const der = f.asn1.toDer(f.pki.certificateToAsn1(cert)).getBytes();
-        const md = f.md.sha256.create();
-        md.update(der);
-        return md.digest().toHex();
+    const snapshot = await request;
+    await this.applySnapshot(snapshot);
+    const checkedAt = Date.now();
+    this.lastSync = checkedAt;
+    sharedSnapshots.set(sharedKey, { snapshot, checkedAt });
+    if (!this.options.crlMemoryOnly && typeof localStorage !== 'undefined') {
+      localStorage.setItem(this.cacheKey(), JSON.stringify({ snapshot, checkedAt }));
     }
   }
 
-  private debugLog(message: string, error?: any) {
-    if (this.options.debugLogging) {
-      console.debug(`[RevocationManager] ${message}`, error || '');
-    }
+  public isRevoked(cert: pki.Certificate): boolean {
+    const parsedAsn1 = certificateSpki(cert);
+    const bitString = (parsedAsn1.value as asn1.Asn1[])[1].value as string;
+    if (bitString.charCodeAt(0) !== 0) throw new Error('Invalid certificate public key');
+    const digest = forge.md.sha256.create();
+    digest.update(bitString.slice(1));
+    return this.revokedFingerprints.has(digest.digest().toHex());
   }
 
-  public close() {
-    if (this.refreshInterval) {
-      clearInterval(this.refreshInterval);
-      this.refreshInterval = null;
-    }
+  public hasVerifiedSnapshot(): boolean {
+    return this.lastSync > 0 && this.generatedAt >= Date.now() - 86400000;
+  }
+
+  public close(): void {
+    if (this.refreshInterval) clearInterval(this.refreshInterval);
+    this.refreshInterval = null;
+  }
+
+  private debugLog(message: string, error?: unknown): void {
+    if (this.options.debugLogging) console.debug(`[RevocationManager] ${message}`, error ?? '');
   }
 }

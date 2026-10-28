@@ -151,6 +151,7 @@ public struct LukuIDClientOptions: Sendable {
      * Base URL for the LukuID API. Defaults to https://api.lukuid.com.
      */
     public let apiUrl: String
+    public let trustProfile: String
     
     /**
      * Completely disables network calls to LukuID (e.g. heartbeats, CRL fetches).
@@ -182,6 +183,7 @@ public struct LukuIDClientOptions: Sendable {
         debugLogging: Bool = false,
         allowUnverifiedDevices: Bool = false,
         apiUrl: String = "https://api.lukuid.com",
+        trustProfile: String = ProcessInfo.processInfo.environment["LUKUID_TRUST_PROFILE"] ?? "prod",
         disableExternalCalls: Bool = false,
         crlMemoryOnly: Bool = false,
         crlCachePath: String? = nil,
@@ -190,6 +192,7 @@ public struct LukuIDClientOptions: Sendable {
         self.debugLogging = debugLogging
         self.allowUnverifiedDevices = allowUnverifiedDevices
         self.apiUrl = apiUrl
+        self.trustProfile = trustProfile
         self.disableExternalCalls = disableExternalCalls
         self.crlMemoryOnly = crlMemoryOnly
         self.crlCachePath = crlCachePath

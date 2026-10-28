@@ -65,8 +65,9 @@ class DeviceAttestationTest {
     @Test
     fun `fails when certificate is revoked`() {
         val rm = io.mockk.mockk<RevocationManager>()
+        io.mockk.every { rm.hasVerifiedSnapshot() } returns true
         io.mockk.every { rm.isRevoked(any()) } returns true
-        
+
         val input = DeviceAttestationInput(
             id = "u1",
             key = "pk1",
