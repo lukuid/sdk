@@ -405,6 +405,12 @@ class LukuArchive private constructor(
                 }
 
                 if (!isNonChainAdvancing) {
+                    val genesisDac = record.optJSONObject("identity")?.optString("dac_der")?.takeIf { it.isNotEmpty() }
+                        ?: block.attestationDacDer
+                    genesisRecordIssue(previousSignature, genesisHash, genesisDac, deviceId)?.let { issues += it }
+                }
+
+                if (!isNonChainAdvancing) {
                     lastSignatures[deviceId]?.let { lastSig ->
                         if (previousSignature != lastSig) {
                             issues += VerificationIssue("RECORD_CHAIN_BROKEN", "Record chain broken for device $deviceId at record type $recordType.", Criticality.CRITICAL)

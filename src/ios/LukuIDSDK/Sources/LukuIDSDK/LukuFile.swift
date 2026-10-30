@@ -532,6 +532,14 @@ public final class LukuArchive {
                 }
 
                 if !isNonChainAdvancing {
+                    let genesisDac = ((record["identity"] as? [String: Any])?["dac_der"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+                        ?? block.attestationDacDer
+                    if let genesisIssue = genesisRecordIssue(previousSignature: previousSignature, genesisHash: genesisHash, dacDerBase64: genesisDac, deviceID: deviceID) {
+                        issues.append(genesisIssue)
+                    }
+                }
+
+                if !isNonChainAdvancing {
                     if let lastSignature = lastSignatures[deviceID], previousSignature != lastSignature {
                         issues.append(issue("RECORD_CHAIN_BROKEN", "Record chain broken for device \(deviceID) at record type \(recordType).", .critical))
                     }
@@ -910,6 +918,16 @@ public enum LukuFile {
         if !isAuxRecord {
             if let ctr = counter, ctr == 0, !genesisHash.isEmpty, !previousSignature.isEmpty, previousSignature != genesisHash {
                 issues.append(VerificationIssue(code: "GENESIS_HASH_MISMATCH", message: "Genesis record (ctr=0) for device \(deviceId) has previous_signature that does not match genesis_hash.", criticality: .critical))
+            }
+        }
+
+        if !isAuxRecord {
+            let genesisIdentity = envelope["identity"] as? [String: Any]
+            let genesisDac = (envelope["attestation_dac_der"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+                ?? (genesisIdentity?["dac_der"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+                ?? (genesisIdentity?["attestation_dac_der"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+            if let genesisIssue = genesisRecordIssue(previousSignature: previousSignature, genesisHash: genesisHash, dacDerBase64: genesisDac, deviceID: deviceId) {
+                issues.append(genesisIssue)
             }
         }
 

@@ -190,6 +190,14 @@ object LukuFile {
             issues.add(VerificationIssue("GENESIS_HASH_MISMATCH", "Genesis record (ctr=0) for device $deviceId has previous_signature that does not match genesis_hash.", Criticality.CRITICAL))
         }
 
+        if (!isAuxRecord) {
+            val genesisIdentity = envelope.optJSONObject("identity")
+            val genesisDac = envelope.optString("attestation_dac_der").takeIf { it.isNotEmpty() }
+                ?: genesisIdentity?.optString("dac_der")?.takeIf { it.isNotEmpty() }
+                ?: genesisIdentity?.optString("attestation_dac_der")?.takeIf { it.isNotEmpty() }
+            genesisRecordIssue(previousSignature, genesisHash, genesisDac, deviceId)?.let { issues.add(it) }
+        }
+
         if (!options.allowUntrustedRoots) {
             val identity = envelope.optJSONObject("identity")
             

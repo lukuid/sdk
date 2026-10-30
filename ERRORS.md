@@ -21,7 +21,7 @@ This document lists the error codes produced by LukuID SDK verification function
 | `BLOCK_CANONICAL_MISMATCH` | Critical | The block's `block_canonical_string` does not match the recomputed canonical representation. |
 | `BLOCK_HASH_INVALID` | Critical | The block's hash does not match the hash of its canonical string. |
 | `RECORD_CHAIN_BROKEN` | Critical | A record's `previous_signature` does not match the signature of the previous record from the same device. |
-| `GENESIS_HASH_MISMATCH` | Critical | A device's first record (counter 0) has a `previous_signature` that doesn't match its declared `genesis_hash`. |
+| `GENESIS_HASH_MISMATCH` | Critical | A device's first record (counter 0) has a `previous_signature` that doesn't match its declared `genesis_hash`; or a Genesis Record (native record whose `previous_signature` is the base64 of exactly 32 bytes) whose `previous_signature` is not the SHA-256 of its DAC, whose `genesis_hash` differs from `previous_signature`, or whose DAC is missing. |
 | `COUNTER_REGRESSION` | Critical | A record was found with a counter value lower than or equal to a previous record from the same device. |
 | `TIME_REGRESSION` | Critical | A record's `timestamp_utc` is earlier than a previous record from the same device. |
 | `CONTINUITY_GAP_EXCEEDED` | Critical | The time gap between two native records exceeds the threshold defined in the archive's continuity policy. |

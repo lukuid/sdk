@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
+import base64
+import binascii
 import copy
 import hashlib
 import io
@@ -456,6 +458,17 @@ class LukuArchive:
                         issues.append(_issue("GENESIS_HASH_MISMATCH", f"Genesis record (ctr=0) for device {device_id} has previous_signature that does not match genesis_hash.", Criticality.CRITICAL))
 
                 if not is_non_chain_advancing:
+                    record_identity = record.get("identity") if isinstance(record.get("identity"), dict) else {}
+                    genesis_issue = _genesis_record_issue(
+                        previous_signature,
+                        genesis_hash,
+                        record_identity.get("dac_der") or block.attestation_dac_der,
+                        device_id,
+                    )
+                    if genesis_issue:
+                        issues.append(genesis_issue)
+
+                if not is_non_chain_advancing:
                     if device_id in last_signatures and previous_signature != last_signatures[device_id]:
                         issues.append(_issue("RECORD_CHAIN_BROKEN", f"Record chain broken for device {device_id} at record type {record_type}.", Criticality.CRITICAL))
                     if device_id in last_counters and counter is not None and counter <= last_counters[device_id]:
@@ -731,6 +744,16 @@ class LukuFile:
             issues.append(_issue("GENESIS_HASH_MISMATCH", f"Genesis record (ctr=0) for device {device_id or 'unknown'} has previous_signature that does not match genesis_hash.", Criticality.CRITICAL))
 
         identity = envelope.get("identity") if isinstance(envelope.get("identity"), dict) else {}
+
+        if not is_aux:
+            genesis_issue = _genesis_record_issue(
+                previous_signature,
+                genesis_hash,
+                envelope.get("attestation_dac_der") or identity.get("dac_der") or identity.get("attestation_dac_der"),
+                device_id or "unknown",
+            )
+            if genesis_issue:
+                issues.append(genesis_issue)
         
         dac = str(envelope.get("attestation_dac_der") or identity.get("dac_der") or identity.get("attestation_dac_der") or "")
         man = str(envelope.get("attestation_manufacturer_der") or identity.get("attestation_manufacturer_der") or "")
@@ -1400,6 +1423,32 @@ def _sha256_hex(value: bytes) -> str:
 
 def _issue(code: str, message: str, criticality: Criticality) -> VerificationIssue:
     return VerificationIssue(code=code, message=message, criticality=criticality)
+
+
+def _genesis_record_issue(previous_signature: str, genesis_hash: str, dac_der_b64: str | None, device_id: str) -> VerificationIssue | None:
+    """Genesis record (dotluku spec "Genesis Anchoring"): a native record whose
+    previous_signature is the canonical base64 of exactly 32 bytes carries
+    SHA-256(DAC DER) instead of a 64-byte predecessor signature. That value must
+    match the record's DAC, and genesis_hash when present."""
+    try:
+        previous = base64.b64decode(previous_signature, validate=True)
+    except (binascii.Error, ValueError):
+        return None
+    if len(previous) != 32 or base64.b64encode(previous).decode("ascii") != previous_signature:
+        return None
+    dac = b""
+    if dac_der_b64:
+        try:
+            dac = base64.b64decode("".join(dac_der_b64.split()), validate=True)
+        except (binascii.Error, ValueError):
+            dac = b""
+    if not dac:
+        return _issue("GENESIS_HASH_MISMATCH", f"Genesis record for device {device_id} cannot be anchored: DAC certificate missing.", Criticality.CRITICAL)
+    if hashlib.sha256(dac).digest() != previous:
+        return _issue("GENESIS_HASH_MISMATCH", f"Genesis record for device {device_id} has previous_signature that does not match the SHA-256 of its DAC.", Criticality.CRITICAL)
+    if genesis_hash and genesis_hash != previous_signature:
+        return _issue("GENESIS_HASH_MISMATCH", f"Genesis record for device {device_id} has genesis_hash that does not match previous_signature.", Criticality.CRITICAL)
+    return None
 
 
 def _uint64(value: Any) -> int | None:

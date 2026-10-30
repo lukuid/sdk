@@ -471,6 +471,35 @@ function issue(code: string, message: string, criticality: Criticality): Verific
   return { code, message, criticality };
 }
 
+// Genesis record (dotluku spec "Genesis Anchoring"): a native record whose
+// previous_signature is the canonical base64 of exactly 32 bytes carries
+// SHA-256(DAC DER) instead of a 64-byte predecessor signature. That value must
+// match the record's DAC, and genesis_hash when present.
+async function genesisRecordIssue(
+  previousSignature: string,
+  genesisHash: string,
+  dacDerBase64: string | null | undefined,
+  deviceId: string
+): Promise<VerificationIssue | null> {
+  const previous = decodeBase64(previousSignature);
+  if (!previous || previous.length !== 32 || encodeBase64(previous) !== previousSignature) {
+    return null;
+  }
+  const dac = dacDerBase64 ? decodeBase64(dacDerBase64) : null;
+  if (!dac || dac.length === 0) {
+    return issue('GENESIS_HASH_MISMATCH', `Genesis record for device ${deviceId} cannot be anchored: DAC certificate missing.`, 'critical');
+  }
+  const digest = new Uint8Array(await getSubtleCrypto().digest('SHA-256', toArrayBuffer(dac)));
+  if (encodeBase64(digest) !== previousSignature) {
+    return issue('GENESIS_HASH_MISMATCH', `Genesis record for device ${deviceId} has previous_signature that does not match the SHA-256 of its DAC.`, 'critical');
+  }
+  if (genesisHash.length > 0 && genesisHash !== previousSignature) {
+    return issue('GENESIS_HASH_MISMATCH', `Genesis record for device ${deviceId} has genesis_hash that does not match previous_signature.`, 'critical');
+  }
+  return null;
+}
+
+
 function isAuxRecordType(recordType: string | undefined): boolean {
   return recordType === 'attachment' || recordType === 'location' || recordType === 'custody';
 }
@@ -1662,6 +1691,16 @@ export class LukuFile {
     if (!isNonChainAdvancing && counter === 0 && genesisHash.length > 0 && previousSignature.length > 0 && previousSignature !== genesisHash) {
       issues.push(issue('GENESIS_HASH_MISMATCH', `Genesis record (ctr=0) for device ${deviceId ?? 'unknown'} has previous_signature that does not match genesis_hash.`, 'critical'));
     }
+    if (!isNonChainAdvancing) {
+      const envelopeIdentity = asJsonObject(envelope.identity);
+      const genesisIssue = await genesisRecordIssue(
+        previousSignature,
+        genesisHash,
+        asString(envelope.attestation_dac_der) ?? asString(envelopeIdentity?.dac_der) ?? asString(envelopeIdentity?.attestation_dac_der),
+        deviceId ?? 'unknown'
+      );
+      if (genesisIssue) issues.push(genesisIssue);
+    }
 
     if (!allowUntrustedRoots && !verificationSkipsDeviceSignature) {
       const identity = asJsonObject(envelope.identity);
@@ -2372,6 +2411,15 @@ export class LukuFile {
           if (counter === 0 && genesisHash.length > 0 && previousSignature !== genesisHash) {
             issues.push(issue('GENESIS_HASH_MISMATCH', `Genesis record (ctr=0) for device ${deviceId} has previous_signature that does not match genesis_hash.`, 'critical'));
           }
+        }
+        if (!isNonChainAdvancing) {
+          const genesisIssue = await genesisRecordIssue(
+            previousSignature,
+            genesisHash,
+            asString(asJsonObject(record.identity)?.dac_der) ?? block.attestation_dac_der,
+            deviceId
+          );
+          if (genesisIssue) issues.push(genesisIssue);
         }
 
         if (!isNonChainAdvancing) {
