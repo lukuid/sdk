@@ -532,9 +532,7 @@ public final class LukuArchive {
                 }
 
                 if !isNonChainAdvancing {
-                    let genesisDac = ((record["identity"] as? [String: Any])?["dac_der"] as? String).flatMap { $0.isEmpty ? nil : $0 }
-                        ?? block.attestationDacDer
-                    if let genesisIssue = genesisRecordIssue(previousSignature: previousSignature, genesisHash: genesisHash, dacDerBase64: genesisDac, deviceID: deviceID) {
+                    if let genesisIssue = genesisRecordIssue(previousSignature: previousSignature, genesisHash: genesisHash, publicKeyBase64: publicKey, deviceID: deviceID) {
                         issues.append(genesisIssue)
                     }
                 }
@@ -922,11 +920,7 @@ public enum LukuFile {
         }
 
         if !isAuxRecord {
-            let genesisIdentity = envelope["identity"] as? [String: Any]
-            let genesisDac = (envelope["attestation_dac_der"] as? String).flatMap { $0.isEmpty ? nil : $0 }
-                ?? (genesisIdentity?["dac_der"] as? String).flatMap { $0.isEmpty ? nil : $0 }
-                ?? (genesisIdentity?["attestation_dac_der"] as? String).flatMap { $0.isEmpty ? nil : $0 }
-            if let genesisIssue = genesisRecordIssue(previousSignature: previousSignature, genesisHash: genesisHash, dacDerBase64: genesisDac, deviceID: deviceId) {
+            if let genesisIssue = genesisRecordIssue(previousSignature: previousSignature, genesisHash: genesisHash, publicKeyBase64: publicKey, deviceID: deviceId) {
                 issues.append(genesisIssue)
             }
         }

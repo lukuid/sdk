@@ -458,13 +458,7 @@ class LukuArchive:
                         issues.append(_issue("GENESIS_HASH_MISMATCH", f"Genesis record (ctr=0) for device {device_id} has previous_signature that does not match genesis_hash.", Criticality.CRITICAL))
 
                 if not is_non_chain_advancing:
-                    record_identity = record.get("identity") if isinstance(record.get("identity"), dict) else {}
-                    genesis_issue = _genesis_record_issue(
-                        previous_signature,
-                        genesis_hash,
-                        record_identity.get("dac_der") or block.attestation_dac_der,
-                        device_id,
-                    )
+                    genesis_issue = _genesis_record_issue(previous_signature, genesis_hash, public_key, device_id)
                     if genesis_issue:
                         issues.append(genesis_issue)
 
@@ -746,12 +740,7 @@ class LukuFile:
         identity = envelope.get("identity") if isinstance(envelope.get("identity"), dict) else {}
 
         if not is_aux:
-            genesis_issue = _genesis_record_issue(
-                previous_signature,
-                genesis_hash,
-                envelope.get("attestation_dac_der") or identity.get("dac_der") or identity.get("attestation_dac_der"),
-                device_id or "unknown",
-            )
+            genesis_issue = _genesis_record_issue(previous_signature, genesis_hash, public_key, device_id or "unknown")
             if genesis_issue:
                 issues.append(genesis_issue)
         
@@ -1425,15 +1414,31 @@ def _issue(code: str, message: str, criticality: Criticality) -> VerificationIss
     return VerificationIssue(code=code, message=message, criticality=criticality)
 
 
-def _genesis_record_issue(previous_signature: str, genesis_hash: str, dac_der_b64: str | None, device_id: str) -> VerificationIssue | None:
+def _genesis_record_issue(previous_signature: str, genesis_hash: str, public_key_b64: str | None, device_id: str) -> VerificationIssue | None:
     """Genesis record (dotluku spec "Genesis Anchoring"): a native record whose
     previous_signature is the canonical base64 of exactly 32 bytes carries
-    SHA-256(DAC DER) instead of a 64-byte predecessor signature. That value must
-    match the record's DAC, and genesis_hash when present."""
+    SHA-256 of the device's raw Ed25519 public key instead of a 64-byte
+    predecessor signature. That value must match the record's public key, and
+    genesis_hash when present. The key survives DAC reissue."""
     try:
         previous = base64.b64decode(previous_signature, validate=True)
     except (binascii.Error, ValueError):
         return None
+    if len(previous) != 32 or base64.b64encode(previous).decode("ascii") != previous_signature:
+        return None
+    public_key = b""
+    if public_key_b64:
+        try:
+            public_key = base64.b64decode(public_key_b64, validate=True)
+        except (binascii.Error, ValueError):
+            public_key = b""
+    if len(public_key) != 32:
+        return _issue("GENESIS_HASH_MISMATCH", f"Genesis record for device {device_id} cannot be anchored: device public key missing or invalid.", Criticality.CRITICAL)
+    if hashlib.sha256(public_key).digest() != previous:
+        return _issue("GENESIS_HASH_MISMATCH", f"Genesis record for device {device_id} has previous_signature that does not match the SHA-256 of its public key.", Criticality.CRITICAL)
+    if genesis_hash and genesis_hash != previous_signature:
+        return _issue("GENESIS_HASH_MISMATCH", f"Genesis record for device {device_id} has genesis_hash that does not match previous_signature.", Criticality.CRITICAL)
+    return None
     if len(previous) != 32 or base64.b64encode(previous).decode("ascii") != previous_signature:
         return None
     dac = b""

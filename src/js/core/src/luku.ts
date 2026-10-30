@@ -473,25 +473,26 @@ function issue(code: string, message: string, criticality: Criticality): Verific
 
 // Genesis record (dotluku spec "Genesis Anchoring"): a native record whose
 // previous_signature is the canonical base64 of exactly 32 bytes carries
-// SHA-256(DAC DER) instead of a 64-byte predecessor signature. That value must
-// match the record's DAC, and genesis_hash when present.
+// SHA-256 of the device's raw Ed25519 public key instead of a 64-byte
+// predecessor signature. That value must match the record's public key, and
+// genesis_hash when present. The key survives DAC reissue.
 async function genesisRecordIssue(
   previousSignature: string,
   genesisHash: string,
-  dacDerBase64: string | null | undefined,
+  publicKeyBase64: string | null | undefined,
   deviceId: string
 ): Promise<VerificationIssue | null> {
   const previous = decodeBase64(previousSignature);
   if (!previous || previous.length !== 32 || encodeBase64(previous) !== previousSignature) {
     return null;
   }
-  const dac = dacDerBase64 ? decodeBase64(dacDerBase64) : null;
-  if (!dac || dac.length === 0) {
-    return issue('GENESIS_HASH_MISMATCH', `Genesis record for device ${deviceId} cannot be anchored: DAC certificate missing.`, 'critical');
+  const publicKey = publicKeyBase64 ? decodeBase64(publicKeyBase64) : null;
+  if (!publicKey || publicKey.length !== 32) {
+    return issue('GENESIS_HASH_MISMATCH', `Genesis record for device ${deviceId} cannot be anchored: device public key missing or invalid.`, 'critical');
   }
-  const digest = new Uint8Array(await getSubtleCrypto().digest('SHA-256', toArrayBuffer(dac)));
+  const digest = new Uint8Array(await getSubtleCrypto().digest('SHA-256', toArrayBuffer(publicKey)));
   if (encodeBase64(digest) !== previousSignature) {
-    return issue('GENESIS_HASH_MISMATCH', `Genesis record for device ${deviceId} has previous_signature that does not match the SHA-256 of its DAC.`, 'critical');
+    return issue('GENESIS_HASH_MISMATCH', `Genesis record for device ${deviceId} has previous_signature that does not match the SHA-256 of its public key.`, 'critical');
   }
   if (genesisHash.length > 0 && genesisHash !== previousSignature) {
     return issue('GENESIS_HASH_MISMATCH', `Genesis record for device ${deviceId} has genesis_hash that does not match previous_signature.`, 'critical');
@@ -1692,13 +1693,7 @@ export class LukuFile {
       issues.push(issue('GENESIS_HASH_MISMATCH', `Genesis record (ctr=0) for device ${deviceId ?? 'unknown'} has previous_signature that does not match genesis_hash.`, 'critical'));
     }
     if (!isNonChainAdvancing) {
-      const envelopeIdentity = asJsonObject(envelope.identity);
-      const genesisIssue = await genesisRecordIssue(
-        previousSignature,
-        genesisHash,
-        asString(envelope.attestation_dac_der) ?? asString(envelopeIdentity?.dac_der) ?? asString(envelopeIdentity?.attestation_dac_der),
-        deviceId ?? 'unknown'
-      );
+      const genesisIssue = await genesisRecordIssue(previousSignature, genesisHash, publicKey, deviceId ?? 'unknown');
       if (genesisIssue) issues.push(genesisIssue);
     }
 
@@ -2413,12 +2408,7 @@ export class LukuFile {
           }
         }
         if (!isNonChainAdvancing) {
-          const genesisIssue = await genesisRecordIssue(
-            previousSignature,
-            genesisHash,
-            asString(asJsonObject(record.identity)?.dac_der) ?? block.attestation_dac_der,
-            deviceId
-          );
+          const genesisIssue = await genesisRecordIssue(previousSignature, genesisHash, publicKey, deviceId);
           if (genesisIssue) issues.push(genesisIssue);
         }
 

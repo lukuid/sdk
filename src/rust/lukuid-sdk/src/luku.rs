@@ -15,12 +15,13 @@ use zip::{ZipArchive, ZipWriter};
 
 /// Genesis record (dotluku spec "Genesis Anchoring"): a native record whose
 /// previous_signature is the canonical base64 of exactly 32 bytes carries
-/// SHA-256(DAC DER) instead of a 64-byte predecessor signature. That value must
-/// match the record's DAC, and genesis_hash when present.
+/// SHA-256 of the device's raw Ed25519 public key instead of a 64-byte
+/// predecessor signature. That value must match the record's public key, and
+/// genesis_hash when present. The key survives DAC reissue.
 fn genesis_record_issue(
     previous_signature: &str,
     genesis_hash: &str,
-    dac_der_b64: Option<&str>,
+    public_key_b64: &str,
     device_id: &str,
 ) -> Option<VerificationIssue> {
     let previous = BASE64.decode(previous_signature).ok()?;
@@ -32,19 +33,15 @@ fn genesis_record_issue(
         message,
         criticality: Criticality::Critical,
     };
-    let dac = dac_der_b64
-        .map(|value| value.split_whitespace().collect::<String>())
-        .and_then(|value| BASE64.decode(value).ok())
-        .filter(|bytes| !bytes.is_empty());
-    let Some(dac) = dac else {
+    let Some(public_key) = BASE64.decode(public_key_b64).ok().filter(|bytes| bytes.len() == 32) else {
         return Some(mismatch(format!(
-            "Genesis record for device {} cannot be anchored: DAC certificate missing.",
+            "Genesis record for device {} cannot be anchored: device public key missing or invalid.",
             device_id
         )));
     };
-    if Sha256::digest(&dac).as_slice() != previous.as_slice() {
+    if Sha256::digest(&public_key).as_slice() != previous.as_slice() {
         return Some(mismatch(format!(
-            "Genesis record for device {} has previous_signature that does not match the SHA-256 of its DAC.",
+            "Genesis record for device {} has previous_signature that does not match the SHA-256 of its public key.",
             device_id
         )));
     }
@@ -1393,13 +1390,7 @@ impl LukuFile {
         }
 
         if !is_aux_record {
-            let envelope_identity = envelope.get("identity");
-            let genesis_dac = envelope
-                .get("attestation_dac_der")
-                .and_then(|v| v.as_str())
-                .or_else(|| envelope_identity.and_then(|i| i.get("dac_der")).and_then(|v| v.as_str()))
-                .or_else(|| envelope_identity.and_then(|i| i.get("attestation_dac_der")).and_then(|v| v.as_str()));
-            if let Some(issue) = genesis_record_issue(prev_record_sig, genesis_hash, genesis_dac, device_id) {
+            if let Some(issue) = genesis_record_issue(prev_record_sig, genesis_hash, public_key, device_id) {
                 Self::push_issue(&mut issues, debug_logging, None, issue);
             }
         }
@@ -2411,12 +2402,7 @@ impl LukuFile {
                     }
 
                     if !is_non_chain_advancing {
-                        let genesis_dac = record
-                            .get("identity")
-                            .and_then(|i| i.get("dac_der"))
-                            .and_then(|v| v.as_str())
-                            .or(block.attestation_dac_der.as_deref());
-                        if let Some(issue) = genesis_record_issue(prev_record_sig, genesis_hash, genesis_dac, device_id) {
+                        if let Some(issue) = genesis_record_issue(prev_record_sig, genesis_hash, public_key, device_id) {
                             Self::push_issue(&mut issues, debug_logging, Some(record_context.as_str()), issue);
                         }
                     }

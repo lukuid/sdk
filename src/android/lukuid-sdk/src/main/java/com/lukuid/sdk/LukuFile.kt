@@ -191,11 +191,7 @@ object LukuFile {
         }
 
         if (!isAuxRecord) {
-            val genesisIdentity = envelope.optJSONObject("identity")
-            val genesisDac = envelope.optString("attestation_dac_der").takeIf { it.isNotEmpty() }
-                ?: genesisIdentity?.optString("dac_der")?.takeIf { it.isNotEmpty() }
-                ?: genesisIdentity?.optString("attestation_dac_der")?.takeIf { it.isNotEmpty() }
-            genesisRecordIssue(previousSignature, genesisHash, genesisDac, deviceId)?.let { issues.add(it) }
+            genesisRecordIssue(previousSignature, genesisHash, publicKey, deviceId)?.let { issues.add(it) }
         }
 
         if (!options.allowUntrustedRoots) {

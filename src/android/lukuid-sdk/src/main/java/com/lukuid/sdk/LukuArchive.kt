@@ -405,9 +405,7 @@ class LukuArchive private constructor(
                 }
 
                 if (!isNonChainAdvancing) {
-                    val genesisDac = record.optJSONObject("identity")?.optString("dac_der")?.takeIf { it.isNotEmpty() }
-                        ?: block.attestationDacDer
-                    genesisRecordIssue(previousSignature, genesisHash, genesisDac, deviceId)?.let { issues += it }
+                    genesisRecordIssue(previousSignature, genesisHash, publicKey, deviceId)?.let { issues += it }
                 }
 
                 if (!isNonChainAdvancing) {
