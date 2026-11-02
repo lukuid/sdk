@@ -205,6 +205,9 @@ impl Transport for BleTransport {
     }
 }
 
+/// Bytes per GATT write; fits a single ATT write once MTU >= 183 (all SDKs use 180).
+const BLE_WRITE_CHUNK_SIZE: usize = 180;
+
 struct BleConnection {
     peripheral: Peripheral,
     write_char: btleplug::api::Characteristic,
@@ -213,10 +216,17 @@ struct BleConnection {
 #[async_trait]
 impl Connection for BleConnection {
     async fn write(&self, data: &[u8]) -> Result<(), String> {
-        self.peripheral
-            .write(&self.write_char, data, WriteType::WithResponse)
-            .await
-            .map_err(|e| e.to_string())
+        // One GATT write per chunk, matching the iOS, Android and JS transports:
+        // a whole frame in one write needs an ATT long write, which BlueZ caps at
+        // 512 bytes and the device's prepare-write resources cannot hold for
+        // large frames. The device reassembles frames from the byte stream.
+        for chunk in data.chunks(BLE_WRITE_CHUNK_SIZE) {
+            self.peripheral
+                .write(&self.write_char, chunk, WriteType::WithResponse)
+                .await
+                .map_err(|e| e.to_string())?;
+        }
+        Ok(())
     }
 
     async fn close(&self) -> Result<(), String> {
