@@ -79,6 +79,9 @@ private fun assembleInfoCertificateChain(info: DeviceInfo): String? {
     return if (parts.isEmpty()) null else parts.joinToString("")
 }
 
+/** Matches the device's preferred ATT MTU (256); 247 is the common Android maximum data-length fit. */
+private const val REQUESTED_ATT_MTU = 247
+
 internal class BleDeviceSession(
     private val context: Context,
     private val bluetoothDevice: BluetoothDevice,
@@ -91,6 +94,7 @@ internal class BleDeviceSession(
 
     private val readySignal = CompletableDeferred<Unit>()
     private val closed = AtomicBoolean(false)
+    private val serviceDiscoveryStarted = AtomicBoolean(false)
     private val gattRef = AtomicReference<BluetoothGatt?>()
     private val rxCharacteristicRef = AtomicReference<BluetoothGattCharacteristic?>()
     private val txCharacteristicRef = AtomicReference<BluetoothGattCharacteristic?>()
@@ -653,13 +657,32 @@ internal class BleDeviceSession(
         }
     }
 
+    // Only one GATT operation may be outstanding, so service discovery starts
+    // once the MTU exchange finishes (or immediately if it cannot be requested).
+    @SuppressLint("MissingPermission")
+    private fun startServiceDiscovery(gatt: BluetoothGatt) {
+        if (serviceDiscoveryStarted.compareAndSet(false, true)) {
+            gatt.discoverServices()
+        }
+    }
+
     private val gattCallback = object : BluetoothGattCallback() {
+        @SuppressLint("MissingPermission")
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                gatt.discoverServices()
+                // Android stays at the 23-byte default MTU unless asked (before
+                // Android 14), which limits notifications to 20 bytes and turns
+                // every 180-byte write into a long write.
+                if (!gatt.requestMtu(REQUESTED_ATT_MTU)) {
+                    startServiceDiscovery(gatt)
+                }
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 closeInternal(status)
             }
+        }
+
+        override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
+            startServiceDiscovery(gatt)
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {

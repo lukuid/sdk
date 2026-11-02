@@ -220,7 +220,23 @@ impl Connection for BleConnection {
         // a whole frame in one write needs an ATT long write, which BlueZ caps at
         // 512 bytes and the device's prepare-write resources cannot hold for
         // large frames. The device reassembles frames from the byte stream.
-        for chunk in data.chunks(BLE_WRITE_CHUNK_SIZE) {
+        //
+        // Every chunk but the last goes without response so several fit in one
+        // connection event; ATT keeps writes in order on the bearer, so the
+        // acknowledged final chunk confirms the whole frame was delivered. A
+        // write-without-response the link cannot carry (MTU below the chunk
+        // size) is retried with response.
+        let mut chunks = data.chunks(BLE_WRITE_CHUNK_SIZE).peekable();
+        while let Some(chunk) = chunks.next() {
+            if chunks.peek().is_some()
+                && self
+                    .peripheral
+                    .write(&self.write_char, chunk, WriteType::WithoutResponse)
+                    .await
+                    .is_ok()
+            {
+                continue;
+            }
             self.peripheral
                 .write(&self.write_char, chunk, WriteType::WithResponse)
                 .await
