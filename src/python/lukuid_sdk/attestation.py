@@ -405,9 +405,15 @@ def _validate_certificate_chain_inner(
     }.get(trust_profile, "lukuid-production")
 
     try:
-        has_valid_profile = any(
-            required_ou in _certificate_metadata(cert_pem, include_pubkey=False)["subject"]
-            for cert_pem in certs_pem[1:]
+        # The environment OU belongs on the root-issued intermediate (the last certificate
+        # that is not self-signed), matched exactly. "Any certificate after the first"
+        # missed it when the intermediate signs directly (the CRL chain).
+        from cryptography.x509.oid import NameOID
+        parsed = [x509.load_pem_x509_certificate(p.encode("utf-8")) for p in certs_pem]
+        intermediate = next((c for c in reversed(parsed) if c.subject != c.issuer), None)
+        has_valid_profile = intermediate is not None and any(
+            attr.value == required_ou
+            for attr in intermediate.subject.get_attributes_for_oid(NameOID.ORGANIZATIONAL_UNIT_NAME)
         )
     except Exception as exc:
         return CertificateChainValidationResult(False, f"Chain processing error: {exc}")

@@ -394,9 +394,15 @@ func validateCertificateChainInner(
         requiredOU = "lukuid-production"
     }
 
-    let hasValidProfile = certs.dropFirst().contains { certificate in
-        certificateSubjectValues(certificate).contains(requiredOU)
+    // The environment OU belongs on the root-issued intermediate (the last certificate
+    // that is not self-signed), matched exactly. "Any certificate after the first"
+    // missed it when the intermediate signs directly (the CRL chain).
+    let intermediate = certs.reversed().first { certificate in
+        let subject = SecCertificateCopyNormalizedSubjectSequence(certificate) as Data?
+        let issuer = SecCertificateCopyNormalizedIssuerSequence(certificate) as Data?
+        return subject != issuer
     }
+    let hasValidProfile = intermediate.map { certificateSubjectValues($0).contains(requiredOU) } ?? false
     if !hasValidProfile {
         return CertificateChainValidationResult(ok: false, reason: "Certificate chain does not match the requested trust profile: \(trustProfile)", certificates: [])
     }

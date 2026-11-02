@@ -511,10 +511,22 @@ fn validate_certificate_chain_with_anchor_inner(
         _ => "lukuid-production",
     };
 
+    // The environment OU belongs on the root-issued intermediate: the last certificate
+    // that is not self-signed. Checking "any certificate after the first" missed it when
+    // the intermediate is itself the signer (the CRL chain), and would accept an OU on a
+    // lower certificate. The OU value must match exactly, as the device firmware checks.
     let has_valid_profile = certs
         .iter()
-        .skip(1)
-        .any(|cert| cert.subject().to_string().contains(required_ou));
+        .rev()
+        .find(|cert| cert.subject() != cert.issuer())
+        .map(|intermediate| {
+            intermediate
+                .subject()
+                .iter_organizational_unit()
+                .filter_map(|ou| ou.as_str().ok())
+                .any(|ou| ou == required_ou)
+        })
+        .unwrap_or(false);
 
     if !has_valid_profile {
         return CertificateChainValidationResult {

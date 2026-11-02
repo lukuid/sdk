@@ -214,6 +214,8 @@ interface ParsedCertificate {
   signatureBits: Uint8Array;
   subjectOrganization?: string;
   subjectOrganizationalUnits: string[];
+  subjectDer: Uint8Array;
+  issuerDer: Uint8Array;
   validFrom: number;
   validTo: number;
   spkiDer: Uint8Array;
@@ -381,6 +383,7 @@ function parseDerCertificate(certDer: Uint8Array): ParsedCertificate {
 
   let cursor = tbsCertificate.contentStart;
   let elementIndex = 0;
+  let issuerDer = new Uint8Array(0);
 
   if (cursor < tbsCertificate.contentStart + tbsCertificate.headerLength + 10) { // version is optional and at the start
     const maybeVersion = readDerElement(certDer, cursor);
@@ -391,6 +394,9 @@ function parseDerCertificate(certDer: Uint8Array): ParsedCertificate {
 
   while (cursor < tbsCertificate.contentEnd) {
     const element = readDerElement(certDer, cursor);
+    if (elementIndex === 2) {
+      issuerDer = certDer.slice(element.start, element.end);
+    }
     if (elementIndex === 3) {
       const notBefore = readDerElement(certDer, element.contentStart);
       const notAfter = readDerElement(certDer, notBefore.end);
@@ -404,6 +410,8 @@ function parseDerCertificate(certDer: Uint8Array): ParsedCertificate {
         signatureBits,
         subjectOrganization: attrs.organization,
         subjectOrganizationalUnits: attrs.organizationalUnits,
+        subjectDer: certDer.slice(subject.start, subject.end),
+        issuerDer,
         validFrom: parseDerTime(certDer.slice(notBefore.contentStart, notBefore.contentEnd), notBefore.tag),
         validTo: parseDerTime(certDer.slice(notAfter.contentStart, notAfter.contentEnd), notAfter.tag),
         spkiDer: certDer.slice(spki.start, spki.end)
@@ -424,6 +432,7 @@ function parsePemChain(chainPem: string): ParsedCertificate[] {
 interface NodeLikeX509Certificate {
   raw: Uint8Array;
   subject: string;
+  issuer: string;
   validFrom: string;
   validTo: string;
   fingerprint: string;
@@ -754,7 +763,11 @@ async function validateCertificateChainInner(
       }
 
       const certSpkis = certs.map((cert) => new Uint8Array(cert.publicKey.export({ format: 'der', type: 'spki' })));
-      const hasValidProfile = certs.slice(1).some((cert) => cert.subject.includes(requiredOu));
+      // The environment OU belongs on the root-issued intermediate (the last certificate
+      // that is not self-signed), matched exactly. "Any certificate after the first" missed
+      // it when the intermediate signs directly (the CRL chain).
+      const intermediate = [...certs].reverse().find((cert) => cert.subject !== cert.issuer);
+      const hasValidProfile = !!intermediate && intermediate.subject.split('\n').some((line) => line === `OU=${requiredOu}`);
       if (!hasValidProfile) {
         return {
           ok: false,
@@ -850,7 +863,11 @@ async function validateCertificateChainInner(
       return { ok: false, reason: 'Invalid certificate chain PEM' };
     }
 
-    const hasValidProfile = certs.slice(1).some((cert) => cert.subjectOrganizationalUnits.includes(requiredOu));
+    // Same rule as above: exact OU on the root-issued intermediate.
+    const isSelfIssued = (cert: ParsedCertificate): boolean =>
+      cert.subjectDer.length === cert.issuerDer.length && cert.subjectDer.every((byte, i) => byte === cert.issuerDer[i]);
+    const intermediate = [...certs].reverse().find((cert) => !isSelfIssued(cert));
+    const hasValidProfile = !!intermediate && intermediate.subjectOrganizationalUnits.includes(requiredOu);
     if (!hasValidProfile) {
       return {
         ok: false,

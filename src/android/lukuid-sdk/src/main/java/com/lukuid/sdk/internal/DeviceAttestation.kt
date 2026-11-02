@@ -415,9 +415,14 @@ internal fun validateCertificateChainInner(
             else -> "lukuid-production"
         }
 
-        val hasValidProfile = certs.drop(1).any { cert ->
-            cert.subjectX500Principal.name.contains(requiredOu)
-        }
+        // The environment OU belongs on the root-issued intermediate (the last certificate
+        // that is not self-signed), matched exactly. "Any certificate after the first"
+        // missed it when the intermediate signs directly (the CRL chain).
+        val intermediate = certs.lastOrNull { it.subjectX500Principal != it.issuerX500Principal }
+        val hasValidProfile = intermediate != null &&
+            intermediate.subjectX500Principal.getName(javax.security.auth.x500.X500Principal.RFC2253)
+                .split(Regex("(?<!\\\\),"))
+                .any { it.trim() == "OU=$requiredOu" }
         if (!hasValidProfile) {
             return CertificateChainValidationResult(false, "Certificate chain does not match the requested trust profile: $trustProfile")
         }
