@@ -227,7 +227,8 @@ class LukuSdk(
         source: JSONObject,
         networkParticipationEnabled: Boolean,
         telemetry: JSONObject? = null,
-        customUrl: String? = null
+        customUrl: String? = null,
+        firmware: String? = null
     ): JSONObject = withContext(Dispatchers.IO) {
         val apiUrl = (customUrl ?: options.apiUrl).trimEnd('/')
         
@@ -257,6 +258,9 @@ class LukuSdk(
         payload.put("previous_state", previousState)
         payload.put("source", source)
         payload.put("network_participation_enabled", networkParticipationEnabled)
+        // The device signs "device_id:public_key:counter:firmware"; the API only
+        // includes the firmware in the verified string when it is sent.
+        firmware?.trim()?.takeIf { it.isNotEmpty() }?.let { payload.put("firmware", it) }
 
         val disableTelemetry = System.getenv("LUKUID_DISABLE_TELEMETRY") == "1"
         if (telemetry != null && !disableTelemetry) {

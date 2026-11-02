@@ -302,7 +302,8 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
         source: [String: Any],
         networkParticipationEnabled: Bool,
         telemetry: [String: Any]? = nil,
-        customURL: String? = nil
+        customURL: String? = nil,
+        firmware: String? = nil
     ) async throws -> [String: Any] {
         let apiUrl = (customURL ?? options.apiUrl).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         
@@ -334,6 +335,11 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
         ]
         if let attestationRootFingerprint, !attestationRootFingerprint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             body["attestation_root_fingerprint"] = attestationRootFingerprint
+        }
+        // The device signs "device_id:public_key:counter:firmware"; the API only
+        // includes the firmware in the verified string when it is sent.
+        if let firmware = firmware?.trimmingCharacters(in: .whitespacesAndNewlines), !firmware.isEmpty {
+            body["firmware"] = firmware
         }
         
         let disableTelemetry = ProcessInfo.processInfo.environment["LUKUID_DISABLE_TELEMETRY"] == "1"

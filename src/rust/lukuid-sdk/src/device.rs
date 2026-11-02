@@ -721,6 +721,17 @@ impl Device {
             &sdk.options.api_url,
         );
 
+        // generate_heartbeat signs the firmware version too, so the API needs it to
+        // verify the possession proof. Ask the device when info has not been loaded.
+        let firmware = match self.info.firmware.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
+            Some(firmware) => Some(firmware.to_string()),
+            None => self
+                .call("info", json!({}))
+                .await
+                .ok()
+                .and_then(|info| info.get("firmware").and_then(|v| v.as_str()).map(str::to_string)),
+        };
+
         if sdk.options.debug_logging {
             eprintln!(
                 "[lukuid-sdk] Heartbeat sync generated request for {} and will call {}",
@@ -742,6 +753,7 @@ impl Device {
                 source,
                 self.info.network_participation_enabled,
                 telemetry_payload,
+                firmware.as_deref(),
             )
             .await
             .map_err(|error| {

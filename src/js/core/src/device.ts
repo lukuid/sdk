@@ -433,6 +433,13 @@ class LukuidDevice implements Device {
                 const csr = hbInit?.csr;
                 const attestation = assembleCertificateChain(info as unknown as Record<string, unknown>) ?? hbInit?.attestation;
                 const counter = hbInit?.counter;
+                // generate_heartbeat signs the firmware version too; the API needs it to
+                // verify the possession proof. Ask the device when info lacks it.
+                let firmware = typeof info.firmware === 'string' ? info.firmware.trim() : '';
+                if (!firmware) {
+                    const deviceInfo = await this.call('info', {}).catch(() => null) as any;
+                    firmware = typeof deviceInfo?.firmware === 'string' ? deviceInfo.firmware.trim() : '';
+                }
 
                 if (signature) {
                     const hbResponse = await fetch(`${apiUrl.replace(/\/$/, '')}/heartbeat`, {
@@ -446,6 +453,7 @@ class LukuidDevice implements Device {
                             attestation: attestation,
                             attestation_root_fingerprint: info.attestation_root_fingerprint,
                             counter: counter,
+                            firmware: firmware || undefined,
                             source: {
                                 platform: 'web',
                                 version: '1.0.0', // SDK Version

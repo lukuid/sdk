@@ -122,6 +122,8 @@ export interface HeartbeatRequest {
   source: Record<string, unknown>;
   networkParticipationEnabled: boolean;
   telemetry?: Record<string, unknown>;
+  /** Firmware version reported by the device; generate_heartbeat signs it. */
+  firmware?: string;
 }
 
 export interface HeartbeatResponse {
@@ -482,6 +484,13 @@ export class LukuidSdk {
       source: request.source,
       network_participation_enabled: request.networkParticipationEnabled
     };
+
+    // The device signs "device_id:public_key:counter:firmware"; the API only includes
+    // the firmware in the verified string when it is sent.
+    const firmware = request.firmware?.trim();
+    if (firmware) {
+      payload.firmware = firmware;
+    }
 
     const disableTelemetry = typeof process !== 'undefined' && process?.env?.LUKUID_DISABLE_TELEMETRY === '1';
     if (request.telemetry && !disableTelemetry) {

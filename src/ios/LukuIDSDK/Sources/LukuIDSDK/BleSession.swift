@@ -489,7 +489,8 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
                                 previousState: previousState,
                                 source: source,
                                 networkParticipationEnabled: finalInfo.networkParticipationEnabled,
-                                customURL: finalInfo.customHeartbeatURL
+                                customURL: finalInfo.customHeartbeatURL,
+                                firmware: finalInfo.firmware
                             )
                             let payload: [String: Any] = [
                                 "slac_der": hbResp["slac_der"] as? String ?? "",

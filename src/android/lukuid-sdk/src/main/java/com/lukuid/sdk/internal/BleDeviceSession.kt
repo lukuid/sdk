@@ -354,7 +354,8 @@ internal class BleDeviceSession(
                                 source = source,
                                 networkParticipationEnabled = info.networkParticipationEnabled,
                                 telemetry = telemetryPayload,
-                                customUrl = info.customHeartbeatUrl
+                                customUrl = info.customHeartbeatUrl,
+                                firmware = info.firmware
                             )
                             val payload = mutableMapOf<String, Any>()
                             payload["slac_der"] = hbResp.getString("slac_der")

@@ -80,6 +80,7 @@ impl LukuidSdk {
         source: serde_json::Value,
         network_participation_enabled: bool,
         telemetry: Option<serde_json::Value>,
+        firmware: Option<&str>,
     ) -> Result<serde_json::Value, reqwest::Error> {
         let api_url = self.options.api_url.clone();
         self.heartbeat_with_api_url(
@@ -95,6 +96,7 @@ impl LukuidSdk {
             source,
             network_participation_enabled,
             telemetry,
+            firmware,
         )
         .await
     }
@@ -118,6 +120,7 @@ impl LukuidSdk {
         source: serde_json::Value,
         network_participation_enabled: bool,
         telemetry: Option<serde_json::Value>,
+        firmware: Option<&str>,
     ) -> Result<serde_json::Value, reqwest::Error> {
         let clean_api_url = api_url.trim_end_matches('/');
         if !url_utils::is_external_call_allowed(clean_api_url, self.options.disable_external_calls)
@@ -153,6 +156,12 @@ impl LukuidSdk {
         {
             payload["attestation_root_fingerprint"] =
                 serde_json::Value::String(root_fingerprint.to_string());
+        }
+
+        // The device signs "device_id:public_key:counter:firmware"; the API only
+        // includes the firmware in the verified string when it is sent.
+        if let Some(firmware) = firmware.map(str::trim).filter(|value| !value.is_empty()) {
+            payload["firmware"] = serde_json::Value::String(firmware.to_string());
         }
 
         if let Some(mut tel) = telemetry {
