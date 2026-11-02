@@ -2695,9 +2695,12 @@ impl LukuFile {
                                 );
                             }
                         } else if !heartbeat_sig.is_empty() {
+                            // Same record id as the DAC check: the device signs
+                            // heartbeat:{device_id}:{last_sync_utc}:{ctr}:{id}.
                             let record_attestation_id = record
-                                .get("event_id")
+                                .get("id")
                                 .and_then(|v| v.as_str())
+                                .or_else(|| record.get("event_id").and_then(|v| v.as_str()))
                                 .or_else(|| record.get("scan_id").and_then(|v| v.as_str()))
                                 .or_else(|| record.get("attachment_id").and_then(|v| v.as_str()))
                                 .or_else(|| record.get("record_id").and_then(|v| v.as_str()));
@@ -3114,8 +3117,12 @@ impl LukuFile {
                 }
 
                 if matches!(r#type, "attachment" | "location" | "custody" | "verification") {
-                    if let Some(parent_record_id) =
-                        record.get("parent_record_id").and_then(|v| v.as_str())
+                    // `parent_id` is the DOTLUKU field name; `parent_record_id` is what the
+                    // device protocol decoder emits.
+                    if let Some(parent_record_id) = record
+                        .get("parent_id")
+                        .or_else(|| record.get("parent_record_id"))
+                        .and_then(|v| v.as_str())
                     {
                         if !parent_record_id.is_empty() && !record_ids.contains(parent_record_id) {
                             Self::push_issue(

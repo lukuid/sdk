@@ -1241,7 +1241,22 @@ function decodeEnvironmentPayload(payload: Uint8Array): JsonRecord {
       default: skipField(payload, cursor, wireType); break;
     }
   }
+  applyEnvironmentPayloadDefaults(out);
   return out;
+}
+
+// proto3 leaves a non-optional scalar off the wire when it holds its default, but the
+// device signs that value ("0", "false", "0.00") in canonical_string. Materialize the
+// defaults so the decoded payload recomputes the signed string (as the generated
+// iOS/Android decoders and the Rust SDK do). `optional` fields keep their presence.
+function applyEnvironmentPayloadDefaults(out: JsonRecord): void {
+  for (const key of ['lux', 'temp_c', 'humidity_pct', 'pressure_hpa']) if (out[key] === undefined) out[key] = 0;
+  for (const key of ['tamper', 'wake_event', 'vbus_present']) if (out[key] === undefined) out[key] = false;
+  for (const key of ['ctr', 'timestamp_utc', 'uptime_us', 'battery_percent', 'vbus', 'clk_var', 'drift']) if (out[key] === undefined) out[key] = 0;
+  const accel = out.accel_g as JsonRecord | undefined;
+  if (accel && typeof accel === 'object') {
+    for (const axis of ['x', 'y', 'z']) if (accel[axis] === undefined) accel[axis] = 0;
+  }
 }
 
 function decodeRecordBatches(payload: Uint8Array): JsonRecord {
@@ -1453,13 +1468,23 @@ function decodeIdentity(payload: Uint8Array): JsonRecord {
     const field = key >>> 3;
     const wireType = key & 0x07;
     switch (field) {
-      case 1: assignUint64(payload, cursor, wireType, out, 'crt'); break;
+      case 1: assignUint64(payload, cursor, wireType, out, 'identity_version'); break;
       case 2: assignString(payload, cursor, wireType, out, 'dac_serial'); break;
       case 3: assignString(payload, cursor, wireType, out, 'slac_serial'); break;
       case 4: assignInt64(payload, cursor, wireType, out, 'last_sync_utc'); break;
       case 5: assignBytes(payload, cursor, wireType, out, 'signature'); break;
       case 6: assignBytes(payload, cursor, wireType, out, 'dac_der'); break;
       case 7: assignBytes(payload, cursor, wireType, out, 'slac_der'); break;
+      case 8: assignBytes(payload, cursor, wireType, out, 'attestation_manufacturer_der'); break;
+      case 9: assignBytes(payload, cursor, wireType, out, 'attestation_intermediate_der'); break;
+      case 10: assignString(payload, cursor, wireType, out, 'attestation_root_fingerprint'); break;
+      case 11: assignBytes(payload, cursor, wireType, out, 'heartbeat_der'); break;
+      case 12: assignBytes(payload, cursor, wireType, out, 'heartbeat_intermediate_der'); break;
+      case 13: assignString(payload, cursor, wireType, out, 'heartbeat_root_fingerprint'); break;
+      case 14: assignString(payload, cursor, wireType, out, 'alg'); break;
+      // Detached per-record signatures; verification requires them (dotluku identity).
+      case 15: assignBytes(payload, cursor, wireType, out, 'dac_signature'); break;
+      case 16: assignBytes(payload, cursor, wireType, out, 'heartbeat_signature'); break;
       default: skipField(payload, cursor, wireType); break;
     }
   }

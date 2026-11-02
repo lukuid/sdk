@@ -1747,7 +1747,29 @@ fn decode_environment_payload(bytes: &[u8]) -> Value {
         }
     }
 
+    apply_environment_payload_defaults(&mut out);
     Value::Object(out)
+}
+
+// proto3 does not put a non-optional scalar on the wire when it holds its default, but
+// the device signs that value ("0", "false", "0.00") in canonical_string. Materialize the
+// defaults so the decoded payload recomputes the signed string, as the generated iOS and
+// Android decoders already do. `optional` fields keep their presence: absent stays absent.
+fn apply_environment_payload_defaults(out: &mut Map<String, Value>) {
+    for key in ["lux", "temp_c", "humidity_pct", "pressure_hpa"] {
+        out.entry(key.to_string()).or_insert(Value::from(0.0));
+    }
+    for key in ["tamper", "wake_event", "vbus_present"] {
+        out.entry(key.to_string()).or_insert(Value::Bool(false));
+    }
+    for key in ["ctr", "timestamp_utc", "uptime_us", "battery_percent", "vbus", "clk_var", "drift"] {
+        out.entry(key.to_string()).or_insert(Value::from(0));
+    }
+    if let Some(Value::Object(accel)) = out.get_mut("accel_g") {
+        for axis in ["x", "y", "z"] {
+            accel.entry(axis.to_string()).or_insert(Value::from(0.0));
+        }
+    }
 }
 
 fn decode_record_device_info(bytes: &[u8]) -> Option<Value> {
@@ -1871,6 +1893,12 @@ fn decode_identity(bytes: &[u8]) -> Value {
             }
             14 => {
                 let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "alg");
+            }
+            15 => {
+                let _ = insert_bytes(bytes, &mut cursor, wire_type, &mut out, "dac_signature");
+            }
+            16 => {
+                let _ = insert_bytes(bytes, &mut cursor, wire_type, &mut out, "heartbeat_signature");
             }
             _ => {
                 let _ = skip_field(bytes, &mut cursor, wire_type);
@@ -3009,4 +3037,69 @@ fn decode_historical_export_response(bytes: &[u8]) -> Option<Map<String, Value>>
     out.insert("entries".to_string(), Value::Array(entries));
     out.insert("has_more".to_string(), Value::Bool(has_more));
     Some(out)
+}
+
+#[cfg(test)]
+mod device_decode_regression_tests {
+    use super::*;
+
+    // Protobuf key as a varint: fields >= 16 need two bytes.
+    fn key(field: u32, wire_type: u8) -> Vec<u8> {
+        let mut v = (field << 3) | wire_type as u32;
+        let mut out = Vec::new();
+        while v >= 0x80 {
+            out.push((v as u8 & 0x7f) | 0x80);
+            v >>= 7;
+        }
+        out.push(v as u8);
+        out
+    }
+
+    fn bytes_field(field: u32, value: &[u8]) -> Vec<u8> {
+        let mut out = key(field, 2);
+        out.push(value.len() as u8);
+        out.extend_from_slice(value);
+        out
+    }
+
+    #[test]
+    fn identity_keeps_the_detached_record_signatures() {
+        // Identity fields 15 (dac_signature) and 16 (heartbeat_signature) were skipped,
+        // so every Rust-decoded record lost the signatures verification requires.
+        let mut identity = Vec::new();
+        identity.extend(bytes_field(2, b"DACSERIAL"));
+        identity.extend(key(4, 0));
+        identity.extend([0x96, 0x01]); // last_sync_utc = 150
+        identity.extend(bytes_field(15, &[0x11; 64]));
+        identity.extend(bytes_field(16, &[0x22; 64]));
+        let decoded = decode_identity(&identity);
+        assert_eq!(decoded["dac_serial"], json!("DACSERIAL"));
+        assert_eq!(decoded["last_sync_utc"], json!(150));
+        assert_eq!(decoded["dac_signature"], json!(BASE64.encode([0x11; 64])));
+        assert_eq!(decoded["heartbeat_signature"], json!(BASE64.encode([0x22; 64])));
+    }
+
+    #[test]
+    fn environment_payload_materializes_proto3_defaults_the_device_signs() {
+        // ctr=7 and an accel message with only x set; tamper/vbus_present/battery/lux are
+        // proto3 defaults and therefore absent from the wire.
+        let mut accel = key(1, 5);
+        accel.extend(0.5f32.to_le_bytes());
+        let mut payload = key(1, 0);
+        payload.push(7);
+        payload.extend(bytes_field(11, &accel));
+        payload.extend(key(10, 0));
+        payload.push(0x2a); // optional voc_raw = 42 (present)
+        let decoded = decode_environment_payload(&payload);
+        assert_eq!(decoded["ctr"], json!(7));
+        assert_eq!(decoded["tamper"], json!(false));
+        assert_eq!(decoded["vbus_present"], json!(false));
+        assert_eq!(decoded["battery_percent"], json!(0));
+        assert_eq!(decoded["lux"].as_f64(), Some(0.0));
+        assert_eq!(decoded["accel_g"]["y"].as_f64(), Some(0.0));
+        assert_eq!(decoded["voc_raw"], json!(42));
+        // optional fields keep their presence: absent stays absent
+        assert!(decoded.get("voc_index").is_none());
+        assert!(decoded.get("gps_lat").is_none());
+    }
 }
