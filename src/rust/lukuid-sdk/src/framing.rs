@@ -2422,6 +2422,17 @@ fn decode_fetch_telemetry_response(bytes: &[u8]) -> Map<String, Value> {
                     }
                 }
             }
+            // The API checks these against the signed canonical string; dropping them
+            // made every Rust-submitted telemetry batch "malformed".
+            4 => {
+                let _ = insert_i32(bytes, &mut cursor, wire_type, &mut out, "telemetry_chain_version");
+            }
+            5 => {
+                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "telemetry_chain_tail");
+            }
+            6 => {
+                let _ = insert_i32(bytes, &mut cursor, wire_type, &mut out, "row_count");
+            }
             _ => {
                 let _ = skip_field(bytes, &mut cursor, wire_type);
             }
@@ -3101,5 +3112,19 @@ mod device_decode_regression_tests {
         // optional fields keep their presence: absent stays absent
         assert!(decoded.get("voc_index").is_none());
         assert!(decoded.get("gps_lat").is_none());
+    }
+
+    #[test]
+    fn telemetry_response_keeps_the_chain_fields_the_api_checks() {
+        let mut response = bytes_field(3, b"telemetry:participate:DEV:30:1:2:1:abc");
+        response.extend(key(4, 0));
+        response.push(1);
+        response.extend(bytes_field(5, b"abc"));
+        response.extend(key(6, 0));
+        response.push(2);
+        let decoded = decode_fetch_telemetry_response(&response);
+        assert_eq!(decoded["telemetry_chain_version"], json!(1));
+        assert_eq!(decoded["telemetry_chain_tail"], json!("abc"));
+        assert_eq!(decoded["row_count"], json!(2));
     }
 }
