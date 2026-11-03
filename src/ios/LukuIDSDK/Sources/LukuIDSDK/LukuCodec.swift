@@ -248,6 +248,7 @@ final class LukuCodec {
             if let v = asData("upload_ca_der") { config.uploadCaDer = v }
             if let v = asUInt32("upload_frequency") { config.uploadFrequency = v }
             if let v = asBool("auto_update_enabled") { config.autoUpdateEnabled = v }
+            if let v = asUInt32("record_interval") { config.recordInterval = v }
             request.config = config
         case "configure":
             var configure = LukuIDSetConfigureRequest()
@@ -386,6 +387,7 @@ final class LukuCodec {
             dict["upload_topic"] = config.uploadTopic
             dict["upload_frequency"] = config.uploadFrequency
             dict["auto_update_enabled"] = config.autoUpdateEnabled
+            dict["record_interval"] = config.recordInterval
         case .scanRecord(let record):
             dict["scan_record"] = mapScanRecord(record)
         case .envRecord(let record):

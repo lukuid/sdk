@@ -242,6 +242,7 @@ internal class LukuCodec(
                 map["upload_token_type"] = config.uploadTokenTypeValue
                 if (config.uploadTopic.isNotEmpty()) map["upload_topic"] = config.uploadTopic
                 map["upload_frequency"] = config.uploadFrequency
+                map["record_interval"] = config.recordInterval
             }
             LukuIDProto.CommandResponse.PayloadCase.SCAN_RECORD -> {
                 map["scan_record"] = scanRecordToMap(response.scanRecord)
@@ -668,6 +669,7 @@ internal class LukuCodec(
                     asBytes("upload_certificate_der")?.let { config.uploadCertificateDer = it }
                     asBytes("upload_ca_der")?.let { config.uploadCaDer = it }
                     asInt("upload_frequency")?.let { config.uploadFrequency = it }
+                    asInt("record_interval")?.let { config.recordInterval = it }
                     builder.config = config.build()
                 }
                 "configure" -> {

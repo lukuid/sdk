@@ -104,7 +104,8 @@ internal class BleDeviceSession(
         val deferred: CompletableDeferred<Any?>,
         val accumulatedData: MutableList<Any?> = mutableListOf(),
         val accumulatedBatches: MutableList<Any?> = mutableListOf(),
-        val accumulatedExportEntries: MutableList<Any?> = mutableListOf()
+        val accumulatedExportEntries: MutableList<Any?> = mutableListOf(),
+        val activity: ActivityClock = ActivityClock()
     )
     private val pendingRequests = ConcurrentHashMap<String, PendingRequest>()
     
@@ -163,7 +164,8 @@ internal class BleDeviceSession(
         ensureReady()
         val requestId = UUID.randomUUID().toString()
         val deferred = CompletableDeferred<Any?>()
-        pendingRequests[requestId] = PendingRequest(key, deferred)
+        val pending = PendingRequest(key, deferred)
+        pendingRequests[requestId] = pending
         val frame = mutableMapOf<String, Any?>(
             "action" to key,
             "id" to requestId,
@@ -177,9 +179,7 @@ internal class BleDeviceSession(
             throw t
         }
         try {
-            return withTimeout(timeoutMillis) {
-                deferred.await()
-            }
+            return awaitWithInactivityTimeout(deferred, timeoutMillis, pending.activity)
         } finally {
             // Ensures a timed-out (or otherwise abandoned) request doesn't linger in the
             // map until connection teardown; a no-op if handleResponse already removed it.
@@ -532,7 +532,9 @@ internal class BleDeviceSession(
 
         if (hasMore) {
             // More chunks are coming for this same request_id: keep the pending
-            // entry (and its deferred) alive to accumulate them.
+            // entry (and its deferred) alive to accumulate them, and push the
+            // inactivity timeout out.
+            entry.activity.touch()
             return
         }
 

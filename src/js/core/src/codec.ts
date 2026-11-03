@@ -243,6 +243,7 @@ export function encodeCommandRequest(frame: DeviceFrame): Uint8Array {
 
     if (typeof source.upload_frequency === 'number') writeUint32(nested, 24, source.upload_frequency);
     if (typeof source.auto_update_enabled === 'boolean') writeBool(nested, 25, source.auto_update_enabled);
+    if (typeof source.record_interval === 'number') writeUint32(nested, 26, source.record_interval);
     writeMessage(chunks, 5, nested);
   } else if (action === 'ota_begin') {
     const nested: number[] = [];
@@ -1114,6 +1115,7 @@ function decodeNetworkConfigResponse(payload: Uint8Array): JsonRecord {
       case 18: assignString(payload, cursor, wireType, out, 'upload_topic'); break;
       case 19: assignUint32(payload, cursor, wireType, out, 'upload_frequency'); break;
       case 20: assignBool(payload, cursor, wireType, out, 'auto_update_enabled'); break;
+      case 21: assignUint32(payload, cursor, wireType, out, 'record_interval'); break;
       default: skipField(payload, cursor, wireType); break;
     }
   }

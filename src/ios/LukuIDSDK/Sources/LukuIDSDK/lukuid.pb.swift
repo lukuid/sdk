@@ -504,6 +504,16 @@ nonisolated struct LukuIDConfigRequest: Sendable {
   /// Clears the value of `autoUpdateEnabled`. Subsequent reads from it will return its default value.
   mutating func clearAutoUpdateEnabled() {self._autoUpdateEnabled = nil}
 
+  /// Environment recording interval in seconds (60-3600).
+  var recordInterval: UInt32 {
+    get {_recordInterval ?? 0}
+    set {_recordInterval = newValue}
+  }
+  /// Returns true if `recordInterval` has been explicitly set.
+  var hasRecordInterval: Bool {self._recordInterval != nil}
+  /// Clears the value of `recordInterval`. Subsequent reads from it will return its default value.
+  mutating func clearRecordInterval() {self._recordInterval = nil}
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -524,6 +534,7 @@ nonisolated struct LukuIDConfigRequest: Sendable {
   fileprivate var _uploadCaDer: Data? = nil
   fileprivate var _uploadFrequency: UInt32? = nil
   fileprivate var _autoUpdateEnabled: Bool? = nil
+  fileprivate var _recordInterval: UInt32? = nil
 }
 
 nonisolated struct LukuIDOtaBeginRequest: Sendable {
@@ -1319,6 +1330,8 @@ nonisolated struct LukuIDNetworkConfigResponse: Sendable {
   var uploadFrequency: UInt32 = 0
 
   var autoUpdateEnabled: Bool = false
+
+  var recordInterval: UInt32 = 0
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3048,7 +3061,7 @@ nonisolated extension LukuIDAttestRequest: SwiftProtobuf.Message, SwiftProtobuf.
 
 nonisolated extension LukuIDConfigRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ConfigRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{3}wifi_ssid\0\u{3}wifi_password\0\u{4}\u{a}custom_heartbeat_url\0\u{3}network_participation_enabled\0\u{3}upload_mode\0\u{3}upload_destination\0\u{3}upload_auth\0\u{3}upload_token_key\0\u{3}upload_token_value\0\u{3}upload_token_type\0\u{3}upload_topic\0\u{3}upload_certificate_der\0\u{3}upload_ca_der\0\u{3}upload_frequency\0\u{3}auto_update_enabled\0\u{c}\u{4}\u{9}")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{3}wifi_ssid\0\u{3}wifi_password\0\u{4}\u{a}custom_heartbeat_url\0\u{3}network_participation_enabled\0\u{3}upload_mode\0\u{3}upload_destination\0\u{3}upload_auth\0\u{3}upload_token_key\0\u{3}upload_token_value\0\u{3}upload_token_type\0\u{3}upload_topic\0\u{3}upload_certificate_der\0\u{3}upload_ca_der\0\u{3}upload_frequency\0\u{3}auto_update_enabled\0\u{3}record_interval\0\u{c}\u{4}\u{9}")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3072,6 +3085,7 @@ nonisolated extension LukuIDConfigRequest: SwiftProtobuf.Message, SwiftProtobuf.
       case 23: try { try decoder.decodeSingularBytesField(value: &self._uploadCaDer) }()
       case 24: try { try decoder.decodeSingularUInt32Field(value: &self._uploadFrequency) }()
       case 25: try { try decoder.decodeSingularBoolField(value: &self._autoUpdateEnabled) }()
+      case 26: try { try decoder.decodeSingularUInt32Field(value: &self._recordInterval) }()
       default: break
       }
     }
@@ -3130,6 +3144,9 @@ nonisolated extension LukuIDConfigRequest: SwiftProtobuf.Message, SwiftProtobuf.
     try { if let v = self._autoUpdateEnabled {
       try visitor.visitSingularBoolField(value: v, fieldNumber: 25)
     } }()
+    try { if let v = self._recordInterval {
+      try visitor.visitSingularUInt32Field(value: v, fieldNumber: 26)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3150,6 +3167,7 @@ nonisolated extension LukuIDConfigRequest: SwiftProtobuf.Message, SwiftProtobuf.
     if lhs._uploadCaDer != rhs._uploadCaDer {return false}
     if lhs._uploadFrequency != rhs._uploadFrequency {return false}
     if lhs._autoUpdateEnabled != rhs._autoUpdateEnabled {return false}
+    if lhs._recordInterval != rhs._recordInterval {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -4663,7 +4681,7 @@ nonisolated extension LukuIDStatusResponse: SwiftProtobuf.Message, SwiftProtobuf
 
 nonisolated extension LukuIDNetworkConfigResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".NetworkConfigResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}wifi_ssid\0\u{3}wifi_password_set\0\u{2}\u{8}csr\0\u{4}\u{3}upload_mode\0\u{3}upload_destination\0\u{3}upload_auth\0\u{3}upload_token_key\0\u{3}upload_token_type\0\u{3}upload_topic\0\u{3}upload_frequency\0\u{3}auto_update_enabled\0\u{c}\u{3}\u{7}\u{c}\u{b}\u{1}\u{c}\u{c}\u{1}")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}wifi_ssid\0\u{3}wifi_password_set\0\u{2}\u{8}csr\0\u{4}\u{3}upload_mode\0\u{3}upload_destination\0\u{3}upload_auth\0\u{3}upload_token_key\0\u{3}upload_token_type\0\u{3}upload_topic\0\u{3}upload_frequency\0\u{3}auto_update_enabled\0\u{3}record_interval\0\u{c}\u{3}\u{7}\u{c}\u{b}\u{1}\u{c}\u{c}\u{1}")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4682,6 +4700,7 @@ nonisolated extension LukuIDNetworkConfigResponse: SwiftProtobuf.Message, SwiftP
       case 18: try { try decoder.decodeSingularStringField(value: &self.uploadTopic) }()
       case 19: try { try decoder.decodeSingularUInt32Field(value: &self.uploadFrequency) }()
       case 20: try { try decoder.decodeSingularBoolField(value: &self.autoUpdateEnabled) }()
+      case 21: try { try decoder.decodeSingularUInt32Field(value: &self.recordInterval) }()
       default: break
       }
     }
@@ -4721,6 +4740,9 @@ nonisolated extension LukuIDNetworkConfigResponse: SwiftProtobuf.Message, SwiftP
     if self.autoUpdateEnabled != false {
       try visitor.visitSingularBoolField(value: self.autoUpdateEnabled, fieldNumber: 20)
     }
+    if self.recordInterval != 0 {
+      try visitor.visitSingularUInt32Field(value: self.recordInterval, fieldNumber: 21)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4736,6 +4758,7 @@ nonisolated extension LukuIDNetworkConfigResponse: SwiftProtobuf.Message, SwiftP
     if lhs.uploadTopic != rhs.uploadTopic {return false}
     if lhs.uploadFrequency != rhs.uploadFrequency {return false}
     if lhs.autoUpdateEnabled != rhs.autoUpdateEnabled {return false}
+    if lhs.recordInterval != rhs.recordInterval {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

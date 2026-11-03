@@ -298,7 +298,8 @@ internal class SerialDeviceSession(
         val deferred: CompletableDeferred<Map<String, Any?>>,
         val accumulatedData: MutableList<Any?> = mutableListOf(),
         val accumulatedBatches: MutableList<Any?> = mutableListOf(),
-        val accumulatedExportEntries: MutableList<Any?> = mutableListOf()
+        val accumulatedExportEntries: MutableList<Any?> = mutableListOf(),
+        val activity: ActivityClock = ActivityClock()
     )
 
     private val eventCallbacks = CopyOnWriteArraySet<(DeviceEventPayload) -> Unit>()
@@ -477,6 +478,7 @@ internal class SerialDeviceSession(
             if (exportEntries != null) entry.accumulatedExportEntries.addAll(exportEntries)
 
             if (hasMore) {
+                entry.activity.touch()
                 return
             }
 
@@ -535,7 +537,8 @@ internal class SerialDeviceSession(
     override suspend fun call(key: String, opts: Map<String, Any?>, timeoutMillis: Long): Any? {
         val id = callIdCounter.incrementAndGet().toString()
         val deferred = CompletableDeferred<Map<String, Any?>>()
-        pendingCalls[id] = PendingCall(action = key, deferred = deferred)
+        val pending = PendingCall(action = key, deferred = deferred)
+        pendingCalls[id] = pending
 
         val payload = mapOf(
             "action" to key,
@@ -546,8 +549,8 @@ internal class SerialDeviceSession(
         sendFrame(payload)
 
         return try {
-            kotlinx.coroutines.withTimeout(timeoutMillis) {
-                val response = deferred.await()
+            run {
+                val response = awaitWithInactivityTimeout(deferred, timeoutMillis, pending.activity)
                 if (response["ok"] == true) {
                     JsonUtils.fromJsonValue(response["data"] ?: response)
                 } else {

@@ -1113,7 +1113,7 @@ class LukuArchive private constructor(
         // assumed to already be in order — this holds regardless of how the source JSON ordered its
         // keys, or how these Kotlin literals happen to be listed.
 
-        private fun canonicalFloat(value: Double): String = String.format(java.util.Locale.ROOT, "%.2f", value)
+        private fun canonicalFloat(value: Double): String = CanonicalNumber.fixed(value, 2)
 
         private fun canonicalArray(array: JSONArray?): String {
             if (array == null) return ""
@@ -1139,7 +1139,7 @@ class LukuArchive private constructor(
             return when (val v = source.get(key)) {
                 is Boolean -> if (v) "true" else "false"
                 is Number -> when {
-                    key in GEO_FIELDS -> String.format(java.util.Locale.ROOT, "%.6f", v.toDouble())
+                    key in GEO_FIELDS -> CanonicalNumber.fixed(v.toDouble(), 6)
                     key in FLOAT_FIELDS -> canonicalFloat(v.toDouble())
                     else -> v.toLong().toString()
                 }

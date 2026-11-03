@@ -270,6 +270,9 @@ fn encode_command_request(input: &Value) -> Option<Vec<u8>> {
             if let Some(v) = source.get("auto_update_enabled").and_then(Value::as_bool) {
                 write_bool(&mut nested, 25, v);
             }
+            if let Some(v) = as_u32(source.get("record_interval")) {
+                write_u32(&mut nested, 26, v);
+            }
             write_message(&mut out, 5, &nested);
         }
         "configure" => {
@@ -1356,6 +1359,7 @@ fn decode_network_config_response(bytes: &[u8]) -> Option<Value> {
             18 => insert_string(bytes, &mut cursor, wire_type, &mut out, "upload_topic")?,
             19 => insert_u32(bytes, &mut cursor, wire_type, &mut out, "upload_frequency")?,
             20 => insert_bool(bytes, &mut cursor, wire_type, &mut out, "auto_update_enabled")?,
+            21 => insert_u32(bytes, &mut cursor, wire_type, &mut out, "record_interval")?,
             _ => skip_field(bytes, &mut cursor, wire_type)?,
         }
     }

@@ -775,6 +775,7 @@ export function parseInfoPayload(
     upload_token_type: typeof record.upload_token_type === 'number' ? record.upload_token_type : undefined,
     upload_token_key: typeof record.upload_token_key === 'string' ? record.upload_token_key : null,
     upload_frequency: typeof record.upload_frequency === 'number' ? record.upload_frequency : undefined,
+    record_interval: typeof record.record_interval === 'number' ? record.record_interval : undefined,
   };
 
   const attestation = attestationSig

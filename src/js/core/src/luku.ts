@@ -709,6 +709,43 @@ const CUSTODY_CONTENT_FIELDS: Record<string, CanonicalFieldKind> = {
   status: 'string'
 };
 
+/**
+ * Fixed-point formatting that matches the device signer (C `printf("%.Nf")`) and
+ * the Rust SDK: the exact binary value is rounded half-to-even, and the sign of
+ * negative values (including -0) is kept. `Number.prototype.toFixed` rounds exact
+ * ties up (1023.125 -> "1023.13" where the device signed "1023.12"), which made
+ * genuine records fail canonical and signature checks.
+ */
+export function formatFixedHalfEven(value: number, digits: number): string {
+  if (!Number.isFinite(value)) return String(value);
+  const negative = value < 0 || Object.is(value, -0);
+  const view = new DataView(new ArrayBuffer(8));
+  view.setFloat64(0, Math.abs(value));
+  const bits = view.getBigUint64(0);
+  const exponentBits = Number((bits >> 52n) & 0x7ffn);
+  const fraction = bits & ((1n << 52n) - 1n);
+  // |value| = mantissa * 2^exponent exactly.
+  const mantissa = exponentBits === 0 ? fraction : fraction | (1n << 52n);
+  const exponent = (exponentBits === 0 ? 1 : exponentBits) - 1075;
+  const scale = 10n ** BigInt(digits);
+  let quotient: bigint;
+  if (exponent >= 0) {
+    quotient = (mantissa << BigInt(exponent)) * scale;
+  } else {
+    const denominator = 1n << BigInt(-exponent);
+    const scaled = mantissa * scale;
+    quotient = scaled / denominator;
+    const twiceRemainder = (scaled % denominator) * 2n;
+    if (twiceRemainder > denominator || (twiceRemainder === denominator && (quotient & 1n) === 1n)) {
+      quotient += 1n;
+    }
+  }
+  const text = quotient.toString().padStart(digits + 1, '0');
+  const whole = digits > 0 ? text.slice(0, -digits) : text;
+  const decimals = digits > 0 ? `.${text.slice(-digits)}` : '';
+  return `${negative ? '-' : ''}${whole}${decimals}`;
+}
+
 function formatCanonicalField(value: JsonValue | undefined, kind: CanonicalFieldKind): string {
   switch (kind) {
     case 'string':
@@ -716,16 +753,16 @@ function formatCanonicalField(value: JsonValue | undefined, kind: CanonicalField
     case 'int':
       return typeof value === 'number' ? String(Math.trunc(value)) : '';
     case 'float':
-      return typeof value === 'number' ? value.toFixed(2) : '';
+      return typeof value === 'number' ? formatFixedHalfEven(value, 2) : '';
     case 'geo':
-      return typeof value === 'number' ? value.toFixed(6) : '';
+      return typeof value === 'number' ? formatFixedHalfEven(value, 6) : '';
     case 'bool':
       return typeof value === 'boolean' ? (value ? 'true' : 'false') : '';
     case 'stringArray':
       return Array.isArray(value) ? value.map((entry) => (typeof entry === 'string' ? entry : String(entry))).join(',') : '';
     case 'floatArray':
       return Array.isArray(value)
-        ? value.map((entry) => (typeof entry === 'number' ? entry.toFixed(2) : String(entry))).join(',')
+        ? value.map((entry) => (typeof entry === 'number' ? formatFixedHalfEven(entry, 2) : String(entry))).join(',')
         : '';
     default:
       return '';

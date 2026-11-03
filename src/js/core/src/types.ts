@@ -52,6 +52,7 @@ export interface DeviceInfo extends DeviceDescriptor {
   upload_token_type?: number;
   upload_token_key?: string | null;
   upload_frequency?: number;
+  record_interval?: number;
 }
 
 export interface DeviceCandidate<TNative = unknown> extends DeviceDescriptor {

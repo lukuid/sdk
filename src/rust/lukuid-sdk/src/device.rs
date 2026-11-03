@@ -43,6 +43,9 @@ struct PendingCommand {
     accumulated_batches: Vec<Value>,
     accumulated_export_entries: Vec<Value>,
     accumulated_full_records: Vec<Value>,
+    // Last time a frame for this command arrived; streamed replies (`has_more`)
+    // keep the command alive, so the timeout measures inactivity, not total time.
+    last_activity: std::time::Instant,
 }
 
 fn value_as_u64_integral(value: &Value) -> Option<u64> {
@@ -294,6 +297,7 @@ impl Device {
                                 accumulated_batches: Vec::new(),
                                 accumulated_full_records: Vec::new(),
                                 accumulated_export_entries: Vec::new(),
+                                last_activity: std::time::Instant::now(),
                             });
                         }
 
@@ -900,7 +904,27 @@ impl Device {
             .await
             .map_err(|_| DeviceError::Closed)?;
 
-        match timeout(timeout_duration, rx).await {
+        // Inactivity timeout: a long streamed reply (for example a full-history
+        // export) is allowed as long as frames keep arriving.
+        let mut rx = rx;
+        let mut wait = timeout_duration;
+        let outcome = loop {
+            match timeout(wait, &mut rx).await {
+                Ok(result) => break Ok(result),
+                Err(elapsed) => {
+                    let idle = {
+                        let map = self.pending_cmds.lock().unwrap_or_else(|e| e.into_inner());
+                        map.get(&id).map(|p| p.last_activity.elapsed())
+                    };
+                    match idle {
+                        Some(idle) if idle < timeout_duration => wait = timeout_duration - idle,
+                        _ => break Err(elapsed),
+                    }
+                }
+            }
+        };
+
+        match outcome {
             Ok(Ok(res)) => {
                 if self.debug_logging {
                     match &res {
@@ -1038,6 +1062,7 @@ fn process_frame(
                 } else if has_more {
                     // Accumulate data and keep pending
                     if let Some(p) = map.get_mut(&id) {
+                        p.last_activity = std::time::Instant::now();
                         let mut chunk_count = 0;
                         if let Some(data_arr) = obj.get("data").and_then(|v| v.as_array()) {
                             chunk_count += data_arr.len();

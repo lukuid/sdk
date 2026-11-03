@@ -105,6 +105,8 @@ message ConfigRequest {
   optional bytes upload_ca_der = 23;
   optional uint32 upload_frequency = 24;
   optional bool auto_update_enabled = 25;
+  // Environment recording interval in seconds (60-3600).
+  optional uint32 record_interval = 26;
 }
 
 message OtaBeginRequest {
@@ -313,6 +315,7 @@ message NetworkConfigResponse {
   string upload_topic = 18;
   uint32 upload_frequency = 19;
   bool auto_update_enabled = 20;
+  uint32 record_interval = 21;
 }
 
 message RecordMeta {
