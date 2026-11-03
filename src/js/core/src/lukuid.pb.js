@@ -1806,6 +1806,7 @@ export const lukuid = $root.lukuid = (() => {
          * @property {Uint8Array|null} [uploadCaDer] ConfigRequest uploadCaDer
          * @property {number|null} [uploadFrequency] ConfigRequest uploadFrequency
          * @property {boolean|null} [autoUpdateEnabled] ConfigRequest autoUpdateEnabled
+         * @property {number|null} [recordInterval] ConfigRequest recordInterval
          */
 
         /**
@@ -1951,6 +1952,14 @@ export const lukuid = $root.lukuid = (() => {
          */
         ConfigRequest.prototype.autoUpdateEnabled = null;
 
+        /**
+         * ConfigRequest recordInterval.
+         * @member {number|null|undefined} recordInterval
+         * @memberof lukuid.ConfigRequest
+         * @instance
+         */
+        ConfigRequest.prototype.recordInterval = null;
+
         // OneOf field names bound to virtual getters and setters
         let $oneOfFields;
 
@@ -2050,6 +2059,12 @@ export const lukuid = $root.lukuid = (() => {
             set: $util.oneOfSetter($oneOfFields)
         });
 
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(ConfigRequest.prototype, "_recordInterval", {
+            get: $util.oneOfGetter($oneOfFields = ["recordInterval"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
         /**
          * Creates a new ConfigRequest instance using the specified properties.
          * @function create
@@ -2106,6 +2121,8 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 24, wireType 0 =*/192).uint32(message.uploadFrequency);
             if (message.autoUpdateEnabled != null && Object.hasOwnProperty.call(message, "autoUpdateEnabled"))
                 writer.uint32(/* id 25, wireType 0 =*/200).bool(message.autoUpdateEnabled);
+            if (message.recordInterval != null && Object.hasOwnProperty.call(message, "recordInterval"))
+                writer.uint32(/* id 26, wireType 0 =*/208).uint32(message.recordInterval);
             return writer;
         };
 
@@ -2204,6 +2221,10 @@ export const lukuid = $root.lukuid = (() => {
                     }
                 case 25: {
                         message.autoUpdateEnabled = reader.bool();
+                        break;
+                    }
+                case 26: {
+                        message.recordInterval = reader.uint32();
                         break;
                     }
                 default:
@@ -2340,6 +2361,11 @@ export const lukuid = $root.lukuid = (() => {
                 if (typeof message.autoUpdateEnabled !== "boolean")
                     return "autoUpdateEnabled: boolean expected";
             }
+            if (message.recordInterval != null && message.hasOwnProperty("recordInterval")) {
+                properties._recordInterval = 1;
+                if (!$util.isInteger(message.recordInterval))
+                    return "recordInterval: integer expected";
+            }
             return null;
         };
 
@@ -2447,6 +2473,8 @@ export const lukuid = $root.lukuid = (() => {
                 message.uploadFrequency = object.uploadFrequency >>> 0;
             if (object.autoUpdateEnabled != null)
                 message.autoUpdateEnabled = Boolean(object.autoUpdateEnabled);
+            if (object.recordInterval != null)
+                message.recordInterval = object.recordInterval >>> 0;
             return message;
         };
 
@@ -2542,6 +2570,11 @@ export const lukuid = $root.lukuid = (() => {
                 object.autoUpdateEnabled = message.autoUpdateEnabled;
                 if (options.oneofs)
                     object._autoUpdateEnabled = "autoUpdateEnabled";
+            }
+            if (message.recordInterval != null && message.hasOwnProperty("recordInterval")) {
+                object.recordInterval = message.recordInterval;
+                if (options.oneofs)
+                    object._recordInterval = "recordInterval";
             }
             return object;
         };
@@ -9953,6 +9986,7 @@ export const lukuid = $root.lukuid = (() => {
          * @property {string|null} [uploadTopic] NetworkConfigResponse uploadTopic
          * @property {number|null} [uploadFrequency] NetworkConfigResponse uploadFrequency
          * @property {boolean|null} [autoUpdateEnabled] NetworkConfigResponse autoUpdateEnabled
+         * @property {number|null} [recordInterval] NetworkConfigResponse recordInterval
          */
 
         /**
@@ -10059,6 +10093,14 @@ export const lukuid = $root.lukuid = (() => {
         NetworkConfigResponse.prototype.autoUpdateEnabled = false;
 
         /**
+         * NetworkConfigResponse recordInterval.
+         * @member {number} recordInterval
+         * @memberof lukuid.NetworkConfigResponse
+         * @instance
+         */
+        NetworkConfigResponse.prototype.recordInterval = 0;
+
+        /**
          * Creates a new NetworkConfigResponse instance using the specified properties.
          * @function create
          * @memberof lukuid.NetworkConfigResponse
@@ -10104,6 +10146,8 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 19, wireType 0 =*/152).uint32(message.uploadFrequency);
             if (message.autoUpdateEnabled != null && Object.hasOwnProperty.call(message, "autoUpdateEnabled"))
                 writer.uint32(/* id 20, wireType 0 =*/160).bool(message.autoUpdateEnabled);
+            if (message.recordInterval != null && Object.hasOwnProperty.call(message, "recordInterval"))
+                writer.uint32(/* id 21, wireType 0 =*/168).uint32(message.recordInterval);
             return writer;
         };
 
@@ -10182,6 +10226,10 @@ export const lukuid = $root.lukuid = (() => {
                     }
                 case 20: {
                         message.autoUpdateEnabled = reader.bool();
+                        break;
+                    }
+                case 21: {
+                        message.recordInterval = reader.uint32();
                         break;
                     }
                 default:
@@ -10270,6 +10318,9 @@ export const lukuid = $root.lukuid = (() => {
             if (message.autoUpdateEnabled != null && message.hasOwnProperty("autoUpdateEnabled"))
                 if (typeof message.autoUpdateEnabled !== "boolean")
                     return "autoUpdateEnabled: boolean expected";
+            if (message.recordInterval != null && message.hasOwnProperty("recordInterval"))
+                if (!$util.isInteger(message.recordInterval))
+                    return "recordInterval: integer expected";
             return null;
         };
 
@@ -10364,6 +10415,8 @@ export const lukuid = $root.lukuid = (() => {
                 message.uploadFrequency = object.uploadFrequency >>> 0;
             if (object.autoUpdateEnabled != null)
                 message.autoUpdateEnabled = Boolean(object.autoUpdateEnabled);
+            if (object.recordInterval != null)
+                message.recordInterval = object.recordInterval >>> 0;
             return message;
         };
 
@@ -10398,6 +10451,7 @@ export const lukuid = $root.lukuid = (() => {
                 object.uploadTopic = "";
                 object.uploadFrequency = 0;
                 object.autoUpdateEnabled = false;
+                object.recordInterval = 0;
             }
             if (message.wifiSsid != null && message.hasOwnProperty("wifiSsid"))
                 object.wifiSsid = message.wifiSsid;
@@ -10421,6 +10475,8 @@ export const lukuid = $root.lukuid = (() => {
                 object.uploadFrequency = message.uploadFrequency;
             if (message.autoUpdateEnabled != null && message.hasOwnProperty("autoUpdateEnabled"))
                 object.autoUpdateEnabled = message.autoUpdateEnabled;
+            if (message.recordInterval != null && message.hasOwnProperty("recordInterval"))
+                object.recordInterval = message.recordInterval;
             return object;
         };
 
@@ -12082,6 +12138,9 @@ export const lukuid = $root.lukuid = (() => {
          * @property {number|null} [countryCode] ScanPayload countryCode
          * @property {string|null} [tagPrefix] ScanPayload tagPrefix
          * @property {string|null} [tagCountry] ScanPayload tagCountry
+         * @property {string|null} [profile] ScanPayload profile
+         * @property {string|null} [protocol] ScanPayload protocol
+         * @property {string|null} [metricsCsv] ScanPayload metricsCsv
          */
 
         /**
@@ -12372,6 +12431,30 @@ export const lukuid = $root.lukuid = (() => {
         ScanPayload.prototype.tagCountry = "";
 
         /**
+         * ScanPayload profile.
+         * @member {string} profile
+         * @memberof lukuid.ScanPayload
+         * @instance
+         */
+        ScanPayload.prototype.profile = "";
+
+        /**
+         * ScanPayload protocol.
+         * @member {string} protocol
+         * @memberof lukuid.ScanPayload
+         * @instance
+         */
+        ScanPayload.prototype.protocol = "";
+
+        /**
+         * ScanPayload metricsCsv.
+         * @member {string} metricsCsv
+         * @memberof lukuid.ScanPayload
+         * @instance
+         */
+        ScanPayload.prototype.metricsCsv = "";
+
+        /**
          * Creates a new ScanPayload instance using the specified properties.
          * @function create
          * @memberof lukuid.ScanPayload
@@ -12463,6 +12546,12 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 34, wireType 2 =*/274).string(message.tagPrefix);
             if (message.tagCountry != null && Object.hasOwnProperty.call(message, "tagCountry"))
                 writer.uint32(/* id 35, wireType 2 =*/282).string(message.tagCountry);
+            if (message.profile != null && Object.hasOwnProperty.call(message, "profile"))
+                writer.uint32(/* id 36, wireType 2 =*/290).string(message.profile);
+            if (message.protocol != null && Object.hasOwnProperty.call(message, "protocol"))
+                writer.uint32(/* id 37, wireType 2 =*/298).string(message.protocol);
+            if (message.metricsCsv != null && Object.hasOwnProperty.call(message, "metricsCsv"))
+                writer.uint32(/* id 38, wireType 2 =*/306).string(message.metricsCsv);
             return writer;
         };
 
@@ -12635,6 +12724,18 @@ export const lukuid = $root.lukuid = (() => {
                         message.tagCountry = reader.string();
                         break;
                     }
+                case 36: {
+                        message.profile = reader.string();
+                        break;
+                    }
+                case 37: {
+                        message.protocol = reader.string();
+                        break;
+                    }
+                case 38: {
+                        message.metricsCsv = reader.string();
+                        break;
+                    }
                 default:
                     reader.skipType(tag & 7);
                     break;
@@ -12772,6 +12873,15 @@ export const lukuid = $root.lukuid = (() => {
             if (message.tagCountry != null && message.hasOwnProperty("tagCountry"))
                 if (!$util.isString(message.tagCountry))
                     return "tagCountry: string expected";
+            if (message.profile != null && message.hasOwnProperty("profile"))
+                if (!$util.isString(message.profile))
+                    return "profile: string expected";
+            if (message.protocol != null && message.hasOwnProperty("protocol"))
+                if (!$util.isString(message.protocol))
+                    return "protocol: string expected";
+            if (message.metricsCsv != null && message.hasOwnProperty("metricsCsv"))
+                if (!$util.isString(message.metricsCsv))
+                    return "metricsCsv: string expected";
             return null;
         };
 
@@ -12876,6 +12986,12 @@ export const lukuid = $root.lukuid = (() => {
                 message.tagPrefix = String(object.tagPrefix);
             if (object.tagCountry != null)
                 message.tagCountry = String(object.tagCountry);
+            if (object.profile != null)
+                message.profile = String(object.profile);
+            if (object.protocol != null)
+                message.protocol = String(object.protocol);
+            if (object.metricsCsv != null)
+                message.metricsCsv = String(object.metricsCsv);
             return message;
         };
 
@@ -12939,6 +13055,9 @@ export const lukuid = $root.lukuid = (() => {
                 object.countryCode = 0;
                 object.tagPrefix = "";
                 object.tagCountry = "";
+                object.profile = "";
+                object.protocol = "";
+                object.metricsCsv = "";
             }
             if (message.ctr != null && message.hasOwnProperty("ctr"))
                 if (typeof message.ctr === "number")
@@ -13017,6 +13136,12 @@ export const lukuid = $root.lukuid = (() => {
                 object.tagPrefix = message.tagPrefix;
             if (message.tagCountry != null && message.hasOwnProperty("tagCountry"))
                 object.tagCountry = message.tagCountry;
+            if (message.profile != null && message.hasOwnProperty("profile"))
+                object.profile = message.profile;
+            if (message.protocol != null && message.hasOwnProperty("protocol"))
+                object.protocol = message.protocol;
+            if (message.metricsCsv != null && message.hasOwnProperty("metricsCsv"))
+                object.metricsCsv = message.metricsCsv;
             return object;
         };
 

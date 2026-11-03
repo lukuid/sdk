@@ -1458,6 +1458,25 @@ fn decode_scan_record(bytes: &[u8]) -> Value {
     Value::Object(out)
 }
 
+/// The device signs `metrics` as comma-separated 2-decimal values and sends that text
+/// (`metrics_csv`); LUKU.md carries it as a numeric array. Each value has at most two
+/// decimals, so formatting it again with two decimals gives back the signed text.
+/// Returns `None` when any element is not a finite number.
+fn scan_metrics_from_csv(csv: &str) -> Option<Value> {
+    if csv.is_empty() {
+        return Some(Value::Array(Vec::new()));
+    }
+    let mut values = Vec::new();
+    for part in csv.split(',') {
+        let f: f64 = part.trim().parse().ok()?;
+        if !f.is_finite() {
+            return None;
+        }
+        values.push(Value::Number(serde_json::Number::from_f64(f)?));
+    }
+    Some(Value::Array(values))
+}
+
 fn decode_scan_payload(bytes: &[u8]) -> Value {
     let mut cursor = 0usize;
     let mut out = Map::new();
@@ -1475,7 +1494,9 @@ fn decode_scan_payload(bytes: &[u8]) -> Value {
                 let _ = insert_u64(bytes, &mut cursor, wire_type, &mut out, "ctr");
             }
             2 => {
-                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "id");
+                // LUKU.md names the transponder ID `tag_id` (signed in the canonical string).
+                // No unsigned `id` copy: a viewer could show it after it was altered.
+                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "tag_id");
             }
             3 => {
                 let _ = insert_i64(bytes, &mut cursor, wire_type, &mut out, "timestamp_utc");
@@ -1500,6 +1521,19 @@ fn decode_scan_payload(bytes: &[u8]) -> Value {
             }
             31 => {
                 let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "genesis_hash");
+            }
+            36 => {
+                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "profile");
+            }
+            37 => {
+                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "protocol");
+            }
+            38 => {
+                if let Some(csv) = read_string_field(bytes, &mut cursor, wire_type) {
+                    if let Some(metrics) = scan_metrics_from_csv(&csv) {
+                        out.insert("metrics".to_string(), metrics);
+                    }
+                }
             }
             _ => {
                 let _ = skip_field(bytes, &mut cursor, wire_type);

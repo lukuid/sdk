@@ -724,6 +724,9 @@ export namespace lukuid {
 
         /** ConfigRequest autoUpdateEnabled */
         autoUpdateEnabled?: (boolean|null);
+
+        /** ConfigRequest recordInterval */
+        recordInterval?: (number|null);
     }
 
     /** Represents a ConfigRequest. */
@@ -782,6 +785,9 @@ export namespace lukuid {
 
         /** ConfigRequest autoUpdateEnabled. */
         public autoUpdateEnabled?: (boolean|null);
+
+        /** ConfigRequest recordInterval. */
+        public recordInterval?: (number|null);
 
         /**
          * Creates a new ConfigRequest instance using the specified properties.
@@ -3530,6 +3536,9 @@ export namespace lukuid {
 
         /** NetworkConfigResponse autoUpdateEnabled */
         autoUpdateEnabled?: (boolean|null);
+
+        /** NetworkConfigResponse recordInterval */
+        recordInterval?: (number|null);
     }
 
     /** Represents a NetworkConfigResponse. */
@@ -3573,6 +3582,9 @@ export namespace lukuid {
 
         /** NetworkConfigResponse autoUpdateEnabled. */
         public autoUpdateEnabled: boolean;
+
+        /** NetworkConfigResponse recordInterval. */
+        public recordInterval: number;
 
         /**
          * Creates a new NetworkConfigResponse instance using the specified properties.
@@ -4358,6 +4370,15 @@ export namespace lukuid {
 
         /** ScanPayload tagCountry */
         tagCountry?: (string|null);
+
+        /** ScanPayload profile */
+        profile?: (string|null);
+
+        /** ScanPayload protocol */
+        protocol?: (string|null);
+
+        /** ScanPayload metricsCsv */
+        metricsCsv?: (string|null);
     }
 
     /** Represents a ScanPayload. */
@@ -4470,6 +4491,15 @@ export namespace lukuid {
 
         /** ScanPayload tagCountry. */
         public tagCountry: string;
+
+        /** ScanPayload profile. */
+        public profile: string;
+
+        /** ScanPayload protocol. */
+        public protocol: string;
+
+        /** ScanPayload metricsCsv. */
+        public metricsCsv: string;
 
         /**
          * Creates a new ScanPayload instance using the specified properties.

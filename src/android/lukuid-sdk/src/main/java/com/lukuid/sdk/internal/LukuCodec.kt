@@ -6,6 +6,23 @@ import java.nio.ByteOrder
 import java.util.Base64
 import com.lukuid.sdk.proto.LukuIDProto
 
+// The device signs `metrics` as comma-separated 2-decimal values and sends that text
+// (`metrics_csv`); LUKU.md carries it as a numeric array. Each value has at most two
+// decimals, so formatting it again with two decimals gives back the signed text.
+// Returns null when the field is absent or any element is not a plain number.
+internal fun scanMetricsFromCsv(csv: String): List<Double>? {
+    if (csv.isEmpty()) return null
+    val values = mutableListOf<Double>()
+    for (part in csv.split(',')) {
+        val trimmed = part.trim()
+        if (!Regex("^-?\\d+(\\.\\d+)?$").matches(trimmed)) return null
+        val value = trimmed.toDoubleOrNull() ?: return null
+        if (!value.isFinite()) return null
+        values.add(value)
+    }
+    return values
+}
+
 internal class LukuCodec(
     private val onMessage: (Map<String, Any?>) -> Unit,
     private val onError: (Throwable) -> Unit
@@ -492,11 +509,19 @@ internal class LukuCodec(
         map["id"] = record.id
         map["signature"] = record.signature
         map["previous_signature"] = record.previousSignature
+        map["canonical_string"] = record.canonicalString
         if (record.hasPayload()) {
             val p = record.payload
             map["payload"] = mutableMapOf<String, Any?>().apply {
                 put("ctr", p.ctr)
-                put("id", p.id)
+                // LUKU.md "scan" record, profile "animal" (fields 2, 30, 31, 36-38). The
+                // transponder ID is `tag_id`, signed in the canonical string; no unsigned `id` copy.
+                put("tag_id", p.id)
+                if (p.profile.isNotEmpty()) put("profile", p.profile)
+                if (p.protocol.isNotEmpty()) put("protocol", p.protocol)
+                if (p.scanVersion.isNotEmpty()) put("scan_version", p.scanVersion)
+                if (p.genesisHash.isNotEmpty()) put("genesis_hash", p.genesisHash)
+                scanMetricsFromCsv(p.metricsCsv)?.let { put("metrics", it) }
                 put("timestamp_utc", p.timestampUtc)
                 put("uptime_us", p.uptimeUs)
                 put("temperature_c", p.temperatureC)

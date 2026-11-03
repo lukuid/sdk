@@ -677,6 +677,7 @@ final class LukuCodec {
         dict["scan_id"] = record.id
         dict["signature"] = record.signature
         dict["previous_signature"] = record.previousSignature
+        dict["canonical_string"] = record.canonicalString
         dict["payload"] = mapScanPayload(record.payload)
         dict["device"] = mapDeviceInfo(record.device)
         dict["manufacturer"] = mapManufacturerInfo(record.manufacturer)
@@ -688,7 +689,6 @@ final class LukuCodec {
     private func mapScanPayload(_ payload: LukuIDScanPayload) -> [String: Any] {
         var dict: [String: Any] = [:]
         dict["ctr"] = payload.ctr
-        dict["id"] = payload.id
         dict["timestamp_utc"] = payload.timestampUtc
         dict["uptime_us"] = payload.uptimeUs
         dict["temperature_c"] = payload.temperatureC
@@ -714,7 +714,30 @@ final class LukuCodec {
         dict["hdx_histo_csv"] = payload.hdxHistoCsv
         dict["metrics_keys"] = payload.metricsKeys
         dict["scan_version"] = payload.scanVersion
+        // LUKU.md "scan" record, profile "animal" (fields 2, 31, 36-38). The transponder ID
+        // is `tag_id`, signed in the canonical string; no unsigned `id` copy.
+        dict["tag_id"] = payload.id
+        if !payload.genesisHash.isEmpty { dict["genesis_hash"] = payload.genesisHash }
+        if !payload.profile.isEmpty { dict["profile"] = payload.profile }
+        if !payload.protocol_p.isEmpty { dict["protocol"] = payload.protocol_p }
+        if let metrics = LukuCodec.scanMetricsFromCsv(payload.metricsCsv) { dict["metrics"] = metrics }
         return dict
+    }
+
+    /// The device signs `metrics` as comma-separated 2-decimal values and sends that text
+    /// (`metrics_csv`); LUKU.md carries it as a numeric array. Each value has at most two
+    /// decimals, so formatting it again with two decimals gives back the signed text.
+    /// Returns nil when the field is absent or any element is not a plain number.
+    static func scanMetricsFromCsv(_ csv: String) -> [Double]? {
+        if csv.isEmpty { return nil }
+        var values: [Double] = []
+        for part in csv.split(separator: ",", omittingEmptySubsequences: false) {
+            let trimmed = part.trimmingCharacters(in: .whitespaces)
+            guard trimmed.range(of: "^-?[0-9]+(\\.[0-9]+)?$", options: .regularExpression) != nil,
+                  let value = Double(trimmed), value.isFinite else { return nil }
+            values.append(value)
+        }
+        return values
     }
 
     private func mapDeviceInfo(_ info: LukuIDDeviceInfo) -> [String: Any] {

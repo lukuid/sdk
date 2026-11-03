@@ -1686,6 +1686,21 @@ nonisolated struct LukuIDScanPayload: @unchecked Sendable {
     set {_uniqueStorage()._tagCountry = newValue}
   }
 
+  var profile: String {
+    get {_storage._profile}
+    set {_uniqueStorage()._profile = newValue}
+  }
+
+  var protocol_p: String {
+    get {_storage._protocol_p}
+    set {_uniqueStorage()._protocol_p = newValue}
+  }
+
+  var metricsCsv: String {
+    get {_storage._metricsCsv}
+    set {_uniqueStorage()._metricsCsv = newValue}
+  }
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -5103,7 +5118,7 @@ nonisolated extension LukuIDFetchResponse: SwiftProtobuf.Message, SwiftProtobuf.
 
 nonisolated extension LukuIDScanPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ScanPayload"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ctr\0\u{1}id\0\u{3}timestamp_utc\0\u{3}uptime_us\0\u{3}temperature_c\0\u{1}nonce\0\u{1}firmware\0\u{1}tmp\0\u{1}hum\0\u{1}rssi\0\u{1}jit\0\u{1}lat\0\u{1}dur\0\u{3}v_sag\0\u{3}v_avg\0\u{3}p_cnt\0\u{3}avg_dur\0\u{3}sc_sync\0\u{3}up_time_m\0\u{3}v_drop\0\u{3}rssi_std\0\u{1}vbus\0\u{3}clk_var\0\u{1}drift\0\u{3}hdx_histo_csv\0\u{3}score_bio\0\u{3}score_auth\0\u{3}score_env\0\u{3}metrics_keys\0\u{3}scan_version\0\u{3}genesis_hash\0\u{3}country_code\0\u{4}\u{2}tag_prefix\0\u{3}tag_country\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ctr\0\u{1}id\0\u{3}timestamp_utc\0\u{3}uptime_us\0\u{3}temperature_c\0\u{1}nonce\0\u{1}firmware\0\u{1}tmp\0\u{1}hum\0\u{1}rssi\0\u{1}jit\0\u{1}lat\0\u{1}dur\0\u{3}v_sag\0\u{3}v_avg\0\u{3}p_cnt\0\u{3}avg_dur\0\u{3}sc_sync\0\u{3}up_time_m\0\u{3}v_drop\0\u{3}rssi_std\0\u{1}vbus\0\u{3}clk_var\0\u{1}drift\0\u{3}hdx_histo_csv\0\u{3}score_bio\0\u{3}score_auth\0\u{3}score_env\0\u{3}metrics_keys\0\u{3}scan_version\0\u{3}genesis_hash\0\u{3}country_code\0\u{4}\u{2}tag_prefix\0\u{3}tag_country\0\u{1}profile\0\u{1}protocol\0\u{3}metrics_csv\0")
 
   fileprivate class _StorageClass {
     var _ctr: UInt64 = 0
@@ -5140,6 +5155,9 @@ nonisolated extension LukuIDScanPayload: SwiftProtobuf.Message, SwiftProtobuf._M
     var _countryCode: UInt32 = 0
     var _tagPrefix: String = String()
     var _tagCountry: String = String()
+    var _profile: String = String()
+    var _protocol_p: String = String()
+    var _metricsCsv: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5184,6 +5202,9 @@ nonisolated extension LukuIDScanPayload: SwiftProtobuf.Message, SwiftProtobuf._M
       _countryCode = source._countryCode
       _tagPrefix = source._tagPrefix
       _tagCountry = source._tagCountry
+      _profile = source._profile
+      _protocol_p = source._protocol_p
+      _metricsCsv = source._metricsCsv
     }
   }
 
@@ -5236,6 +5257,9 @@ nonisolated extension LukuIDScanPayload: SwiftProtobuf.Message, SwiftProtobuf._M
         case 32: try { try decoder.decodeSingularUInt32Field(value: &_storage._countryCode) }()
         case 34: try { try decoder.decodeSingularStringField(value: &_storage._tagPrefix) }()
         case 35: try { try decoder.decodeSingularStringField(value: &_storage._tagCountry) }()
+        case 36: try { try decoder.decodeSingularStringField(value: &_storage._profile) }()
+        case 37: try { try decoder.decodeSingularStringField(value: &_storage._protocol_p) }()
+        case 38: try { try decoder.decodeSingularStringField(value: &_storage._metricsCsv) }()
         default: break
         }
       }
@@ -5346,6 +5370,15 @@ nonisolated extension LukuIDScanPayload: SwiftProtobuf.Message, SwiftProtobuf._M
       if !_storage._tagCountry.isEmpty {
         try visitor.visitSingularStringField(value: _storage._tagCountry, fieldNumber: 35)
       }
+      if !_storage._profile.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._profile, fieldNumber: 36)
+      }
+      if !_storage._protocol_p.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._protocol_p, fieldNumber: 37)
+      }
+      if !_storage._metricsCsv.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._metricsCsv, fieldNumber: 38)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -5389,6 +5422,9 @@ nonisolated extension LukuIDScanPayload: SwiftProtobuf.Message, SwiftProtobuf._M
         if _storage._countryCode != rhs_storage._countryCode {return false}
         if _storage._tagPrefix != rhs_storage._tagPrefix {return false}
         if _storage._tagCountry != rhs_storage._tagCountry {return false}
+        if _storage._profile != rhs_storage._profile {return false}
+        if _storage._protocol_p != rhs_storage._protocol_p {return false}
+        if _storage._metricsCsv != rhs_storage._metricsCsv {return false}
         return true
       }
       if !storagesAreEqual {return false}

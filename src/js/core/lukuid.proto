@@ -399,6 +399,12 @@ message ScanPayload {
   uint32 country_code = 32;
   string tag_prefix = 34;
   string tag_country = 35;
+
+  // LUKU.md "scan" record, profile "animal": signed canonical fields that the
+  // JSON payload must carry so verifiers can rebuild the canonical string.
+  string profile = 36;      // scan profile, e.g. "animal"
+  string protocol = 37;     // transponder protocol, e.g. "FDX-B"
+  string metrics_csv = 38;  // metrics exactly as signed: comma-separated, 2 decimals (JSON: "metrics" array)
 }
 
 message DeviceInfo {

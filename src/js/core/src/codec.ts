@@ -1551,7 +1551,9 @@ function decodeScanPayload(payload: Uint8Array): JsonRecord {
     const wireType = key & 0x07;
     switch (field) {
       case 1: assignUint64(payload, cursor, wireType, out, 'ctr'); break;
-      case 2: assignString(payload, cursor, wireType, out, 'id'); break;
+      // LUKU.md names the transponder ID `tag_id` (signed in the canonical string).
+      // No unsigned `id` copy: a viewer could show it after it was altered.
+      case 2: assignString(payload, cursor, wireType, out, 'tag_id'); break;
       case 3: assignInt64(payload, cursor, wireType, out, 'timestamp_utc'); break;
       case 4: assignInt64(payload, cursor, wireType, out, 'uptime_us'); break;
       case 5: assignFloat32(payload, cursor, wireType, out, 'temperature_c'); break;
@@ -1577,10 +1579,36 @@ function decodeScanPayload(payload: Uint8Array): JsonRecord {
       case 25: assignString(payload, cursor, wireType, out, 'hdx_histo_csv'); break;
       case 29: assignString(payload, cursor, wireType, out, 'metrics_keys'); break;
       case 30: assignString(payload, cursor, wireType, out, 'scan_version'); break;
+      case 31: assignString(payload, cursor, wireType, out, 'genesis_hash'); break;
+      case 36: assignString(payload, cursor, wireType, out, 'profile'); break;
+      case 37: assignString(payload, cursor, wireType, out, 'protocol'); break;
+      case 38: {
+        const csv = readStringField(payload, cursor, wireType);
+        const metrics = csv === null ? null : scanMetricsFromCsv(csv);
+        if (metrics !== null) out.metrics = metrics;
+        break;
+      }
       default: skipField(payload, cursor, wireType); break;
     }
   }
   return out;
+}
+
+// The device signs `metrics` as comma-separated 2-decimal values and sends that text
+// (`metrics_csv`); LUKU.md carries it as a numeric array. Each value has at most two
+// decimals, so formatting it again with two decimals gives back the signed text.
+// Returns null when any element is not a finite number.
+function scanMetricsFromCsv(csv: string): number[] | null {
+  if (csv === '') return [];
+  const values: number[] = [];
+  for (const part of csv.split(',')) {
+    const trimmed = part.trim();
+    if (!/^-?\d+(\.\d+)?$/.test(trimmed)) return null;
+    const value = Number(trimmed);
+    if (!Number.isFinite(value)) return null;
+    values.push(value);
+  }
+  return values;
 }
 
 function decodeManufacturerInfo(payload: Uint8Array): JsonRecord {
