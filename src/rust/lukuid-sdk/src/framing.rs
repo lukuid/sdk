@@ -1271,7 +1271,7 @@ fn decode_device_info_response(bytes: &[u8]) -> Option<Value> {
                 &mut out,
                 "custom_heartbeat_url",
             )?,
-            17 => insert_bool(bytes, &mut cursor, wire_type, &mut out, "telemetry")?,
+            17 => insert_bool(bytes, &mut cursor, wire_type, &mut out, "network_participation_enabled")?,
             18 => insert_string(bytes, &mut cursor, wire_type, &mut out, "managed_by")?,
             19 => insert_bytes(
                 bytes,

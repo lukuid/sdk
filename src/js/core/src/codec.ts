@@ -1076,7 +1076,7 @@ function decodeDeviceInfoResponse(payload: Uint8Array): JsonRecord {
       case 14: assignString(payload, cursor, wireType, out, 'revision'); break;
       case 15: assignBool(payload, cursor, wireType, out, 'pairing'); break;
       case 16: assignString(payload, cursor, wireType, out, 'custom_heartbeat_url'); break;
-      case 17: assignBool(payload, cursor, wireType, out, 'telemetry'); break;
+      case 17: assignBool(payload, cursor, wireType, out, 'network_participation_enabled'); break;
       case 18: assignString(payload, cursor, wireType, out, 'managed_by'); break;
       case 19: assignBytes(payload, cursor, wireType, out, 'attestation_dac_der'); break;
       case 20: assignBytes(payload, cursor, wireType, out, 'attestation_manufacturer_der'); break;

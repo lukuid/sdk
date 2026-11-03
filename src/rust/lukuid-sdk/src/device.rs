@@ -579,6 +579,12 @@ impl Device {
             .get("heartbeat_root_fingerprint")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
+        // As the JS/Swift/Kotlin SDKs: the device reports this in info (proto3 omits
+        // false). It gates the telemetry upload in sync_heartbeat and is sent to /heartbeat.
+        current_info.network_participation_enabled = info_obj
+            .get("network_participation_enabled")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
         current_info.verified = verification.ok;
         current_info.last_sync = last_sync;
         current_info.counter = counter;
@@ -664,7 +670,9 @@ impl Device {
                 );
             }
 
-            let _ = sdk
+            // The heartbeat continues either way (telemetry is best effort), but a
+            // rejected batch is reported rather than discarded silently.
+            if let Err(error) = sdk
                 .telemetry(
                     None, // Always default API
                     &self.info.id,
@@ -675,8 +683,15 @@ impl Device {
                     telemetry_chain_version,
                     telemetry_chain_tail.as_deref(),
                 )
-                .await;
-
+                .await
+            {
+                if sdk.options.debug_logging {
+                    eprintln!(
+                        "[lukuid-sdk] Heartbeat sync telemetry upload failed for {}: {}",
+                        self.info.id, error
+                    );
+                }
+            }
         }
 
         // 2. Generate Heartbeat CSR
