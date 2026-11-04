@@ -1442,11 +1442,15 @@ export interface BuiltVerificationRecord {
  * Computes the exact detached canonical payload `collector_attestation.signature`
  * must sign (LUKU.md 1.1.0 normalized verification payload), given the record
  * as it will be built (i.e. after `buildVerificationRecord()` has computed
- * `response.checksum`). Callers sign this payload with the collecting
- * device's private key to produce `collectorAttestation.signature` before
- * passing it back into `buildVerificationRecord()`.
+ * `response.checksum`) and the collecting device's ID. Callers sign this
+ * payload with the collecting device's private key to produce
+ * `collectorAttestation.signature` before passing it back into
+ * `buildVerificationRecord()`.
  */
-export function verificationCollectorAttestationPayload(record: JsonObject): string {
+export function verificationCollectorAttestationPayload(record: JsonObject, collectorDeviceId?: string): string {
+  // The payload ends with the collecting device's ID. Pass it when the record does not
+  // carry collector_attestation yet (the builder flow); otherwise it is read from the record.
+  if (collectorDeviceId !== undefined) return verificationSignaturePayload(record, collectorDeviceId);
   return recomputeVerificationCanonicalString(record);
 }
 

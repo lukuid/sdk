@@ -45,6 +45,22 @@ function resolveSamplesDir(): string {
 
 const samplesDir = resolveSamplesDir();
 
+/** Current-format real exports under the test PKI (samples/dotluku/test/1.1.0/README.md). */
+function resolveCurrentSamplesDir(): string {
+  let current = __dirname;
+  while (true) {
+    const candidate = path.join(current, 'samples', 'dotluku', 'test', '1.1.0');
+    if (existsSync(candidate)) return candidate;
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return path.join(__dirname, 'samples', 'dotluku', 'test', '1.1.0');
+}
+
+const currentSamplesDir = resolveCurrentSamplesDir();
+const currentSampleOptions = () => ({ ...testOptions(), trustProfile: 'test' });
+
 function resolveExternalIdentityFixture(): string {
   let current = __dirname;
 
@@ -579,90 +595,72 @@ describe('LukuFile', () => {
   });
 
   it('mutates real sample archives in memory', async () => {
-    const samplePath = path.join(samplesDir, 'first-passable-verification-sample.luku');
+    const samplePath = path.join(currentSamplesDir, 'first-passable-verification-sample.luku');
     const sampleBytes = await readFile(samplePath);
     const original = await LukuFile.openBytes(new Uint8Array(sampleBytes));
-    const originalIssues = await original.verify(testOptions());
+    const originalIssues = await original.verify(currentSampleOptions());
     assert.equal(originalIssues.filter((entry) => entry.criticality === 'critical').length, 0);
 
     const invalidSignature = await LukuFile.openBytes(new Uint8Array(sampleBytes));
     invalidSignature.blocks[0].batch[0].signature = 'not_base64_data!!!';
-    assert.ok(hasIssue(await invalidSignature.verify(testOptions()), 'RECORD_SIGNATURE_INVALID', 'ATTESTATION_FAILED'));
+    assert.ok(hasIssue(await invalidSignature.verify(currentSampleOptions()), 'RECORD_SIGNATURE_INVALID', 'ATTESTATION_FAILED'));
 
     const mutatedCanonical = await LukuFile.openBytes(new Uint8Array(sampleBytes));
     mutatedCanonical.blocks[0].batch[0].canonical_string = `${mutatedCanonical.blocks[0].batch[0].canonical_string as string}X`;
-    assert.ok(hasIssue(await mutatedCanonical.verify(testOptions()), 'RECORD_CANONICAL_MISMATCH', 'RECORD_SIGNATURE_INVALID'));
+    assert.ok(hasIssue(await mutatedCanonical.verify(currentSampleOptions()), 'RECORD_CANONICAL_MISMATCH', 'RECORD_SIGNATURE_INVALID'));
 
     if (original.blocks[0].batch.length > 1) {
       const brokenChain = await LukuFile.openBytes(new Uint8Array(sampleBytes));
       brokenChain.blocks[0].batch[1].previous_signature = 'broken_link';
-      assert.ok(hasIssue(await brokenChain.verify(testOptions()), 'RECORD_CHAIN_BROKEN'));
+      assert.ok(hasIssue(await brokenChain.verify(currentSampleOptions()), 'RECORD_CHAIN_BROKEN'));
     }
 
     if (original.blocks.length > 1) {
       const floatingAnchor = await LukuFile.openBytes(new Uint8Array(sampleBytes));
       floatingAnchor.blocks[1].batch[0].previous_signature = 'floating_anchor_test';
-      assert.equal(hasIssue(await floatingAnchor.verify(testOptions()), 'RECORD_CHAIN_BROKEN'), false);
+      assert.equal(hasIssue(await floatingAnchor.verify(currentSampleOptions()), 'RECORD_CHAIN_BROKEN'), false);
     }
 
     if (original.blocks[0].batch.length > 1) {
       const regressedCounter = await LukuFile.openBytes(new Uint8Array(sampleBytes));
       const payload = regressedCounter.blocks[0].batch[1].payload as JsonObject;
       payload.ctr = 0;
-      assert.ok(hasIssue(await regressedCounter.verify(testOptions()), 'COUNTER_REGRESSION'));
+      assert.ok(hasIssue(await regressedCounter.verify(currentSampleOptions()), 'COUNTER_REGRESSION'));
     }
   });
 
   it('verifies the shipped sample directory', async () => {
-    const passable = path.join(samplesDir, 'first-passable-verification-sample.luku');
-    const signatureMismatch = path.join(samplesDir, 'signature-mismatch.luku');
-    const invalidChain = path.join(samplesDir, 'invalid-chain.luku');
+    const passable = path.join(currentSamplesDir, 'first-passable-verification-sample.luku');
+    const signatureMismatch = path.join(currentSamplesDir, 'signature-mismatch.luku');
+    const invalidChain = path.join(currentSamplesDir, 'invalid-chain.luku');
 
     const passableArchive = await LukuFile.openBytes(new Uint8Array(await readFile(passable)));
-    const passableIssues = await passableArchive.verify(testOptions());
+    const passableIssues = await passableArchive.verify(currentSampleOptions());
     assert.equal(passableIssues.filter((entry) => entry.criticality === 'critical').length, 0);
 
     const mismatchArchive = await LukuFile.openBytes(new Uint8Array(await readFile(signatureMismatch)));
     const mismatchIssues = await mismatchArchive.verify({
-      ...testOptions(),
+      ...currentSampleOptions(),
       allowUntrustedRoots: false
     });
     assert.ok(hasIssue(mismatchIssues, 'ATTESTATION_FAILED', 'RECORD_SIGNATURE_INVALID', 'ATTESTATION_CHAIN_MISSING'));
 
     const invalidChainArchive = await LukuFile.openBytes(new Uint8Array(await readFile(invalidChain)));
-    const invalidChainIssues = await invalidChainArchive.verify(testOptions());
+    const invalidChainIssues = await invalidChainArchive.verify(currentSampleOptions());
     assert.ok(hasIssue(invalidChainIssues, 'RECORD_CHAIN_BROKEN', 'BLOCKS_HASH_MISMATCH', 'ATTESTATION_FAILED'));
 
-    const devIssues = await passableArchive.verify({
-      ...testOptions(),
-      allowUntrustedRoots: false,
-      trustProfile: 'dev'
-    });
-    assert.equal(
-      devIssues.some(
+    // A test-PKI sample passes its own profile and is rejected by dev and prod.
+    const profileMismatch = async (trustProfile: string) =>
+      (await passableArchive.verify({ ...currentSampleOptions(), allowUntrustedRoots: false, trustProfile })).some(
         (entry) =>
           entry.code === 'ATTESTATION_FAILED'
           && entry.message.includes('Certificate chain does not match the requested trust profile')
-      ),
-      false
-    );
-
-    const testIssues = await passableArchive.verify({
-      ...testOptions(),
-      allowUntrustedRoots: false,
-      trustProfile: 'test'
-    });
-    assert.equal(
-      testIssues.some(
-        (entry) =>
-          entry.code === 'ATTESTATION_FAILED'
-          && entry.message.includes('Certificate chain does not match the requested trust profile')
-      ),
-      true
-    );
+      );
+    assert.equal(await profileMismatch('test'), false);
+    assert.equal(await profileMismatch('dev'), true);
 
     const prodIssues = await passableArchive.verify({
-      ...testOptions(),
+      ...currentSampleOptions(),
       allowUntrustedRoots: false,
       trustProfile: 'prod'
     });

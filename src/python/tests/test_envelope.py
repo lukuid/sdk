@@ -21,13 +21,21 @@ def get_valid_envelope() -> dict:
     with open(resolve_sample(), "r") as f:
         return json.load(f)
 
+def get_current_valid_envelope() -> dict:
+    # A current-format real record envelope under the test PKI (samples/dotluku/test/1.1.0/README.md).
+    for root in Path(__file__).resolve().parents:
+        candidate = root / "samples" / "envelopes" / "test" / "1.1.0" / "valid_envelope.json"
+        if candidate.exists():
+            return json.loads(candidate.read_text(encoding="utf-8"))
+    raise FileNotFoundError("Missing samples/envelopes/test/1.1.0/valid_envelope.json")
+
 class TestEnvelope(unittest.TestCase):
     def test_verify_envelope_valid(self):
-        envelope = get_valid_envelope()
+        envelope = get_current_valid_envelope()
         issues = LukuFile.verify_envelope(envelope, LukuVerifyOptions(
             allow_untrusted_roots=False,
             skip_certificate_temporal_checks=True,
-            trust_profile="dev"
+            trust_profile="test"
         ))
         self.assertFalse(issues, f"Expected no issues, got: {issues}")
 

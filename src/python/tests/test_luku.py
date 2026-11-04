@@ -50,6 +50,38 @@ class LukuArchiveTests(unittest.TestCase):
         raise FileNotFoundError(f"Missing sample archive {name} while searching ancestors of {start}")
 
     @staticmethod
+    def current_sample_path(name: str) -> Path:
+        # Current-format real exports under the test PKI (samples/dotluku/test/1.1.0/README.md).
+        start = Path(__file__).resolve()
+        for root in start.parents:
+            candidate = root / "samples" / "dotluku" / "test" / "1.1.0" / name
+            if candidate.exists():
+                return candidate
+        raise FileNotFoundError(f"Missing current sample archive {name} while searching ancestors of {start}")
+
+    @staticmethod
+    def current_sample_options(**overrides) -> LukuVerifyOptions:
+        options = dict(allow_untrusted_roots=True, skip_certificate_temporal_checks=True, trusted_external_fingerprints=[], trust_profile="test")
+        options.update(overrides)
+        return LukuVerifyOptions(**options)
+
+    @classmethod
+    def sign_in_place(cls, signer: LukuSigner, record: dict, device_id: str) -> str:
+        # Signs the record over the canonical string recomputed from its own fields (LUKU.md Field Order rule).
+        from lukuid_sdk.luku import _recompute_record_canonical_string
+
+        canonical = _recompute_record_canonical_string(record, record["type"], device_id, signer.public_key_base64)
+        record["canonical_string"] = canonical
+        record["signature"] = cls.sign_canonical(signer, canonical)
+        return record["signature"]
+
+    @staticmethod
+    def animal_scan(record_id: str, device_id: str, public_key: str) -> dict:
+        return {"type": "scan", "id": record_id, "device_id": device_id, "public_key": public_key, "vendor": "LUKUID", "previous_signature": "genesis_fake",
+                "payload": {"ctr": 1, "timestamp_utc": 1000, "uptime_us": 1000000, "profile": "animal", "firmware": "v1.0.0", "protocol": "FDX-B",
+                            "scan_version": "1.0", "tag_id": "999000000000001", "genesis_hash": "genesis_fake"}}
+
+    @staticmethod
     def external_identity_fixture() -> dict[str, object]:
         start = Path(__file__).resolve()
         for root in start.parents:
@@ -316,17 +348,19 @@ class LukuArchiveTests(unittest.TestCase):
         device_id = "LUK-ATTEST"
         attachment_bytes = b"desktop-added-attachment"
         checksum = hashlib.sha256(attachment_bytes).hexdigest()
-        scan_sig = self.sign_canonical(signer, "attested-scan")
+        pk = signer.public_key_base64
+        scan = self.animal_scan("SCAN-ATTEST-1", device_id, pk)
+        scan_sig = self.sign_in_place(signer, scan, device_id)
+        attachment = {"type": "attachment", "id": "ATT-ATTEST-1", "parent_record_id": "SCAN-ATTEST-1", "parent_id": "SCAN-ATTEST-1", "device_id": device_id, "public_key": pk, "vendor": "LUKUID", "parent_signature": scan_sig, "timestamp_utc": 1001, "checksum": checksum, "mime": "text/plain", "title": "Desktop Note"}
+        self.sign_in_place(signer, attachment, device_id)
+        environment = {"type": "environment", "id": "ENV-ATTEST-1", "device_id": device_id, "public_key": pk, "vendor": "LUKUID", "previous_signature": scan_sig, "payload": {"ctr": 2, "timestamp_utc": 1002}}
+        self.sign_in_place(signer, environment, device_id)
         block = LukuFile.build_block_from_records(
             block_id=0,
             timestamp_utc=1003,
             previous_block_hash=None,
-            default_device=LukuDeviceIdentity(device_id=device_id, public_key=signer.public_key_base64, vendor="LUKUID"),
-            batch=[
-                {"type": "scan", "id": "SCAN-ATTEST-1", "device_id": device_id, "public_key": signer.public_key_base64, "vendor": "LUKUID", "signature": scan_sig, "previous_signature": "genesis_fake", "canonical_string": "attested-scan", "payload": {"ctr": 1, "timestamp_utc": 1000, "genesis_hash": "genesis_fake"}},
-                {"type": "attachment", "id": "ATT-ATTEST-1", "parent_record_id": "SCAN-ATTEST-1", "device_id": device_id, "public_key": signer.public_key_base64, "vendor": "LUKUID", "signature": self.sign_canonical(signer, "attested-attachment"), "parent_signature": scan_sig, "canonical_string": "attested-attachment", "timestamp_utc": 1001, "checksum": checksum, "mime": "text/plain", "title": "Desktop Note"},
-                {"type": "environment","id": "ENV-ATTEST-1", "device_id": device_id, "public_key": signer.public_key_base64, "vendor": "LUKUID", "signature": self.sign_canonical(signer, "attested-environment"), "previous_signature": scan_sig, "canonical_string": "attested-environment", "payload": {"ctr": 2, "timestamp_utc": 1002}},
-            ],
+            default_device=LukuDeviceIdentity(device_id=device_id, public_key=pk, vendor="LUKUID"),
+            batch=[scan, attachment, environment],
             common_certs=None,
         )
         exported = LukuFile.export_blocks_with_manifest([block], {checksum: attachment_bytes}, "Attested attachment export", {}, signer)
@@ -338,17 +372,19 @@ class LukuArchiveTests(unittest.TestCase):
     def test_keeps_attested_custody_records_out_of_the_native_chain(self):
         signer = self.create_test_signer()
         device_id = "LUK-CUSTODY"
-        scan_sig = self.sign_canonical(signer, "custody-scan")
+        pk = signer.public_key_base64
+        scan = self.animal_scan("SCAN-CUSTODY-1", device_id, pk)
+        scan_sig = self.sign_in_place(signer, scan, device_id)
+        custody = {"type": "custody", "id": "CUSTODY-1", "parent_record_id": "SCAN-CUSTODY-1", "parent_id": "SCAN-CUSTODY-1", "device_id": device_id, "public_key": pk, "vendor": "LUKUID", "parent_signature": scan_sig, "timestamp_utc": 1001, "payload": {"event": "handoff", "status": "received", "context_ref": "shipment-123"}}
+        self.sign_in_place(signer, custody, device_id)
+        environment = {"type": "environment", "id": "ENV-CUSTODY-1", "device_id": device_id, "public_key": pk, "vendor": "LUKUID", "previous_signature": scan_sig, "payload": {"ctr": 2, "timestamp_utc": 1002}}
+        self.sign_in_place(signer, environment, device_id)
         block = LukuFile.build_block_from_records(
             block_id=0,
             timestamp_utc=1003,
             previous_block_hash=None,
-            default_device=LukuDeviceIdentity(device_id=device_id, public_key=signer.public_key_base64, vendor="LUKUID"),
-            batch=[
-                {"type": "scan","id": "SCAN-CUSTODY-1", "device_id": device_id, "public_key": signer.public_key_base64, "vendor": "LUKUID", "signature": scan_sig, "previous_signature": "genesis_fake", "canonical_string": "custody-scan", "payload": {"ctr": 1, "timestamp_utc": 1000, "genesis_hash": "genesis_fake"}},
-                {"type": "custody", "id": "CUSTODY-1", "parent_record_id": "SCAN-CUSTODY-1", "device_id": device_id, "public_key": signer.public_key_base64, "vendor": "LUKUID", "signature": self.sign_canonical(signer, "custody-checkpoint"), "parent_signature": scan_sig, "canonical_string": "custody-checkpoint", "timestamp_utc": 1001, "payload": {"event": "handoff", "status": "received", "context_ref": "shipment-123"}},
-                {"type": "environment", "id": "ENV-CUSTODY-1", "device_id": device_id, "public_key": signer.public_key_base64, "vendor": "LUKUID", "signature": self.sign_canonical(signer, "custody-environment"), "previous_signature": scan_sig, "canonical_string": "custody-environment", "payload": {"ctr": 2, "timestamp_utc": 1002}},
-            ],
+            default_device=LukuDeviceIdentity(device_id=device_id, public_key=pk, vendor="LUKUID"),
+            batch=[scan, custody, environment],
             common_certs=None,
         )
         exported = LukuFile.export_blocks_with_manifest([block], {}, "Attested custody export", {}, signer)
@@ -380,50 +416,51 @@ class LukuArchiveTests(unittest.TestCase):
             LukuFile.open_bytes(missing_manifest.getvalue())
 
     def test_mutates_real_sample_archives_in_memory(self):
-        sample_bytes = self.sample_path("first-passable-verification-sample.luku").read_bytes()
+        sample_bytes = self.current_sample_path("first-passable-verification-sample.luku").read_bytes()
         original = LukuFile.open_bytes(sample_bytes)
-        self.assertFalse(any(issue.criticality == Criticality.CRITICAL for issue in original.verify(self.build_test_options())))
+        self.assertFalse(any(issue.criticality == Criticality.CRITICAL for issue in original.verify(self.current_sample_options())))
 
         invalid_signature = LukuFile.open_bytes(sample_bytes)
         invalid_signature.blocks[0].batch[0]["signature"] = "not_base64_data!!!"
-        self.assertTrue(self.has_issue(invalid_signature.verify(self.build_test_options()), "RECORD_SIGNATURE_INVALID", "ATTESTATION_FAILED"))
+        self.assertTrue(self.has_issue(invalid_signature.verify(self.current_sample_options()), "RECORD_SIGNATURE_INVALID", "ATTESTATION_FAILED"))
 
         mutated_canonical = LukuFile.open_bytes(sample_bytes)
         mutated_canonical.blocks[0].batch[0]["canonical_string"] += "X"
-        self.assertTrue(self.has_issue(mutated_canonical.verify(self.build_test_options()), "RECORD_SIGNATURE_INVALID"))
+        self.assertTrue(self.has_issue(mutated_canonical.verify(self.current_sample_options()), "RECORD_SIGNATURE_INVALID"))
 
         if len(original.blocks[0].batch) > 1:
             broken_chain = LukuFile.open_bytes(sample_bytes)
             broken_chain.blocks[0].batch[1]["previous_signature"] = "broken_link"
-            self.assertTrue(self.has_issue(broken_chain.verify(self.build_test_options()), "RECORD_CHAIN_BROKEN"))
+            self.assertTrue(self.has_issue(broken_chain.verify(self.current_sample_options()), "RECORD_CHAIN_BROKEN"))
 
         if len(original.blocks) > 1:
             floating_anchor = LukuFile.open_bytes(sample_bytes)
             floating_anchor.blocks[1].batch[0]["previous_signature"] = "floating_anchor_test"
-            self.assertFalse(self.has_issue(floating_anchor.verify(self.build_test_options()), "RECORD_CHAIN_BROKEN"))
+            self.assertFalse(self.has_issue(floating_anchor.verify(self.current_sample_options()), "RECORD_CHAIN_BROKEN"))
 
         if len(original.blocks[0].batch) > 1:
             regressed_counter = LukuFile.open_bytes(sample_bytes)
             regressed_counter.blocks[0].batch[1]["payload"]["ctr"] = 0
-            self.assertTrue(self.has_issue(regressed_counter.verify(self.build_test_options()), "COUNTER_REGRESSION"))
+            self.assertTrue(self.has_issue(regressed_counter.verify(self.current_sample_options()), "COUNTER_REGRESSION"))
 
     def test_verifies_the_shipped_sample_directory(self):
-        passable = LukuFile.open(self.sample_path("first-passable-verification-sample.luku"))
-        self.assertFalse(any(issue.criticality == Criticality.CRITICAL for issue in passable.verify(self.build_test_options())))
+        passable = LukuFile.open(self.current_sample_path("first-passable-verification-sample.luku"))
+        self.assertFalse(any(issue.criticality == Criticality.CRITICAL for issue in passable.verify(self.current_sample_options())))
 
-        mismatch = LukuFile.open(self.sample_path("signature-mismatch.luku"))
-        mismatch_issues = mismatch.verify(LukuVerifyOptions(allow_untrusted_roots=False, skip_certificate_temporal_checks=True, trust_profile="dev"))
+        mismatch = LukuFile.open(self.current_sample_path("signature-mismatch.luku"))
+        mismatch_issues = mismatch.verify(self.current_sample_options(allow_untrusted_roots=False))
         self.assertTrue(self.has_issue(mismatch_issues, "ATTESTATION_FAILED", "RECORD_SIGNATURE_INVALID", "ATTESTATION_CHAIN_MISSING"))
 
-        invalid_chain = LukuFile.open(self.sample_path("invalid-chain.luku"))
-        invalid_chain_issues = invalid_chain.verify(self.build_test_options())
+        invalid_chain = LukuFile.open(self.current_sample_path("invalid-chain.luku"))
+        invalid_chain_issues = invalid_chain.verify(self.current_sample_options())
         self.assertTrue(self.has_issue(invalid_chain_issues, "RECORD_CHAIN_BROKEN", "BLOCKS_HASH_MISMATCH", "ATTESTATION_FAILED"))
 
-        dev_issues = passable.verify(LukuVerifyOptions(allow_untrusted_roots=False, skip_certificate_temporal_checks=True, trust_profile="dev"))
-        self.assertFalse(any(issue.code == "ATTESTATION_FAILED" and "trust profile" in issue.message for issue in dev_issues))
-
+        # A test-PKI sample passes its own profile and is rejected by dev and prod.
         test_issues = passable.verify(LukuVerifyOptions(allow_untrusted_roots=False, skip_certificate_temporal_checks=True, trust_profile="test"))
-        self.assertTrue(any(issue.code == "ATTESTATION_FAILED" and "trust profile" in issue.message for issue in test_issues))
+        self.assertFalse(any(issue.code == "ATTESTATION_FAILED" and "trust profile" in issue.message for issue in test_issues))
+
+        dev_issues = passable.verify(LukuVerifyOptions(allow_untrusted_roots=False, skip_certificate_temporal_checks=True, trust_profile="dev"))
+        self.assertTrue(any(issue.code == "ATTESTATION_FAILED" and "trust profile" in issue.message for issue in dev_issues))
 
         prod_issues = passable.verify(LukuVerifyOptions(allow_untrusted_roots=False, skip_certificate_temporal_checks=True, trust_profile="prod"))
         self.assertTrue(any(issue.code == "ATTESTATION_FAILED" and "trust profile" in issue.message for issue in prod_issues))

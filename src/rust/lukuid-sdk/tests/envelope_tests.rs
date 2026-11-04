@@ -30,13 +30,21 @@ fn get_valid_envelope() -> Value {
     serde_json::from_str(&content).expect("Failed to parse valid_envelope.json")
 }
 
+/// A current-format real record envelope under the test PKI
+/// (samples/dotluku/test/1.1.0/README.md).
+fn get_current_valid_envelope() -> Value {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../samples/envelopes/test/1.1.0/valid_envelope.json");
+    serde_json::from_str(&fs::read_to_string(&path).expect("Failed to read current valid_envelope.json"))
+        .expect("Failed to parse current valid_envelope.json")
+}
+
 #[test]
 fn test_verify_envelope_valid() {
-    let envelope = get_valid_envelope();
+    let envelope = get_current_valid_envelope();
     let mut options = LukuVerifyOptions::default();
     options.allow_untrusted_roots = false;
     options.skip_certificate_temporal_checks = true;
-    options.trust_profile = "dev".to_string();
+    options.trust_profile = "test".to_string();
 
     let issues = LukuFile::verify_envelope(&envelope, options);
     assert!(issues.is_empty(), "Expected no issues, got: {:?}", issues);

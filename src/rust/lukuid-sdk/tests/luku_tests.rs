@@ -4,7 +4,7 @@ use ed25519_dalek::{Signer, SigningKey};
 use lukuid_sdk::luku::{
     Criticality, LukuDeviceIdentity, LukuExportOptions, LukuFile, LukuVerifyOptions,
 };
-use serde_json::json;
+use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fs::{self, File};
@@ -35,6 +35,20 @@ fn test_options() -> LukuVerifyOptions {
         attachments: None,
         revocation_manager: None,
     }
+}
+
+/// Current-format real exports under the test PKI (samples/dotluku/test/1.1.0/README.md).
+fn current_samples_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../samples/dotluku/test/1.1.0")
+        .canonicalize()
+        .expect("current samples directory should exist")
+}
+
+fn current_sample_options() -> LukuVerifyOptions {
+    let mut options = test_options();
+    options.trust_profile = "test".to_string();
+    options
 }
 
 fn samples_dir() -> PathBuf {
@@ -74,6 +88,37 @@ fn external_identity_fixture() -> serde_json::Value {
 }
 
 /// Helper to create a base valid export for testing mutations
+/// Signs `record` over the canonical string recomputed from its own fields (LUKU.md Field
+/// Order rule) and stores both; returns the signature for chaining.
+fn sign_in_place(record: &mut Value, device_id: &str, public_key: &str, key: &SigningKey) -> String {
+    let canonical = LukuFile::recompute_canonical_string(record, device_id, public_key).expect("known record type");
+    let signature = BASE64.encode(key.sign(canonical.as_bytes()).to_bytes());
+    record["canonical_string"] = json!(canonical);
+    record["signature"] = json!(signature.clone());
+    signature
+}
+
+/// An animal-profile scan record (payload fields only; sign it with `sign_in_place`).
+fn animal_scan(id: &str, ctr: u64, timestamp_utc: u64, previous_signature: &str) -> Value {
+    json!({
+        "type": "scan",
+        "vendor": "LUKUID",
+        "id": id,
+        "previous_signature": previous_signature,
+        "payload": {
+            "ctr": ctr,
+            "timestamp_utc": timestamp_utc,
+            "uptime_us": 1000000,
+            "profile": "animal",
+            "firmware": "v1.0.0",
+            "protocol": "FDX-B",
+            "scan_version": "1.0",
+            "tag_id": "999000000000001",
+            "genesis_hash": "genesis_fake"
+        }
+    })
+}
+
 fn create_valid_export(temp_dir: &std::path::Path, device_id: &str) -> (LukuFile, SigningKey) {
     let (signing_key, pub_b64) = generate_test_keypair();
 
@@ -83,53 +128,20 @@ fn create_valid_export(temp_dir: &std::path::Path, device_id: &str) -> (LukuFile
         vendor: Some("LUKUID".to_string()),
     };
 
-    let canonical1 = "can1";
-    let sig1 = BASE64.encode(signing_key.sign(canonical1.as_bytes()).to_bytes());
-
-    let canonical2 = "can2";
-    let sig2 = BASE64.encode(signing_key.sign(canonical2.as_bytes()).to_bytes());
-
-    let canonical3 = "can3";
-    let sig3 = BASE64.encode(signing_key.sign(canonical3.as_bytes()).to_bytes());
-
-    let records = vec![
-        json!({
-            "type": "scan",
-            "vendor": "LUKUID",
-            "signature": sig1,
-            "previous_signature": "genesis_fake",
-            "canonical_string": canonical1,
-            "payload": {
-                "ctr": 1,
-                "timestamp_utc": 1000,
-                "genesis_hash": "genesis_fake"
-            }
-        }),
-        json!({
-            "type": "scan",
-            "vendor": "LUKUID",
-            "signature": sig2,
-            "previous_signature": sig1,
-            "canonical_string": canonical2,
-            "payload": {
-                "ctr": 2,
-                "timestamp_utc": 1005,
-                "genesis_hash": "genesis_fake"
-            }
-        }),
-        json!({
-            "type": "scan",
-            "vendor": "LUKUID",
-            "signature": sig3,
-            "previous_signature": sig2,
-            "canonical_string": canonical3,
-            "payload": {
-                "ctr": 3,
-                "timestamp_utc": 1010,
-                "genesis_hash": "genesis_fake"
-            }
-        }),
+    let pub_b64 = identity.public_key.clone();
+    let mut records = vec![
+        animal_scan("SCAN-VALID-1", 1, 1000, "genesis_fake"),
+        animal_scan("SCAN-VALID-2", 2, 1005, ""),
+        animal_scan("SCAN-VALID-3", 3, 1010, ""),
     ];
+    let mut previous = String::new();
+    for record in records.iter_mut() {
+        if !previous.is_empty() {
+            record["previous_signature"] = json!(previous);
+            record["payload"].as_object_mut().unwrap().remove("genesis_hash");
+        }
+        previous = sign_in_place(record, device_id, &pub_b64, &signing_key);
+    }
 
     let luku_path = temp_dir.join(format!("{}.luku", device_id));
     LukuFile::export_with_identity(
@@ -568,64 +580,43 @@ fn test_luku_verify_attested_attachment_does_not_advance_device_chain() {
     let attachment_bytes = b"desktop-added-attachment".to_vec();
     let attachment_hash = format!("{:x}", Sha256::digest(&attachment_bytes));
 
-    let scan_canonical = "attested-scan";
-    let scan_sig = BASE64.encode(signing_key.sign(scan_canonical.as_bytes()).to_bytes());
-    let env_canonical = "attested-environment";
-    let env_sig = BASE64.encode(signing_key.sign(env_canonical.as_bytes()).to_bytes());
-    let att_canonical = "attested-attachment";
-    let att_sig = BASE64.encode(signing_key.sign(att_canonical.as_bytes()).to_bytes());
     let device = LukuDeviceIdentity {
         device_id: device_id.to_string(),
         public_key: pub_b64.clone(),
         vendor: None,
     };
 
-    let records = vec![
-            json!({
-                "type": "scan",
-                "vendor": "LUKUID",
-                "id": "SCAN-ATTEST-1",
-            "device_id": device_id,
-            "public_key": pub_b64.clone(),
-            "signature": scan_sig,
-            "previous_signature": "genesis_fake",
-            "canonical_string": scan_canonical,
-            "payload": {
-                "ctr": 1,
-                "timestamp_utc": 1000,
-                "genesis_hash": "genesis_fake"
-            }
-        }),
-            json!({
-                "type": "attachment",
-                "vendor": "LUKUID",
-                "id": "ATT-ATTEST-1",
-            "parent_record_id": "SCAN-ATTEST-1",
-            "device_id": device_id,
-            "public_key": device.public_key.clone(),
-            "signature": att_sig,
-            "parent_signature": scan_sig,
-            "canonical_string": att_canonical,
-            "timestamp_utc": 1001,
-            "checksum": attachment_hash,
-            "mime": "text/plain",
-            "title": "Desktop Note"
-        }),
-            json!({
-                "type": "environment",
-                "vendor": "LUKUID",
-                "id": "ENV-ATTEST-1",
-            "device_id": device_id,
-            "public_key": device.public_key,
-            "signature": env_sig,
-            "previous_signature": scan_sig,
-            "canonical_string": env_canonical,
-            "payload": {
-                "ctr": 2,
-                "timestamp_utc": 1002
-            }
-        }),
-    ];
+    let mut scan = animal_scan("SCAN-ATTEST-1", 1, 1000, "genesis_fake");
+    let scan_sig = sign_in_place(&mut scan, device_id, &pub_b64, &signing_key);
+    let mut attachment = json!({
+        "type": "attachment",
+        "vendor": "LUKUID",
+        "id": "ATT-ATTEST-1",
+        "parent_record_id": "SCAN-ATTEST-1",
+        "parent_id": "SCAN-ATTEST-1",
+        "device_id": device_id,
+        "public_key": pub_b64.clone(),
+        "parent_signature": scan_sig.clone(),
+        "timestamp_utc": 1001,
+        "checksum": attachment_hash,
+        "mime": "text/plain",
+        "title": "Desktop Note"
+    });
+    sign_in_place(&mut attachment, device_id, &pub_b64, &signing_key);
+    let mut environment = json!({
+        "type": "environment",
+        "vendor": "LUKUID",
+        "id": "ENV-ATTEST-1",
+        "device_id": device_id,
+        "public_key": pub_b64.clone(),
+        "previous_signature": scan_sig,
+        "payload": {
+            "ctr": 2,
+            "timestamp_utc": 1002
+        }
+    });
+    sign_in_place(&mut environment, device_id, &pub_b64, &signing_key);
+    let records = vec![scan, attachment, environment];
 
     let path = temp_dir.join("attested_attachment.luku");
     let block = LukuFile::build_block_from_records(0, 1003, None, &device, records, None);
@@ -668,66 +659,45 @@ fn test_luku_verify_attested_custody_does_not_advance_device_chain() {
     let (signing_key, pub_b64) = generate_test_keypair();
     let device_id = "LUK-CUSTODY";
 
-    let scan_canonical = "custody-scan";
-    let scan_sig = BASE64.encode(signing_key.sign(scan_canonical.as_bytes()).to_bytes());
-    let env_canonical = "custody-environment";
-    let env_sig = BASE64.encode(signing_key.sign(env_canonical.as_bytes()).to_bytes());
-    let custody_canonical = "custody-checkpoint";
-    let custody_sig = BASE64.encode(signing_key.sign(custody_canonical.as_bytes()).to_bytes());
     let device = LukuDeviceIdentity {
         device_id: device_id.to_string(),
         public_key: pub_b64.clone(),
         vendor: None,
     };
 
-    let records = vec![
-            json!({
-                "type": "scan",
-                "vendor": "LUKUID",
-                "id": "SCAN-CUSTODY-1",
-            "device_id": device_id,
-            "public_key": pub_b64.clone(),
-            "signature": scan_sig,
-            "previous_signature": "genesis_fake",
-            "canonical_string": scan_canonical,
-            "payload": {
-                "ctr": 1,
-                "timestamp_utc": 1000,
-                "genesis_hash": "genesis_fake"
-            }
-        }),
-            json!({
-                "type": "custody",
-                "vendor": "LUKUID",
-                "id": "CUSTODY-1",
-            "parent_record_id": "SCAN-CUSTODY-1",
-            "device_id": device_id,
-            "public_key": pub_b64.clone(),
-            "signature": custody_sig,
-            "parent_signature": scan_sig,
-            "canonical_string": custody_canonical,
-            "timestamp_utc": 1001,
-            "payload": {
-                "event": "handoff",
-                "status": "received",
-                "context_ref": "shipment-123"
-            }
-        }),
-            json!({
-                "type": "environment",
-                "vendor": "LUKUID",
-                "id": "ENV-CUSTODY-1",
-            "device_id": device_id,
-            "public_key": device.public_key.clone(),
-            "signature": env_sig,
-            "previous_signature": scan_sig,
-            "canonical_string": env_canonical,
-            "payload": {
-                "ctr": 2,
-                "timestamp_utc": 1002
-            }
-        }),
-    ];
+    let mut scan = animal_scan("SCAN-CUSTODY-1", 1, 1000, "genesis_fake");
+    let scan_sig = sign_in_place(&mut scan, device_id, &pub_b64, &signing_key);
+    let mut custody = json!({
+        "type": "custody",
+        "vendor": "LUKUID",
+        "id": "CUSTODY-1",
+        "parent_record_id": "SCAN-CUSTODY-1",
+        "parent_id": "SCAN-CUSTODY-1",
+        "device_id": device_id,
+        "public_key": pub_b64.clone(),
+        "parent_signature": scan_sig.clone(),
+        "timestamp_utc": 1001,
+        "payload": {
+            "event": "handoff",
+            "status": "received",
+            "context_ref": "shipment-123"
+        }
+    });
+    sign_in_place(&mut custody, device_id, &pub_b64, &signing_key);
+    let mut environment = json!({
+        "type": "environment",
+        "vendor": "LUKUID",
+        "id": "ENV-CUSTODY-1",
+        "device_id": device_id,
+        "public_key": pub_b64.clone(),
+        "previous_signature": scan_sig,
+        "payload": {
+            "ctr": 2,
+            "timestamp_utc": 1002
+        }
+    });
+    sign_in_place(&mut environment, device_id, &pub_b64, &signing_key);
+    let records = vec![scan, custody, environment];
 
     let path = temp_dir.join("attested_custody.luku");
     let block = LukuFile::build_block_from_records(0, 1003, None, &device, records, None);
@@ -882,7 +852,7 @@ fn test_fixtures_valid_files() {
 
 #[test]
 fn test_real_sample_in_memory_mutations() {
-    let sample_path = samples_dir().join("first-passable-verification-sample.luku");
+    let sample_path = current_samples_dir().join("first-passable-verification-sample.luku");
 
     // Make sure it exists before testing
     if !sample_path.exists() {
@@ -892,7 +862,7 @@ fn test_real_sample_in_memory_mutations() {
 
     // 1. Verify the untouched file is valid
     let original_luku = LukuFile::open(&sample_path).expect("Failed to open sample .luku file");
-    let options = test_options(); // uses allow_untrusted_roots
+    let options = current_sample_options(); // uses allow_untrusted_roots
     let original_issues = original_luku.verify(options.clone());
 
     let criticals: Vec<_> = original_issues
@@ -1001,13 +971,13 @@ fn test_real_sample_in_memory_mutations() {
 
 #[test]
 fn test_samples_directory_files() {
-    let samples_dir = samples_dir();
+    let samples_dir = current_samples_dir();
     if !samples_dir.exists() {
         println!("Samples directory not found, skipping test.");
         return;
     }
 
-    let options = test_options(); // uses allow_untrusted_roots
+    let options = current_sample_options(); // uses allow_untrusted_roots
 
     // 1. first-passable-verification-sample.luku (Valid)
     let passable_path = samples_dir.join("first-passable-verification-sample.luku");
@@ -1055,45 +1025,22 @@ fn test_samples_directory_files() {
         );
     }
 
-    // 4. Trust Profile Logic (Valid dev file rejected by test/prod profiles)
+    // 4. Trust Profile Logic (valid test-PKI file rejected by dev/prod profiles)
     if passable_path.exists() {
         let luku = LukuFile::open(&passable_path).unwrap();
-
-        // Ensure it passes with "dev"
-        let mut dev_options = options.clone();
-        dev_options.allow_untrusted_roots = false; // enforce checking against real roots
-        dev_options.trust_profile = "dev".to_string();
-        let dev_issues = luku.verify(dev_options);
-        assert!(
-            !dev_issues.iter().any(|i| i.code == "ATTESTATION_FAILED"
-                && i.message
-                    .contains("Certificate chain does not match the requested trust profile")),
-            "Expected passable sample to pass trust profile check under 'dev' profile"
-        );
-
-        // Ensure it fails with "test"
-        let mut test_options = options.clone();
-        test_options.allow_untrusted_roots = false; // enforce checking
-        test_options.trust_profile = "test".to_string();
-        let test_issues = luku.verify(test_options);
-        assert!(
-            test_issues.iter().any(|i| i.code == "ATTESTATION_FAILED"
-                && i.message
-                    .contains("Certificate chain does not match the requested trust profile")),
-            "Expected passable sample (dev) to fail trust profile check under 'test' profile"
-        );
-
-        // Ensure it fails with "prod"
-        let mut prod_options = options.clone();
-        prod_options.allow_untrusted_roots = false; // enforce checking
-        prod_options.trust_profile = "prod".to_string();
-        let prod_issues = luku.verify(prod_options);
-        assert!(
-            prod_issues.iter().any(|i| i.code == "ATTESTATION_FAILED"
-                && i.message
-                    .contains("Certificate chain does not match the requested trust profile")),
-            "Expected passable sample (dev) to fail trust profile check under 'prod' profile"
-        );
+        let profile_issues = |profile: &str| {
+            let mut options = options.clone();
+            options.allow_untrusted_roots = false; // enforce checking against real roots
+            options.trust_profile = profile.to_string();
+            luku.verify(options)
+        };
+        let mismatch = |issues: &Vec<lukuid_sdk::VerificationIssue>| {
+            issues.iter().any(|i| i.code == "ATTESTATION_FAILED"
+                && i.message.contains("Certificate chain does not match the requested trust profile"))
+        };
+        assert!(!mismatch(&profile_issues("test")), "Expected passable sample to pass trust profile check under 'test' profile");
+        assert!(mismatch(&profile_issues("dev")), "Expected passable sample (test) to fail trust profile check under 'dev' profile");
+        assert!(mismatch(&profile_issues("prod")), "Expected passable sample (test) to fail trust profile check under 'prod' profile");
     }
 }
 

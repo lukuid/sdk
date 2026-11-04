@@ -612,25 +612,31 @@ describe('verification records', () => {
     const rootFingerprint = await sha256Hex(providerCert.certDer);
 
     const privateResponseBytes = new TextEncoder().encode('{"owner":{"name":"Jane Doe"}}');
-    const { record: verRecord } = await buildVerificationRecord({
+    const input = {
       id: 'VER-14',
       scheme: 'eu.animal.traceability',
       provider: 'FI-NATIONAL-REGISTRY',
       checkedAtUtc: 1917400000,
       status: 'verified',
       response: { rawBytes: privateResponseBytes, mime: 'application/json', disclose: false }
-    });
-
-    const checksum = (verRecord.response as JsonObject).checksum as string;
-    const endorserId = 'FI-NATIONAL-REGISTRY-TRUST';
-    const payload = `${checksum}:eu.animal.traceability:FI-NATIONAL-REGISTRY:1917400000:verified:${endorserId}`;
-    const extSignature = await signCanonical(providerCert.privateKey, payload);
-    verRecord.external_identity = {
-      endorser_id: endorserId,
-      root_fingerprint: rootFingerprint,
-      cert_chain_der: [certDerBase64],
-      signature: extSignature
     };
+    const { record: draft } = await buildVerificationRecord(input);
+
+    const checksum = (draft.response as JsonObject).checksum as string;
+    const endorserId = 'FI-NATIONAL-REGISTRY-TRUST';
+    // LUKU.md 1.1.0 detached payload: checksum:scheme:provider:checked_at_utc:status:result_code:
+    // subject.type:subject.identifier:subject.commitment:valid_from_utc:valid_until_utc:endorser_id
+    const payload = [checksum, 'eu.animal.traceability', 'FI-NATIONAL-REGISTRY', '1917400000', 'verified', '', '', '', '', '', '', endorserId].join(':');
+    const extSignature = await signCanonical(providerCert.privateKey, payload);
+    const { record: verRecord } = await buildVerificationRecord({
+      ...input,
+      externalIdentity: {
+        endorser_id: endorserId,
+        root_fingerprint: rootFingerprint,
+        cert_chain_der: [certDerBase64],
+        signature: extSignature
+      }
+    });
 
     const luku = await exportSingleBlockArchive(signer, deviceId, [scanRecord, verRecord], {});
     const issues = await luku.verify({ ...testOptions(), trustedExternalFingerprints: [rootFingerprint] });
@@ -682,25 +688,21 @@ describe('verification records', () => {
     const { record: scanRecord } = await makeAnimalScanRecord(signer, deviceId, 'SCAN-VER-16', '981098109810996');
 
     const jwsBytes = await buildSignedJws('EdDSA', { sub: '981098109810996', status: 'verified' });
-    const built = await buildVerificationRecord({
+    const input = {
       id: 'VER-16',
       scheme: 'eu.animal.traceability',
       provider: 'EU-WALLET-PROVIDER',
       checkedAtUtc: 1917400000,
       status: 'verified',
       response: { rawBytes: jwsBytes, mime: 'application/jwt', format: 'jws' }
-    });
-
-    const payload = verificationCollectorAttestationPayload(built.record);
-    const collectorSignature = await signCanonical(signer.signer.privateKey, payload);
-    built.record.collector_attestation = {
-      device_id: deviceId,
-      alg: 'ED25519',
-      signature: collectorSignature,
-      attested_at_utc: 1917400001
     };
-    built.record.alg = 'ED25519';
-    built.record.signature = collectorSignature;
+    const draft = await buildVerificationRecord(input);
+    const payload = verificationCollectorAttestationPayload(draft.record, deviceId);
+    const collectorSignature = await signCanonical(signer.signer.privateKey, payload);
+    const built = await buildVerificationRecord({
+      ...input,
+      collectorAttestation: { deviceId, alg: 'ED25519', signature: collectorSignature, attestedAtUtc: 1917400001 }
+    });
 
     const luku = await exportSingleBlockArchive(signer, deviceId, [scanRecord, built.record], {
       [built.attachment!.checksum]: built.attachment!.bytes
@@ -838,7 +840,7 @@ describe('verification records', () => {
     const scan2Sig = await signCanonical(signer.signer.privateKey, scan2Canonical);
 
     const responseBytes = new TextEncoder().encode('{"status":"ok"}');
-    const built = await buildVerificationRecord({
+    const input = {
       id: 'VER-CHAIN-1',
       parentId: 'SCAN-CHAIN-1',
       parentSignature: scan1Sig,
@@ -847,20 +849,17 @@ describe('verification records', () => {
       checkedAtUtc: 1005,
       status: 'verified',
       response: { rawBytes: responseBytes, mime: 'application/json' }
-    });
+    };
     // Attach a collector_attestation so this verification record DOES carry
     // its own top-level device signature too, to prove that signature is
     // also excluded from native chain tracking (lastSignatures).
-    const payload = verificationCollectorAttestationPayload(built.record);
+    const draft = await buildVerificationRecord(input);
+    const payload = verificationCollectorAttestationPayload(draft.record, deviceId);
     const collectorSignature = await signCanonical(signer.signer.privateKey, payload);
-    built.record.collector_attestation = {
-      device_id: deviceId,
-      alg: 'ED25519',
-      signature: collectorSignature,
-      attested_at_utc: 1006
-    };
-    built.record.alg = 'ED25519';
-    built.record.signature = collectorSignature;
+    const built = await buildVerificationRecord({
+      ...input,
+      collectorAttestation: { deviceId, alg: 'ED25519', signature: collectorSignature, attestedAtUtc: 1006 }
+    });
 
     const batch: JsonObject[] = [
       {

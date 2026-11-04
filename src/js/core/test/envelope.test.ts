@@ -30,6 +30,19 @@ function resolveSample(): string {
   return path.join(__dirname, '..', '..', '..', '..', 'samples', 'envelopes', 'dev', '1.0.0', 'valid_envelope.json');
 }
 
+/** A current-format real record envelope under the test PKI (samples/dotluku/test/1.1.0/README.md). */
+async function getCurrentValidEnvelope(): Promise<JsonObject> {
+  let current = __dirname;
+  while (true) {
+    const candidate = path.join(current, 'samples', 'envelopes', 'test', '1.1.0', 'valid_envelope.json');
+    if (existsSync(candidate)) return JSON.parse(await readFile(candidate, 'utf-8'));
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  throw new Error('Missing samples/envelopes/test/1.1.0/valid_envelope.json');
+}
+
 async function getValidEnvelope(): Promise<JsonObject> {
   const content = await readFile(resolveSample(), 'utf-8');
   return JSON.parse(content);
@@ -55,14 +68,14 @@ async function runWithBrowserCrypto<T>(fn: () => Promise<T>): Promise<T> {
 
 describe('LukuFile.verifyEnvelope', () => {
   it('should verify a valid environment envelope with cert chains', async () => {
-    const envelope = await getValidEnvelope();
+    const envelope = await getCurrentValidEnvelope();
 
     // allowUntrustedRoots: false means it WILL verify the cert chain against the trustProfile.
-    // The sample uses 'dev' trust profile roots.
+    // The sample uses 'test' trust profile roots.
     const issues = await runWithBrowserCrypto(() => LukuFile.verifyEnvelope(envelope, { 
       allowUntrustedRoots: false,
       skipCertificateTemporalChecks: true,
-      trustProfile: 'dev'
+      trustProfile: 'test'
     }));
     assert.equal(issues.length, 0, `Should have no issues, but found: ${JSON.stringify(issues)}`);
   });
