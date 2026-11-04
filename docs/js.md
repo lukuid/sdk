@@ -37,7 +37,21 @@ Advanced consumers can also install the lower-level published packages directly:
 - `@lukuid/transport-serial-node`
 - `@lukuid/transport-ble-node`
 
-The release pipeline also publishes a browser bundle asset to the GitHub release for each SDK tag.
+### Browser build (CDN)
+
+Each SDK release publishes the browser build, with the capture and record dialogs built in, to an immutable, versioned path on the LukuID CDN:
+
+```html
+<script
+  src="https://cdn.lukuid.com/sdk/js/<version>/lukuid-sdk.global.min.js"
+  integrity="sha384-…"
+  crossorigin="anonymous"></script>
+<script>
+  LukuID.default.selectRecord({ maxAgeSeconds: 600 }).then((pick) => console.log(pick.id));
+</script>
+```
+
+The same folder holds `lukuid-sdk.global.js` (unminified), source maps, `SHA256SUMS` and `integrity.json` with the `integrity` values to paste. The `LukuID` global exposes the default instance (`LukuID.default`) and every named export (`LukuID.createChallengeToken`, `LukuID.LukuidSdk`, …). The same file is attached to the SDK's GitHub release as `lukuid-sdk.global-<version>.js` if you prefer to host it yourself.
 
 ---
 

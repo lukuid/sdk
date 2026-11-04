@@ -250,3 +250,53 @@ jobs:
             "lukuid-sdk.global-${{ needs.meta.outputs.version }}.js" \
             "lukuid-sdk.global-${{ needs.meta.outputs.version }}.js.sha256" \
             --clobber
+      - name: Publish to cdn.lukuid.com
+        # Immutable, versioned path: https://cdn.lukuid.com/sdk/js/<version>/lukuid-sdk.global(.min).js
+        # Needs CDN_ACCESS_KEY_ID / CDN_SECRET_ACCESS_KEY (a Scaleway key that can write
+        # lukuid-prod-cdn) in the `release` environment.
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CDN_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CDN_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: fr-par
+          BUCKET: lukuid-prod-cdn
+          ENDPOINT: https://s3.fr-par.scw.cloud
+          VERSION: ${{ needs.meta.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [ -z "${AWS_ACCESS_KEY_ID}" ] || [ -z "${AWS_SECRET_ACCESS_KEY}" ]; then
+            echo "::error::CDN_ACCESS_KEY_ID / CDN_SECRET_ACCESS_KEY are not set; the CDN bundle was not published"
+            exit 1
+          fi
+          OUT="cdn-upload/sdk/js/${VERSION}"
+          mkdir -p "$OUT"
+          cp dist-cdn/lukuid-sdk.global.js "$OUT/lukuid-sdk.global.js"
+          cp dist-cdn/lukuid.global.min.js "$OUT/lukuid-sdk.global.min.js"
+          # Source maps keep the names the bundles reference (sourceMappingURL).
+          cp dist-cdn/lukuid-sdk.global.js.map "$OUT/lukuid-sdk.global.js.map"
+          cp dist-cdn/lukuid.global.min.js.map "$OUT/lukuid.global.min.js.map"
+          (cd "$OUT" && sha256sum lukuid-sdk.global.js lukuid-sdk.global.min.js > SHA256SUMS)
+          sri() { echo "sha384-$(openssl dgst -sha384 -binary "$1" | openssl base64 -A)"; }
+          printf '{\n  "version": "%s",\n  "lukuid-sdk.global.js": "%s",\n  "lukuid-sdk.global.min.js": "%s"\n}\n' \
+            "$VERSION" "$(sri "$OUT/lukuid-sdk.global.js")" "$(sri "$OUT/lukuid-sdk.global.min.js")" > "$OUT/integrity.json"
+          cat "$OUT/integrity.json"
+          # A published version never changes: identical files are skipped, different ones fail.
+          for file in lukuid-sdk.global.js lukuid-sdk.global.min.js lukuid-sdk.global.js.map lukuid.global.min.js.map SHA256SUMS integrity.json; do
+            key="sdk/js/${VERSION}/${file}"
+            case "$file" in
+              *.js) type="application/javascript; charset=utf-8" ;;
+              *.json|*.map) type="application/json" ;;
+              *) type="text/plain; charset=utf-8" ;;
+            esac
+            if aws s3api head-object --bucket "$BUCKET" --key "$key" --endpoint-url "$ENDPOINT" >/dev/null 2>&1; then
+              aws s3 cp "s3://${BUCKET}/${key}" existing.tmp --endpoint-url "$ENDPOINT" >/dev/null
+              if cmp -s existing.tmp "$OUT/$file"; then
+                echo "unchanged: $key"
+                rm -f existing.tmp
+                continue
+              fi
+              echo "::error::$key is already published with different content; bump the SDK version instead"
+              exit 1
+            fi
+            aws s3 cp "$OUT/$file" "s3://${BUCKET}/${key}" --endpoint-url "$ENDPOINT" --acl public-read \
+              --content-type "$type" --cache-control "public, max-age=31536000, immutable"
+          done
