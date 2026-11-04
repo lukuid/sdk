@@ -15,14 +15,18 @@ class EnvelopeTest {
         val file = java.io.File("../../../samples/envelopes/dev/1.0.0/valid_envelope.json")
         return file.readText()
     }
+    /** A current-format real record envelope under the test PKI (samples/dotluku/test/1.1.0/README.md). */
+    private fun getCurrentValidEnvelopeStr(): String =
+        java.io.File("../../../samples/envelopes/test/1.1.0/valid_envelope.json").readText()
+
     @Test
     fun testVerifyEnvelopeValid() {
-        val json = JSONObject(getValidEnvelopeStr())
+        val json = JSONObject(getCurrentValidEnvelopeStr())
         val map = JsonUtils.fromJson(json)
         val issues = LukuFile.verifyEnvelope(map, LukuVerifyOptions(
             allowUntrustedRoots = false,
             skipCertificateTemporalChecks = true,
-            trustProfile = "dev"
+            trustProfile = "test"
         ))
         assertTrue("Expected no issues, got ${issues.joinToString { it.code + ":" + it.message }}", issues.isEmpty())
     }

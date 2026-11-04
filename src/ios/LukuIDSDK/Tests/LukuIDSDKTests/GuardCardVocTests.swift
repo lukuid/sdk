@@ -41,7 +41,8 @@ final class LukuIDEnvironmentVocTests: XCTestCase {
     func testVerifyEnvelopeAcceptsNewVocCanonicalAndRejectsOldFormat() throws {
         let privateKey = Curve25519.Signing.PrivateKey()
         let publicKeyBase64 = privateKey.publicKey.rawRepresentation.base64EncodedString()
-        let canonical = "GC-TEST-1:\(publicKeyBase64):environment:ENV-VOC-1:4502:1770823456:3600000000:85:false:350.50:22.40:45.20:1013.20:30000:110:false:0.01:0.02:1.00:genesis_fake"
+        // Content fields alphabetical per LUKU.md (gps_* and mobile_* slots empty).
+        let canonical = "GC-TEST-1:\(publicKeyBase64):environment:ENV-VOC-1:4502:1770823456:3600000000:0.01:0.02:1.00:85:::::::::45.20:350.50:::::::::::::1013.20:false:22.40:false:110:30000:genesis_fake"
         let signature = try privateKey.signature(for: Data(canonical.utf8)).base64EncodedString()
 
         let envelope: [String: Any] = [

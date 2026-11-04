@@ -30,53 +30,57 @@ final class LukuArchiveTests: XCTestCase {
         )
     }
 
+    private func currentSampleOptions(allowUntrustedRoots: Bool = true, trustProfile: String = "test") -> LukuVerifyOptions {
+        LukuVerifyOptions(
+            allowUntrustedRoots: allowUntrustedRoots,
+            skipCertificateTemporalChecks: true,
+            trustedExternalFingerprints: [],
+            trustProfile: trustProfile
+        )
+    }
+
+    /// Signs the record over the canonical string recomputed from its own fields (LUKU.md Field Order rule).
+    private func signInPlace(_ signer: TestSigner, _ record: inout [String: Any], deviceID: String) throws -> String {
+        let canonical = try XCTUnwrap(LukuFile.recomputeRecordCanonicalString(record, deviceID: deviceID, publicKey: signer.publicKeyBase64))
+        let signature = try signCanonical(signer.privateKey, canonical: canonical)
+        record["canonical_string"] = canonical
+        record["signature"] = signature
+        return signature
+    }
+
+    private func animalScan(_ id: String, deviceID: String, publicKey: String, ctr: Int, timestamp: Int, previous: String) -> [String: Any] {
+        var payload: [String: Any] = [
+            "ctr": ctr, "timestamp_utc": timestamp, "uptime_us": 1000000, "profile": "animal", "firmware": "v1.0.0",
+            "protocol": "FDX-B", "scan_version": "1.0", "tag_id": "999000000000001"
+        ]
+        if previous == "genesis_fake" { payload["genesis_hash"] = "genesis_fake" }
+        return ["type": "scan", "vendor": "LUKUID", "id": id, "device_id": deviceID, "public_key": publicKey, "previous_signature": previous, "payload": payload]
+    }
+
+    /// Current-format real exports under the test PKI (samples/dotluku/test/1.1.0/README.md).
+    private func currentSampleURL(_ name: String) -> URL {
+        var current = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        while true {
+            let candidate = current.appendingPathComponent("samples/dotluku/test/1.1.0/\(name)")
+            if FileManager.default.fileExists(atPath: candidate.path) { return candidate }
+            let parent = current.deletingLastPathComponent()
+            if parent.path == current.path { break }
+            current = parent
+        }
+        return URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("samples/dotluku/test/1.1.0/\(name)")
+    }
+
     private func createValidExport(deviceID: String) throws -> (archive: LukuArchive, signer: TestSigner) {
         let signer = createTestSigner()
         let identity = LukuDeviceIdentity(deviceID: deviceID, publicKey: signer.publicKeyBase64, vendor: "LUKUID")
 
-        let canonical1 = "can1"
-        let canonical2 = "can2"
-        let canonical3 = "can3"
-
-        let sig1 = try signCanonical(signer.privateKey, canonical: canonical1)
-        let sig2 = try signCanonical(signer.privateKey, canonical: canonical2)
-        let sig3 = try signCanonical(signer.privateKey, canonical: canonical3)
-
-        let records: [[String: Any]] = [
-            [
-                "type": "scan",
-                "signature": sig1,
-                "previous_signature": "genesis_fake",
-                "canonical_string": canonical1,
-                "payload": [
-                    "ctr": 1,
-                    "timestamp_utc": 1000,
-                    "genesis_hash": "genesis_fake"
-                ]
-            ],
-            [
-                "type": "scan",
-                "signature": sig2,
-                "previous_signature": sig1,
-                "canonical_string": canonical2,
-                "payload": [
-                    "ctr": 2,
-                    "timestamp_utc": 1005,
-                    "genesis_hash": "genesis_fake"
-                ]
-            ],
-            [
-                "type": "scan",
-                "signature": sig3,
-                "previous_signature": sig2,
-                "canonical_string": canonical3,
-                "payload": [
-                    "ctr": 3,
-                    "timestamp_utc": 1010,
-                    "genesis_hash": "genesis_fake"
-                ]
-            ]
-        ]
+        var records: [[String: Any]] = []
+        var previous = "genesis_fake"
+        for (index, timestamp) in [1000, 1005, 1010].enumerated() {
+            var record = animalScan("SCAN-VALID-\(index + 1)", deviceID: deviceID, publicKey: signer.publicKeyBase64, ctr: index + 1, timestamp: timestamp, previous: previous)
+            previous = try signInPlace(signer, &record, deviceID: deviceID)
+            records.append(record)
+        }
 
         let exported = try LukuFile.exportWithIdentity(records: records, device: identity, attachments: [:], signer: LukuSigner(privateKey: signer.privateKey, publicKeyBase64: signer.publicKeyBase64))
         let reopened = try LukuFile.open(data: exported.saveToData())
@@ -385,59 +389,27 @@ final class LukuArchiveTests: XCTestCase {
         let deviceID = "LUK-ATTEST"
         let attachment = Data("desktop-added-attachment".utf8)
         let checksum = SHA256.hash(data: attachment).map { String(format: "%02x", $0) }.joined()
-        let scanCanonical = "attested-scan"
-        let envCanonical = "attested-environment"
-        let attCanonical = "attested-attachment"
-        let scanSig = try signCanonical(signer.privateKey, canonical: scanCanonical)
+        let pk = signer.publicKeyBase64
+        var scan = animalScan("SCAN-ATTEST-1", deviceID: deviceID, publicKey: pk, ctr: 1, timestamp: 1000, previous: "genesis_fake")
+        let scanSig = try signInPlace(signer, &scan, deviceID: deviceID)
+        var attachmentRecord: [String: Any] = [
+            "type": "attachment", "vendor": "LUKUID", "id": "ATT-ATTEST-1", "parent_record_id": "SCAN-ATTEST-1", "parent_id": "SCAN-ATTEST-1",
+            "device_id": deviceID, "public_key": pk, "parent_signature": scanSig, "timestamp_utc": 1001,
+            "checksum": checksum, "mime": "text/plain", "title": "Desktop Note"
+        ]
+        _ = try signInPlace(signer, &attachmentRecord, deviceID: deviceID)
+        var environment: [String: Any] = [
+            "type": "environment", "vendor": "LUKUID", "id": "ENV-ATTEST-1", "device_id": deviceID, "public_key": pk,
+            "previous_signature": scanSig, "payload": ["ctr": 2, "timestamp_utc": 1002]
+        ]
+        _ = try signInPlace(signer, &environment, deviceID: deviceID)
 
         let block = try LukuFile.buildBlockFromRecords(
             blockID: 0,
             timestampUTC: 1003,
             previousBlockHash: nil,
-            defaultDevice: LukuDeviceIdentity(deviceID: deviceID, publicKey: signer.publicKeyBase64, vendor: "LUKUID"),
-            batch: [
-                [
-                    "type": "scan",
-                    "id": "SCAN-ATTEST-1",
-                    "device_id": deviceID,
-                    "public_key": signer.publicKeyBase64,
-                    "signature": scanSig,
-                    "previous_signature": "genesis_fake",
-                    "canonical_string": scanCanonical,
-                    "payload": [
-                        "ctr": 1,
-                        "timestamp_utc": 1000,
-                        "genesis_hash": "genesis_fake"
-                    ]
-                ],
-                [
-                    "type": "attachment",
-                    "id": "ATT-ATTEST-1",
-                    "parent_record_id": "SCAN-ATTEST-1",
-                    "device_id": deviceID,
-                    "public_key": signer.publicKeyBase64,
-                    "signature": try signCanonical(signer.privateKey, canonical: attCanonical),
-                    "parent_signature": scanSig,
-                    "canonical_string": attCanonical,
-                    "timestamp_utc": 1001,
-                    "checksum": checksum,
-                    "mime": "text/plain",
-                    "title": "Desktop Note"
-                ],
-                [
-                    "type": "environment",
-                    "id": "ENV-ATTEST-1",
-                    "device_id": deviceID,
-                    "public_key": signer.publicKeyBase64,
-                    "signature": try signCanonical(signer.privateKey, canonical: envCanonical),
-                    "previous_signature": scanSig,
-                    "canonical_string": envCanonical,
-                    "payload": [
-                        "ctr": 2,
-                        "timestamp_utc": 1002
-                    ]
-                ]
-            ],
+            defaultDevice: LukuDeviceIdentity(deviceID: deviceID, publicKey: pk, vendor: "LUKUID"),
+            batch: [scan, attachmentRecord, environment],
             commonCerts: nil
         )
 
@@ -457,61 +429,27 @@ final class LukuArchiveTests: XCTestCase {
     func testKeepsAttestedCustodyRecordsOutOfTheNativeChain() throws {
         let signer = createTestSigner()
         let deviceID = "LUK-CUSTODY"
-        let scanCanonical = "custody-scan"
-        let envCanonical = "custody-environment"
-        let custodyCanonical = "custody-checkpoint"
-        let scanSig = try signCanonical(signer.privateKey, canonical: scanCanonical)
+        let pk = signer.publicKeyBase64
+        var scan = animalScan("SCAN-CUSTODY-1", deviceID: deviceID, publicKey: pk, ctr: 1, timestamp: 1000, previous: "genesis_fake")
+        let scanSig = try signInPlace(signer, &scan, deviceID: deviceID)
+        var custody: [String: Any] = [
+            "type": "custody", "vendor": "LUKUID", "id": "CUSTODY-1", "parent_record_id": "SCAN-CUSTODY-1", "parent_id": "SCAN-CUSTODY-1",
+            "device_id": deviceID, "public_key": pk, "parent_signature": scanSig, "timestamp_utc": 1001,
+            "payload": ["event": "handoff", "status": "received", "context_ref": "shipment-123"]
+        ]
+        _ = try signInPlace(signer, &custody, deviceID: deviceID)
+        var environment: [String: Any] = [
+            "type": "environment", "vendor": "LUKUID", "id": "ENV-CUSTODY-1", "device_id": deviceID, "public_key": pk,
+            "previous_signature": scanSig, "payload": ["ctr": 2, "timestamp_utc": 1002]
+        ]
+        _ = try signInPlace(signer, &environment, deviceID: deviceID)
 
         let block = try LukuFile.buildBlockFromRecords(
             blockID: 0,
             timestampUTC: 1003,
             previousBlockHash: nil,
-            defaultDevice: LukuDeviceIdentity(deviceID: deviceID, publicKey: signer.publicKeyBase64, vendor: "LUKUID"),
-            batch: [
-                [
-                    "type": "scan",
-                    "id": "SCAN-CUSTODY-1",
-                    "device_id": deviceID,
-                    "public_key": signer.publicKeyBase64,
-                    "signature": scanSig,
-                    "previous_signature": "genesis_fake",
-                    "canonical_string": scanCanonical,
-                    "payload": [
-                        "ctr": 1,
-                        "timestamp_utc": 1000,
-                        "genesis_hash": "genesis_fake"
-                    ]
-                ],
-                [
-                    "type": "custody",
-                    "id": "CUSTODY-1",
-                    "parent_record_id": "SCAN-CUSTODY-1",
-                    "device_id": deviceID,
-                    "public_key": signer.publicKeyBase64,
-                    "signature": try signCanonical(signer.privateKey, canonical: custodyCanonical),
-                    "parent_signature": scanSig,
-                    "canonical_string": custodyCanonical,
-                    "timestamp_utc": 1001,
-                    "payload": [
-                        "event": "handoff",
-                        "status": "received",
-                        "context_ref": "shipment-123"
-                    ]
-                ],
-                [
-                    "type": "environment",
-                    "id": "ENV-CUSTODY-1",
-                    "device_id": deviceID,
-                    "public_key": signer.publicKeyBase64,
-                    "signature": try signCanonical(signer.privateKey, canonical: envCanonical),
-                    "previous_signature": scanSig,
-                    "canonical_string": envCanonical,
-                    "payload": [
-                        "ctr": 2,
-                        "timestamp_utc": 1002
-                    ]
-                ]
-            ],
+            defaultDevice: LukuDeviceIdentity(deviceID: deviceID, publicKey: pk, vendor: "LUKUID"),
+            batch: [scan, custody, environment],
             commonCerts: nil
         )
 
@@ -551,29 +489,29 @@ final class LukuArchiveTests: XCTestCase {
     }
 
     func testMutatesRealSampleArchivesInMemory() throws {
-        let sampleData = try Data(contentsOf: sampleURL("first-passable-verification-sample.luku"))
+        let sampleData = try Data(contentsOf: currentSampleURL("first-passable-verification-sample.luku"))
         let original = try LukuFile.open(data: sampleData)
-        XCTAssertTrue(criticalIssues(original.verify(options: testOptions())).isEmpty)
+        XCTAssertTrue(criticalIssues(original.verify(options: currentSampleOptions())).isEmpty)
 
         let invalidSignature = try LukuFile.open(data: sampleData)
         invalidSignature.blocks[0].batch[0]["signature"] = "not_base64_data!!!"
-        XCTAssertTrue(hasIssue(invalidSignature.verify(options: testOptions()), "RECORD_SIGNATURE_INVALID", "ATTESTATION_FAILED"))
+        XCTAssertTrue(hasIssue(invalidSignature.verify(options: currentSampleOptions()), "RECORD_SIGNATURE_INVALID", "ATTESTATION_FAILED"))
 
         let mutatedCanonical = try LukuFile.open(data: sampleData)
         let currentCanonical = mutatedCanonical.blocks[0].batch[0]["canonical_string"] as? String ?? ""
         mutatedCanonical.blocks[0].batch[0]["canonical_string"] = "\(currentCanonical)X"
-        XCTAssertTrue(hasIssue(mutatedCanonical.verify(options: testOptions()), "RECORD_SIGNATURE_INVALID"))
+        XCTAssertTrue(hasIssue(mutatedCanonical.verify(options: currentSampleOptions()), "RECORD_SIGNATURE_INVALID"))
 
         if original.blocks[0].batch.count > 1 {
             let brokenChain = try LukuFile.open(data: sampleData)
             brokenChain.blocks[0].batch[1]["previous_signature"] = "broken_link"
-            XCTAssertTrue(hasIssue(brokenChain.verify(options: testOptions()), "RECORD_CHAIN_BROKEN"))
+            XCTAssertTrue(hasIssue(brokenChain.verify(options: currentSampleOptions()), "RECORD_CHAIN_BROKEN"))
         }
 
         if original.blocks.count > 1 {
             let floatingAnchor = try LukuFile.open(data: sampleData)
             floatingAnchor.blocks[1].batch[0]["previous_signature"] = "floating_anchor_test"
-            XCTAssertFalse(hasIssue(floatingAnchor.verify(options: testOptions()), "RECORD_CHAIN_BROKEN"))
+            XCTAssertFalse(hasIssue(floatingAnchor.verify(options: currentSampleOptions()), "RECORD_CHAIN_BROKEN"))
         }
 
         if original.blocks[0].batch.count > 1 {
@@ -583,41 +521,27 @@ final class LukuArchiveTests: XCTestCase {
             payload["ctr"] = 0
             record["payload"] = payload
             regressedCounter.blocks[0].batch[1] = record
-            XCTAssertTrue(hasIssue(regressedCounter.verify(options: testOptions()), "COUNTER_REGRESSION"))
+            XCTAssertTrue(hasIssue(regressedCounter.verify(options: currentSampleOptions()), "COUNTER_REGRESSION"))
         }
     }
 
     func testVerifiesTheShippedSampleDirectory() throws {
-        let passable = try LukuFile.open(data: Data(contentsOf: sampleURL("first-passable-verification-sample.luku")))
-        XCTAssertTrue(criticalIssues(passable.verify(options: testOptions())).isEmpty)
+        let passable = try LukuFile.open(data: Data(contentsOf: currentSampleURL("first-passable-verification-sample.luku")))
+        XCTAssertTrue(criticalIssues(passable.verify(options: currentSampleOptions())).isEmpty)
 
-        let signatureMismatch = try LukuFile.open(data: Data(contentsOf: sampleURL("signature-mismatch.luku")))
-        let mismatchIssues = signatureMismatch.verify(options: LukuVerifyOptions(
-            allowUntrustedRoots: false,
-            skipCertificateTemporalChecks: true,
-            trustedExternalFingerprints: [],
-            trustProfile: "dev"
-        ))
+        let signatureMismatch = try LukuFile.open(data: Data(contentsOf: currentSampleURL("signature-mismatch.luku")))
+        let mismatchIssues = signatureMismatch.verify(options: currentSampleOptions(allowUntrustedRoots: false))
         XCTAssertTrue(hasIssue(mismatchIssues, "ATTESTATION_FAILED", "RECORD_SIGNATURE_INVALID", "ATTESTATION_CHAIN_MISSING"))
 
-        let invalidChain = try LukuFile.open(data: Data(contentsOf: sampleURL("invalid-chain.luku")))
-        XCTAssertTrue(hasIssue(invalidChain.verify(options: testOptions()), "RECORD_CHAIN_BROKEN", "BLOCKS_HASH_MISMATCH", "ATTESTATION_FAILED"))
+        let invalidChain = try LukuFile.open(data: Data(contentsOf: currentSampleURL("invalid-chain.luku")))
+        XCTAssertTrue(hasIssue(invalidChain.verify(options: currentSampleOptions()), "RECORD_CHAIN_BROKEN", "BLOCKS_HASH_MISMATCH", "ATTESTATION_FAILED"))
 
-        let devIssues = passable.verify(options: LukuVerifyOptions(
-            allowUntrustedRoots: false,
-            skipCertificateTemporalChecks: true,
-            trustedExternalFingerprints: [],
-            trustProfile: "dev"
-        ))
-        XCTAssertFalse(devIssues.contains { $0.code == "ATTESTATION_FAILED" && $0.message.contains("Certificate chain does not match the requested trust profile") })
+        // A test-PKI sample passes its own profile and is rejected by dev and prod.
+        let testIssues = passable.verify(options: currentSampleOptions(allowUntrustedRoots: false, trustProfile: "test"))
+        XCTAssertFalse(testIssues.contains { $0.code == "ATTESTATION_FAILED" && $0.message.contains("Certificate chain does not match the requested trust profile") })
 
-        let testIssues = passable.verify(options: LukuVerifyOptions(
-            allowUntrustedRoots: false,
-            skipCertificateTemporalChecks: true,
-            trustedExternalFingerprints: [],
-            trustProfile: "test"
-        ))
-        XCTAssertTrue(testIssues.contains { $0.code == "ATTESTATION_FAILED" && $0.message.contains("Certificate chain does not match the requested trust profile") })
+        let devIssues = passable.verify(options: currentSampleOptions(allowUntrustedRoots: false, trustProfile: "dev"))
+        XCTAssertTrue(devIssues.contains { $0.code == "ATTESTATION_FAILED" && $0.message.contains("Certificate chain does not match the requested trust profile") })
 
         let prodIssues = passable.verify(options: LukuVerifyOptions(
             allowUntrustedRoots: false,

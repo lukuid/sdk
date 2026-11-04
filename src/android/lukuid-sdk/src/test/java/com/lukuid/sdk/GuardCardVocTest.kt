@@ -54,12 +54,15 @@ class LukuIDEnvironmentVocTest {
         val keyPair = KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
         val publicKeyRaw = keyPair.public.encoded.copyOfRange(keyPair.public.encoded.size - 32, keyPair.public.encoded.size)
         val publicKeyBase64 = Base64.getEncoder().encodeToString(publicKeyRaw)
-        val canonical = "GC-TEST-1:$publicKeyBase64:environment:ENV-VOC-1:4502:1770823456:3600000000:85:false:350.50:22.40:45.20:1013.20:30000:110:false:0.01:0.02:1.00:genesis_fake"
+        // Content fields alphabetical per LUKU.md: accel_g_x, accel_g_y, accel_g_z, battery_percent,
+        // gps_* (absent), humidity_pct, lux, mobile_* (absent), pressure_hpa, tamper, temp_c,
+        // vbus_present, voc_index, voc_raw.
+        val canonical = "GC-TEST-1:$publicKeyBase64:environment:ENV-VOC-1:4502:1770823456:3600000000:0.01:0.02:1.00:85:::::::::45.20:350.50:::::::::::::1013.20:false:22.40:false:110:30000:genesis_fake"
         val signature = signCanonical(keyPair.private.encoded, canonical)
 
         val envelope = mapOf(
             "type" to "environment",
-            "event_id" to "ENV-VOC-1",
+            "id" to "ENV-VOC-1",
             "device_id" to "GC-TEST-1",
             "public_key" to publicKeyBase64,
             "vendor" to "LUKUID",

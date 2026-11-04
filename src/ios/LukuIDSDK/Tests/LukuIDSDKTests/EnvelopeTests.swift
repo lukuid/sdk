@@ -26,9 +26,22 @@ final class EnvelopeTests: XCTestCase {
         return try! JSONSerialization.jsonObject(with: data, options: []) as! [String: Any]
     }
 
+    /// A current-format real record envelope under the test PKI (samples/dotluku/test/1.1.0/README.md).
+    private func getCurrentValidEnvelope() throws -> [String: Any] {
+        var currentURL = URL(fileURLWithPath: #file)
+        while currentURL.path != "/" {
+            let candidate = currentURL.appendingPathComponent("samples/envelopes/test/1.1.0/valid_envelope.json")
+            if FileManager.default.fileExists(atPath: candidate.path) {
+                return try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: candidate)) as? [String: Any])
+            }
+            currentURL = currentURL.deletingLastPathComponent()
+        }
+        throw NSError(domain: "lukuid-tests", code: -1, userInfo: [NSLocalizedDescriptionKey: "Missing samples/envelopes/test/1.1.0/valid_envelope.json"])
+    }
+
     func testVerifyEnvelopeValid() throws {
-        let envelope = getValidEnvelope()
-        let issues = LukuFile.verifyEnvelope(envelope: envelope, options: LukuVerifyOptions(allowUntrustedRoots: false, skipCertificateTemporalChecks: true, trustProfile: "dev"))
+        let envelope = try getCurrentValidEnvelope()
+        let issues = LukuFile.verifyEnvelope(envelope: envelope, options: LukuVerifyOptions(allowUntrustedRoots: false, skipCertificateTemporalChecks: true, trustProfile: "test"))
         XCTAssertTrue(issues.isEmpty, "Expected no issues, got \(issues)")
     }
 

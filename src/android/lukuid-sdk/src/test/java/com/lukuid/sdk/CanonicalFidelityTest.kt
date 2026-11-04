@@ -134,13 +134,9 @@ class CanonicalFidelityTest {
         val actual = LukuArchive.recomputeRecordCanonicalString(
             record, payload, "GC-2005-EU", "base64_device_public_key", "base64_previous_record_signature"
         )
-        // gps_lat/gps_lng are asserted separately below since this implementation formats all
-        // scalar Doubles to 2 decimals (per the generic Floats rule) rather than special-casing
-        // GPS precision; this documents that intentional deviation from the doc's own example.
-        assertEquals(
-            expected.replace("60.169900", "60.17").replace("24.938400", "24.94"),
-            actual
-        )
+        // gps_lat/gps_lng use six decimal places (LUKU.md); the implementation now follows the
+        // spec example exactly.
+        assertEquals(expected, actual)
     }
 
     @Test

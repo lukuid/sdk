@@ -50,6 +50,41 @@ class LukuArchiveTest {
         trustProfile = "dev"
     )
 
+    private fun currentSampleOptions(allowUntrustedRoots: Boolean = true, trustProfile: String = "test"): LukuVerifyOptions = LukuVerifyOptions(
+        allowUntrustedRoots = allowUntrustedRoots,
+        skipCertificateTemporalChecks = true,
+        trustProfile = trustProfile
+    )
+
+    /** Signs the record over the canonical string recomputed from its own fields (LUKU.md Field Order rule). */
+    private fun signInPlace(signer: TestSigner, record: JSONObject, deviceId: String): String {
+        val canonical = LukuArchive.recomputeRecordCanonicalString(
+            record, record.optJSONObject("payload"), deviceId, signer.publicKeyBase64, record.optString("previous_signature")
+        ) ?: error("unknown record type")
+        val signature = signCanonical(signer.privateKey, canonical)
+        record.put("canonical_string", canonical).put("signature", signature)
+        return signature
+    }
+
+    private fun animalScan(id: String, deviceId: String, publicKey: String, ctr: Int, timestampUtc: Long, previousSignature: String): JSONObject {
+        val payload = JSONObject().put("ctr", ctr).put("timestamp_utc", timestampUtc).put("uptime_us", 1000000)
+            .put("profile", "animal").put("firmware", "v1.0.0").put("protocol", "FDX-B").put("scan_version", "1.0").put("tag_id", "999000000000001")
+        if (previousSignature == "genesis_fake") payload.put("genesis_hash", "genesis_fake")
+        return JSONObject().put("type", "scan").put("vendor", "LUKUID").put("id", id).put("device_id", deviceId).put("public_key", publicKey)
+            .put("previous_signature", previousSignature).put("payload", payload)
+    }
+
+    /** Current-format real exports under the test PKI (samples/dotluku/test/1.1.0/README.md). */
+    private fun currentSampleFile(name: String): File {
+        var current: Path? = Path.of(System.getProperty("user.dir")).toAbsolutePath()
+        while (current != null) {
+            val candidate = current.resolve("samples/dotluku/test/1.1.0/$name")
+            if (candidate.toFile().exists()) return candidate.toFile()
+            current = current.parent
+        }
+        throw java.io.FileNotFoundException("Missing current sample archive $name")
+    }
+
     private fun hasIssue(issues: List<VerificationIssue>, vararg codes: String): Boolean =
         issues.any { it.code in codes }
 
@@ -102,25 +137,16 @@ class LukuArchiveTest {
         val signer = createTestSigner()
         val identity = LukuDeviceIdentity(deviceId, signer.publicKeyBase64, "LUKUID")
 
-        val sig1 = signCanonical(signer.privateKey, "can1")
-        val sig2 = signCanonical(signer.privateKey, "can2")
-        val sig3 = signCanonical(signer.privateKey, "can3")
+        val records = mutableListOf<JSONObject>()
+        var previous = "genesis_fake"
+        for ((index, timestamp) in listOf(1000L, 1005L, 1010L).withIndex()) {
+            val record = animalScan("SCAN-VALID-${index + 1}", deviceId, signer.publicKeyBase64, index + 1, timestamp, previous)
+            previous = signInPlace(signer, record, deviceId)
+            records += record
+        }
 
         val archive = LukuArchive.exportWithIdentity(
-            records = listOf(
-                JSONObject().put("type", "scan").put("vendor", "LUKUID").put("signature", sig1).put("previous_signature", "genesis_fake").put("canonical_string", "can1").put(
-                    "payload",
-                    JSONObject().put("ctr", 1).put("timestamp_utc", 1000).put("genesis_hash", "genesis_fake")
-                ),
-                JSONObject().put("type", "scan").put("vendor", "LUKUID").put("signature", sig2).put("previous_signature", sig1).put("canonical_string", "can2").put(
-                    "payload",
-                    JSONObject().put("ctr", 2).put("timestamp_utc", 1005).put("genesis_hash", "genesis_fake")
-                ),
-                JSONObject().put("type", "scan").put("vendor", "LUKUID").put("signature", sig3).put("previous_signature", sig2).put("canonical_string", "can3").put(
-                    "payload",
-                    JSONObject().put("ctr", 3).put("timestamp_utc", 1010).put("genesis_hash", "genesis_fake")
-                )
-            ),
+            records = records,
             device = identity,
             attachments = emptyMap(),
             signer = LukuSigner(signer.privateKey, signer.publicKeyBase64)
@@ -346,24 +372,22 @@ class LukuArchiveTest {
         val deviceId = "LUK-ATTEST"
         val attachmentBytes = "desktop-added-attachment".toByteArray(StandardCharsets.UTF_8)
         val checksum = java.security.MessageDigest.getInstance("SHA-256").digest(attachmentBytes).joinToString("") { "%02x".format(it) }
-        val scanSig = signCanonical(signer.privateKey, "attested-scan")
+        val pk = signer.publicKeyBase64
+        val scan = animalScan("SCAN-ATTEST-1", deviceId, pk, 1, 1000, "genesis_fake")
+        val scanSig = signInPlace(signer, scan, deviceId)
+        val attachment = JSONObject().put("type", "attachment").put("vendor", "LUKUID").put("id", "ATT-ATTEST-1").put("parent_record_id", "SCAN-ATTEST-1").put("parent_id", "SCAN-ATTEST-1")
+            .put("device_id", deviceId).put("public_key", pk).put("parent_signature", scanSig).put("timestamp_utc", 1001).put("checksum", checksum).put("mime", "text/plain").put("title", "Desktop Note")
+        signInPlace(signer, attachment, deviceId)
+        val environment = JSONObject().put("type", "environment").put("vendor", "LUKUID").put("id", "ENV-ATTEST-1").put("device_id", deviceId).put("public_key", pk)
+            .put("previous_signature", scanSig).put("payload", JSONObject().put("ctr", 2).put("timestamp_utc", 1002))
+        signInPlace(signer, environment, deviceId)
 
         val block = LukuArchive.buildBlockFromRecords(
             blockId = 0,
             timestampUtc = 1003,
             previousBlockHash = null,
-            defaultDevice = LukuDeviceIdentity(deviceId, signer.publicKeyBase64, "LUKUID"),
-            batch = listOf(
-                JSONObject().put("type", "scan").put("vendor", "LUKUID").put("id", "SCAN-ATTEST-1").put("device_id", deviceId).put("public_key", signer.publicKeyBase64).put("signature", scanSig).put("previous_signature", "genesis_fake").put("canonical_string", "attested-scan").put(
-                    "payload",
-                    JSONObject().put("ctr", 1).put("timestamp_utc", 1000).put("genesis_hash", "genesis_fake")
-                ),
-                JSONObject().put("type", "attachment").put("vendor", "LUKUID").put("id", "ATT-ATTEST-1").put("parent_record_id", "SCAN-ATTEST-1").put("device_id", deviceId).put("public_key", signer.publicKeyBase64).put("signature", signCanonical(signer.privateKey, "attested-attachment")).put("parent_signature", scanSig).put("canonical_string", "attested-attachment").put("timestamp_utc", 1001).put("checksum", checksum).put("mime", "text/plain").put("title", "Desktop Note"),
-                JSONObject().put("type", "environment").put("vendor", "LUKUID").put("id", "ENV-ATTEST-1").put("device_id", deviceId).put("public_key", signer.publicKeyBase64).put("signature", signCanonical(signer.privateKey, "attested-environment")).put("previous_signature", scanSig).put("canonical_string", "attested-environment").put(
-                    "payload",
-                    JSONObject().put("ctr", 2).put("timestamp_utc", 1002)
-                )
-            ),
+            defaultDevice = LukuDeviceIdentity(deviceId, pk, "LUKUID"),
+            batch = listOf(scan, attachment, environment),
             commonCerts = null
         )
 
@@ -384,27 +408,23 @@ class LukuArchiveTest {
     fun keepsAttestedCustodyRecordsOutOfTheNativeChain() {
         val signer = createTestSigner()
         val deviceId = "LUK-CUSTODY"
-        val scanSig = signCanonical(signer.privateKey, "custody-scan")
+        val pk = signer.publicKeyBase64
+        val scan = animalScan("SCAN-CUSTODY-1", deviceId, pk, 1, 1000, "genesis_fake")
+        val scanSig = signInPlace(signer, scan, deviceId)
+        val custody = JSONObject().put("type", "custody").put("vendor", "LUKUID").put("id", "CUSTODY-1").put("parent_record_id", "SCAN-CUSTODY-1").put("parent_id", "SCAN-CUSTODY-1")
+            .put("device_id", deviceId).put("public_key", pk).put("parent_signature", scanSig).put("timestamp_utc", 1001)
+            .put("payload", JSONObject().put("event", "handoff").put("status", "received").put("context_ref", "shipment-123"))
+        signInPlace(signer, custody, deviceId)
+        val environment = JSONObject().put("type", "environment").put("vendor", "LUKUID").put("id", "ENV-CUSTODY-1").put("device_id", deviceId).put("public_key", pk)
+            .put("previous_signature", scanSig).put("payload", JSONObject().put("ctr", 2).put("timestamp_utc", 1002))
+        signInPlace(signer, environment, deviceId)
 
         val block = LukuArchive.buildBlockFromRecords(
             blockId = 0,
             timestampUtc = 1003,
             previousBlockHash = null,
-            defaultDevice = LukuDeviceIdentity(deviceId, signer.publicKeyBase64, "LUKUID"),
-            batch = listOf(
-                JSONObject().put("type", "scan").put("vendor", "LUKUID").put("id", "SCAN-CUSTODY-1").put("device_id", deviceId).put("public_key", signer.publicKeyBase64).put("signature", scanSig).put("previous_signature", "genesis_fake").put("canonical_string", "custody-scan").put(
-                    "payload",
-                    JSONObject().put("ctr", 1).put("timestamp_utc", 1000).put("genesis_hash", "genesis_fake")
-                ),
-                JSONObject().put("type", "custody").put("vendor", "LUKUID").put("id", "CUSTODY-1").put("parent_record_id", "SCAN-CUSTODY-1").put("device_id", deviceId).put("public_key", signer.publicKeyBase64).put("signature", signCanonical(signer.privateKey, "custody-checkpoint")).put("parent_signature", scanSig).put("canonical_string", "custody-checkpoint").put("timestamp_utc", 1001).put(
-                    "payload",
-                    JSONObject().put("event", "handoff").put("status", "received").put("context_ref", "shipment-123")
-                ),
-                JSONObject().put("type", "environment").put("vendor", "LUKUID").put("id", "ENV-CUSTODY-1").put("device_id", deviceId).put("public_key", signer.publicKeyBase64).put("signature", signCanonical(signer.privateKey, "custody-environment")).put("previous_signature", scanSig).put("canonical_string", "custody-environment").put(
-                    "payload",
-                    JSONObject().put("ctr", 2).put("timestamp_utc", 1002)
-                )
-            ),
+            defaultDevice = LukuDeviceIdentity(deviceId, pk, "LUKUID"),
+            batch = listOf(scan, custody, environment),
             commonCerts = null
         )
 
@@ -482,72 +502,57 @@ class LukuArchiveTest {
 
     @Test
     fun mutatesRealSampleArchivesInMemory() {
-        val sampleBytes = sampleFile("first-passable-verification-sample.luku").readBytes()
+        val sampleBytes = currentSampleFile("first-passable-verification-sample.luku").readBytes()
         val original = LukuArchive.open(sampleBytes)
-        assertTrue(original.verify(testOptions()).none { it.criticality == Criticality.CRITICAL })
+        assertTrue(original.verify(currentSampleOptions()).none { it.criticality == Criticality.CRITICAL })
 
         val invalidSignature = LukuArchive.open(sampleBytes)
         invalidSignature.blocks[0].batch[0].put("signature", "not_base64_data!!!")
-        assertTrue(hasIssue(invalidSignature.verify(testOptions()), "RECORD_SIGNATURE_INVALID", "ATTESTATION_FAILED"))
+        assertTrue(hasIssue(invalidSignature.verify(currentSampleOptions()), "RECORD_SIGNATURE_INVALID", "ATTESTATION_FAILED"))
 
         val mutatedCanonical = LukuArchive.open(sampleBytes)
         mutatedCanonical.blocks[0].batch[0].put("canonical_string", mutatedCanonical.blocks[0].batch[0].optString("canonical_string") + "X")
-        assertTrue(hasIssue(mutatedCanonical.verify(testOptions()), "RECORD_SIGNATURE_INVALID"))
+        assertTrue(hasIssue(mutatedCanonical.verify(currentSampleOptions()), "RECORD_SIGNATURE_INVALID"))
 
         if (original.blocks[0].batch.size > 1) {
             val brokenChain = LukuArchive.open(sampleBytes)
             brokenChain.blocks[0].batch[1].put("previous_signature", "broken_link")
-            assertTrue(hasIssue(brokenChain.verify(testOptions()), "RECORD_CHAIN_BROKEN"))
+            assertTrue(hasIssue(brokenChain.verify(currentSampleOptions()), "RECORD_CHAIN_BROKEN"))
         }
 
         if (original.blocks.size > 1) {
             val floatingAnchor = LukuArchive.open(sampleBytes)
             floatingAnchor.blocks[1].batch[0].put("previous_signature", "floating_anchor_test")
-            assertFalse(hasIssue(floatingAnchor.verify(testOptions()), "RECORD_CHAIN_BROKEN"))
+            assertFalse(hasIssue(floatingAnchor.verify(currentSampleOptions()), "RECORD_CHAIN_BROKEN"))
         }
 
         if (original.blocks[0].batch.size > 1) {
             val regressedCounter = LukuArchive.open(sampleBytes)
             regressedCounter.blocks[0].batch[1].getJSONObject("payload").put("ctr", 0)
-            assertTrue(hasIssue(regressedCounter.verify(testOptions()), "COUNTER_REGRESSION"))
+            assertTrue(hasIssue(regressedCounter.verify(currentSampleOptions()), "COUNTER_REGRESSION"))
         }
     }
 
     @Test
     fun verifiesTheShippedSampleDirectory() {
-        val passable = LukuArchive.open(sampleFile("first-passable-verification-sample.luku"))
-        assertTrue(passable.verify(testOptions()).none { it.criticality == Criticality.CRITICAL })
+        val passable = LukuArchive.open(currentSampleFile("first-passable-verification-sample.luku"))
+        assertTrue(passable.verify(currentSampleOptions()).none { it.criticality == Criticality.CRITICAL })
 
-        val mismatch = LukuArchive.open(sampleFile("signature-mismatch.luku"))
+        val mismatch = LukuArchive.open(currentSampleFile("signature-mismatch.luku"))
         val mismatchIssues = mismatch.verify(
-            LukuVerifyOptions(
-                allowUntrustedRoots = false,
-                skipCertificateTemporalChecks = true,
-                trustProfile = "dev"
-            )
+            currentSampleOptions(allowUntrustedRoots = false)
         )
         assertTrue(hasIssue(mismatchIssues, "ATTESTATION_FAILED", "RECORD_SIGNATURE_INVALID", "ATTESTATION_CHAIN_MISSING"))
 
-        val invalidChain = LukuArchive.open(sampleFile("invalid-chain.luku"))
-        assertTrue(hasIssue(invalidChain.verify(testOptions()), "RECORD_CHAIN_BROKEN", "BLOCK_HASH_INVALID", "ATTESTATION_FAILED"))
+        val invalidChain = LukuArchive.open(currentSampleFile("invalid-chain.luku"))
+        assertTrue(hasIssue(invalidChain.verify(currentSampleOptions()), "RECORD_CHAIN_BROKEN", "BLOCK_HASH_INVALID", "ATTESTATION_FAILED"))
 
-        val devIssues = passable.verify(
-            LukuVerifyOptions(
-                allowUntrustedRoots = false,
-                skipCertificateTemporalChecks = true,
-                trustProfile = "dev"
-            )
-        )
-        assertFalse(devIssues.any { it.code == "ATTESTATION_FAILED" && it.message.contains("trust profile") })
+        // A test-PKI sample passes its own profile and is rejected by dev and prod.
+        val testIssues = passable.verify(currentSampleOptions(allowUntrustedRoots = false, trustProfile = "test"))
+        assertFalse(testIssues.any { it.code == "ATTESTATION_FAILED" && it.message.contains("trust profile") })
 
-        val testIssues = passable.verify(
-            LukuVerifyOptions(
-                allowUntrustedRoots = false,
-                skipCertificateTemporalChecks = true,
-                trustProfile = "test"
-            )
-        )
-        assertTrue(testIssues.any { it.code == "ATTESTATION_FAILED" && it.message.contains("trust profile") })
+        val devIssues = passable.verify(currentSampleOptions(allowUntrustedRoots = false, trustProfile = "dev"))
+        assertTrue(devIssues.any { it.code == "ATTESTATION_FAILED" && it.message.contains("trust profile") })
 
         val prodIssues = passable.verify(
             LukuVerifyOptions(
