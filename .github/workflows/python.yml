@@ -66,6 +66,25 @@ jobs:
       - run: python3 scripts/version_sync.py check
       - run: python3 -m pip install --upgrade pip
       - run: python3 -m pip install -e src/python
+      - name: Cache OpenSSL 3.5
+        id: openssl-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/_openssl
+          key: openssl-3.5.5-${{ runner.os }}-${{ runner.arch }}
+      - name: Install OpenSSL 3.5 (ML-DSA-65 for .luku archive seals)
+        if: steps.openssl-cache.outputs.cache-hit != 'true'
+        run: |
+          git -c advice.detachedHead=false clone --branch openssl-3.5.5 --depth 1 https://github.com/openssl/openssl openssl-src
+          cd openssl-src
+          ./Configure --prefix=$HOME/_openssl --libdir=lib no-docs no-tests "-Wl,-rpath,$HOME/_openssl/lib"
+          make -j4
+          make install_sw
+      - name: Use OpenSSL 3.5
+        run: |
+          "$HOME/_openssl/bin/openssl" version
+          "$HOME/_openssl/bin/openssl" list -signature-algorithms | grep -q ML-DSA-65
+          echo "$HOME/_openssl/bin" >> "$GITHUB_PATH"
       - name: Run Python SDK Tests
         run: |
           export OQS_INSTALL_PATH=$HOME/_oqs
@@ -111,6 +130,25 @@ jobs:
       - run: python3 -m pip install --upgrade pip
       - run: python3 -m pip install coverage
       - run: python3 -m pip install -e src/python
+      - name: Cache OpenSSL 3.5
+        id: openssl-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/_openssl
+          key: openssl-3.5.5-${{ runner.os }}-${{ runner.arch }}
+      - name: Install OpenSSL 3.5 (ML-DSA-65 for .luku archive seals)
+        if: steps.openssl-cache.outputs.cache-hit != 'true'
+        run: |
+          git -c advice.detachedHead=false clone --branch openssl-3.5.5 --depth 1 https://github.com/openssl/openssl openssl-src
+          cd openssl-src
+          ./Configure --prefix=$HOME/_openssl --libdir=lib no-docs no-tests "-Wl,-rpath,$HOME/_openssl/lib"
+          make -j4
+          make install_sw
+      - name: Use OpenSSL 3.5
+        run: |
+          "$HOME/_openssl/bin/openssl" version
+          "$HOME/_openssl/bin/openssl" list -signature-algorithms | grep -q ML-DSA-65
+          echo "$HOME/_openssl/bin" >> "$GITHUB_PATH"
       - name: Run Python Coverage
         shell: bash
         run: |

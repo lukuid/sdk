@@ -12,7 +12,7 @@ Today, the Python package is focused on offline evidence workflows rather than l
 python -m pip install lukuid-sdk
 ```
 
-Requires Python 3.11 or newer.
+Requires Python 3.11 or newer. The ML-DSA-65 archive self seal (`seals.json`) uses an `openssl` 3.5+ executable on `PATH`: without it export refuses to run and seal verification fails closed.
 
 ---
 
