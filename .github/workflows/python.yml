@@ -69,7 +69,27 @@ jobs:
       - name: Run Python SDK Tests
         run: |
           export OQS_INSTALL_PATH=$HOME/_oqs
-          python3 -m unittest discover -s src/python/tests -p "test_*.py"
+          set +e
+          python3 -m unittest discover -s src/python/tests -p "test_*.py" 2>&1 | tee python-tests.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            # Surface each failing test and its last error line as an annotation.
+            python3 - <<'PY'
+          import re
+          text = open("python-tests.log", encoding="utf-8", errors="replace").read()
+          for block in re.split(r"^={10,}$", text, flags=re.M)[1:]:
+              lines = [l for l in block.strip().splitlines() if l.strip()]
+              if not lines:
+                  continue
+              head = lines[0]
+              detail = next((l for l in reversed(lines) if re.match(r"^\w*(Error|Exception)\b", l.strip())), lines[-1])
+              print(f"::error title=Python test::{head} -- {detail.strip()[:900]}")
+          if "Traceback" in text and "Ran " not in text:
+              print("::error title=Python tests did not run::" + text.strip().splitlines()[-1][:900])
+          PY
+          fi
+          exit "$status"
 
   coverage:
     runs-on: ubuntu-latest
