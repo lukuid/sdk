@@ -4818,6 +4818,416 @@ export const lukuid = $root.lukuid = (() => {
         return ScanEnableRequest;
     })();
 
+    lukuid.ChallengeRequest = (function() {
+
+        /**
+         * Properties of a ChallengeRequest.
+         * @memberof lukuid
+         * @interface IChallengeRequest
+         * @property {string|null} [token] ChallengeRequest token
+         */
+
+        /**
+         * Constructs a new ChallengeRequest.
+         * @memberof lukuid
+         * @classdesc Represents a ChallengeRequest.
+         * @implements IChallengeRequest
+         * @constructor
+         * @param {lukuid.IChallengeRequest=} [properties] Properties to set
+         */
+        function ChallengeRequest(properties) {
+            if (properties)
+                for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * ChallengeRequest token.
+         * @member {string} token
+         * @memberof lukuid.ChallengeRequest
+         * @instance
+         */
+        ChallengeRequest.prototype.token = "";
+
+        /**
+         * Creates a new ChallengeRequest instance using the specified properties.
+         * @function create
+         * @memberof lukuid.ChallengeRequest
+         * @static
+         * @param {lukuid.IChallengeRequest=} [properties] Properties to set
+         * @returns {lukuid.ChallengeRequest} ChallengeRequest instance
+         */
+        ChallengeRequest.create = function create(properties) {
+            return new ChallengeRequest(properties);
+        };
+
+        /**
+         * Encodes the specified ChallengeRequest message. Does not implicitly {@link lukuid.ChallengeRequest.verify|verify} messages.
+         * @function encode
+         * @memberof lukuid.ChallengeRequest
+         * @static
+         * @param {lukuid.IChallengeRequest} message ChallengeRequest message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        ChallengeRequest.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.token != null && Object.hasOwnProperty.call(message, "token"))
+                writer.uint32(/* id 1, wireType 2 =*/10).string(message.token);
+            return writer;
+        };
+
+        /**
+         * Encodes the specified ChallengeRequest message, length delimited. Does not implicitly {@link lukuid.ChallengeRequest.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof lukuid.ChallengeRequest
+         * @static
+         * @param {lukuid.IChallengeRequest} message ChallengeRequest message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        ChallengeRequest.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a ChallengeRequest message from the specified reader or buffer.
+         * @function decode
+         * @memberof lukuid.ChallengeRequest
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {lukuid.ChallengeRequest} ChallengeRequest
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        ChallengeRequest.decode = function decode(reader, length, error) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lukuid.ChallengeRequest();
+            while (reader.pos < end) {
+                let tag = reader.uint32();
+                if (tag === error)
+                    break;
+                switch (tag >>> 3) {
+                case 1: {
+                        message.token = reader.string();
+                        break;
+                    }
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes a ChallengeRequest message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof lukuid.ChallengeRequest
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {lukuid.ChallengeRequest} ChallengeRequest
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        ChallengeRequest.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies a ChallengeRequest message.
+         * @function verify
+         * @memberof lukuid.ChallengeRequest
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        ChallengeRequest.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.token != null && message.hasOwnProperty("token"))
+                if (!$util.isString(message.token))
+                    return "token: string expected";
+            return null;
+        };
+
+        /**
+         * Creates a ChallengeRequest message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof lukuid.ChallengeRequest
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {lukuid.ChallengeRequest} ChallengeRequest
+         */
+        ChallengeRequest.fromObject = function fromObject(object) {
+            if (object instanceof $root.lukuid.ChallengeRequest)
+                return object;
+            let message = new $root.lukuid.ChallengeRequest();
+            if (object.token != null)
+                message.token = String(object.token);
+            return message;
+        };
+
+        /**
+         * Creates a plain object from a ChallengeRequest message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof lukuid.ChallengeRequest
+         * @static
+         * @param {lukuid.ChallengeRequest} message ChallengeRequest
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        ChallengeRequest.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            let object = {};
+            if (options.defaults)
+                object.token = "";
+            if (message.token != null && message.hasOwnProperty("token"))
+                object.token = message.token;
+            return object;
+        };
+
+        /**
+         * Converts this ChallengeRequest to JSON.
+         * @function toJSON
+         * @memberof lukuid.ChallengeRequest
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        ChallengeRequest.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        /**
+         * Gets the default type url for ChallengeRequest
+         * @function getTypeUrl
+         * @memberof lukuid.ChallengeRequest
+         * @static
+         * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns {string} The default type url
+         */
+        ChallengeRequest.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+            if (typeUrlPrefix === undefined) {
+                typeUrlPrefix = "type.googleapis.com";
+            }
+            return typeUrlPrefix + "/lukuid.ChallengeRequest";
+        };
+
+        return ChallengeRequest;
+    })();
+
+    lukuid.CaptureRequest = (function() {
+
+        /**
+         * Properties of a CaptureRequest.
+         * @memberof lukuid
+         * @interface ICaptureRequest
+         * @property {string|null} [token] CaptureRequest token
+         */
+
+        /**
+         * Constructs a new CaptureRequest.
+         * @memberof lukuid
+         * @classdesc Represents a CaptureRequest.
+         * @implements ICaptureRequest
+         * @constructor
+         * @param {lukuid.ICaptureRequest=} [properties] Properties to set
+         */
+        function CaptureRequest(properties) {
+            if (properties)
+                for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * CaptureRequest token.
+         * @member {string} token
+         * @memberof lukuid.CaptureRequest
+         * @instance
+         */
+        CaptureRequest.prototype.token = "";
+
+        /**
+         * Creates a new CaptureRequest instance using the specified properties.
+         * @function create
+         * @memberof lukuid.CaptureRequest
+         * @static
+         * @param {lukuid.ICaptureRequest=} [properties] Properties to set
+         * @returns {lukuid.CaptureRequest} CaptureRequest instance
+         */
+        CaptureRequest.create = function create(properties) {
+            return new CaptureRequest(properties);
+        };
+
+        /**
+         * Encodes the specified CaptureRequest message. Does not implicitly {@link lukuid.CaptureRequest.verify|verify} messages.
+         * @function encode
+         * @memberof lukuid.CaptureRequest
+         * @static
+         * @param {lukuid.ICaptureRequest} message CaptureRequest message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        CaptureRequest.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.token != null && Object.hasOwnProperty.call(message, "token"))
+                writer.uint32(/* id 1, wireType 2 =*/10).string(message.token);
+            return writer;
+        };
+
+        /**
+         * Encodes the specified CaptureRequest message, length delimited. Does not implicitly {@link lukuid.CaptureRequest.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof lukuid.CaptureRequest
+         * @static
+         * @param {lukuid.ICaptureRequest} message CaptureRequest message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        CaptureRequest.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a CaptureRequest message from the specified reader or buffer.
+         * @function decode
+         * @memberof lukuid.CaptureRequest
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {lukuid.CaptureRequest} CaptureRequest
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        CaptureRequest.decode = function decode(reader, length, error) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lukuid.CaptureRequest();
+            while (reader.pos < end) {
+                let tag = reader.uint32();
+                if (tag === error)
+                    break;
+                switch (tag >>> 3) {
+                case 1: {
+                        message.token = reader.string();
+                        break;
+                    }
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes a CaptureRequest message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof lukuid.CaptureRequest
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {lukuid.CaptureRequest} CaptureRequest
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        CaptureRequest.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies a CaptureRequest message.
+         * @function verify
+         * @memberof lukuid.CaptureRequest
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        CaptureRequest.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.token != null && message.hasOwnProperty("token"))
+                if (!$util.isString(message.token))
+                    return "token: string expected";
+            return null;
+        };
+
+        /**
+         * Creates a CaptureRequest message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof lukuid.CaptureRequest
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {lukuid.CaptureRequest} CaptureRequest
+         */
+        CaptureRequest.fromObject = function fromObject(object) {
+            if (object instanceof $root.lukuid.CaptureRequest)
+                return object;
+            let message = new $root.lukuid.CaptureRequest();
+            if (object.token != null)
+                message.token = String(object.token);
+            return message;
+        };
+
+        /**
+         * Creates a plain object from a CaptureRequest message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof lukuid.CaptureRequest
+         * @static
+         * @param {lukuid.CaptureRequest} message CaptureRequest
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        CaptureRequest.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            let object = {};
+            if (options.defaults)
+                object.token = "";
+            if (message.token != null && message.hasOwnProperty("token"))
+                object.token = message.token;
+            return object;
+        };
+
+        /**
+         * Converts this CaptureRequest to JSON.
+         * @function toJSON
+         * @memberof lukuid.CaptureRequest
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        CaptureRequest.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        /**
+         * Gets the default type url for CaptureRequest
+         * @function getTypeUrl
+         * @memberof lukuid.CaptureRequest
+         * @static
+         * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns {string} The default type url
+         */
+        CaptureRequest.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+            if (typeUrlPrefix === undefined) {
+                typeUrlPrefix = "type.googleapis.com";
+            }
+            return typeUrlPrefix + "/lukuid.CaptureRequest";
+        };
+
+        return CaptureRequest;
+    })();
+
     lukuid.GenerateHeartbeatRequest = (function() {
 
         /**
@@ -7732,6 +8142,8 @@ export const lukuid = $root.lukuid = (() => {
          * @property {lukuid.IFetchTelemetryRequest|null} [fetchTelemetry] CommandRequest fetchTelemetry
          * @property {lukuid.IGetCertificateRequest|null} [getCertificate] CommandRequest getCertificate
          * @property {lukuid.IGetChainRequest|null} [getChain] CommandRequest getChain
+         * @property {lukuid.IChallengeRequest|null} [challenge] CommandRequest challenge
+         * @property {lukuid.ICaptureRequest|null} [capture] CommandRequest capture
          */
 
         /**
@@ -7885,17 +8297,33 @@ export const lukuid = $root.lukuid = (() => {
          */
         CommandRequest.prototype.getChain = null;
 
+        /**
+         * CommandRequest challenge.
+         * @member {lukuid.IChallengeRequest|null|undefined} challenge
+         * @memberof lukuid.CommandRequest
+         * @instance
+         */
+        CommandRequest.prototype.challenge = null;
+
+        /**
+         * CommandRequest capture.
+         * @member {lukuid.ICaptureRequest|null|undefined} capture
+         * @memberof lukuid.CommandRequest
+         * @instance
+         */
+        CommandRequest.prototype.capture = null;
+
         // OneOf field names bound to virtual getters and setters
         let $oneOfFields;
 
         /**
          * CommandRequest payload.
-         * @member {"fetch"|"get"|"attest"|"config"|"otaBegin"|"otaData"|"otaDataV2"|"setAttestation"|"setHeartbeat"|"configure"|"scanEnable"|"generateHeartbeat"|"fetchTelemetry"|"getCertificate"|"getChain"|undefined} payload
+         * @member {"fetch"|"get"|"attest"|"config"|"otaBegin"|"otaData"|"otaDataV2"|"setAttestation"|"setHeartbeat"|"configure"|"scanEnable"|"generateHeartbeat"|"fetchTelemetry"|"getCertificate"|"getChain"|"challenge"|"capture"|undefined} payload
          * @memberof lukuid.CommandRequest
          * @instance
          */
         Object.defineProperty(CommandRequest.prototype, "payload", {
-            get: $util.oneOfGetter($oneOfFields = ["fetch", "get", "attest", "config", "otaBegin", "otaData", "otaDataV2", "setAttestation", "setHeartbeat", "configure", "scanEnable", "generateHeartbeat", "fetchTelemetry", "getCertificate", "getChain"]),
+            get: $util.oneOfGetter($oneOfFields = ["fetch", "get", "attest", "config", "otaBegin", "otaData", "otaDataV2", "setAttestation", "setHeartbeat", "configure", "scanEnable", "generateHeartbeat", "fetchTelemetry", "getCertificate", "getChain", "challenge", "capture"]),
             set: $util.oneOfSetter($oneOfFields)
         });
 
@@ -7957,6 +8385,10 @@ export const lukuid = $root.lukuid = (() => {
                 $root.lukuid.SetConfigureRequest.encode(message.configure, writer.uint32(/* id 17, wireType 2 =*/138).fork()).ldelim();
             if (message.requestId != null && Object.hasOwnProperty.call(message, "requestId"))
                 writer.uint32(/* id 18, wireType 2 =*/146).string(message.requestId);
+            if (message.challenge != null && Object.hasOwnProperty.call(message, "challenge"))
+                $root.lukuid.ChallengeRequest.encode(message.challenge, writer.uint32(/* id 19, wireType 2 =*/154).fork()).ldelim();
+            if (message.capture != null && Object.hasOwnProperty.call(message, "capture"))
+                $root.lukuid.CaptureRequest.encode(message.capture, writer.uint32(/* id 20, wireType 2 =*/162).fork()).ldelim();
             return writer;
         };
 
@@ -8059,6 +8491,14 @@ export const lukuid = $root.lukuid = (() => {
                     }
                 case 16: {
                         message.getChain = $root.lukuid.GetChainRequest.decode(reader, reader.uint32());
+                        break;
+                    }
+                case 19: {
+                        message.challenge = $root.lukuid.ChallengeRequest.decode(reader, reader.uint32());
+                        break;
+                    }
+                case 20: {
+                        message.capture = $root.lukuid.CaptureRequest.decode(reader, reader.uint32());
                         break;
                     }
                 default:
@@ -8251,6 +8691,26 @@ export const lukuid = $root.lukuid = (() => {
                         return "getChain." + error;
                 }
             }
+            if (message.challenge != null && message.hasOwnProperty("challenge")) {
+                if (properties.payload === 1)
+                    return "payload: multiple values";
+                properties.payload = 1;
+                {
+                    let error = $root.lukuid.ChallengeRequest.verify(message.challenge);
+                    if (error)
+                        return "challenge." + error;
+                }
+            }
+            if (message.capture != null && message.hasOwnProperty("capture")) {
+                if (properties.payload === 1)
+                    return "payload: multiple values";
+                properties.payload = 1;
+                {
+                    let error = $root.lukuid.CaptureRequest.verify(message.capture);
+                    if (error)
+                        return "capture." + error;
+                }
+            }
             return null;
         };
 
@@ -8344,6 +8804,16 @@ export const lukuid = $root.lukuid = (() => {
                 if (typeof object.getChain !== "object")
                     throw TypeError(".lukuid.CommandRequest.getChain: object expected");
                 message.getChain = $root.lukuid.GetChainRequest.fromObject(object.getChain);
+            }
+            if (object.challenge != null) {
+                if (typeof object.challenge !== "object")
+                    throw TypeError(".lukuid.CommandRequest.challenge: object expected");
+                message.challenge = $root.lukuid.ChallengeRequest.fromObject(object.challenge);
+            }
+            if (object.capture != null) {
+                if (typeof object.capture !== "object")
+                    throw TypeError(".lukuid.CommandRequest.capture: object expected");
+                message.capture = $root.lukuid.CaptureRequest.fromObject(object.capture);
             }
             return message;
         };
@@ -8444,6 +8914,16 @@ export const lukuid = $root.lukuid = (() => {
             }
             if (message.requestId != null && message.hasOwnProperty("requestId"))
                 object.requestId = message.requestId;
+            if (message.challenge != null && message.hasOwnProperty("challenge")) {
+                object.challenge = $root.lukuid.ChallengeRequest.toObject(message.challenge, options);
+                if (options.oneofs)
+                    object.payload = "challenge";
+            }
+            if (message.capture != null && message.hasOwnProperty("capture")) {
+                object.capture = $root.lukuid.CaptureRequest.toObject(message.capture, options);
+                if (options.oneofs)
+                    object.payload = "capture";
+            }
             return object;
         };
 

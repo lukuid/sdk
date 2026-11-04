@@ -1026,22 +1026,35 @@ fn process_frame(
         {
             let mut map = pending.lock().unwrap_or_else(|e| e.into_inner());
 
-            // 1. Try match by ID (check request_id first, then id)
-            let mut match_id = obj
+            // 1. A reply that echoes a request_id belongs to that request only. One
+            // whose request_id is not pending (a late reply to a timed-out call, or a
+            // reply to a request this session did not send) is dropped, never handed
+            // to another pending call of the same action.
+            let request_id = obj
                 .get("request_id")
-                .or_else(|| obj.get("id"))
                 .and_then(|v| v.as_str())
+                .filter(|s| !s.is_empty())
                 .map(|s| s.to_string());
+            let mut match_id = match &request_id {
+                Some(rid) => map.contains_key(rid).then(|| rid.clone()),
+                None => obj
+                    .get("id")
+                    .and_then(|v| v.as_str())
+                    .filter(|id| map.contains_key(*id))
+                    .map(|s| s.to_string()),
+            };
 
-            // 2. Try match by action if no ID match
-            if match_id.is_none() || !map.contains_key(match_id.as_ref().unwrap()) {
-                match_id = None;
+            // 2. Firmware that predates request_id: match by action.
+            if match_id.is_none() && request_id.is_none() {
                 for (id, p) in map.iter() {
                     if p.action == action {
                         match_id = Some(id.clone());
                         break;
                     }
                 }
+            }
+            if match_id.is_none() && debug_logging {
+                eprintln!("[lukuid-sdk] Dropped reply action={} request_id={:?}: no pending request", action, request_id);
             }
 
             if let Some(id) = match_id {

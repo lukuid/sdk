@@ -303,34 +303,47 @@ See the [React Web Demo](../examples/react-web-demo) for a complete, production-
 
 ---
 
-## Scan Dialog (UI)
+## Capture a Record
 
-The SDK includes a pre-built, self-contained scanning dialog that handles device discovery and event listening for you. It uses Shadow DOM to ensure styles do not leak into your application.
+`capture` asks a device for one signed record **now**. The device stores the record first (it stays in its history like any other), then returns that same record to the app. The Animal Reader scans for up to 60 s for a tag; the Environment card records at once.
+
+### `lukuid.capture(options?)`
+
+```ts
+import lukuid, { createChallengeToken } from '@lukuid/sdk';
+
+const token = createChallengeToken();          // or a token from your own backend
+const result = await lukuid.capture({ token }); // shows the LukuID dialog by default
+
+console.log(result.id, result.type, result.nonce === token);
+console.log(result.record);                    // the signed record as stored on the device
+```
+
+With `ui: true` (the default in a browser) a self-contained LukuID dialog (Shadow DOM, inline CSS, no external assets) shows the wait with a 60 s countdown for the reader, offers to connect a device when none is connected, shows the result, and shows a retryable error (device busy, no tag read, time sync needed, record rejected). The CDN build (`lukuid-sdk.global.js`) includes it: `LukuID.default.capture({ token: LukuID.createChallengeToken() })`.
+
+With `ui: false` nothing is drawn; follow progress with events:
+
+```ts
+const off = lukuid.on('capture', ({ device, event }) => {
+  if (event.state === 'waiting') showSpinner(event.windowMs);   // also: 'captured', 'failed'
+});
+const result = await lukuid.capture({ ui: false, device, token });
+off();
+```
+
+`device.capture({ token })` does the same on a single `Device` and emits `capture` events on it.
+
+**Options:** `token` (16–31 characters from `A–Z a–z 0–9 - _ . ~ + / =`, see `createChallengeToken()`), `device` (default: first connected device), `ui` (default `true`), `title` and `instruction` (dialog text), `container` (element to attach the dialog to), `timeoutMs` (inactivity timeout; the reader sends a keepalive every 4 s).
+
+**Checks before the promise resolves:** the record's canonical string is recomputed from its own fields, its Ed25519 signature is verified with the device key, and with a `token` the signed `nonce` must equal it. A failure rejects with a `CaptureError` (`RECORD_CANONICAL_MISMATCH`, `RECORD_SIGNATURE_INVALID`, `NONCE_MISMATCH`). Certificate chains are checked when the record is exported or verified as evidence.
+
+**Errors:** device errors reject with `DeviceCommandError` (`BUSY` / `capture_in_progress` while another capture runs on the device, `TIMEOUT` / `no_tag_read`, `TIME_UNTRUSTED`, `INVALID_ARG` / `invalid_token`); Cancel in the dialog rejects with `CaptureError` code `CANCELLED`. A cancelled reader capture may still store a scan if a tag is read before its 60 s end. `describeCaptureError(error)` gives the dialog's plain-language text.
 
 ### `lukuid.showScanDialog(options?)`
 
-Shows a modal dialog that:
-1.  Displays currently connected scanners.
-2.  Provides a button to connect new scanners.
-3.  Shows a "wave the scanner" animation.
-4.  Waits for a `scan` event from any connected device.
-5.  Automatically closes and resolves with the scan result.
+Runs `capture` with the dialog and resolves with `{ device, data }` (`data` is the record), or `null` when the user cancels. Prefer `capture`, which reports why a capture failed.
 
-```ts
-const result = await lukuid.showScanDialog({
-  title: "Identify Animal",
-  instruction: "Wave the scanner over the animal's microchip area."
-});
-
-if (result) {
-  const { device, data } = result;
-  console.log(`Scanned ${data.uid} from ${device.info.id}`);
-}
-```
-
-**Options:**
-- `title`: String (Optional) - Title shown in the dialog.
-- `instruction`: String (Optional) - Help text shown to the user.
+**Options:** `title`, `instruction`.
 
 ---
 

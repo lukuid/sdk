@@ -1899,13 +1899,14 @@ function decodeStatusResponse(payload: Uint8Array): JsonRecord {
       case 1: assignString(payload, cursor, wireType, out, 'id'); break;
       case 2: assignString(payload, cursor, wireType, out, 'name'); break;
       case 3: assignBytes(payload, cursor, wireType, out, 'public_key'); break;
-      case 4: assignString(payload, cursor, wireType, out, 'product'); break;
-      case 5: assignString(payload, cursor, wireType, out, 'model'); break;
-      case 6: assignFloat32(payload, cursor, wireType, out, 'battery_health'); break;
-      case 7: assignInt64(payload, cursor, wireType, out, 'timestamp'); break;
-      case 8: assignBool(payload, cursor, wireType, out, 'has_attestation'); break;
-      case 9: assignBool(payload, cursor, wireType, out, 'has_heartbeat'); break;
-      case 10: assignBool(payload, cursor, wireType, out, 'needs_sync'); break;
+      // Field numbers per lukuid.proto StatusResponse.
+      case 4: assignFloat32(payload, cursor, wireType, out, 'battery_health'); break;
+      case 5: assignInt64(payload, cursor, wireType, out, 'timestamp'); break;
+      case 6: assignBool(payload, cursor, wireType, out, 'has_attestation'); break;
+      case 7: assignBool(payload, cursor, wireType, out, 'has_heartbeat'); break;
+      case 8: assignBool(payload, cursor, wireType, out, 'needs_sync'); break;
+      case 9: assignString(payload, cursor, wireType, out, 'product'); break;
+      case 10: assignString(payload, cursor, wireType, out, 'model'); break;
       default: skipField(payload, cursor, wireType); break;
     }
   }

@@ -27,6 +27,8 @@ export interface DeviceInfo extends DeviceDescriptor {
   capabilities: string[];
   firmware?: string;
   model?: string;
+  /** Product family from `status`, e.g. `animalreader` or `environment`. */
+  product?: string;
   signature?: string | null;
   attestation_dac_der?: string | null;
   attestation_manufacturer_der?: string | null;
@@ -82,6 +84,8 @@ export interface Transport {
 
 export interface DeviceEventMap extends Record<string, unknown> {
   event: { key: string; data: unknown };
+  /** Progress of {@link Device.capture}. */
+  capture: import('./capture.js').CaptureEvent;
   message: unknown;
   error: { where: string; error: unknown };
   close: { reason?: string };
@@ -97,6 +101,13 @@ export interface Device {
   on<TEvent extends keyof DeviceEventMap>(event: TEvent, handler: (payload: DeviceEventMap[TEvent]) => void): Unsubscribe;
   ensureValidated(): Promise<DeviceInfo>;
   verify(): Promise<DeviceInfo>;
+  /**
+   * Asks the device for one signed record now and resolves with it once it is stored
+   * and checked (canonical string, signature, nonce). The Animal Reader waits up to
+   * 60 s for a tag; the Environment card records at once. Only one capture runs per
+   * device: another one is refused with `BUSY` / `capture_in_progress`.
+   */
+  capture(options?: import('./capture.js').CaptureOptions): Promise<import('./capture.js').CaptureResult>;
 }
 
 import type { RevocationManager } from './revocation.js';

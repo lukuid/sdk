@@ -354,6 +354,11 @@ async function verifyDetachedSignature(
   }
 }
 
+/** Verifies a record's Ed25519 `signature` over its canonical string with the device key. */
+export async function verifyRecordEd25519Signature(publicKeyBase64: string, signatureBase64: string, canonicalString: string): Promise<boolean> {
+  return verifyDetachedSignature(publicKeyBase64, canonicalString, signatureBase64);
+}
+
 async function verifyRecordSignature(
   publicKeyBase64: string,
   signatureBase64: string,
@@ -816,7 +821,11 @@ function recomputeEnvironmentCanonicalString(record: JsonObject, deviceId: strin
   const ctr = formatCanonicalField(payload.ctr, 'int');
   const timestampUtc = formatCanonicalField(payload.timestamp_utc, 'int');
   const uptimeUs = formatCanonicalField(payload.uptime_us, 'int');
-  const content = buildSortedContentString(contentSource, ENVIRONMENT_CONTENT_FIELDS);
+  // A host challenge token is a content field only when the record carries one.
+  const fieldKinds: Record<string, CanonicalFieldKind> = { ...ENVIRONMENT_CONTENT_FIELDS };
+  const nonce = asString(payload.nonce);
+  if (nonce) fieldKinds.nonce = 'string';
+  const content = buildSortedContentString(contentSource, fieldKinds);
   const previousSignature = asString(record.previous_signature) ?? '';
   return [deviceId, publicKey, 'environment', id, ctr, timestampUtc, uptimeUs, content, previousSignature].join(':');
 }

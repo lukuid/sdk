@@ -482,7 +482,7 @@ internal class BleDeviceSession(
     }
 
     private fun handleResponse(message: Map<String, Any?>, action: String) {
-        val id = message["request_id"] as? String
+        val id = (message["request_id"] as? String)?.takeIf { it.isNotEmpty() }
         val ok = message["ok"] as? Boolean ?: true
         val hasMore = message["has_more"] as? Boolean ?: false
         val error = message["message"]?.toString()
@@ -504,8 +504,9 @@ internal class BleDeviceSession(
 
         // 2. Fall back to matching by action name only for responses that carry no
         // request_id (e.g. firmware that predates this field). Fragile under
-        // concurrent same-action calls, which is exactly why (1) exists.
-        if (entry == null) {
+        // concurrent same-action calls, which is exactly why (1) exists. A reply
+        // whose request_id is not pending is dropped, never handed to another call.
+        if (entry == null && id == null) {
             val found = pendingRequests.entries.find { it.value.action == action }
             if (found != null) {
                 entryKey = found.key

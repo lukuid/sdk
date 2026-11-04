@@ -4,6 +4,7 @@ import { TinyEventEmitter } from './events.js';
 import type { DeviceAttestationInputs } from './attestation.js';
 import { verifyDeviceAttestation } from './attestation.js';
 import { DeviceTrustError } from './errors.js';
+import { CAPTURE_WINDOW_MS, isValidChallengeToken, verifyCaptureReply, type CaptureOptions, type CaptureResult } from './capture.js';
 import type {
   CommandFrame,
   Connection,
@@ -317,6 +318,25 @@ class LukuidDevice implements Device {
     return this.fetchInfo();
   }
 
+  async capture(options: CaptureOptions = {}): Promise<CaptureResult> {
+    const { token } = options;
+    if (token !== undefined && !isValidChallengeToken(token)) {
+      throw new DeviceCommandError('INVALID_ARG', 'invalid_token');
+    }
+    let info = await this.ensureValidated();
+    if (!info.key) info = await this.verify();
+    this.emitter.emit('capture', { state: 'waiting', token, windowMs: CAPTURE_WINDOW_MS, startedAt: Date.now() });
+    try {
+      const reply = await this.callWithTimeout('capture', token !== undefined ? { token } : {}, options.timeoutMs ?? this.commandTimeoutMs);
+      const result = await verifyCaptureReply(reply, info, token);
+      this.emitter.emit('capture', { state: 'captured', result });
+      return result;
+    } catch (error) {
+      this.emitter.emit('capture', { state: 'failed', error });
+      throw error;
+    }
+  }
+
   private async fetchStatus(): Promise<DeviceInfo> {
     const connection = await this.ensureConnection();
     const payload = await this.call('status', {});
@@ -337,6 +357,7 @@ class LukuidDevice implements Device {
         capabilities: [],
         firmware: undefined,
         model: typeof record.model === 'string' ? record.model : undefined,
+        product: typeof record.product === 'string' && record.product ? record.product : undefined,
         verified: false,
         sync_required: Boolean(record.needs_sync),
         counter: 0
@@ -384,6 +405,7 @@ class LukuidDevice implements Device {
 
     const info: DeviceInfo = {
         ...normalized.info,
+        product: normalized.info.product ?? this.infoValue?.product,
         verified: result.ok
     };
 
@@ -558,7 +580,12 @@ class LukuidDevice implements Device {
 
     // 1. Try to match by request_id if provided (the device echoes CommandRequest.request_id
     // verbatim, so this is authoritative whenever it's present).
-    const reqId = typeof (frame as any).request_id === 'string' ? (frame as any).request_id : frame.id;
+    // A reply whose request_id is not pending (a late reply to a timed-out call, or a
+    // reply to a request this session did not send) is dropped, never handed to
+    // another pending call of the same action.
+    const echoed = (frame as any).request_id;
+    const requestId = typeof echoed === 'string' && echoed.length > 0 ? echoed : undefined;
+    const reqId = requestId ?? frame.id;
     if (typeof reqId === 'string') {
         id = reqId;
         entry = this.pending.get(id);
@@ -567,7 +594,7 @@ class LukuidDevice implements Device {
     // 2. Fall back to matching by action name only for responses that carry no
     // request_id (e.g. firmware that predates this field). This is fragile under
     // concurrent same-action calls, which is exactly why (1) exists.
-    if (!entry) {
+    if (!entry && requestId === undefined) {
         for (const [pendingId, pendingEntry] of this.pending) {
             if (pendingEntry.action === frame.action) {
                 entry = pendingEntry;

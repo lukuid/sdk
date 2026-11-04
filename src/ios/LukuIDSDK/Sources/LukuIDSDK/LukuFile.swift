@@ -1496,8 +1496,11 @@ private func recomputeRecordCanonicalString(_ record: [String: Any], deviceID: S
     case "environment":
         var fields = ["accel_g_x", "accel_g_y", "accel_g_z", "battery_percent", "gps_accuracy_m", "gps_altitude_m", "gps_fix_quality", "gps_heading_deg", "gps_lat", "gps_lng", "gps_satellites", "gps_speed_mps", "humidity_pct", "lux", "mobile_cell_id", "mobile_lac", "mobile_mcc", "mobile_mnc", "mobile_network", "mobile_operator", "mobile_radio", "mobile_roaming", "mobile_rsrp_dbm", "mobile_rsrq_db", "mobile_rssi_dbm", "mobile_sinr_db", "pressure_hpa", "tamper", "temp_c", "vbus_present", "voc_index", "voc_raw"]
         if payload["initial_temp_c"] != nil { fields.append("initial_temp_c") }
+        // A host challenge token is a content field only when the record carries one.
+        if let nonce = payload["nonce"] as? String, !nonce.isEmpty { fields.append("nonce") }
         let accel = payload["accel_g"] as? [String: Any] ?? [:]
         let values = content(fields) { name in
+            if name == "nonce" { return string(payload, name) }
             if name.hasPrefix("accel_g_") { return number(accel[String(name.dropFirst("accel_g_".count))], decimals: 2) }
             if ["battery_percent", "gps_fix_quality", "gps_satellites", "mobile_rsrp_dbm", "mobile_rssi_dbm", "voc_index", "voc_raw"].contains(name) { return number(payload[name]) }
             if ["gps_lat", "gps_lng"].contains(name) { return number(payload[name], decimals: 6) }

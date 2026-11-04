@@ -645,15 +645,17 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
 
         // 1. Try by request_id: the device echoes CommandRequest.request_id
         // verbatim, so this is authoritative whenever it's present.
-        if let identifier = message["request_id"] as? String, let found = pendingRequests[identifier] {
+        let echoedId = (message["request_id"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+        if let identifier = echoedId, let found = pendingRequests[identifier] {
             requestId = identifier
             request = found
         }
 
         // 2. Fall back to matching by action name only for responses that carry
         // no request_id (e.g. firmware that predates this field). Fragile under
-        // concurrent same-action calls, which is exactly why (1) exists.
-        if request == nil {
+        // concurrent same-action calls, which is exactly why (1) exists. A reply
+        // whose request_id is not pending is dropped, never handed to another call.
+        if request == nil && echoedId == nil {
             if let pair = pendingRequests.first(where: { $0.value.action == action }) {
                 requestId = pair.key
                 request = pair.value

@@ -436,7 +436,8 @@ internal class SerialDeviceSession(
 
     private fun handleMessage(message: Map<String, Any?>) {
         val action = message["action"] as? String ?: return
-        val requestId = (message["request_id"] as? String) ?: (message["id"] as? String)
+        val echoedId = (message["request_id"] as? String)?.takeIf { it.isNotEmpty() }
+        val requestId = echoedId ?: (message["id"] as? String)
         val hasMore = message["has_more"] as? Boolean ?: false
         val ok = message["ok"] as? Boolean ?: (message["success"] as? Boolean ?: true)
         val error = message["message"] as? String
@@ -453,7 +454,9 @@ internal class SerialDeviceSession(
             }
         }
 
-        if (entry == null) {
+        // Match by action only when the reply echoes no request_id (older firmware);
+        // a reply whose request_id is not pending is dropped.
+        if (entry == null && echoedId == null) {
             val matched = pendingCalls.entries.find { it.value.action == action }
             if (matched != null) {
                 entryKey = matched.key

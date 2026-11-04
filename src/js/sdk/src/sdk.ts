@@ -11,8 +11,22 @@ import {
   Transport,
   TransportDeviceEvent,
   Unsubscribe,
-  RevocationManager
+  RevocationManager,
+  CaptureError
 } from '@lukuid/core';
+import type { CaptureEvent, CaptureOptions, CaptureResult } from '@lukuid/core';
+
+export interface CaptureRequestOptions extends CaptureOptions {
+  /** Device to capture with; defaults to the first connected device. */
+  device?: Device;
+  /** Show the built-in LukuID dialog (default true; ignored outside a browser). */
+  ui?: boolean;
+  /** Dialog title and instruction, replacing the product's default text. */
+  title?: string;
+  instruction?: string;
+  /** Element the dialog is attached to (default `document.body`). */
+  container?: HTMLElement;
+}
 import { isExternalCallAllowed } from './urlUtils.js';
 import { autoRegisterDefaultTransports as registerEnvTransports, readFileAsUint8Array } from './env.js';
 
@@ -140,6 +154,8 @@ export type TransportFactory = () => Promise<Transport> | Transport;
 
 interface SdkEventMap extends Record<string, unknown> {
   device: { kind: 'added' | 'removed'; device: Device };
+  /** Progress of {@link LukuidSdk.capture} on `device`. */
+  capture: { device: Device; event: CaptureEvent };
   error: { where: string; error: unknown; transport?: string; id?: string };
 }
 
@@ -627,12 +643,60 @@ export class LukuidSdk {
   }
 
   /**
-   * Shows a self-contained scanning dialog.
-   * Works in both React and vanilla JS.
+   * Asks a device for one signed record now and resolves with it once it is stored on
+   * the device and checked (canonical string, Ed25519 signature, challenge nonce).
+   *
+   * With `ui: true` (the default in a browser) a self-contained LukuID dialog shows the
+   * wait (60 s for the Animal Reader), offers to connect a device when none is
+   * connected, and shows the result or a retryable error; Cancel rejects with code
+   * `CANCELLED`. With `ui: false` nothing is drawn: follow the `capture` events.
+   * Pass `token` (see `createChallengeToken`) to bind the record to your challenge.
+   */
+  async capture(options: CaptureRequestOptions = {}): Promise<CaptureResult> {
+    const { device: requested, ui, title, instruction, container, ...captureOptions } = options;
+    const forward = (device: Device) => device.on('capture', (event) => this.emitter.emit('capture', { device, event }));
+    if (!(ui ?? true) || typeof document === 'undefined') {
+      const device = requested ?? this.getConnectedDevicesSync()[0];
+      if (!device) throw new CaptureError('NO_DEVICE', 'No LukuID device is connected');
+      const off = forward(device);
+      try {
+        return await device.capture(captureOptions);
+      } finally {
+        off();
+      }
+    }
+    const { openCaptureDialog } = await import('./ui/CaptureDialog.js');
+    const dialog = openCaptureDialog({ title, instruction }, container);
+    try {
+      const device = requested ?? this.getConnectedDevicesSync()[0] ?? (await dialog.connect(() => this.requestDevice()));
+      const off = forward(device);
+      try {
+        return await dialog.track(device, () => device.capture(captureOptions));
+      } finally {
+        off();
+      }
+    } catch (error) {
+      dialog.close();
+      throw error;
+    }
+  }
+
+  /**
+   * Shows the capture dialog and resolves with the scanned record, or `null` when the
+   * user cancels. Prefer {@link capture}, which also reports why a capture failed.
    */
   async showScanDialog(options?: import('./ui/ScanDialog.js').ScanDialogOptions): Promise<import('./ui/ScanDialog.js').ScanResult | null> {
-    const { showScanDialog } = await import('./ui/ScanDialog.js');
-    return showScanDialog(this, options);
+    let device: Device | undefined;
+    const off = this.on('capture', (event) => { device = event.device; });
+    try {
+      const result = await this.capture({ ui: true, title: options?.title, instruction: options?.instruction });
+      return device ? { device, data: result.record } : null;
+    } catch (error) {
+      if ((error as { code?: string }).code === 'CANCELLED') return null;
+      throw error;
+    } finally {
+      off();
+    }
   }
 
   /**

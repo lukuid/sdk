@@ -1617,6 +1617,9 @@ def _recompute_record_canonical_string(
         content_source["accel_g_y"] = payload.get("accel_g_y") if payload.get("accel_g_y") is not None else accel.get("y")
         content_source["accel_g_z"] = payload.get("accel_g_z") if payload.get("accel_g_z") is not None else accel.get("z")
         fields = list(_ENVIRONMENT_CONTENT_FIELDS)
+        # A host challenge token is a content field only when the record carries one.
+        if isinstance(payload.get("nonce"), str) and payload.get("nonce"):
+            fields.append("nonce")
         return ":".join([
             device_id,
             public_key,

@@ -672,6 +672,14 @@ impl LukuFile {
                         Self::format_canonical_field(Some(initial_temp), CanonKind::Float2),
                     ));
                 }
+                // A host challenge token is a content field only when the record carries one.
+                if let Some(nonce) = payload
+                    .and_then(|p| p.get("nonce"))
+                    .and_then(Value::as_str)
+                    .filter(|n| !n.is_empty())
+                {
+                    content.push(("nonce", nonce.to_string()));
+                }
                 content.sort_by(|a, b| a.0.cmp(b.0));
 
                 parts.push(device_id.to_string());

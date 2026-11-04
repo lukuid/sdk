@@ -1207,7 +1207,11 @@ class LukuArchive private constructor(
                     (prefix + content + suffix).joinToString(":")
                 }
                 "environment" -> {
-                    val optional = if (payload?.has("initial_temp_c") == true) listOf("initial_temp_c") else emptyList()
+                    // Optional content fields take their alphabetical slot only when present.
+                    val optional = buildList {
+                        if (payload != null && payload.has("initial_temp_c")) add("initial_temp_c")
+                        if ((payload?.opt("nonce") as? String).orEmpty().isNotEmpty()) add("nonce")
+                    }
                     val prefix = listOf(
                         deviceId, publicKey, "environment",
                         record.optString("id"),

@@ -11,22 +11,21 @@ npm install @lukuid/sdk
 
 **Code:**
 ```ts
-import lukuid from '@lukuid/sdk';
+import lukuid, { createChallengeToken } from '@lukuid/sdk';
 
 // 1. Connect to a device
 const device = await lukuid.requestDevice();
 
-// 2. Listen for card/tag scans
-device.on('event', ({ key, data }) => {
-  if (key === 'scan') console.log('UID:', data.uid);
-});
+// 2. Capture one signed scan now (the reader waits up to 60 s for a tag)
+const scan = await device.capture({ token: createChallengeToken() });
+console.log('Tag:', scan.record.payload.tag_id, 'nonce:', scan.nonce);
 
 // 3. Get device identity and capabilities
 const info = await device.call('info', {});
 console.log('Model:', info.model);
 
-// 4. Or use the built-in UI for a complete scanning flow
-const result = await lukuid.showScanDialog();
+// 4. Or the same with the built-in LukuID dialog
+const result = await lukuid.capture({ token: createChallengeToken() });
 
 // 5. Parse a .luku file
 const { verified, items } = await lukuid.parse(fileBytes);

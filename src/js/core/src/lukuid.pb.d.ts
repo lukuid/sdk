@@ -1690,6 +1690,200 @@ export namespace lukuid {
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
+    /** Properties of a ChallengeRequest. */
+    interface IChallengeRequest {
+
+        /** ChallengeRequest token */
+        token?: (string|null);
+    }
+
+    /** Represents a ChallengeRequest. */
+    class ChallengeRequest implements IChallengeRequest {
+
+        /**
+         * Constructs a new ChallengeRequest.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: lukuid.IChallengeRequest);
+
+        /** ChallengeRequest token. */
+        public token: string;
+
+        /**
+         * Creates a new ChallengeRequest instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns ChallengeRequest instance
+         */
+        public static create(properties?: lukuid.IChallengeRequest): lukuid.ChallengeRequest;
+
+        /**
+         * Encodes the specified ChallengeRequest message. Does not implicitly {@link lukuid.ChallengeRequest.verify|verify} messages.
+         * @param message ChallengeRequest message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: lukuid.IChallengeRequest, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified ChallengeRequest message, length delimited. Does not implicitly {@link lukuid.ChallengeRequest.verify|verify} messages.
+         * @param message ChallengeRequest message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: lukuid.IChallengeRequest, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a ChallengeRequest message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns ChallengeRequest
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): lukuid.ChallengeRequest;
+
+        /**
+         * Decodes a ChallengeRequest message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns ChallengeRequest
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): lukuid.ChallengeRequest;
+
+        /**
+         * Verifies a ChallengeRequest message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a ChallengeRequest message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns ChallengeRequest
+         */
+        public static fromObject(object: { [k: string]: any }): lukuid.ChallengeRequest;
+
+        /**
+         * Creates a plain object from a ChallengeRequest message. Also converts values to other types if specified.
+         * @param message ChallengeRequest
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: lukuid.ChallengeRequest, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this ChallengeRequest to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+
+        /**
+         * Gets the default type url for ChallengeRequest
+         * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns The default type url
+         */
+        public static getTypeUrl(typeUrlPrefix?: string): string;
+    }
+
+    /** Properties of a CaptureRequest. */
+    interface ICaptureRequest {
+
+        /** CaptureRequest token */
+        token?: (string|null);
+    }
+
+    /** Represents a CaptureRequest. */
+    class CaptureRequest implements ICaptureRequest {
+
+        /**
+         * Constructs a new CaptureRequest.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: lukuid.ICaptureRequest);
+
+        /** CaptureRequest token. */
+        public token: string;
+
+        /**
+         * Creates a new CaptureRequest instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns CaptureRequest instance
+         */
+        public static create(properties?: lukuid.ICaptureRequest): lukuid.CaptureRequest;
+
+        /**
+         * Encodes the specified CaptureRequest message. Does not implicitly {@link lukuid.CaptureRequest.verify|verify} messages.
+         * @param message CaptureRequest message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: lukuid.ICaptureRequest, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified CaptureRequest message, length delimited. Does not implicitly {@link lukuid.CaptureRequest.verify|verify} messages.
+         * @param message CaptureRequest message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: lukuid.ICaptureRequest, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a CaptureRequest message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns CaptureRequest
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): lukuid.CaptureRequest;
+
+        /**
+         * Decodes a CaptureRequest message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns CaptureRequest
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): lukuid.CaptureRequest;
+
+        /**
+         * Verifies a CaptureRequest message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a CaptureRequest message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns CaptureRequest
+         */
+        public static fromObject(object: { [k: string]: any }): lukuid.CaptureRequest;
+
+        /**
+         * Creates a plain object from a CaptureRequest message. Also converts values to other types if specified.
+         * @param message CaptureRequest
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: lukuid.CaptureRequest, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this CaptureRequest to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+
+        /**
+         * Gets the default type url for CaptureRequest
+         * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns The default type url
+         */
+        public static getTypeUrl(typeUrlPrefix?: string): string;
+    }
+
     /** Properties of a GenerateHeartbeatRequest. */
     interface IGenerateHeartbeatRequest {
     }
@@ -2924,6 +3118,12 @@ export namespace lukuid {
 
         /** CommandRequest getChain */
         getChain?: (lukuid.IGetChainRequest|null);
+
+        /** CommandRequest challenge */
+        challenge?: (lukuid.IChallengeRequest|null);
+
+        /** CommandRequest capture */
+        capture?: (lukuid.ICaptureRequest|null);
     }
 
     /** Represents a CommandRequest. */
@@ -2986,8 +3186,14 @@ export namespace lukuid {
         /** CommandRequest getChain. */
         public getChain?: (lukuid.IGetChainRequest|null);
 
+        /** CommandRequest challenge. */
+        public challenge?: (lukuid.IChallengeRequest|null);
+
+        /** CommandRequest capture. */
+        public capture?: (lukuid.ICaptureRequest|null);
+
         /** CommandRequest payload. */
-        public payload?: ("fetch"|"get"|"attest"|"config"|"otaBegin"|"otaData"|"otaDataV2"|"setAttestation"|"setHeartbeat"|"configure"|"scanEnable"|"generateHeartbeat"|"fetchTelemetry"|"getCertificate"|"getChain");
+        public payload?: ("fetch"|"get"|"attest"|"config"|"otaBegin"|"otaData"|"otaDataV2"|"setAttestation"|"setHeartbeat"|"configure"|"scanEnable"|"generateHeartbeat"|"fetchTelemetry"|"getCertificate"|"getChain"|"challenge"|"capture");
 
         /**
          * Creates a new CommandRequest instance using the specified properties.
