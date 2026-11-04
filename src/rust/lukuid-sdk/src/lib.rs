@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pub mod attestation;
 mod archive_seals;
+pub mod capture;
 pub mod device;
 pub mod framing;
 pub mod luku;

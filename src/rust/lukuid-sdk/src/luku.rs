@@ -489,6 +489,12 @@ impl LukuFile {
     /// Returns `None` when the record type (or, for `scan`, the `profile`) is
     /// not recognized — callers should treat that as "cannot verify this
     /// record's canonical field order", not as "matches".
+    /// Recomputes a record's canonical string from its own fields (`None` for a record
+    /// type or scan profile this verifier does not know).
+    pub fn recompute_canonical_string(record: &Value, device_id: &str, public_key: &str) -> Option<String> {
+        Self::expected_canonical_string(record, device_id, public_key)
+    }
+
     fn expected_canonical_string(record: &Value, device_id: &str, public_key: &str) -> Option<String> {
         let record_type = record.get("type").and_then(Value::as_str)?;
         let payload = record.get("payload");

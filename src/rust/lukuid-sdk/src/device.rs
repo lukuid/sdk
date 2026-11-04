@@ -875,6 +875,34 @@ impl Device {
         self.call("attest", opts).await
     }
 
+    /// Asks the device for one signed record now and returns it once it is stored on the
+    /// device and checked (canonical string, Ed25519 signature, nonce = `token`). The
+    /// Animal Reader waits up to 60 s for a tag (keepalive frames hold the inactivity
+    /// timeout open); the Environment card records at once. Another capture running on
+    /// the device fails with `CommandFailed("capture_in_progress")`.
+    pub async fn capture(&self, token: Option<&str>) -> Result<crate::capture::CaptureResult, DeviceError> {
+        if let Some(token) = token {
+            if !crate::capture::is_valid_challenge_token(token) {
+                return Err(DeviceError::CommandFailed("invalid_token".to_string()));
+            }
+        }
+        let (device_id, public_key) = if self.info.key.is_empty() || self.info.id.is_empty() {
+            let info = self.call("info", json!({})).await?;
+            (
+                info.get("id").and_then(Value::as_str).unwrap_or_default().to_string(),
+                info.get("key").or_else(|| info.get("public_key")).and_then(Value::as_str).unwrap_or_default().to_string(),
+            )
+        } else {
+            (self.info.id.clone(), self.info.key.clone())
+        };
+        let opts = match token {
+            Some(token) => json!({ "token": token }),
+            None => json!({}),
+        };
+        let reply = self.call("capture", opts).await?;
+        crate::capture::verify_capture_reply(&reply, &device_id, &public_key, token).map_err(DeviceError::Verification)
+    }
+
     pub async fn call(&self, key: &str, opts: Value) -> Result<Value, DeviceError> {
         self.call_with_timeout(key, opts, Duration::from_secs(self.command_timeout))
             .await
