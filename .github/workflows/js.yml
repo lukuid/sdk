@@ -253,7 +253,7 @@ jobs:
       - name: Publish to cdn.lukuid.com
         # Immutable, versioned path: https://cdn.lukuid.com/sdk/js/<version>/lukuid-sdk.global(.min).js
         # Needs CDN_ACCESS_KEY_ID / CDN_SECRET_ACCESS_KEY (a Scaleway key that can write
-        # lukuid-prod-cdn) in the `release` environment.
+        # lukuid-prod-cdn) in the `release` environment; skipped with a warning without them.
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.CDN_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.CDN_SECRET_ACCESS_KEY }}
@@ -264,8 +264,9 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${AWS_ACCESS_KEY_ID}" ] || [ -z "${AWS_SECRET_ACCESS_KEY}" ]; then
-            echo "::error::CDN_ACCESS_KEY_ID / CDN_SECRET_ACCESS_KEY are not set; the CDN bundle was not published"
-            exit 1
+            # Until the CDN key is added the release still completes; the bundle is on the GitHub release.
+            echo "::warning::CDN_ACCESS_KEY_ID / CDN_SECRET_ACCESS_KEY are not set; skipped publishing to cdn.lukuid.com"
+            exit 0
           fi
           OUT="cdn-upload/sdk/js/${VERSION}"
           mkdir -p "$OUT"
