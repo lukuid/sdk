@@ -133,6 +133,15 @@ do {
 try await device.send(data: firmwareData)
 ```
 
+### Capture a Record
+
+```swift
+let token = Capture.createToken()
+let result = try await device.capture(token: token)   // CaptureResult(id, type, record, nonce)
+```
+
+The device stores the record first, then returns it; the Animal Reader waits up to 60 s for a tag (keepalive frames keep the call alive), the Environment card records at once. Another capture running on the device fails with `capture_in_progress`. Tokens are 16–31 characters from `A–Z a–z 0–9 - _ . ~ + / =`. Before returning, the SDK verifies the record's Ed25519 signature over its canonical string with the device key and that the signed canonical string and the payload carry the token (`CaptureError` codes `RECORD_SIGNATURE_INVALID`, `NONCE_MISMATCH`); field-by-field recomputation and certificate chains are checked when the record is exported or verified as evidence.
+
 ### Listening for Events
 
 ```swift

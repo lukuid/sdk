@@ -138,6 +138,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 device.send(&firmware_bytes).await?;
 ```
 
+### Capture a Record
+
+```rust
+let token = lukuid_sdk::capture::create_challenge_token()?;
+let result = device.capture(Some(&token)).await?;   // CaptureResult { id, record_type, record, nonce }
+assert_eq!(result.nonce, token);
+```
+
+The device stores the record first, then returns it; the Animal Reader waits up to 60 s for a tag (keepalive frames keep the call alive), the Environment card records at once. Another capture running on the device fails with `capture_in_progress`. Tokens are 16–31 characters from `A–Z a–z 0–9 - _ . ~ + / =`. Before returning, the SDK recomputes the record's canonical string from its fields, verifies its Ed25519 signature with the device key and checks the nonce (`DeviceError::Verification` with `RECORD_CANONICAL_MISMATCH`, `RECORD_SIGNATURE_INVALID` or `NONCE_MISMATCH`). `lukuid_sdk::capture::verify_capture_reply` runs the same check on a reply you received yourself.
+
 ### Event Subscription
 
 Events are handled via a broadcast channel.
