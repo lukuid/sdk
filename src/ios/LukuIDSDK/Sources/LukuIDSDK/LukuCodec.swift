@@ -302,6 +302,16 @@ final class LukuCodec {
             var se = LukuIDScanEnableRequest()
             if let v = asBool("enabled") { se.enabled = v }
             request.scanEnable = se
+        case "challenge":
+            // Optional host token: becomes the nonce of the next record.
+            var ch = LukuIDChallengeRequest()
+            if let v = asString("token"), !v.isEmpty { ch.token = v }
+            request.challenge = ch
+        case "capture":
+            // Optional host token: becomes the nonce of the captured record.
+            var cp = LukuIDCaptureRequest()
+            if let v = asString("token"), !v.isEmpty { cp.token = v }
+            request.capture = cp
         case "generate_heartbeat":
             request.generateHeartbeat = LukuIDGenerateHeartbeatRequest()
         case "fetch_telemetry":

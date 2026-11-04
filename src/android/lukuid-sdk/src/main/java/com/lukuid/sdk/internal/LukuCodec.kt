@@ -756,6 +756,18 @@ internal class LukuCodec(
                     asBool("enabled")?.let { se.enabled = it }
                     builder.scanEnable = se.build()
                 }
+                "challenge" -> {
+                    // Optional host token: becomes the nonce of the next record.
+                    val ch = LukuIDProto.ChallengeRequest.newBuilder()
+                    asString("token")?.takeIf { it.isNotEmpty() }?.let { ch.token = it }
+                    builder.challenge = ch.build()
+                }
+                "capture" -> {
+                    // Optional host token: becomes the nonce of the captured record.
+                    val cp = LukuIDProto.CaptureRequest.newBuilder()
+                    asString("token")?.takeIf { it.isNotEmpty() }?.let { cp.token = it }
+                    builder.capture = cp.build()
+                }
                 "generate_heartbeat" -> {
                     builder.generateHeartbeat = LukuIDProto.GenerateHeartbeatRequest.getDefaultInstance()
                 }

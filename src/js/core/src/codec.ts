@@ -327,6 +327,11 @@ export function encodeCommandRequest(frame: DeviceFrame): Uint8Array {
     const nested: number[] = [];
     if (typeof source.enabled === 'boolean') writeBool(nested, 1, source.enabled);
     writeMessage(chunks, 12, nested);
+  } else if (action === 'challenge' || action === 'capture') {
+    // Optional host token: becomes the nonce of the next / captured record.
+    const nested: number[] = [];
+    if (typeof source.token === 'string' && source.token.length > 0) writeString(nested, 1, source.token);
+    writeMessage(chunks, action === 'challenge' ? 19 : 20, nested);
   } else if (action === 'generate_heartbeat') {
     writeMessage(chunks, 13, []);
   } else if (action === 'fetch_telemetry') {

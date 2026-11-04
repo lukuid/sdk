@@ -161,6 +161,18 @@ message ScanEnableRequest {
   bool enabled = 1;
 }
 
+// Primes the device: the next record it signs carries this token as its nonce.
+// Without a token the device generates one and returns it.
+message ChallengeRequest {
+  string token = 1;
+}
+
+// Makes one signed record now and returns it once stored. An optional token
+// becomes the record's nonce, as with ChallengeRequest.
+message CaptureRequest {
+  string token = 1;
+}
+
 message GenerateHeartbeatRequest {}
 
 message FetchTelemetryRequest {}
@@ -246,6 +258,8 @@ message CommandRequest {
     FetchTelemetryRequest fetch_telemetry = 14;
     GetCertificateRequest get_certificate = 15;
     GetChainRequest get_chain = 16;
+    ChallengeRequest challenge = 19;
+    CaptureRequest capture = 20;
   }
 }
 

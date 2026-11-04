@@ -669,6 +669,34 @@ nonisolated struct LukuIDScanEnableRequest: Sendable {
   init() {}
 }
 
+/// Primes the device: the next record it signs carries this token as its nonce.
+/// Without a token the device generates one and returns it.
+nonisolated struct LukuIDChallengeRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var token: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+/// Makes one signed record now and returns it once stored. An optional token
+/// becomes the record's nonce, as with ChallengeRequest.
+nonisolated struct LukuIDCaptureRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var token: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
 nonisolated struct LukuIDGenerateHeartbeatRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -1075,6 +1103,22 @@ nonisolated struct LukuIDCommandRequest: @unchecked Sendable {
     set {_uniqueStorage()._payload = .getChain(newValue)}
   }
 
+  var challenge: LukuIDChallengeRequest {
+    get {
+      if case .challenge(let v)? = _storage._payload {return v}
+      return LukuIDChallengeRequest()
+    }
+    set {_uniqueStorage()._payload = .challenge(newValue)}
+  }
+
+  var capture: LukuIDCaptureRequest {
+    get {
+      if case .capture(let v)? = _storage._payload {return v}
+      return LukuIDCaptureRequest()
+    }
+    set {_uniqueStorage()._payload = .capture(newValue)}
+  }
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   nonisolated enum OneOf_Payload: Equatable, Sendable {
@@ -1094,6 +1138,8 @@ nonisolated struct LukuIDCommandRequest: @unchecked Sendable {
     case fetchTelemetry(LukuIDFetchTelemetryRequest)
     case getCertificate(LukuIDGetCertificateRequest)
     case getChain(LukuIDGetChainRequest)
+    case challenge(LukuIDChallengeRequest)
+    case capture(LukuIDCaptureRequest)
 
   }
 
@@ -3518,6 +3564,66 @@ nonisolated extension LukuIDScanEnableRequest: SwiftProtobuf.Message, SwiftProto
   }
 }
 
+nonisolated extension LukuIDChallengeRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".ChallengeRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}token\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.token) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.token.isEmpty {
+      try visitor.visitSingularStringField(value: self.token, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: LukuIDChallengeRequest, rhs: LukuIDChallengeRequest) -> Bool {
+    if lhs.token != rhs.token {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension LukuIDCaptureRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".CaptureRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}token\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.token) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.token.isEmpty {
+      try visitor.visitSingularStringField(value: self.token, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: LukuIDCaptureRequest, rhs: LukuIDCaptureRequest) -> Bool {
+    if lhs.token != rhs.token {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 nonisolated extension LukuIDGenerateHeartbeatRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".GenerateHeartbeatRequest"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap()
@@ -4000,7 +4106,7 @@ nonisolated extension LukuIDHistoricalExportResponse: SwiftProtobuf.Message, Swi
 
 nonisolated extension LukuIDCommandRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".CommandRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}action\0\u{1}fetch\0\u{1}get\0\u{1}attest\0\u{1}config\0\u{3}ota_begin\0\u{3}ota_data\0\u{3}ota_data_v2\0\u{3}set_attestation\0\u{3}set_heartbeat\0\u{4}\u{2}scan_enable\0\u{3}generate_heartbeat\0\u{3}fetch_telemetry\0\u{3}get_certificate\0\u{3}get_chain\0\u{1}configure\0\u{3}request_id\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}action\0\u{1}fetch\0\u{1}get\0\u{1}attest\0\u{1}config\0\u{3}ota_begin\0\u{3}ota_data\0\u{3}ota_data_v2\0\u{3}set_attestation\0\u{3}set_heartbeat\0\u{4}\u{2}scan_enable\0\u{3}generate_heartbeat\0\u{3}fetch_telemetry\0\u{3}get_certificate\0\u{3}get_chain\0\u{1}configure\0\u{3}request_id\0\u{1}challenge\0\u{1}capture\0")
 
   fileprivate class _StorageClass {
     var _action: String = String()
@@ -4234,6 +4340,32 @@ nonisolated extension LukuIDCommandRequest: SwiftProtobuf.Message, SwiftProtobuf
           }
         }()
         case 18: try { try decoder.decodeSingularStringField(value: &_storage._requestID) }()
+        case 19: try {
+          var v: LukuIDChallengeRequest?
+          var hadOneofValue = false
+          if let current = _storage._payload {
+            hadOneofValue = true
+            if case .challenge(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._payload = .challenge(v)
+          }
+        }()
+        case 20: try {
+          var v: LukuIDCaptureRequest?
+          var hadOneofValue = false
+          if let current = _storage._payload {
+            hadOneofValue = true
+            if case .capture(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._payload = .capture(v)
+          }
+        }()
         default: break
         }
       }
@@ -4310,10 +4442,19 @@ nonisolated extension LukuIDCommandRequest: SwiftProtobuf.Message, SwiftProtobuf
         guard case .configure(let v)? = _storage._payload else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
       }()
+      case .challenge?, .capture?: break
       case nil: break
       }
       if !_storage._requestID.isEmpty {
         try visitor.visitSingularStringField(value: _storage._requestID, fieldNumber: 18)
+      }
+      // Fields 19/20 come after request_id (18), so they are written in field order here.
+      switch _storage._payload {
+      case .challenge(let v)?:
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 19)
+      case .capture(let v)?:
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 20)
+      default: break
       }
     }
     try unknownFields.traverse(visitor: &visitor)

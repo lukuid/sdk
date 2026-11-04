@@ -393,6 +393,13 @@ fn encode_command_request(input: &Value) -> Option<Vec<u8>> {
             }
             write_message(&mut out, 12, &nested);
         }
+        "challenge" | "capture" => {
+            // Optional host token: becomes the nonce of the next / captured record.
+            if let Some(token) = first_string(source, &["token"]) {
+                write_string(&mut nested, 1, &token);
+            }
+            write_message(&mut out, if action == "challenge" { 19 } else { 20 }, &nested);
+        }
         "generate_heartbeat" => {
             write_message(&mut out, 13, &nested);
         }
