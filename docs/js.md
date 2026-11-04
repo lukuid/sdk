@@ -339,6 +339,35 @@ off();
 
 **Errors:** device errors reject with `DeviceCommandError` (`BUSY` / `capture_in_progress` while another capture runs on the device, `TIMEOUT` / `no_tag_read`, `TIME_UNTRUSTED`, `INVALID_ARG` / `invalid_token`); Cancel in the dialog rejects with `CaptureError` code `CANCELLED`. A cancelled reader capture may still store a scan if a tag is read before its 60 s end. `describeCaptureError(error)` gives the dialog's plain-language text.
 
+### `lukuid.selectRecord(options?)`
+
+Opens the LukuID record dialog and resolves with **one checked record**, either a stored one or a fresh capture:
+
+- the newest records from every connected device (`fetch`), filterable by device, with **+ Add device** to connect another one;
+- selecting a record reads the full signed record (`get`) and checks it like a capture (canonical string, Ed25519 signature) and against `maxAgeSeconds`; the signed record time decides, not the list summary;
+- **New record** captures one now (asks which device when more than one is connected).
+
+```ts
+// Accept anything up to an hour old
+const pick = await lukuid.selectRecord({ maxAgeSeconds: 3600 });
+console.log(pick.fresh ? 'captured now' : `stored, ${pick.ageSeconds} s old`, pick.id, pick.device.info.id);
+
+// Accept only a fresh capture
+await lukuid.selectRecord({ maxAgeSeconds: 0 });
+
+// Require your challenge: always a fresh capture, the dialog asks which device to use
+const token = createChallengeToken();
+const proof = await lukuid.selectRecord({ token });   // proof.nonce === token
+```
+
+**Options:** `maxAgeSeconds` (omit for any age; `0` = fresh capture only), `token` (challenge; stored records cannot carry it, so only a fresh capture is offered), `limit` (records listed per device, default 20), `title`, `instruction`, `container`.
+
+**Result:** the capture result (`id`, `type`, `record`, `nonce`) plus `device`, `fresh` and `ageSeconds`. Cancel rejects with `CaptureError` code `CANCELLED`; invalid options reject with `INVALID_ARG` before the dialog opens. `selectRecord` needs a browser (`NO_UI` otherwise); progress of a capture is also emitted as `capture` events.
+
+### `lukuid.listRecords(options?)` and `device.getRecord(id, options?)`
+
+The building blocks of the dialog, for your own UI: `listRecords({ devices, maxAgeSeconds, limit })` returns `{ records, errors }` with unsigned summaries (`device`, `id`, `type`, `timestampUtc`, `tagId`, `tempC`), newest first; `device.getRecord(id, { maxAgeSeconds })` returns the checked record or rejects with `RECORD_TOO_OLD`, `RECORD_CANONICAL_MISMATCH` or `RECORD_SIGNATURE_INVALID`.
+
 ### `lukuid.showScanDialog(options?)`
 
 Runs `capture` with the dialog and resolves with `{ device, data }` (`data` is the record), or `null` when the user cancels. Prefer `capture`, which reports why a capture failed.

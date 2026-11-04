@@ -108,6 +108,11 @@ export interface Device {
    * device: another one is refused with `BUSY` / `capture_in_progress`.
    */
   capture(options?: import('./capture.js').CaptureOptions): Promise<import('./capture.js').CaptureResult>;
+  /**
+   * Reads one stored record (`get`) and checks it as `capture` does (canonical string,
+   * signature); rejects with `RECORD_TOO_OLD` when it is older than `maxAgeSeconds`.
+   */
+  getRecord(id: string, options?: { maxAgeSeconds?: number }): Promise<import('./capture.js').CaptureResult>;
 }
 
 import type { RevocationManager } from './revocation.js';

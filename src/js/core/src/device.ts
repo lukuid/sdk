@@ -4,7 +4,7 @@ import { TinyEventEmitter } from './events.js';
 import type { DeviceAttestationInputs } from './attestation.js';
 import { verifyDeviceAttestation } from './attestation.js';
 import { DeviceTrustError } from './errors.js';
-import { CAPTURE_WINDOW_MS, isValidChallengeToken, verifyCaptureReply, type CaptureOptions, type CaptureResult } from './capture.js';
+import { CAPTURE_WINDOW_MS, checkRecordAge, isValidChallengeToken, isValidMaxAge, verifyCaptureReply, type CaptureOptions, type CaptureResult } from './capture.js';
 import type {
   CommandFrame,
   Connection,
@@ -316,6 +316,18 @@ class LukuidDevice implements Device {
 
   async verify(): Promise<DeviceInfo> {
     return this.fetchInfo();
+  }
+
+  async getRecord(id: string, options: { maxAgeSeconds?: number } = {}): Promise<CaptureResult> {
+    if (!isValidMaxAge(options.maxAgeSeconds)) {
+      throw new DeviceCommandError('INVALID_ARG', 'invalid_max_age');
+    }
+    let info = await this.ensureValidated();
+    if (!info.key) info = await this.verify();
+    const reply = await this.call('get', { id });
+    const result = await verifyCaptureReply(reply, info);
+    checkRecordAge(result, options.maxAgeSeconds);
+    return result;
   }
 
   async capture(options: CaptureOptions = {}): Promise<CaptureResult> {

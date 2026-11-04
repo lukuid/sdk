@@ -95,3 +95,25 @@ export async function verifyCaptureReply(reply: unknown, info: Pick<DeviceInfo, 
   const id = typeof record.id === 'string' ? record.id : typeof full?.id === 'string' ? (full.id as string) : '';
   return { id, type, record, nonce };
 }
+
+/** Seconds since a record was made, from its signed `timestamp_utc` (never negative). */
+export function recordAgeSeconds(record: JsonObject, nowMs: number = Date.now()): number {
+  const payload = (record.payload as JsonObject | undefined) ?? {};
+  const raw = Number(payload.timestamp_utc ?? 0);
+  const seconds = raw > 10_000_000_000 ? raw / 1000 : raw;
+  return Math.max(0, Math.floor(nowMs / 1000 - seconds));
+}
+
+/** Throws `RECORD_TOO_OLD` when a record is older than `maxAgeSeconds` (no limit when undefined). */
+export function checkRecordAge(result: CaptureResult, maxAgeSeconds?: number, nowMs: number = Date.now()): number {
+  const age = recordAgeSeconds(result.record, nowMs);
+  if (maxAgeSeconds !== undefined && age > maxAgeSeconds) {
+    throw new CaptureError('RECORD_TOO_OLD', `The record is ${age} s old; at most ${maxAgeSeconds} s is accepted`);
+  }
+  return age;
+}
+
+/** `maxAgeSeconds` must be a finite number ≥ 0 when given (0: only fresh captures). */
+export function isValidMaxAge(maxAgeSeconds: unknown): boolean {
+  return maxAgeSeconds === undefined || (typeof maxAgeSeconds === 'number' && Number.isFinite(maxAgeSeconds) && maxAgeSeconds >= 0);
+}

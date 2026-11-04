@@ -15,7 +15,55 @@ import {
   CaptureError
 } from '@lukuid/core';
 import type { CaptureEvent, CaptureOptions, CaptureResult } from '@lukuid/core';
+import { isValidChallengeToken, isValidMaxAge } from '@lukuid/core';
 
+/** One stored record as listed by a device's `fetch` (unsigned summary; select it to check it). */
+export interface RecordSummary {
+  device: Device;
+  id: string;
+  type: 'scan' | 'environment';
+  /** Record time (Unix seconds, as the device signed it in the full record). */
+  timestampUtc: number;
+  tagId?: string;
+  tempC?: number;
+}
+
+export interface ListRecordsOptions {
+  /** Devices to read (default: all connected devices). */
+  devices?: Device[];
+  /** Only records at most this old (seconds). */
+  maxAgeSeconds?: number;
+  /** Newest records per device (default 20). */
+  limit?: number;
+}
+
+export interface SelectRecordOptions {
+  /**
+   * Oldest record the site accepts, in seconds. Omit for any age; 0 accepts only a fresh
+   * capture (no history is shown).
+   */
+  maxAgeSeconds?: number;
+  /**
+   * Challenge token the record must carry as its signed nonce (see createChallengeToken).
+   * Stored records cannot carry a new token, so the dialog only offers a fresh capture and
+   * asks which device to make it with.
+   */
+  token?: string;
+  /** Newest records listed per device (default 20). */
+  limit?: number;
+  title?: string;
+  instruction?: string;
+  container?: HTMLElement;
+}
+
+/** The record chosen in selectRecord: a stored one or a fresh capture, checked either way. */
+export interface RecordSelection extends CaptureResult {
+  device: Device;
+  /** true when the record was captured in this dialog. */
+  fresh: boolean;
+  /** Age in seconds when it was returned. */
+  ageSeconds: number;
+}
 export interface CaptureRequestOptions extends CaptureOptions {
   /** Device to capture with; defaults to the first connected device. */
   device?: Device;
@@ -678,6 +726,87 @@ export class LukuidSdk {
     } catch (error) {
       dialog.close();
       throw error;
+    }
+  }
+
+  /**
+   * Lists recent stored records from connected devices, newest first. Entries are the
+   * devices' unsigned `fetch` summaries: check a chosen one with `device.getRecord(id)`.
+   * Devices that cannot be read are reported in `errors`.
+   */
+  async listRecords(options: ListRecordsOptions = {}): Promise<{ records: RecordSummary[]; errors: Array<{ device: Device; error: unknown }> }> {
+    if (!isValidMaxAge(options.maxAgeSeconds)) throw new CaptureError('INVALID_ARG', 'maxAgeSeconds must be a number >= 0');
+    const devices = options.devices ?? this.getConnectedDevicesSync();
+    const limit = options.limit ?? 20;
+    const starts = options.maxAgeSeconds === undefined ? undefined : Math.floor(Date.now() / 1000) - options.maxAgeSeconds;
+    const records: RecordSummary[] = [];
+    const errors: Array<{ device: Device; error: unknown }> = [];
+    await Promise.all(devices.map(async (device) => {
+      try {
+        const reply = await device.call('fetch', starts === undefined ? { limit } : { limit, starts });
+        const data = (reply as { data?: unknown[] } | unknown[]);
+        const entries = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+        for (const entry of entries as Array<{ type?: string; record?: Record<string, unknown> }>) {
+          const record = entry?.record ?? {};
+          const id = String(record.id ?? record.record_id ?? '');
+          const raw = Number(record.timestamp_utc ?? 0);
+          if (!id || !raw) continue;
+          const timestampUtc = raw > 10_000_000_000 ? Math.floor(raw / 1000) : raw;
+          if (starts !== undefined && timestampUtc < starts) continue;
+          const temp = record.temp_c as { value?: number; avg?: number } | number | undefined;
+          records.push({
+            device,
+            id,
+            type: entry.type === 'environment_min' ? 'environment' : 'scan',
+            timestampUtc,
+            tagId: typeof record.tag_id === 'string' && record.tag_id ? record.tag_id : undefined,
+            tempC: typeof temp === 'number' ? temp : typeof temp?.value === 'number' ? temp.value : typeof temp?.avg === 'number' ? temp.avg : undefined
+          });
+        }
+      } catch (error) {
+        errors.push({ device, error });
+      }
+    }));
+    records.sort((a, b) => b.timestampUtc - a.timestampUtc);
+    return { records, errors };
+  }
+
+  /**
+   * Opens the LukuID record dialog: recent records from connected devices (filter by
+   * device, connect more), or a fresh capture. Resolves with the chosen record once it is
+   * checked (canonical string, Ed25519 signature, age, and the nonce when `token` is set).
+   * `maxAgeSeconds: 0` or a `token` allow only a fresh capture. Cancel rejects with code
+   * `CANCELLED`.
+   */
+  async selectRecord(options: SelectRecordOptions = {}): Promise<RecordSelection> {
+    const { maxAgeSeconds, token, limit, title, instruction, container } = options;
+    if (!isValidMaxAge(maxAgeSeconds)) throw new CaptureError('INVALID_ARG', 'maxAgeSeconds must be a number >= 0');
+    if (token !== undefined && !isValidChallengeToken(token)) throw new CaptureError('INVALID_ARG', 'invalid_token');
+    if (typeof document === 'undefined') throw new CaptureError('NO_UI', 'selectRecord needs a browser document');
+    const { openCaptureDialog } = await import('./ui/CaptureDialog.js');
+    const dialog = openCaptureDialog({ title, instruction }, container);
+    const offs: Array<() => void> = [];
+    const forward = (device: Device) => offs.push(device.on('capture', (event) => this.emitter.emit('capture', { device, event })));
+    try {
+      const picked = await dialog.select({
+        allowHistory: maxAgeSeconds !== 0 && token === undefined,
+        challenged: token !== undefined,
+        maxAgeSeconds,
+        devices: () => this.getConnectedDevicesSync(),
+        addDevice: () => this.requestDevice(),
+        listRecords: (devices) => this.listRecords({ devices, maxAgeSeconds, limit }),
+        getRecord: (summary) => summary.device.getRecord(summary.id, { maxAgeSeconds }),
+        capture: (device) => {
+          forward(device);
+          return device.capture(token !== undefined ? { token } : {});
+        }
+      });
+      return { ...picked.result, device: picked.device, fresh: picked.fresh, ageSeconds: picked.ageSeconds };
+    } catch (error) {
+      dialog.close();
+      throw error;
+    } finally {
+      offs.forEach((off) => off());
     }
   }
 

@@ -4,7 +4,7 @@ import { LukuidSdk } from './sdk.js';
 export * from '@lukuid/core';
 export { LukuidSdk, LukuidRequestError } from './sdk.js';
 export { describeCaptureError } from './ui/CaptureDialog.js';
-export type { CaptureRequestOptions } from './sdk.js';
+export type { CaptureRequestOptions, RecordSummary, ListRecordsOptions, SelectRecordOptions, RecordSelection } from './sdk.js';
 export type {
   DeviceDiscoveryOptions,
   DiscoveredDevice,
