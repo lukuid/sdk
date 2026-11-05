@@ -1859,7 +1859,8 @@ export class LukuFile {
         )
       );
     }
-    const canonicalForSignature = recomputedCanonical ?? canonicalStringValue;
+    // Verify the stored canonical_string the device signed (see the archive path above).
+    const canonicalForSignature = canonicalStringValue;
 
     if (verificationSkipsDeviceSignature) {
       // A `verification` record with no collector_attestation and no
@@ -1872,10 +1873,7 @@ export class LukuFile {
       issues.push(issue('RECORD_SIGNATURE_MISSING', `Record type ${recordType} is missing a signature.`, 'critical'));
     } else if (publicKey) {
       const verified = await verifyRecordSignature(publicKey, signature, canonicalForSignature);
-      const storedVerified = canonicalStringValue.length > 0 && canonicalStringValue !== canonicalForSignature
-        ? await verifyRecordSignature(publicKey, signature, canonicalStringValue)
-        : verified;
-      if (!verified || !storedVerified) {
+      if (!verified) {
         issues.push(issue('RECORD_SIGNATURE_INVALID', `Invalid signature for record type ${recordType}.`, 'critical'));
       }
     }
@@ -2594,7 +2592,10 @@ export class LukuFile {
             )
           );
         }
-        const canonicalForSignature = recomputedCanonical ?? canonicalStringValue;
+        // The device signed the stored canonical_string (sdk/ERRORS.md: the record's native
+        // signature). Verify that string, as every other SDK does; a payload that no longer
+        // matches it is RECORD_CANONICAL_MISMATCH above, and a missing one is never rebuilt.
+        const canonicalForSignature = canonicalStringValue;
 
         if (verificationSkipsDeviceSignature) {
           // No collector_attestation and no top-level signature: this
