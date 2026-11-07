@@ -105,7 +105,8 @@ internal class BleDeviceSession(
         val accumulatedData: MutableList<Any?> = mutableListOf(),
         val accumulatedBatches: MutableList<Any?> = mutableListOf(),
         val accumulatedExportEntries: MutableList<Any?> = mutableListOf(),
-        val activity: ActivityClock = ActivityClock()
+        val activity: ActivityClock = ActivityClock(),
+        val frames: FrameSequence = FrameSequence()
     )
     private val pendingRequests = ConcurrentHashMap<String, PendingRequest>()
     
@@ -515,6 +516,14 @@ internal class BleDeviceSession(
         }
 
         if (entry == null || entryKey == null) return
+
+        // Fail closed on a lost frame: an incomplete reply is never returned as success.
+        val seqError = entry.frames.accept((message["frame_seq"] as? Number)?.toLong())
+        if (seqError != null) {
+            pendingRequests.remove(entryKey)
+            entry.deferred.completeExceptionally(IOException(seqError))
+            return
+        }
 
         if (!ok) {
             pendingRequests.remove(entryKey)

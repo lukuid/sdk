@@ -7009,6 +7009,9 @@ export namespace lukuid {
 
         /** CommandResponse hasMore */
         hasMore?: (boolean|null);
+
+        /** CommandResponse frameSeq */
+        frameSeq?: (number|null);
     }
 
     /** Represents a CommandResponse. */
@@ -7085,6 +7088,9 @@ export namespace lukuid {
 
         /** CommandResponse hasMore. */
         public hasMore?: (boolean|null);
+
+        /** CommandResponse frameSeq. */
+        public frameSeq?: (number|null);
 
         /** CommandResponse payload. */
         public payload?: ("deviceInfo"|"networkConfig"|"scanRecord"|"envRecord"|"fetchResponse"|"fullRecordResponse"|"recordBatches"|"heartbeatInit"|"statusResponse"|"fetchTelemetry"|"certificateResponse"|"chainResponse"|"historicalExport");

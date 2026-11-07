@@ -112,6 +112,7 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
         var accumulatedData: [Any] = []
         var accumulatedBatches: [Any] = []
         var accumulatedExportEntries: [Any] = []
+        var frames = FrameSequence()
 
         init(action: String, continuation: CheckedContinuation<Any, Error>, timeoutSeconds: TimeInterval) {
             self.action = action
@@ -663,6 +664,12 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
         }
 
         guard let requestId, let request else { return }
+
+        // Fail closed on a lost frame: an incomplete reply is never returned as success.
+        if let seqError = request.frames.accept((message["frame_seq"] as? NSNumber)?.intValue) {
+            completePending(requestId: requestId, result: .failure(NSError(domain: "lukuid", code: -9, userInfo: [NSLocalizedDescriptionKey: seqError])))
+            return
+        }
 
         if !ok {
             completePending(requestId: requestId, result: .failure(NSError(domain: "lukuid", code: -8, userInfo: [NSLocalizedDescriptionKey: errorText])))

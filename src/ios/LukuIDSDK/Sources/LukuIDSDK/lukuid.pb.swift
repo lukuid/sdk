@@ -2780,6 +2780,17 @@ nonisolated struct LukuIDCommandResponse: @unchecked Sendable {
   /// Clears the value of `hasMore_p`. Subsequent reads from it will return its default value.
   mutating func clearHasMore_p() {_uniqueStorage()._hasMore_p = nil}
 
+  /// Streamed replies: 1, 2, 3... on every frame of one request's reply, from the
+  /// first has_more=true frame through the closing frame. A gap means a lost frame.
+  var frameSeq: UInt32 {
+    get {_storage._frameSeq ?? 0}
+    set {_uniqueStorage()._frameSeq = newValue}
+  }
+  /// Returns true if `frameSeq` has been explicitly set.
+  var hasFrameSeq: Bool {_storage._frameSeq != nil}
+  /// Clears the value of `frameSeq`. Subsequent reads from it will return its default value.
+  mutating func clearFrameSeq() {_uniqueStorage()._frameSeq = nil}
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   nonisolated enum OneOf_Payload: Equatable, Sendable {
@@ -7020,7 +7031,7 @@ nonisolated extension LukuIDHeartbeatInitResponse: SwiftProtobuf.Message, SwiftP
 
 nonisolated extension LukuIDCommandResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".CommandResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}action\0\u{1}status\0\u{1}success\0\u{3}error_code\0\u{1}message\0\u{3}device_info\0\u{3}network_config\0\u{3}scan_record\0\u{3}env_record\0\u{3}fetch_response\0\u{3}full_record_response\0\u{1}signature\0\u{1}key\0\u{3}heartbeat_init\0\u{3}record_batches\0\u{3}status_response\0\u{3}fetch_telemetry\0\u{3}has_more\0\u{3}certificate_response\0\u{3}historical_export\0\u{3}chain_response\0\u{3}request_id\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}action\0\u{1}status\0\u{1}success\0\u{3}error_code\0\u{1}message\0\u{3}device_info\0\u{3}network_config\0\u{3}scan_record\0\u{3}env_record\0\u{3}fetch_response\0\u{3}full_record_response\0\u{1}signature\0\u{1}key\0\u{3}heartbeat_init\0\u{3}record_batches\0\u{3}status_response\0\u{3}fetch_telemetry\0\u{3}has_more\0\u{3}certificate_response\0\u{3}historical_export\0\u{3}chain_response\0\u{3}request_id\0\u{3}frame_seq\0")
 
   fileprivate class _StorageClass {
     var _action: String = String()
@@ -7033,6 +7044,7 @@ nonisolated extension LukuIDCommandResponse: SwiftProtobuf.Message, SwiftProtobu
     var _signature: Data? = nil
     var _key: Data? = nil
     var _hasMore_p: Bool? = nil
+    var _frameSeq: UInt32? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -7053,6 +7065,7 @@ nonisolated extension LukuIDCommandResponse: SwiftProtobuf.Message, SwiftProtobu
       _signature = source._signature
       _key = source._key
       _hasMore_p = source._hasMore_p
+      _frameSeq = source._frameSeq
     }
   }
 
@@ -7209,6 +7222,7 @@ nonisolated extension LukuIDCommandResponse: SwiftProtobuf.Message, SwiftProtobu
           }
         }()
         case 18: try { try decoder.decodeSingularBoolField(value: &_storage._hasMore_p) }()
+        case 23: try { try decoder.decodeSingularUInt32Field(value: &_storage._frameSeq) }()
         case 19: try {
           var v: LukuIDGetCertificateResponse?
           var hadOneofValue = false
@@ -7349,6 +7363,9 @@ nonisolated extension LukuIDCommandResponse: SwiftProtobuf.Message, SwiftProtobu
       if !_storage._requestID.isEmpty {
         try visitor.visitSingularStringField(value: _storage._requestID, fieldNumber: 22)
       }
+      try { if let v = _storage._frameSeq {
+        try visitor.visitSingularUInt32Field(value: v, fieldNumber: 23)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -7368,6 +7385,7 @@ nonisolated extension LukuIDCommandResponse: SwiftProtobuf.Message, SwiftProtobu
         if _storage._signature != rhs_storage._signature {return false}
         if _storage._key != rhs_storage._key {return false}
         if _storage._hasMore_p != rhs_storage._hasMore_p {return false}
+        if _storage._frameSeq != rhs_storage._frameSeq {return false}
         return true
       }
       if !storagesAreEqual {return false}

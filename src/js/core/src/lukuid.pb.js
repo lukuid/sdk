@@ -20455,6 +20455,7 @@ export const lukuid = $root.lukuid = (() => {
          * @property {Uint8Array|null} [signature] CommandResponse signature
          * @property {Uint8Array|null} [key] CommandResponse key
          * @property {boolean|null} [hasMore] CommandResponse hasMore
+         * @property {number|null} [frameSeq] CommandResponse frameSeq
          */
 
         /**
@@ -20648,6 +20649,14 @@ export const lukuid = $root.lukuid = (() => {
          */
         CommandResponse.prototype.hasMore = null;
 
+        /**
+         * CommandResponse frameSeq.
+         * @member {number|null|undefined} frameSeq
+         * @memberof lukuid.CommandResponse
+         * @instance
+         */
+        CommandResponse.prototype.frameSeq = null;
+
         // OneOf field names bound to virtual getters and setters
         let $oneOfFields;
 
@@ -20677,6 +20686,12 @@ export const lukuid = $root.lukuid = (() => {
         // Virtual OneOf for proto3 optional field
         Object.defineProperty(CommandResponse.prototype, "_hasMore", {
             get: $util.oneOfGetter($oneOfFields = ["hasMore"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(CommandResponse.prototype, "_frameSeq", {
+            get: $util.oneOfGetter($oneOfFields = ["frameSeq"]),
             set: $util.oneOfSetter($oneOfFields)
         });
 
@@ -20748,6 +20763,8 @@ export const lukuid = $root.lukuid = (() => {
                 $root.lukuid.GetChainResponse.encode(message.chainResponse, writer.uint32(/* id 21, wireType 2 =*/170).fork()).ldelim();
             if (message.requestId != null && Object.hasOwnProperty.call(message, "requestId"))
                 writer.uint32(/* id 22, wireType 2 =*/178).string(message.requestId);
+            if (message.frameSeq != null && Object.hasOwnProperty.call(message, "frameSeq"))
+                writer.uint32(/* id 23, wireType 0 =*/184).uint32(message.frameSeq);
             return writer;
         };
 
@@ -20870,6 +20887,10 @@ export const lukuid = $root.lukuid = (() => {
                     }
                 case 18: {
                         message.hasMore = reader.bool();
+                        break;
+                    }
+                case 23: {
+                        message.frameSeq = reader.uint32();
                         break;
                     }
                 default:
@@ -21076,6 +21097,11 @@ export const lukuid = $root.lukuid = (() => {
                 if (typeof message.hasMore !== "boolean")
                     return "hasMore: boolean expected";
             }
+            if (message.frameSeq != null && message.hasOwnProperty("frameSeq")) {
+                properties._frameSeq = 1;
+                if (!$util.isInteger(message.frameSeq))
+                    return "frameSeq: integer expected";
+            }
             return null;
         };
 
@@ -21202,6 +21228,8 @@ export const lukuid = $root.lukuid = (() => {
                     message.key = object.key;
             if (object.hasMore != null)
                 message.hasMore = Boolean(object.hasMore);
+            if (object.frameSeq != null)
+                message.frameSeq = object.frameSeq >>> 0;
             return message;
         };
 
@@ -21318,6 +21346,11 @@ export const lukuid = $root.lukuid = (() => {
             }
             if (message.requestId != null && message.hasOwnProperty("requestId"))
                 object.requestId = message.requestId;
+            if (message.frameSeq != null && message.hasOwnProperty("frameSeq")) {
+                object.frameSeq = message.frameSeq;
+                if (options.oneofs)
+                    object._frameSeq = "frameSeq";
+            }
             return object;
         };
 

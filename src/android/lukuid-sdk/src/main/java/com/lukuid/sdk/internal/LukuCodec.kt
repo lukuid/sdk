@@ -184,6 +184,7 @@ internal class LukuCodec(
         // carry the request correlation id without colliding.
         if (response.requestId.isNotEmpty()) map["request_id"] = response.requestId
         if (response.hasHasMore()) map["has_more"] = response.hasMore
+        if (response.hasFrameSeq()) map["frame_seq"] = response.frameSeq.toLong() and 0xFFFFFFFFL
 
         if (response.errorCode.isNotEmpty()) map["error_code"] = response.errorCode
         if (response.message.isNotEmpty()) {

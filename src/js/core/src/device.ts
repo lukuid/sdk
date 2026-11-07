@@ -245,6 +245,7 @@ class LukuidDevice implements Device {
       this.pending.set(id, {
         action: key,
         chunks: { data: [], batches: [], exportEntries: [] },
+        lastFrameSeq: 0,
         armTimeout,
         resolve: (val) => {
           clearTimeout(timer);
@@ -620,6 +621,17 @@ class LukuidDevice implements Device {
       return;
     }
 
+    // Streamed replies number every frame 1, 2, 3...: a gap, or an unnumbered frame
+    // after numbered ones, means a lost frame. Fail closed instead of returning an
+    // incomplete reply. Firmware that does not number frames is not checked.
+    const frameSeq = (frame as unknown as Record<string, unknown>).frame_seq;
+    const seqError = checkFrameSeq(entry, typeof frameSeq === 'number' ? frameSeq : undefined);
+    if (seqError) {
+      this.pending.delete(id);
+      entry.reject(new DeviceCommandError('FRAME_SEQUENCE_GAP', seqError));
+      return;
+    }
+
     if (!frame.ok) {
       this.pending.delete(id);
       const error: Record<string, unknown> & { code: string; msg?: string } =
@@ -700,9 +712,22 @@ interface PendingCommand {
     batches: unknown[];
     exportEntries: unknown[];
   };
+  /** Highest `frame_seq` received for this reply (0: none yet). */
+  lastFrameSeq: number;
   armTimeout(): void;
   resolve(value: unknown): void;
   reject(error: unknown): void;
+}
+
+function checkFrameSeq(entry: PendingCommand, frameSeq: number | undefined): string | null {
+  if (frameSeq === undefined) {
+    return entry.lastFrameSeq > 0 ? `unnumbered frame after frame ${entry.lastFrameSeq}` : null;
+  }
+  if (frameSeq !== entry.lastFrameSeq + 1) {
+    return `expected frame ${entry.lastFrameSeq + 1}, received frame ${frameSeq}`;
+  }
+  entry.lastFrameSeq = frameSeq;
+  return null;
 }
 
 function isDeviceFrame(value: unknown): value is DeviceFrame {

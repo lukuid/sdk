@@ -471,6 +471,9 @@ function decodeCommandResponse(payload: Uint8Array): JsonRecord | null {
       case 18:
         assignBool(payload, cursor, wireType, out, 'has_more');
         break;
+      case 23:
+        assignUint32(payload, cursor, wireType, out, 'frame_seq');
+        break;
       case 22: {
         const reqId = readStringField(payload, cursor, wireType);
         if (reqId !== null) {

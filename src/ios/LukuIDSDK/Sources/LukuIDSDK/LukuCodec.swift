@@ -339,6 +339,9 @@ final class LukuCodec {
         if response.hasHasMore_p {
             dict["has_more"] = response.hasMore_p
         }
+        if response.hasFrameSeq {
+            dict["frame_seq"] = Int(response.frameSeq)
+        }
 
         if !response.errorCode.isEmpty {
             dict["error_code"] = response.errorCode

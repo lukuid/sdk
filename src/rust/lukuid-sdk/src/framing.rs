@@ -506,6 +506,7 @@ fn decode_command_response(bytes: &[u8]) -> Option<Value> {
                 out.insert("historical_export".to_string(), Value::Object(export));
             }
             18 => insert_bool(bytes, &mut cursor, wire_type, &mut out, "has_more")?,
+            23 => insert_u32(bytes, &mut cursor, wire_type, &mut out, "frame_seq")?,
             14 => {
                 let message = read_length_delimited(bytes, &mut cursor, wire_type)?;
                 let heartbeat = decode_heartbeat_init_response(message)?;

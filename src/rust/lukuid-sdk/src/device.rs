@@ -46,6 +46,31 @@ struct PendingCommand {
     // Last time a frame for this command arrived; streamed replies (`has_more`)
     // keep the command alive, so the timeout measures inactivity, not total time.
     last_activity: std::time::Instant,
+    // Highest `frame_seq` received so far for this reply (0: none yet).
+    last_frame_seq: u64,
+}
+
+/// Checks the `frame_seq` of the next frame of a reply. Streamed replies number every
+/// frame 1, 2, 3...; a gap, or an unnumbered frame after numbered ones, means a frame
+/// was lost and the reply is incomplete. Replies from firmware that does not number
+/// frames carry none and are not checked.
+fn check_frame_seq(last: &mut u64, frame_seq: Option<u64>) -> Result<(), String> {
+    match frame_seq {
+        Some(seq) if seq == *last + 1 => {
+            *last = seq;
+            Ok(())
+        }
+        Some(seq) => Err(format!(
+            "FRAME_SEQUENCE_GAP: expected frame {}, received frame {}",
+            *last + 1,
+            seq
+        )),
+        None if *last > 0 => Err(format!(
+            "FRAME_SEQUENCE_GAP: unnumbered frame after frame {}",
+            *last
+        )),
+        None => Ok(()),
+    }
 }
 
 fn value_as_u64_integral(value: &Value) -> Option<u64> {
@@ -298,6 +323,7 @@ impl Device {
                                 accumulated_full_records: Vec::new(),
                                 accumulated_export_entries: Vec::new(),
                                 last_activity: std::time::Instant::now(),
+                                last_frame_seq: 0,
                             });
                         }
 
@@ -1088,6 +1114,28 @@ fn process_frame(
             }
             if match_id.is_none() && debug_logging {
                 eprintln!("[lukuid-sdk] Dropped reply action={} request_id={:?}: no pending request", action, request_id);
+            }
+
+            let mut lost_frame: Option<(CommandCallback, String)> = None;
+            if let Some(id) = match_id.clone() {
+                let frame_seq = obj.get("frame_seq").and_then(value_as_u64_integral);
+                let seq_result = map
+                    .get_mut(&id)
+                    .map(|p| check_frame_seq(&mut p.last_frame_seq, frame_seq))
+                    .unwrap_or(Ok(()));
+                if let Err(msg) = seq_result {
+                    // Fail closed: an incomplete reply is never returned as success.
+                    if let Some(p) = map.remove(&id) {
+                        lost_frame = Some((p.callback, msg));
+                    }
+                    match_id = None;
+                }
+            }
+            if let Some((cb, msg)) = lost_frame {
+                if debug_logging {
+                    eprintln!("[lukuid-sdk] {} (action={})", msg, action);
+                }
+                let _ = cb.send(Err(DeviceError::CommandFailed(msg)));
             }
 
             if let Some(id) = match_id {

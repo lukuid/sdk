@@ -299,7 +299,8 @@ internal class SerialDeviceSession(
         val accumulatedData: MutableList<Any?> = mutableListOf(),
         val accumulatedBatches: MutableList<Any?> = mutableListOf(),
         val accumulatedExportEntries: MutableList<Any?> = mutableListOf(),
-        val activity: ActivityClock = ActivityClock()
+        val activity: ActivityClock = ActivityClock(),
+        val frames: FrameSequence = FrameSequence()
     )
 
     private val eventCallbacks = CopyOnWriteArraySet<(DeviceEventPayload) -> Unit>()
@@ -465,6 +466,14 @@ internal class SerialDeviceSession(
         }
 
         if (entry != null && entryKey != null) {
+            // Fail closed on a lost frame: an incomplete reply is never returned as success.
+            val seqError = entry.frames.accept((message["frame_seq"] as? Number)?.toLong())
+            if (seqError != null) {
+                pendingCalls.remove(entryKey)
+                entry.deferred.completeExceptionally(IOException(seqError))
+                return
+            }
+
             if (!ok) {
                 pendingCalls.remove(entryKey)
                 entry.deferred.completeExceptionally(IOException(error ?: "Command failed"))
