@@ -510,6 +510,9 @@ public final class LukuArchive {
                 let counter = uint64(payload?["ctr"])
                 let genesisHash = payload?["genesis_hash"] as? String ?? ""
 
+                if let firmwareIssue = firmwareMissingIssue(record, recordType: recordType, location: " on device \(deviceID)") {
+                    issues.append(firmwareIssue)
+                }
                 if !canonicalString.isEmpty {
                     if let recomputed = recomputeRecordCanonicalString(record, deviceID: deviceID, publicKey: publicKey) {
                         if recomputed != canonicalString {
@@ -897,6 +900,9 @@ public enum LukuFile {
         let genesisHash = payload["genesis_hash"] as? String ?? ""
         let previousSignature = envelope["previous_signature"] as? String ?? ""
 
+        if let firmwareIssue = firmwareMissingIssue(envelope, recordType: recordType, location: "") {
+            issues.append(firmwareIssue)
+        }
         if !canonicalStringValue.isEmpty {
             if let recomputed = recomputeRecordCanonicalString(envelope, deviceID: deviceId, publicKey: publicKey) {
                 if recomputed != canonicalStringValue {
@@ -1458,6 +1464,19 @@ private func uint64(_ value: Any?) -> UInt64? {
     }
 }
 
+// LUKU.md "Firmware Binding": a device-signed record without a signed firmware version was
+// made by firmware from before the rule. It still verifies; this warning says so.
+func firmwareMissingIssue(_ record: [String: Any], recordType: String, location: String) -> VerificationIssue? {
+    let source: [String: Any]
+    switch recordType {
+    case "scan", "environment", "biometric": source = record["payload"] as? [String: Any] ?? [:]
+    case "attachment", "location", "custody": source = record
+    default: return nil
+    }
+    if let firmware = source["firmware"] as? String, !firmware.isEmpty { return nil }
+    return VerificationIssue(code: "RECORD_FIRMWARE_MISSING", message: "Record type \(recordType)\(location) does not carry a signed firmware version.", criticality: .warning)
+}
+
 // Rebuild record canonical strings from structured values. Content field names are
 // sorted at runtime: JSON member order and declaration order are never trusted.
 private func recomputeRecordCanonicalString(_ record: [String: Any], deviceID: String, publicKey: String) -> String? {
@@ -1466,8 +1485,9 @@ private func recomputeRecordCanonicalString(_ record: [String: Any], deviceID: S
     func string(_ source: [String: Any], _ name: String) -> String { source[name] as? String ?? "" }
     // `environment`, `attachment`, `location` and `custody` carry `firmware` as the last
     // structural-prefix field (LUKU.md). Records made before devices signed it have no
-    // `firmware` and keep the older layout without the slot; the signature covers the stored
-    // string, so the slot cannot be stripped from a record that was signed with it.
+    // `firmware` and keep the older layout without the slot (`RECORD_FIRMWARE_MISSING` warning);
+    // the signature covers the stored string, so the slot cannot be stripped from a record that
+    // was signed with it.
     func firmwareSlot(_ source: [String: Any]) -> [String] {
         let firmware = string(source, "firmware")
         return firmware.isEmpty ? [] : [firmware]

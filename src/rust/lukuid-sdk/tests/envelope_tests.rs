@@ -47,7 +47,9 @@ fn test_verify_envelope_valid() {
     options.trust_profile = "test".to_string();
 
     let issues = LukuFile::verify_envelope(&envelope, options);
-    assert!(issues.is_empty(), "Expected no issues, got: {:?}", issues);
+    // The sample was signed before firmware binding, so its only issue is that warning.
+    let found: Vec<(String, String)> = issues.iter().map(|i| (format!("{:?}", i.criticality), i.code.clone())).collect();
+    assert_eq!(found, vec![("Warning".to_string(), "RECORD_FIRMWARE_MISSING".to_string())], "{:?}", issues);
 }
 
 use rand_core::OsRng;

@@ -88,11 +88,29 @@ describe('firmware binding', () => {
     }
   });
 
+  it('records from before firmware binding verify with a RECORD_FIRMWARE_MISSING warning', async () => {
+    const legacy = await open('first-passable-verification-sample.luku');
+    const issues = await legacy.verify({ trustProfile: 'test' });
+    assert.deepEqual(issues.filter((i) => i.criticality === 'critical'), []);
+    const warned = issues.filter((i) => i.code === 'RECORD_FIRMWARE_MISSING');
+    assert.ok(warned.length > 0);
+    assert.ok(warned.every((i) => i.criticality === 'warning'));
+    for (const name of SAMPLES) {
+      assert.ok(!(await (await open(name)).verify({ trustProfile: 'test' })).some((i) => i.code === 'RECORD_FIRMWARE_MISSING'), name);
+    }
+  });
+
   it('a firmware-bound record cannot pass as one from before the rule', async () => {
     for (const name of SAMPLES) {
       for (let index = 0; index < 4; index++) {
         if (recordAt(await open(name), index).type === 'scan') continue; // scan has always had the slot
-        const codes = await tampered(name, index, (r) => { delete holder(r).firmware; setSlot(r, null); });
+        const luku = await open(name);
+        const record = recordAt(luku, index);
+        delete holder(record).firmware;
+        setSlot(record, null);
+        const issues = await luku.verify({ trustProfile: 'test' });
+        const codes = issues.filter((i) => i.criticality === 'critical').map((i) => i.code);
+        assert.ok(issues.some((i) => i.code === 'RECORD_FIRMWARE_MISSING'), `${name}[${index}]`);
         assert.ok(codes.includes('RECORD_SIGNATURE_INVALID'), `${name}[${index}] ${codes.join(',')}`);
         assert.ok(!codes.includes('RECORD_CANONICAL_MISMATCH'), `${name}[${index}] ${codes.join(',')}`);
       }

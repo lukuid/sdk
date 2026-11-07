@@ -15,7 +15,7 @@ NONCE = "app-nonce-0123456789"
 
 def _canonical(public_key, nonce=None):
     slot = f"{nonce}:" if nonce else ""
-    return (f"GC-TEST-1:{public_key}:environment:ENV-NONCE-1:4502:1770823456:3600000000:0.01:0.02:1.00:85:::::::::"
+    return (f"GC-TEST-1:{public_key}:environment:ENV-NONCE-1:4502:1770823456:3600000000:v1.0.0:0.01:0.02:1.00:85:::::::::"
             f"45.20:21.50:350.50:::::::::::::{slot}1013.20:false:22.40:false:110:30000:genesis_fake")
 
 
@@ -25,7 +25,7 @@ def _envelope(nonce_in_signature=None, nonce_in_payload=None, canonical_nonce=No
     public_key = base64.b64encode(raw).decode()
     signed = _canonical(public_key, nonce_in_signature)
     payload = {
-        "ctr": 4502, "timestamp_utc": 1770823456, "uptime_us": 3600000000,
+        "ctr": 4502, "timestamp_utc": 1770823456, "uptime_us": 3600000000, "firmware": "v1.0.0",
         "battery_percent": 85, "vbus_present": False, "lux": 350.5, "temp_c": 22.4,
         "humidity_pct": 45.2, "initial_temp_c": 21.5, "pressure_hpa": 1013.2,
         "voc_raw": 30000, "voc_index": 110, "tamper": False,

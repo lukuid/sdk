@@ -57,7 +57,7 @@ class LukuIDEnvironmentVocTest {
         // Content fields alphabetical per LUKU.md: accel_g_x, accel_g_y, accel_g_z, battery_percent,
         // gps_* (absent), humidity_pct, lux, mobile_* (absent), pressure_hpa, tamper, temp_c,
         // vbus_present, voc_index, voc_raw.
-        val canonical = "GC-TEST-1:$publicKeyBase64:environment:ENV-VOC-1:4502:1770823456:3600000000:0.01:0.02:1.00:85:::::::::45.20:350.50:::::::::::::1013.20:false:22.40:false:110:30000:genesis_fake"
+        val canonical = "GC-TEST-1:$publicKeyBase64:environment:ENV-VOC-1:4502:1770823456:3600000000:v1.0.0:0.01:0.02:1.00:85:::::::::45.20:350.50:::::::::::::1013.20:false:22.40:false:110:30000:genesis_fake"
         val signature = signCanonical(keyPair.private.encoded, canonical)
 
         val envelope = mapOf(
@@ -78,6 +78,7 @@ class LukuIDEnvironmentVocTest {
                 "ctr" to 4502,
                 "timestamp_utc" to 1770823456,
                 "uptime_us" to 3600000000L,
+                "firmware" to "v1.0.0",
                 "battery_percent" to 85,
                 "vbus_present" to false,
                 "lux" to 350.5,

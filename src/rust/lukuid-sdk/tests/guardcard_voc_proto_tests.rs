@@ -99,7 +99,7 @@ fn test_verify_envelope_accepts_new_voc_canonical_and_rejects_old_format() {
     // battery_percent, gps_*(absent), humidity_pct, lux, mobile_*(absent),
     // pressure_hpa, tamper, temp_c, vbus_present, voc_index, voc_raw.
     let canonical = format!(
-        "GC-TEST-1:{public_key}:environment:ENV-VOC-1:4502:1770823456:3600000000:0.01:0.02:1.00:85:::::::::45.20:350.50:::::::::::::1013.20:false:22.40:false:110:30000:genesis_fake"
+        "GC-TEST-1:{public_key}:environment:ENV-VOC-1:4502:1770823456:3600000000:v1.0.0:0.01:0.02:1.00:85:::::::::45.20:350.50:::::::::::::1013.20:false:22.40:false:110:30000:genesis_fake"
     );
     let signature = BASE64.encode(signing_key.sign(canonical.as_bytes()).to_bytes());
 
@@ -121,6 +121,7 @@ fn test_verify_envelope_accepts_new_voc_canonical_and_rejects_old_format() {
             "ctr": 4502,
             "timestamp_utc": 1770823456,
             "uptime_us": 3600000000_i64,
+            "firmware": "v1.0.0",
             "battery_percent": 85,
             "vbus_present": false,
             "lux": 350.5,
@@ -146,7 +147,7 @@ fn test_verify_envelope_accepts_new_voc_canonical_and_rejects_old_format() {
     // Same field order, but voc_raw omitted — regression guard against the
     // pre-VOC-raw wire format being silently accepted.
     let old_canonical = format!(
-        "GC-TEST-1:{public_key}:environment:ENV-VOC-1:4502:1770823456:3600000000:0.01:0.02:1.00:85:::::::::45.20:350.50:::::::::::::1013.20:false:22.40:false:110::genesis_fake"
+        "GC-TEST-1:{public_key}:environment:ENV-VOC-1:4502:1770823456:3600000000:v1.0.0:0.01:0.02:1.00:85:::::::::45.20:350.50:::::::::::::1013.20:false:22.40:false:110::genesis_fake"
     );
     let mut invalid_envelope = envelope.clone();
     invalid_envelope["canonical_string"] = json!(old_canonical);

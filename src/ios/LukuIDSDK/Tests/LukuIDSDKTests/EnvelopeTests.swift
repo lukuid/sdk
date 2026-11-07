@@ -42,7 +42,8 @@ final class EnvelopeTests: XCTestCase {
     func testVerifyEnvelopeValid() throws {
         let envelope = try getCurrentValidEnvelope()
         let issues = LukuFile.verifyEnvelope(envelope: envelope, options: LukuVerifyOptions(allowUntrustedRoots: false, skipCertificateTemporalChecks: true, trustProfile: "test"))
-        XCTAssertTrue(issues.isEmpty, "Expected no issues, got \(issues)")
+        // The sample was signed before firmware binding, so its only issue is that warning.
+        XCTAssertEqual(issues.map { "\($0.criticality):\($0.code)" }, ["warning:RECORD_FIRMWARE_MISSING"], "Unexpected issues: \(issues)")
     }
 
     func testVerifyEnvelopeKeyMismatch() throws {

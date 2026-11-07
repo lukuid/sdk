@@ -570,6 +570,9 @@ class LukuArchive:
                         # rule) and require it to match what was actually
                         # signed, rather than assuming canonical_string is
                         # already correctly ordered.
+                        firmware_issue = _firmware_missing_issue(record, record_type, f" on device {device_id}")
+                        if firmware_issue:
+                            issues.append(firmware_issue)
                         recomputed_canonical = _recompute_record_canonical_string(record, record_type, device_id, public_key)
                         if recomputed_canonical is None:
                             issues.append(_issue(
@@ -854,6 +857,9 @@ class LukuFile:
             # the canonical string from the envelope's own structured
             # fields (content fields re-sorted alphabetically at runtime)
             # and require it to match what was actually signed.
+            firmware_issue = _firmware_missing_issue(envelope, record_type, "")
+            if firmware_issue:
+                issues.append(firmware_issue)
             recomputed_canonical = _recompute_record_canonical_string(envelope, record_type, device_id, public_key)
             if recomputed_canonical is None:
                 issues.append(_issue(
@@ -1573,11 +1579,32 @@ def _canonical_content_string(fields: list[str], source: dict[str, Any]) -> str:
     return ":".join(_canonical_field(name, source.get(name)) for name in sorted(fields))
 
 
+def _firmware_missing_issue(record: dict[str, Any], record_type: str, location: str) -> VerificationIssue | None:
+    """LUKU.md "Firmware Binding": a device-signed record without a signed firmware version
+    was made by firmware from before the rule. It still verifies; this warning says so.
+    """
+    if record_type in ("scan", "environment", "biometric"):
+        source = record.get("payload") if isinstance(record.get("payload"), dict) else {}
+    elif record_type in ("attachment", "location", "custody"):
+        source = record
+    else:
+        return None
+    firmware = source.get("firmware")
+    if isinstance(firmware, str) and firmware:
+        return None
+    return _issue(
+        "RECORD_FIRMWARE_MISSING",
+        f"Record type {record_type}{location} does not carry a signed firmware version.",
+        Criticality.WARNING,
+    )
+
+
 def _firmware_slot(source: dict[str, Any]) -> list[str]:
     """`environment`, `attachment`, `location` and `custody` carry `firmware` as the last
     structural-prefix field (LUKU.md). Records made before devices signed it have no
-    `firmware` and keep the older layout without the slot; the signature covers the stored
-    string, so the slot cannot be stripped from a record that was signed with it.
+    `firmware` and keep the older layout without the slot (`RECORD_FIRMWARE_MISSING` warning);
+    the signature covers the stored string, so the slot cannot be stripped from a record that
+    was signed with it.
     """
     firmware = source.get("firmware")
     return [firmware] if isinstance(firmware, str) and firmware else []

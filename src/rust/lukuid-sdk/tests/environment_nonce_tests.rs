@@ -12,7 +12,7 @@ const NONCE: &str = "app-nonce-0123456789";
 fn canonical(public_key: &str, nonce: Option<&str>) -> String {
     let slot = nonce.map(|n| format!("{n}:")).unwrap_or_default();
     format!(
-        "GC-TEST-1:{public_key}:environment:ENV-NONCE-1:4502:1770823456:3600000000:0.01:0.02:1.00:85:::::::::45.20:21.50:350.50:::::::::::::{slot}1013.20:false:22.40:false:110:30000:genesis_fake"
+        "GC-TEST-1:{public_key}:environment:ENV-NONCE-1:4502:1770823456:3600000000:v1.0.0:0.01:0.02:1.00:85:::::::::45.20:21.50:350.50:::::::::::::{slot}1013.20:false:22.40:false:110:30000:genesis_fake"
     )
 }
 
@@ -22,7 +22,7 @@ fn envelope(nonce_in_signature: Option<&str>, nonce_in_payload: Option<&str>) ->
     let canon = canonical(&public_key, nonce_in_signature);
     let signature = BASE64.encode(key.sign(canon.as_bytes()).to_bytes());
     let mut payload = json!({
-        "ctr": 4502, "timestamp_utc": 1770823456, "uptime_us": 3600000000_i64,
+        "ctr": 4502, "timestamp_utc": 1770823456, "uptime_us": 3600000000_i64, "firmware": "v1.0.0",
         "battery_percent": 85, "vbus_present": false, "lux": 350.5, "temp_c": 22.4,
         "humidity_pct": 45.2, "initial_temp_c": 21.5, "pressure_hpa": 1013.2,
         "voc_raw": 30000, "voc_index": 110, "tamper": false,

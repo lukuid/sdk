@@ -118,4 +118,16 @@ final class FirmwareBindingTests: XCTestCase {
             }
         }
     }
+
+    func testRecordsFromBeforeFirmwareBindingVerifyWithAWarning() throws {
+        let options = LukuVerifyOptions(allowUntrustedRoots: false, skipCertificateTemporalChecks: true, trustProfile: "test")
+        let issues = try open("first-passable-verification-sample.luku").verify(options: options)
+        XCTAssertFalse(issues.contains { $0.criticality == .critical }, "\(issues)")
+        let warned = issues.filter { $0.code == "RECORD_FIRMWARE_MISSING" }
+        XCTAssertFalse(warned.isEmpty)
+        XCTAssertTrue(warned.allSatisfy { $0.criticality == .warning })
+        for name in samples {
+            XCTAssertFalse(try open(name).verify(options: options).contains { $0.code == "RECORD_FIRMWARE_MISSING" }, name)
+        }
+    }
 }

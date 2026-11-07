@@ -790,12 +790,32 @@ function buildSortedContentString(source: JsonObject, fieldKinds: Record<string,
 /**
  * `environment`, `attachment`, `location` and `custody` carry `firmware` as the last
  * structural-prefix field (LUKU.md). Records made before devices signed it have no
- * `firmware` and keep the older layout without the slot. The signature covers the
- * stored string, so the slot cannot be stripped from a record that was signed with it.
+ * `firmware` and keep the older layout without the slot (`RECORD_FIRMWARE_MISSING`
+ * warning). The signature covers the stored string, so the slot cannot be stripped from
+ * a record that was signed with it.
  */
 function firmwareSlot(source: JsonObject): string[] {
   const firmware = asString(source.firmware);
   return firmware ? [firmware] : [];
+}
+
+const FIRMWARE_SIGNED_RECORD_TYPES = new Set(['scan', 'environment', 'biometric', 'attachment', 'location', 'custody']);
+
+/** The signed firmware version of a device-signed record, or '' when it carries none. */
+export function recordFirmware(record: JsonObject, recordType: string): string {
+  const source = recordType === 'scan' || recordType === 'environment' || recordType === 'biometric'
+    ? asJsonObject(record.payload)
+    : record;
+  return asString(source?.firmware) ?? '';
+}
+
+/**
+ * LUKU.md "Firmware Binding": a device-signed record without a signed firmware version was
+ * made by firmware from before the rule. It still verifies; this warning says so.
+ */
+function firmwareMissingIssue(record: JsonObject, recordType: string, where: string): VerificationIssue | null {
+  if (!FIRMWARE_SIGNED_RECORD_TYPES.has(recordType) || recordFirmware(record, recordType) !== '') return null;
+  return issue('RECORD_FIRMWARE_MISSING', `Record type ${recordType}${where} does not carry a signed firmware version.`, 'warning');
 }
 
 function recomputeScanCanonicalString(record: JsonObject, deviceId: string, publicKey: string): string | null {
@@ -1870,6 +1890,8 @@ export class LukuFile {
         )
       );
     }
+    const envelopeFirmwareIssue = firmwareMissingIssue(envelope, recordType, '');
+    if (envelopeFirmwareIssue) issues.push(envelopeFirmwareIssue);
     // Verify the stored canonical_string the device signed (see the archive path above).
     const canonicalForSignature = canonicalStringValue;
 
@@ -2603,6 +2625,8 @@ export class LukuFile {
             )
           );
         }
+        const recordFirmwareIssue = firmwareMissingIssue(record, recordType, ` on device ${deviceId}`);
+        if (recordFirmwareIssue) issues.push(recordFirmwareIssue);
         // The device signed the stored canonical_string (sdk/ERRORS.md: the record's native
         // signature). Verify that string, as every other SDK does; a payload that no longer
         // matches it is RECORD_CANONICAL_MISMATCH above, and a missing one is never rebuilt.

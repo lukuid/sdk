@@ -146,8 +146,9 @@ describe('LukuID Environment VOC transport', () => {
 
   it('verifies the new environment canonical string layout and rejects the old one', async () => {
     const unsignedCanonical =
-      'GC-TEST-1:PUBLIC_KEY_PLACEHOLDER:environment:ENV-VOC-1:4502:1770823456:3600000000:0.01:0.02:1.00:85:::::::::45.20::350.50:::::::::::::1013.20:false:22.40:false:110:30000:genesis_fake';
+      'GC-TEST-1:PUBLIC_KEY_PLACEHOLDER:environment:ENV-VOC-1:4502:1770823456:3600000000:v1.0.0:0.01:0.02:1.00:85:::::::::45.20::350.50:::::::::::::1013.20:false:22.40:false:110:30000:genesis_fake';
     const envelope = await createSignedEnvironmentEnvelope(unsignedCanonical);
+    (envelope.payload as JsonObject).firmware = 'v1.0.0';
 
     const validIssues = await LukuFile.verifyEnvelope(envelope, {
       allowUntrustedRoots: true,

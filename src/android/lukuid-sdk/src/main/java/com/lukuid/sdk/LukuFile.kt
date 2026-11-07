@@ -306,6 +306,7 @@ object LukuFile {
             }
         }
 
+        LukuArchive.firmwareMissingIssue(envelope, payload, recordType, "")?.let { issues.add(it) }
         if (canonicalStringValue.isNotEmpty()) {
             val recomputedCanonical = LukuArchive.recomputeRecordCanonicalString(envelope, payload, deviceId, publicKey, previousSignature)
             if (recomputedCanonical == null) {

@@ -112,4 +112,15 @@ class FirmwareBindingTest {
             }
         }
     }
+
+    @Test
+    fun recordsFromBeforeFirmwareBindingVerifyWithAWarning() {
+        val options = LukuVerifyOptions(allowUntrustedRoots = false, skipCertificateTemporalChecks = true, trustProfile = "test")
+        val issues = open("first-passable-verification-sample.luku").verify(options)
+        assertTrue(issues.none { it.criticality == Criticality.CRITICAL })
+        val warned = issues.filter { it.code == "RECORD_FIRMWARE_MISSING" }
+        assertTrue(warned.isNotEmpty())
+        assertTrue(warned.all { it.criticality == Criticality.WARNING })
+        for (name in samples) assertTrue(name, open(name).verify(options).none { it.code == "RECORD_FIRMWARE_MISSING" })
+    }
 }

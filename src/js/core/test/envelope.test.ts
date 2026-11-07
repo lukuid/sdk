@@ -77,7 +77,8 @@ describe('LukuFile.verifyEnvelope', () => {
       skipCertificateTemporalChecks: true,
       trustProfile: 'test'
     }));
-    assert.equal(issues.length, 0, `Should have no issues, but found: ${JSON.stringify(issues)}`);
+    // The sample was signed before firmware binding, so its only issue is that warning.
+    assert.deepEqual(issues.map((i) => `${i.criticality}:${i.code}`), ['warning:RECORD_FIRMWARE_MISSING'], JSON.stringify(issues));
   });
 
   it('should fail if public key does not match attestation certificate', async () => {

@@ -491,10 +491,27 @@ impl LukuFile {
     /// record's canonical field order", not as "matches".
     /// Recomputes a record's canonical string from its own fields (`None` for a record
     /// type or scan profile this verifier does not know).
+    /// LUKU.md "Firmware Binding": a device-signed record without a signed firmware version was
+    /// made by firmware from before the rule. It still verifies; this warning says so.
+    fn firmware_missing_issue(record: &Value, record_type: &str, location: &str) -> Option<VerificationIssue> {
+        let source = match record_type {
+            "scan" | "environment" | "biometric" => record.get("payload"),
+            "attachment" | "location" | "custody" => Some(record),
+            _ => return None,
+        };
+        let firmware = source.and_then(|s| s.get("firmware")).and_then(Value::as_str).unwrap_or("");
+        firmware.is_empty().then(|| VerificationIssue {
+            code: "RECORD_FIRMWARE_MISSING".to_string(),
+            message: format!("Record type {record_type}{location} does not carry a signed firmware version."),
+            criticality: Criticality::Warning,
+        })
+    }
+
     /// `environment`, `attachment`, `location` and `custody` carry `firmware` as the last
     /// structural-prefix field (LUKU.md). Records made before devices signed it have no
-    /// `firmware` and keep the older layout without the slot; the signature covers the stored
-    /// string, so the slot cannot be stripped from a record that was signed with it.
+    /// `firmware` and keep the older layout without the slot (`RECORD_FIRMWARE_MISSING` warning);
+    /// the signature covers the stored string, so the slot cannot be stripped from a record that
+    /// was signed with it.
     fn push_firmware_slot(parts: &mut Vec<String>, source: Option<&Value>) {
         if let Some(firmware) = source
             .and_then(|s| s.get("firmware"))
@@ -1813,6 +1830,9 @@ impl LukuFile {
         // itself correctly ordered. This catches a payload whose fields were
         // tampered with independently of canonical_string/signature, and a
         // producer that got the field order wrong.
+        if let Some(issue) = Self::firmware_missing_issue(envelope, r#type, "") {
+            Self::push_issue(&mut issues, debug_logging, None, issue);
+        }
         if !canonical.is_empty() {
             match Self::expected_canonical_string(envelope, device_id, public_key) {
                 Some(expected) if expected != canonical => {
@@ -3106,6 +3126,9 @@ impl LukuFile {
                     // alphabetically at runtime) and compare it to the stored
                     // canonical_string, rather than trusting that the stored string
                     // was itself correctly ordered.
+                    if let Some(issue) = Self::firmware_missing_issue(record, r#type, &format!(" on device {device_id}")) {
+                        Self::push_issue(&mut issues, debug_logging, Some(record_context.as_str()), issue);
+                    }
                     if !canonical.is_empty() {
                         match Self::expected_canonical_string(record, device_id, public_key) {
                             Some(expected) if expected != canonical => {
@@ -3941,7 +3964,8 @@ mod tests {
             "payload": {
                 "ctr": 1,
                 "timestamp_utc": 1000,
-                "profile": "animal"
+                "profile": "animal",
+                "firmware": "v1.0.0"
             }
         })];
 

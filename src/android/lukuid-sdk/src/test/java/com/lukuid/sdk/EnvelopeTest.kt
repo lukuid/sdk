@@ -2,6 +2,7 @@
 package com.lukuid.sdk
 
 import org.json.JSONObject
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.nio.charset.StandardCharsets
@@ -28,7 +29,12 @@ class EnvelopeTest {
             skipCertificateTemporalChecks = true,
             trustProfile = "test"
         ))
-        assertTrue("Expected no issues, got ${issues.joinToString { it.code + ":" + it.message }}", issues.isEmpty())
+        // The sample was signed before firmware binding, so its only issue is that warning.
+        assertEquals(
+            "Unexpected issues: ${issues.joinToString { it.code + ":" + it.message }}",
+            listOf("WARNING:RECORD_FIRMWARE_MISSING"),
+            issues.map { "${it.criticality}:${it.code}" }
+        )
     }
 
     @Test

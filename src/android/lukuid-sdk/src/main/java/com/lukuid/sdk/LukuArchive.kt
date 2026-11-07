@@ -515,6 +515,7 @@ class LukuArchive private constructor(
                     }
                 }
 
+                firmwareMissingIssue(record, payload, recordType, " on device $deviceId")?.let { issues += it }
                 if (canonicalString.isNotBlank()) {
                     val recomputedCanonical = recomputeRecordCanonicalString(record, payload, deviceId, publicKey, previousSignature)
                     if (recomputedCanonical == null) {
@@ -1135,10 +1136,26 @@ class LukuArchive private constructor(
         )
         private val GEO_FIELDS = setOf("gps_lat", "gps_lng", "lat", "lng")
 
+        /**
+         * LUKU.md "Firmware Binding": a device-signed record without a signed firmware version was
+         * made by firmware from before the rule. It still verifies; this warning says so.
+         */
+        internal fun firmwareMissingIssue(record: JSONObject, payload: JSONObject?, recordType: String, location: String): VerificationIssue? {
+            val source = when (recordType) {
+                "scan", "environment", "biometric" -> payload
+                "attachment", "location", "custody" -> record
+                else -> return null
+            }
+            val firmware = source?.opt("firmware") as? String
+            if (!firmware.isNullOrEmpty()) return null
+            return VerificationIssue("RECORD_FIRMWARE_MISSING", "Record type $recordType$location does not carry a signed firmware version.", Criticality.WARNING)
+        }
+
         // `environment`, `attachment`, `location` and `custody` carry `firmware` as the last
         // structural-prefix field (LUKU.md). Records made before devices signed it have no
-        // `firmware` and keep the older layout without the slot; the signature covers the stored
-        // string, so the slot cannot be stripped from a record that was signed with it.
+        // `firmware` and keep the older layout without the slot (`RECORD_FIRMWARE_MISSING` warning);
+        // the signature covers the stored string, so the slot cannot be stripped from a record that
+        // was signed with it.
         private fun firmwareSlot(source: JSONObject?): List<String> {
             val firmware = source?.opt("firmware") as? String
             return if (firmware.isNullOrEmpty()) emptyList() else listOf(firmware)

@@ -4,6 +4,7 @@ import json
 import unittest
 from pathlib import Path
 from lukuid_sdk import LukuFile, LukuVerifyOptions
+from lukuid_sdk.luku import Criticality
 
 def resolve_sample() -> Path:
     current = Path(__file__).parent.resolve()
@@ -37,7 +38,12 @@ class TestEnvelope(unittest.TestCase):
             skip_certificate_temporal_checks=True,
             trust_profile="test"
         ))
-        self.assertFalse(issues, f"Expected no issues, got: {issues}")
+        # The sample was signed before firmware binding, so its only issue is that warning.
+        self.assertEqual(
+            [(issue.criticality, issue.code) for issue in issues],
+            [(Criticality.WARNING, "RECORD_FIRMWARE_MISSING")],
+            f"Unexpected issues: {issues}",
+        )
 
     def test_verify_envelope_key_mismatch(self):
         from cryptography.hazmat.primitives.asymmetric import ed25519

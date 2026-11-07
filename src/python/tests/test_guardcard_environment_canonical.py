@@ -29,6 +29,7 @@ class TestLukuIDEnvironmentEnvironmentCanonical(unittest.TestCase):
                 "ctr": 4502,
                 "timestamp_utc": 1770823456,
                 "uptime_us": 3600000000,
+                "firmware": "v1.0.0",
                 "battery_percent": 85,
                 "vbus_present": False,
                 "lux": 350.5,

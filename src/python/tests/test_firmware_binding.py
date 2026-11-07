@@ -93,6 +93,24 @@ class FirmwareBindingTests(unittest.TestCase):
                 self.assertIn("RECORD_SIGNATURE_INVALID", codes, (name, index))
                 self.assertNotIn("RECORD_CANONICAL_MISMATCH", codes, (name, index))
 
+    def test_records_from_before_firmware_binding_verify_with_a_warning(self):
+        issues = self.open("first-passable-verification-sample.luku").verify(LukuVerifyOptions(trust_profile="test"))
+        self.assertFalse([i for i in issues if i.criticality == Criticality.CRITICAL])
+        warned = [i for i in issues if i.code == "RECORD_FIRMWARE_MISSING"]
+        self.assertTrue(warned)
+        self.assertTrue(all(i.criticality == Criticality.WARNING for i in warned))
+        for name in SAMPLES:
+            issues = self.open(name).verify(LukuVerifyOptions(trust_profile="test"))
+            self.assertFalse([i for i in issues if i.code == "RECORD_FIRMWARE_MISSING"], name)
+
+    def test_stripped_firmware_is_flagged_as_missing(self):
+        for name in SAMPLES:
+            for index in range(4):
+                luku = self.open(name)
+                holder(luku.blocks[0].batch[index]).pop("firmware")
+                issues = luku.verify(LukuVerifyOptions(trust_profile="test"))
+                self.assertTrue(any(i.code == "RECORD_FIRMWARE_MISSING" for i in issues), (name, index))
+
 
 if __name__ == "__main__":
     unittest.main()

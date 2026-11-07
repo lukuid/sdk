@@ -133,3 +133,30 @@ fn a_firmware_bound_record_cannot_pass_as_one_from_before_the_rule() {
         }
     }
 }
+
+#[test]
+fn records_from_before_firmware_binding_verify_with_a_warning() {
+    let legacy = LukuFile::open(sample("first-passable-verification-sample.luku")).unwrap();
+    let issues = legacy.verify(options());
+    assert!(!issues.iter().any(|i| matches!(i.criticality, lukuid_sdk::luku::Criticality::Critical)), "{issues:?}");
+    let warned: Vec<_> = issues.iter().filter(|i| i.code == "RECORD_FIRMWARE_MISSING").collect();
+    assert!(!warned.is_empty());
+    assert!(warned.iter().all(|i| matches!(i.criticality, lukuid_sdk::luku::Criticality::Warning)));
+    for name in SAMPLES {
+        let issues = LukuFile::open(sample(name)).unwrap().verify(options());
+        assert!(!issues.iter().any(|i| i.code == "RECORD_FIRMWARE_MISSING"), "{name}: {issues:?}");
+    }
+}
+
+#[test]
+fn a_stripped_firmware_is_flagged_as_missing() {
+    for name in SAMPLES {
+        for index in 0..4 {
+            let mut luku = LukuFile::open(sample(name)).unwrap();
+            let record = luku.blocks[0].batch[index].as_object_mut().unwrap();
+            let (in_payload, _) = firmware_slot(record["type"].as_str().unwrap());
+            holder(record, in_payload).remove("firmware");
+            assert!(luku.verify(options()).iter().any(|i| i.code == "RECORD_FIRMWARE_MISSING"), "{name}[{index}]");
+        }
+    }
+}
