@@ -674,26 +674,31 @@ impl Device {
                 );
             }
 
+            // An empty batch is not posted (as the JS, Swift and Kotlin SDKs): the device
+            // signs no batch then, so the API could only reject it.
+            let has_rows = telemetry.as_array().map(|rows| !rows.is_empty()).unwrap_or(false);
             // The heartbeat continues either way (telemetry is best effort), but a
             // rejected batch is reported rather than discarded silently.
-            if let Err(error) = sdk
-                .telemetry(
-                    None, // Always default API
-                    &self.info.id,
-                    telemetry_counter,
-                    telemetry.clone(),
-                    telemetry_signature.as_deref(),
-                    telemetry_canonical_string.as_deref(),
-                    telemetry_chain_version,
-                    telemetry_chain_tail.as_deref(),
-                )
-                .await
-            {
-                if sdk.options.debug_logging {
-                    eprintln!(
-                        "[lukuid-sdk] Heartbeat sync telemetry upload failed for {}: {}",
-                        self.info.id, error
-                    );
+            if has_rows {
+                if let Err(error) = sdk
+                    .telemetry(
+                        None, // Always default API
+                        &self.info.id,
+                        telemetry_counter,
+                        telemetry.clone(),
+                        telemetry_signature.as_deref(),
+                        telemetry_canonical_string.as_deref(),
+                        telemetry_chain_version,
+                        telemetry_chain_tail.as_deref(),
+                    )
+                    .await
+                {
+                    if sdk.options.debug_logging {
+                        eprintln!(
+                            "[lukuid-sdk] Heartbeat sync telemetry upload failed for {}: {}",
+                            self.info.id, error
+                        );
+                    }
                 }
             }
         }
