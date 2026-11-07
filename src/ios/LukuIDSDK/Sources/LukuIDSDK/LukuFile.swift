@@ -1462,6 +1462,14 @@ private func recomputeRecordCanonicalString(_ record: [String: Any], deviceID: S
     let type = record["type"] as? String ?? ""
     let payload = record["payload"] as? [String: Any] ?? [:]
     func string(_ source: [String: Any], _ name: String) -> String { source[name] as? String ?? "" }
+    // `environment`, `attachment`, `location` and `custody` carry `firmware` as the last
+    // structural-prefix field (LUKU.md). Records made before devices signed it have no
+    // `firmware` and keep the older layout without the slot; the signature covers the stored
+    // string, so the slot cannot be stripped from a record that was signed with it.
+    func firmwareSlot(_ source: [String: Any]) -> [String] {
+        let firmware = string(source, "firmware")
+        return firmware.isEmpty ? [] : [firmware]
+    }
     func number(_ value: Any?, decimals: Int? = nil) -> String {
         guard let value, !(value is NSNull) else { return "" }
         guard let n = value as? NSNumber else { return "" }
@@ -1508,7 +1516,7 @@ private func recomputeRecordCanonicalString(_ record: [String: Any], deviceID: S
             if name.hasPrefix("mobile_") { return string(payload, name) }
             return number(payload[name], decimals: 2)
         }
-        return ([deviceID, publicKey, "environment", string(record, "id"), number(payload["ctr"]), number(payload["timestamp_utc"]), number(payload["uptime_us"])] + values + [previous]).joined(separator: ":")
+        return ([deviceID, publicKey, "environment", string(record, "id"), number(payload["ctr"]), number(payload["timestamp_utc"]), number(payload["uptime_us"])] + firmwareSlot(payload) + values + [previous]).joined(separator: ":")
     case "biometric":
         let values = content(["checks", "confidence", "match", "metrics", "modality", "template_id_hash"]) { name in
             switch name { case "checks": return array(payload[name], numeric: false); case "confidence": return number(payload[name], decimals: 2); case "match": return bool(payload[name]); case "metrics": return array(payload[name], numeric: true); default: return string(payload, name) }
@@ -1517,13 +1525,13 @@ private func recomputeRecordCanonicalString(_ record: [String: Any], deviceID: S
         return ([deviceID, publicKey, "biometric", eventID, number(payload["ctr"]), number(payload["timestamp_utc"]), number(payload["uptime_us"]), string(payload, "firmware")] + values + [previous]).joined(separator: ":")
     case "attachment":
         let values = content(["checksum", "merkle_root", "mime", "title"]) { string(record, $0) }
-        return ([string(record, "parent_signature"), deviceID, publicKey, "attachment", string(record, "id"), string(record, "parent_id"), number(record["timestamp_utc"])] + values + [external]).joined(separator: ":")
+        return ([string(record, "parent_signature"), deviceID, publicKey, "attachment", string(record, "id"), string(record, "parent_id"), number(record["timestamp_utc"])] + firmwareSlot(record) + values + [external]).joined(separator: ":")
     case "location":
         let values = content(["lat", "lng"]) { number(record[$0], decimals: 6) }
-        return ([string(record, "parent_signature"), deviceID, publicKey, "location", string(record, "parent_id"), number(record["timestamp_utc"])] + values + [external]).joined(separator: ":")
+        return ([string(record, "parent_signature"), deviceID, publicKey, "location", string(record, "parent_id"), number(record["timestamp_utc"])] + firmwareSlot(record) + values + [external]).joined(separator: ":")
     case "custody":
         let values = content(["context_ref", "event", "status"]) { string(payload, $0) }
-        return ([string(record, "parent_signature"), deviceID, publicKey, "custody", string(record, "id"), string(record, "parent_id"), number(record["timestamp_utc"])] + values + [external]).joined(separator: ":")
+        return ([string(record, "parent_signature"), deviceID, publicKey, "custody", string(record, "id"), string(record, "parent_id"), number(record["timestamp_utc"])] + firmwareSlot(record) + values + [external]).joined(separator: ":")
     case "verification":
         let collector = record["collector_attestation"] as? [String: Any]
         let externalIdentity = record["external_identity"] as? [String: Any]

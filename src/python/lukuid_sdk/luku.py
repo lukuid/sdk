@@ -1573,6 +1573,16 @@ def _canonical_content_string(fields: list[str], source: dict[str, Any]) -> str:
     return ":".join(_canonical_field(name, source.get(name)) for name in sorted(fields))
 
 
+def _firmware_slot(source: dict[str, Any]) -> list[str]:
+    """`environment`, `attachment`, `location` and `custody` carry `firmware` as the last
+    structural-prefix field (LUKU.md). Records made before devices signed it have no
+    `firmware` and keep the older layout without the slot; the signature covers the stored
+    string, so the slot cannot be stripped from a record that was signed with it.
+    """
+    firmware = source.get("firmware")
+    return [firmware] if isinstance(firmware, str) and firmware else []
+
+
 def _recompute_record_canonical_string(
     record: dict[str, Any],
     record_type: str,
@@ -1628,6 +1638,7 @@ def _recompute_record_canonical_string(
             _canonical_scalar(payload.get("ctr")),
             _canonical_scalar(payload.get("timestamp_utc")),
             _canonical_scalar(payload.get("uptime_us")),
+            *_firmware_slot(payload),
             _canonical_content_string(fields, content_source),
             str(record.get("previous_signature", "")),
         ])
@@ -1658,6 +1669,7 @@ def _recompute_record_canonical_string(
             str(record.get("id", "")),
             str(record.get("parent_id") or record.get("parent_record_id") or ""),
             _canonical_scalar(record.get("timestamp_utc")),
+            *_firmware_slot(record),
             _canonical_content_string(_ATTACHMENT_CONTENT_FIELDS, record),
             external_signature,
         ])
@@ -1670,6 +1682,7 @@ def _recompute_record_canonical_string(
             "location",
             str(record.get("parent_id") or record.get("parent_record_id") or ""),
             _canonical_scalar(record.get("timestamp_utc")),
+            *_firmware_slot(record),
             _canonical_content_string(_LOCATION_CONTENT_FIELDS, record),
             external_signature,
         ])
@@ -1683,6 +1696,7 @@ def _recompute_record_canonical_string(
             str(record.get("id", "")),
             str(record.get("parent_id") or record.get("parent_record_id") or ""),
             _canonical_scalar(record.get("timestamp_utc")),
+            *_firmware_slot(record),
             _canonical_content_string(_CUSTODY_CONTENT_FIELDS, payload),
             external_signature,
         ])

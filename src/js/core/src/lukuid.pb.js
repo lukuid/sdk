@@ -15584,6 +15584,7 @@ export const lukuid = $root.lukuid = (() => {
          * @property {string|null} [canonicalString] AttachmentRecord canonicalString
          * @property {string|null} [status] AttachmentRecord status
          * @property {string|null} [contextRef] AttachmentRecord contextRef
+         * @property {string|null} [firmware] AttachmentRecord firmware
          */
 
         /**
@@ -15762,6 +15763,14 @@ export const lukuid = $root.lukuid = (() => {
         AttachmentRecord.prototype.contextRef = "";
 
         /**
+         * AttachmentRecord firmware.
+         * @member {string} firmware
+         * @memberof lukuid.AttachmentRecord
+         * @instance
+         */
+        AttachmentRecord.prototype.firmware = "";
+
+        /**
          * Creates a new AttachmentRecord instance using the specified properties.
          * @function create
          * @memberof lukuid.AttachmentRecord
@@ -15825,6 +15834,8 @@ export const lukuid = $root.lukuid = (() => {
                 writer.uint32(/* id 21, wireType 2 =*/170).string(message.status);
             if (message.contextRef != null && Object.hasOwnProperty.call(message, "contextRef"))
                 writer.uint32(/* id 22, wireType 2 =*/178).string(message.contextRef);
+            if (message.firmware != null && Object.hasOwnProperty.call(message, "firmware"))
+                writer.uint32(/* id 23, wireType 2 =*/186).string(message.firmware);
             return writer;
         };
 
@@ -15941,6 +15952,10 @@ export const lukuid = $root.lukuid = (() => {
                         message.contextRef = reader.string();
                         break;
                     }
+                case 23: {
+                        message.firmware = reader.string();
+                        break;
+                    }
                 default:
                     reader.skipType(tag & 7);
                     break;
@@ -16038,6 +16053,9 @@ export const lukuid = $root.lukuid = (() => {
             if (message.contextRef != null && message.hasOwnProperty("contextRef"))
                 if (!$util.isString(message.contextRef))
                     return "contextRef: string expected";
+            if (message.firmware != null && message.hasOwnProperty("firmware"))
+                if (!$util.isString(message.firmware))
+                    return "firmware: string expected";
             return null;
         };
 
@@ -16109,6 +16127,8 @@ export const lukuid = $root.lukuid = (() => {
                 message.status = String(object.status);
             if (object.contextRef != null)
                 message.contextRef = String(object.contextRef);
+            if (object.firmware != null)
+                message.firmware = String(object.firmware);
             return message;
         };
 
@@ -16162,6 +16182,7 @@ export const lukuid = $root.lukuid = (() => {
                 object.canonicalString = "";
                 object.status = "";
                 object.contextRef = "";
+                object.firmware = "";
             }
             if (message.version != null && message.hasOwnProperty("version"))
                 object.version = message.version;
@@ -16206,6 +16227,8 @@ export const lukuid = $root.lukuid = (() => {
                 object.status = message.status;
             if (message.contextRef != null && message.hasOwnProperty("contextRef"))
                 object.contextRef = message.contextRef;
+            if (message.firmware != null && message.hasOwnProperty("firmware"))
+                object.firmware = message.firmware;
             return object;
         };
 

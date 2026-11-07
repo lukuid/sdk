@@ -5512,6 +5512,9 @@ export namespace lukuid {
 
         /** AttachmentRecord contextRef */
         contextRef?: (string|null);
+
+        /** AttachmentRecord firmware */
+        firmware?: (string|null);
     }
 
     /** Represents an AttachmentRecord. */
@@ -5582,6 +5585,9 @@ export namespace lukuid {
 
         /** AttachmentRecord contextRef. */
         public contextRef: string;
+
+        /** AttachmentRecord firmware. */
+        public firmware: string;
 
         /**
          * Creates a new AttachmentRecord instance using the specified properties.

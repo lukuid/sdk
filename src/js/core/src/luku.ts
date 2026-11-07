@@ -787,6 +787,17 @@ function buildSortedContentString(source: JsonObject, fieldKinds: Record<string,
     .join(':');
 }
 
+/**
+ * `environment`, `attachment`, `location` and `custody` carry `firmware` as the last
+ * structural-prefix field (LUKU.md). Records made before devices signed it have no
+ * `firmware` and keep the older layout without the slot. The signature covers the
+ * stored string, so the slot cannot be stripped from a record that was signed with it.
+ */
+function firmwareSlot(source: JsonObject): string[] {
+  const firmware = asString(source.firmware);
+  return firmware ? [firmware] : [];
+}
+
 function recomputeScanCanonicalString(record: JsonObject, deviceId: string, publicKey: string): string | null {
   const payload = asJsonObject(record.payload) ?? {};
   const profile = asString(payload.profile);
@@ -827,7 +838,7 @@ function recomputeEnvironmentCanonicalString(record: JsonObject, deviceId: strin
   if (nonce) fieldKinds.nonce = 'string';
   const content = buildSortedContentString(contentSource, fieldKinds);
   const previousSignature = asString(record.previous_signature) ?? '';
-  return [deviceId, publicKey, 'environment', id, ctr, timestampUtc, uptimeUs, content, previousSignature].join(':');
+  return [deviceId, publicKey, 'environment', id, ctr, timestampUtc, uptimeUs, ...firmwareSlot(payload), content, previousSignature].join(':');
 }
 
 function recomputeBiometricCanonicalString(record: JsonObject, deviceId: string, publicKey: string): string {
@@ -853,7 +864,7 @@ function recomputeAttachmentCanonicalString(record: JsonObject, deviceId: string
   const timestampUtc = formatCanonicalField(record.timestamp_utc, 'int');
   const content = buildSortedContentString(record, ATTACHMENT_CONTENT_FIELDS);
   const externalSignature = asString(asJsonObject(record.external_identity)?.signature) ?? '';
-  return [parentSignature, deviceId, publicKey, 'attachment', id, parentId, timestampUtc, content, externalSignature].join(':');
+  return [parentSignature, deviceId, publicKey, 'attachment', id, parentId, timestampUtc, ...firmwareSlot(record), content, externalSignature].join(':');
 }
 
 function recomputeLocationCanonicalString(record: JsonObject, deviceId: string, publicKey: string): string {
@@ -862,7 +873,7 @@ function recomputeLocationCanonicalString(record: JsonObject, deviceId: string, 
   const timestampUtc = formatCanonicalField(record.timestamp_utc, 'int');
   const content = buildSortedContentString(record, LOCATION_CONTENT_FIELDS);
   const externalSignature = asString(asJsonObject(record.external_identity)?.signature) ?? '';
-  return [parentSignature, deviceId, publicKey, 'location', parentId, timestampUtc, content, externalSignature].join(':');
+  return [parentSignature, deviceId, publicKey, 'location', parentId, timestampUtc, ...firmwareSlot(record), content, externalSignature].join(':');
 }
 
 function recomputeCustodyCanonicalString(record: JsonObject, deviceId: string, publicKey: string): string {
@@ -873,7 +884,7 @@ function recomputeCustodyCanonicalString(record: JsonObject, deviceId: string, p
   const payload = asJsonObject(record.payload) ?? {};
   const content = buildSortedContentString(payload, CUSTODY_CONTENT_FIELDS);
   const externalSignature = asString(asJsonObject(record.external_identity)?.signature) ?? '';
-  return [parentSignature, deviceId, publicKey, 'custody', id, parentId, timestampUtc, content, externalSignature].join(':');
+  return [parentSignature, deviceId, publicKey, 'custody', id, parentId, timestampUtc, ...firmwareSlot(record), content, externalSignature].join(':');
 }
 
 /**

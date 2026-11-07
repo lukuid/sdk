@@ -1410,6 +1410,7 @@ function decodeAttachmentRecord(payload: Uint8Array): JsonRecord {
         if (val !== null) custodyContextRef = val;
         break;
       }
+      case 23: assignString(payload, cursor, wireType, out, 'firmware'); break;
       default: skipField(payload, cursor, wireType); break;
     }
   }

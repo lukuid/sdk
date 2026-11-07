@@ -1992,6 +1992,11 @@ nonisolated struct LukuIDAttachmentRecord: @unchecked Sendable {
     set {_uniqueStorage()._contextRef = newValue}
   }
 
+  var firmware: String {
+    get {_storage._firmware}
+    set {_uniqueStorage()._firmware = newValue}
+  }
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -5881,7 +5886,7 @@ nonisolated extension LukuIDExternalIdentity: SwiftProtobuf.Message, SwiftProtob
 
 nonisolated extension LukuIDAttachmentRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".AttachmentRecord"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}version\0\u{1}id\0\u{3}parent_id\0\u{1}signature\0\u{3}parent_signature\0\u{1}checksum\0\u{3}timestamp_utc\0\u{1}mime\0\u{1}type\0\u{1}title\0\u{1}lat\0\u{1}lng\0\u{2}\u{2}content\0\u{3}merkle_root\0\u{1}alg\0\u{3}external_identity\0\u{2}\u{2}event\0\u{3}canonical_string\0\u{1}status\0\u{3}context_ref\0\u{c}\u{d}\u{1}")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}version\0\u{1}id\0\u{3}parent_id\0\u{1}signature\0\u{3}parent_signature\0\u{1}checksum\0\u{3}timestamp_utc\0\u{1}mime\0\u{1}type\0\u{1}title\0\u{1}lat\0\u{1}lng\0\u{2}\u{2}content\0\u{3}merkle_root\0\u{1}alg\0\u{3}external_identity\0\u{2}\u{2}event\0\u{3}canonical_string\0\u{1}status\0\u{3}context_ref\0\u{1}firmware\0\u{c}\u{d}\u{1}")
 
   fileprivate class _StorageClass {
     var _version: String = String()
@@ -5904,6 +5909,7 @@ nonisolated extension LukuIDAttachmentRecord: SwiftProtobuf.Message, SwiftProtob
     var _canonicalString: String = String()
     var _status: String = String()
     var _contextRef: String = String()
+    var _firmware: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5934,6 +5940,7 @@ nonisolated extension LukuIDAttachmentRecord: SwiftProtobuf.Message, SwiftProtob
       _canonicalString = source._canonicalString
       _status = source._status
       _contextRef = source._contextRef
+      _firmware = source._firmware
     }
   }
 
@@ -5972,6 +5979,7 @@ nonisolated extension LukuIDAttachmentRecord: SwiftProtobuf.Message, SwiftProtob
         case 20: try { try decoder.decodeSingularStringField(value: &_storage._canonicalString) }()
         case 21: try { try decoder.decodeSingularStringField(value: &_storage._status) }()
         case 22: try { try decoder.decodeSingularStringField(value: &_storage._contextRef) }()
+        case 23: try { try decoder.decodeSingularStringField(value: &_storage._firmware) }()
         default: break
         }
       }
@@ -6044,6 +6052,9 @@ nonisolated extension LukuIDAttachmentRecord: SwiftProtobuf.Message, SwiftProtob
       if !_storage._contextRef.isEmpty {
         try visitor.visitSingularStringField(value: _storage._contextRef, fieldNumber: 22)
       }
+      if !_storage._firmware.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._firmware, fieldNumber: 23)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -6073,6 +6084,7 @@ nonisolated extension LukuIDAttachmentRecord: SwiftProtobuf.Message, SwiftProtob
         if _storage._canonicalString != rhs_storage._canonicalString {return false}
         if _storage._status != rhs_storage._status {return false}
         if _storage._contextRef != rhs_storage._contextRef {return false}
+        if _storage._firmware != rhs_storage._firmware {return false}
         return true
       }
       if !storagesAreEqual {return false}

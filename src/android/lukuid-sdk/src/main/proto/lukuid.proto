@@ -502,6 +502,7 @@ message AttachmentRecord {
   string canonical_string = 20;
   string status = 21;
   string context_ref = 22;
+  string firmware = 23;  // signed: last structural-prefix field (dotluku LUKU.md)
 }
 
 message ScanRecord {

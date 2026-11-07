@@ -491,6 +491,20 @@ impl LukuFile {
     /// record's canonical field order", not as "matches".
     /// Recomputes a record's canonical string from its own fields (`None` for a record
     /// type or scan profile this verifier does not know).
+    /// `environment`, `attachment`, `location` and `custody` carry `firmware` as the last
+    /// structural-prefix field (LUKU.md). Records made before devices signed it have no
+    /// `firmware` and keep the older layout without the slot; the signature covers the stored
+    /// string, so the slot cannot be stripped from a record that was signed with it.
+    fn push_firmware_slot(parts: &mut Vec<String>, source: Option<&Value>) {
+        if let Some(firmware) = source
+            .and_then(|s| s.get("firmware"))
+            .and_then(Value::as_str)
+            .filter(|f| !f.is_empty())
+        {
+            parts.push(firmware.to_string());
+        }
+    }
+
     pub fn recompute_canonical_string(record: &Value, device_id: &str, public_key: &str) -> Option<String> {
         Self::expected_canonical_string(record, device_id, public_key)
     }
@@ -695,6 +709,7 @@ impl LukuFile {
                 parts.push(Self::format_canonical_field(payload.and_then(|p| p.get("ctr")), CanonKind::IntRaw));
                 parts.push(Self::format_canonical_field(payload.and_then(|p| p.get("timestamp_utc")), CanonKind::IntRaw));
                 parts.push(Self::format_canonical_field(payload.and_then(|p| p.get("uptime_us")), CanonKind::IntRaw));
+                Self::push_firmware_slot(&mut parts, payload);
                 parts.extend(content.into_iter().map(|(_, v)| v));
                 parts.push(record.get("previous_signature").and_then(Value::as_str).unwrap_or("").to_string());
             }
@@ -758,6 +773,7 @@ impl LukuFile {
                 parts.push(record.get("id").and_then(Value::as_str).unwrap_or("").to_string());
                 parts.push(record.get("parent_id").and_then(Value::as_str).unwrap_or("").to_string());
                 parts.push(Self::format_canonical_field(record.get("timestamp_utc"), CanonKind::IntRaw));
+                Self::push_firmware_slot(&mut parts, Some(record));
                 parts.extend(content.into_iter().map(|(_, v)| v));
                 parts.push(external_signature.to_string());
             }
@@ -781,6 +797,7 @@ impl LukuFile {
                 parts.push("location".to_string());
                 parts.push(record.get("parent_id").and_then(Value::as_str).unwrap_or("").to_string());
                 parts.push(Self::format_canonical_field(record.get("timestamp_utc"), CanonKind::IntRaw));
+                Self::push_firmware_slot(&mut parts, Some(record));
                 parts.extend(content.into_iter().map(|(_, v)| v));
                 parts.push(external_signature.to_string());
             }
@@ -809,6 +826,7 @@ impl LukuFile {
                 parts.push(record.get("id").and_then(Value::as_str).unwrap_or("").to_string());
                 parts.push(record.get("parent_id").and_then(Value::as_str).unwrap_or("").to_string());
                 parts.push(Self::format_canonical_field(record.get("timestamp_utc"), CanonKind::IntRaw));
+                Self::push_firmware_slot(&mut parts, Some(record));
                 parts.extend(content.into_iter().map(|(_, v)| v));
                 parts.push(external_signature.to_string());
             }

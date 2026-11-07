@@ -616,6 +616,7 @@ final class LukuCodec {
             "alg": record.alg,
             "canonical_string": record.canonicalString
         ]
+        if !record.firmware.isEmpty { dict["firmware"] = record.firmware }
         if record.hasExternalIdentity {
             dict["external_identity"] = mapExternalIdentity(record.externalIdentity)
         }

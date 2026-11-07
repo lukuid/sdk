@@ -1134,6 +1134,15 @@ class LukuArchive private constructor(
         )
         private val GEO_FIELDS = setOf("gps_lat", "gps_lng", "lat", "lng")
 
+        // `environment`, `attachment`, `location` and `custody` carry `firmware` as the last
+        // structural-prefix field (LUKU.md). Records made before devices signed it have no
+        // `firmware` and keep the older layout without the slot; the signature covers the stored
+        // string, so the slot cannot be stripped from a record that was signed with it.
+        private fun firmwareSlot(source: JSONObject?): List<String> {
+            val firmware = source?.opt("firmware") as? String
+            return if (firmware.isNullOrEmpty()) emptyList() else listOf(firmware)
+        }
+
         private fun canonicalScalar(source: JSONObject?, key: String): String {
             if (source == null || !source.has(key) || source.isNull(key)) return ""
             return when (val v = source.get(key)) {
@@ -1218,7 +1227,7 @@ class LukuArchive private constructor(
                         canonicalScalar(payload, "ctr"),
                         canonicalScalar(payload, "timestamp_utc"),
                         canonicalScalar(payload, "uptime_us")
-                    )
+                    ) + firmwareSlot(payload)
                     val content = (ENV_BASE_FIELDS + optional).sorted().map { envScalar(payload, it) }
                     (prefix + content + listOf(previousSignature)).joinToString(":")
                 }
@@ -1242,7 +1251,7 @@ class LukuArchive private constructor(
                         parentSignature, deviceId, publicKey, "attachment",
                         record.optString("id"), parentId,
                         canonicalScalar(record, "timestamp_utc")
-                    )
+                    ) + firmwareSlot(record)
                     val content = ATTACHMENT_FIELDS.sorted().map { canonicalScalar(record, it) }
                     val externalSignature = record.optJSONObject("external_identity")?.optString("signature").orEmpty()
                     (prefix + content + listOf(externalSignature)).joinToString(":")
@@ -1254,7 +1263,7 @@ class LukuArchive private constructor(
                         parentSignature, deviceId, publicKey, "location",
                         parentId,
                         canonicalScalar(record, "timestamp_utc")
-                    )
+                    ) + firmwareSlot(record)
                     val content = LOCATION_FIELDS.sorted().map { canonicalScalar(record, it) }
                     val externalSignature = record.optJSONObject("external_identity")?.optString("signature").orEmpty()
                     (prefix + content + listOf(externalSignature)).joinToString(":")
@@ -1266,7 +1275,7 @@ class LukuArchive private constructor(
                         parentSignature, deviceId, publicKey, "custody",
                         record.optString("id"), parentId,
                         canonicalScalar(record, "timestamp_utc")
-                    )
+                    ) + firmwareSlot(record)
                     val content = CUSTODY_FIELDS.sorted().map { canonicalScalar(payload, it) }
                     val externalSignature = record.optJSONObject("external_identity")?.optString("signature").orEmpty()
                     (prefix + content + listOf(externalSignature)).joinToString(":")

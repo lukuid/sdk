@@ -18,3 +18,17 @@ device identity and certificates.
 
 The `dev/1.0.0` samples predate the Field Order rule and archive seals; they are kept
 for the certificate-chain tests that still use them.
+
+## Firmware-bound samples (2026-11-07)
+
+Real exports made after every device-signed record started binding its firmware
+version (dotluku "Firmware Binding"). Each holds one native record and the three
+device-attested records the device made for it, all with `firmware` `v1.0.0` as
+the last structural-prefix field; the attachment's file is the 4 bytes `test`.
+
+- `firmware-bound-environment.luku`: Environment `A0403F98` — `environment`
+  (`…:uptime_us:v1.0.0:…`), `attachment`, `location`, `custody`.
+- `firmware-bound-reader.luku`: Animal Reader `3396222D` (synthetic test tag,
+  country code 999) — `scan`, `attachment`, `location`, `custody`.
+
+Both verify with no issues under `trust_profile = "test"`.

@@ -2157,6 +2157,9 @@ fn decode_attachment_record(bytes: &[u8]) -> Value {
                     }
                 }
             }
+            23 => {
+                let _ = insert_string(bytes, &mut cursor, wire_type, &mut out, "firmware");
+            }
             _ => {
                 let _ = skip_field(bytes, &mut cursor, wire_type);
             }

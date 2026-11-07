@@ -439,6 +439,7 @@ internal class LukuCodec(
             "alg" to record.alg,
             "canonical_string" to record.canonicalString
         )
+        if (record.firmware.isNotEmpty()) map["firmware"] = record.firmware
         if (record.hasExternalIdentity()) {
             map["external_identity"] = externalIdentityToMap(record.externalIdentity)
         }
