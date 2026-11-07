@@ -486,8 +486,9 @@ class LukuArchive private constructor(
                             pemFromDerString(identity?.optString("heartbeat_intermediate_der")?.takeIf { it.isNotBlank() } ?: block.heartbeatIntermediateDer)
                         ).filterNotNull().joinToString("")
 
+                        // The heartbeat signature binds one record (its id, counter and last sync), so only
+                        // the record's own identity can supply it, as in the JS, Rust and Python SDKs.
                         val heartbeatSignature = identity?.optString("heartbeat_signature")?.takeIf { it.isNotBlank() }
-                            ?: block.heartbeatSignature?.takeIf { it.isNotBlank() }
                         val lastSyncUtc = identity?.optLong("last_sync_utc") ?: 0L
 
                         if (heartbeatChain.isNotBlank() && !heartbeatSignature.isNullOrBlank()) {

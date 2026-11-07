@@ -611,7 +611,9 @@ public final class LukuArchive {
                             pemFromDerString(identity?["heartbeat_intermediate_der"] as? String ?? block.heartbeatIntermediateDer)
                         ].compactMap { $0 }.joined()
 
-                        let heartbeatSignature = (identity?["heartbeat_signature"] as? String) ?? block.heartbeatSignature ?? ""
+                        // The heartbeat signature binds one record (its id, counter and last sync), so only
+                        // the record's own identity can supply it, as in the JS, Rust and Python SDKs.
+                        let heartbeatSignature = (identity?["heartbeat_signature"] as? String) ?? ""
                         let lastSyncUtc = (identity?["last_sync_utc"] as? NSNumber)?.int64Value ?? 0
 
                         if !heartbeatChain.isEmpty && !heartbeatSignature.isEmpty {
