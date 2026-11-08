@@ -38,9 +38,10 @@ impl LukuidSdk {
 
     pub fn with_options(options: LukuidSdkOptions) -> Self {
         let revocation_manager = RevocationManager::new(options.clone());
+        let http_client = options.http_client();
         Self {
             options,
-            http_client: reqwest::Client::new(),
+            http_client,
             revocation_manager,
         }
     }

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package com.lukuid.sdk.internal
 
+import com.lukuid.sdk.applyExtraHeaders
+
 import android.content.Context
 import com.lukuid.sdk.LukuSdkOptions
 import kotlinx.coroutines.*
@@ -89,6 +91,7 @@ class RevocationManager(
 
         val url = URL(urlString)
         val conn = url.openConnection() as HttpURLConnection
+        conn.applyExtraHeaders(options)
         conn.requestMethod = "GET"
         conn.connectTimeout = 10000
         conn.readTimeout = 10000

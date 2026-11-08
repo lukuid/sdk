@@ -159,6 +159,7 @@ class LukuSdk(
         val apiUrl = options.apiUrl.trimEnd('/')
         val url = URL("$apiUrl/check")
         val conn = url.openConnection() as HttpURLConnection
+        conn.applyExtraHeaders(options)
         conn.requestMethod = "POST"
         conn.doOutput = true
         conn.setRequestProperty("Content-Type", "application/json")
@@ -241,6 +242,7 @@ class LukuSdk(
 
         val url = URL("$apiUrl/heartbeat")
         val conn = url.openConnection() as HttpURLConnection
+        conn.applyExtraHeaders(options)
         conn.requestMethod = "POST"
         conn.doOutput = true
         conn.setRequestProperty("Content-Type", "application/json")
@@ -332,6 +334,7 @@ class LukuSdk(
 
         val url = URL("$apiUrl/participate")
         val conn = url.openConnection() as HttpURLConnection
+        conn.applyExtraHeaders(options)
         conn.requestMethod = "POST"
         conn.doOutput = true
         conn.setRequestProperty("Content-Type", "application/json")
@@ -360,6 +363,7 @@ class LukuSdk(
         val apiUrl = options.apiUrl.trimEnd('/')
         val url = URL("$apiUrl/firmware/request")
         val conn = url.openConnection() as HttpURLConnection
+        conn.applyExtraHeaders(options)
         conn.requestMethod = "POST"
         conn.doOutput = true
         conn.setRequestProperty("Content-Type", "application/json")

@@ -96,7 +96,9 @@ public class RevocationManager {
         guard let url = URL(string: urlString) else { return }
         
         do {
-            let (data, response) = try await URLSession.shared.data(from: url)
+            var request = URLRequest(url: url)
+            request.applyExtraHeaders(options)
+            let (data, response) = try await URLSession.shared.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse else { return }
             
             if httpResponse.statusCode == 200 {

@@ -122,8 +122,23 @@ data class LukuSdkOptions(
      * Set to 0 to disable auto-refresh.
      * Default is 4 hours.
      */
-    val crlRefreshIntervalHours: Int = 4
+    val crlRefreshIntervalHours: Int = 4,
+    /**
+     * Extra HTTP headers sent with every request the SDK makes to LukuID (heartbeat,
+     * telemetry, firmware, CRL, check). Apps use it to identify themselves
+     * (`X-LukuID-App`, `X-LukuID-App-Version`, `X-LukuID-Platform`) and to state a firmware
+     * channel preference (`X-LukuID-Firmware-Channel`). Default: none.
+     */
+    val extraHeaders: Map<String, String> = emptyMap()
 )
+
+/** Applies [LukuSdkOptions.extraHeaders]; entries with line breaks are skipped. */
+internal fun java.net.HttpURLConnection.applyExtraHeaders(options: LukuSdkOptions) {
+    for ((name, value) in options.extraHeaders) {
+        if (name.isBlank() || name.any { it.isWhitespace() || it == ':' } || value.any { it == '\r' || it == '\n' }) continue
+        setRequestProperty(name, value)
+    }
+}
 
 /** Item for Level 2 Cloud Attestation. */
 data class AttestationItem(

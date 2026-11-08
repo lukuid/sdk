@@ -145,7 +145,7 @@ impl RevocationManager {
             }
         }
         let url = format!("{}/crl", options.api_url.trim_end_matches('/'));
-        let snapshot: SignedSnapshot = reqwest::get(url).await?.error_for_status()?.json().await?;
+        let snapshot: SignedSnapshot = options.http_client().get(url).send().await?.error_for_status()?.json().await?;
         let next = Self::validate_snapshot(&snapshot, &options.trust_profile)?;
         let now = Utc::now();
         *fingerprints.write().unwrap() = next;

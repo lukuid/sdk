@@ -179,6 +179,14 @@ public struct LukuIDClientOptions: Sendable {
      */
     public let crlRefreshIntervalHours: Int
 
+    /**
+     * Extra HTTP headers sent with every request the SDK makes to LukuID (heartbeat,
+     * telemetry, firmware, CRL, check). Apps use it to identify themselves
+     * (`X-LukuID-App`, `X-LukuID-App-Version`, `X-LukuID-Platform`) and to state a firmware
+     * channel preference (`X-LukuID-Firmware-Channel`). Default: none.
+     */
+    public let extraHeaders: [String: String]
+
     public init(
         debugLogging: Bool = false,
         allowUnverifiedDevices: Bool = false,
@@ -187,7 +195,8 @@ public struct LukuIDClientOptions: Sendable {
         disableExternalCalls: Bool = false,
         crlMemoryOnly: Bool = false,
         crlCachePath: String? = nil,
-        crlRefreshIntervalHours: Int = 4
+        crlRefreshIntervalHours: Int = 4,
+        extraHeaders: [String: String] = [:]
     ) {
         self.debugLogging = debugLogging
         self.allowUnverifiedDevices = allowUnverifiedDevices
@@ -197,6 +206,17 @@ public struct LukuIDClientOptions: Sendable {
         self.crlMemoryOnly = crlMemoryOnly
         self.crlCachePath = crlCachePath
         self.crlRefreshIntervalHours = crlRefreshIntervalHours
+        self.extraHeaders = extraHeaders
+    }
+}
+
+extension URLRequest {
+    /// Applies `LukuIDClientOptions.extraHeaders`; entries with line breaks are skipped.
+    mutating func applyExtraHeaders(_ options: LukuIDClientOptions) {
+        for (name, value) in options.extraHeaders {
+            if name.isEmpty || name.contains(where: { $0.isWhitespace || $0 == ":" }) || value.contains(where: { $0 == "\r" || $0 == "\n" }) { continue }
+            setValue(value, forHTTPHeaderField: name)
+        }
     }
 }
 

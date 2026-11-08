@@ -125,6 +125,12 @@ export interface DeviceFactoryOptions {
   commandTimeoutMs?: number;
   revocationManager?: RevocationManager;
   apiUrl?: string;
+  /**
+   * Extra HTTP headers sent with every request to LukuID (heartbeat, telemetry). Apps use
+   * it to identify themselves (X-LukuID-App, X-LukuID-App-Version, X-LukuID-Platform) and
+   * to state a firmware channel preference (X-LukuID-Firmware-Channel).
+   */
+  extraHeaders?: Record<string, string>;
 }
 
 export interface DeviceContext {

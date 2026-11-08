@@ -271,6 +271,8 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
         }
 
         var request = URLRequest(url: url)
+
+        request.applyExtraHeaders(options)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         
@@ -319,6 +321,8 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
         }
 
         var request = URLRequest(url: url)
+
+        request.applyExtraHeaders(options)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
@@ -390,6 +394,7 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
         
         let targetUrl = URL(string: "\(apiUrl)/participate")!
         var request = URLRequest(url: targetUrl)
+        request.applyExtraHeaders(options)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         

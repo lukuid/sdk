@@ -10,6 +10,8 @@ export interface RevocationManagerOptions {
   crlRefreshIntervalHours?: number;
   debugLogging?: boolean;
   trustProfile?: string;
+  /** Extra HTTP headers sent with the CRL request (see DeviceFactoryOptions.extraHeaders). */
+  extraHeaders?: Record<string, string>;
 }
 
 interface SignedSnapshot {
@@ -103,7 +105,7 @@ export class RevocationManager {
     if (intervalMs > 0 && Date.now() - this.lastSync < intervalMs) return;
     let request = requests.get(apiUrl);
     if (!request) {
-      request = fetch(`${apiUrl}/crl`).then(async response => {
+      request = fetch(`${apiUrl}/crl`, { headers: this.options.extraHeaders ?? {} }).then(async response => {
         if (!response.ok) throw new Error(`CRL HTTP ${response.status}`);
         return response.json() as Promise<SignedSnapshot>;
       });

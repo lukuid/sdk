@@ -429,6 +429,7 @@ class LukuidDevice implements Device {
         if (now - lastSync > 24 * 3600 || info.sync_required) {
             try {
                 const defaultApiUrl = (this.context as any).options?.apiUrl || 'https://api.lukuid.com';
+                const extraHeaders: Record<string, string> = (this.context as any).options?.extraHeaders || {};
                 const apiUrl = info.custom_heartbeat_url || defaultApiUrl;
 
                 // 1. Push Telemetry to public API if enabled
@@ -443,7 +444,7 @@ class LukuidDevice implements Device {
                         if (normalizedTelemetry.length > 0) {
                             await fetch(`${apiUrl.replace(/\/$/, '')}/participate`, {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
+                                headers: { ...extraHeaders, 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                     device_id: info.id,
                                     rows: normalizedTelemetry,
@@ -479,7 +480,7 @@ class LukuidDevice implements Device {
                 if (signature) {
                     const hbResponse = await fetch(`${apiUrl.replace(/\/$/, '')}/heartbeat`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { ...extraHeaders, 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             device_id: info.id,
                             public_key: info.key,

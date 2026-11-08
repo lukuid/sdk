@@ -64,6 +64,38 @@ pub struct LukuidSdkOptions {
      * Default is 4 hours.
      */
     pub crl_refresh_interval_hours: u32,
+    /**
+     * Extra HTTP headers sent with every request the SDK makes to LukuID (heartbeat,
+     * telemetry, firmware, CRL). Apps use it to identify themselves, e.g.
+     * `X-LukuID-App`, `X-LukuID-App-Version`, `X-LukuID-Platform`, and to state a firmware
+     * channel preference (`X-LukuID-Firmware-Channel`). Invalid header names or values are
+     * skipped. Default: none.
+     */
+    pub extra_headers: Vec<(String, String)>,
+}
+
+impl LukuidSdkOptions {
+    /// The extra headers as a reqwest header map (invalid entries are skipped).
+    pub fn header_map(&self) -> reqwest::header::HeaderMap {
+        let mut map = reqwest::header::HeaderMap::new();
+        for (name, value) in &self.extra_headers {
+            if let (Ok(name), Ok(value)) = (
+                reqwest::header::HeaderName::from_bytes(name.as_bytes()),
+                reqwest::header::HeaderValue::from_str(value),
+            ) {
+                map.insert(name, value);
+            }
+        }
+        map
+    }
+
+    /// An HTTP client that sends the extra headers with every request.
+    pub fn http_client(&self) -> reqwest::Client {
+        reqwest::Client::builder()
+            .default_headers(self.header_map())
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new())
+    }
 }
 
 impl Default for LukuidSdkOptions {
@@ -86,6 +118,7 @@ impl Default for LukuidSdkOptions {
             crl_memory_only: false,
             crl_cache_path: None,
             crl_refresh_interval_hours: 4,
+            extra_headers: Vec::new(),
         }
     }
 }
