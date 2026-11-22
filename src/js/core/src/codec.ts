@@ -248,8 +248,8 @@ export function encodeCommandRequest(frame: DeviceFrame): Uint8Array {
   } else if (action === 'ota_begin') {
     const nested: number[] = [];
     if (typeof source.size === 'number') writeUint32(nested, 1, source.size);
-    const pubkey = source.public_key;
-    if (pubkey instanceof Uint8Array) writeBytesField(nested, 2, pubkey);
+    const pubkey = normalizeBytesValue(source.public_key);
+    if (pubkey) writeBytesField(nested, 2, pubkey);
     if (typeof source.binary_mode === 'boolean') writeBool(nested, 3, source.binary_mode);
     if (typeof source.update_uid === 'string') writeString(nested, 4, source.update_uid);
     if (typeof source.from_version === 'string') writeString(nested, 5, source.from_version);
@@ -267,14 +267,14 @@ export function encodeCommandRequest(frame: DeviceFrame): Uint8Array {
     writeMessage(chunks, 6, nested);
   } else if (action === 'ota_data') {
     const nested: number[] = [];
-    const data = source.data;
-    if (data instanceof Uint8Array) writeBytesField(nested, 1, data);
+    const data = normalizeBytesValue(source.data);
+    if (data) writeBytesField(nested, 1, data);
     if (typeof source.offset === 'number') writeUint32(nested, 2, source.offset);
     writeMessage(chunks, 7, nested);
   } else if (action === 'ota_end') {
     const nested: number[] = [];
-    const sig = source.signature;
-    if (sig instanceof Uint8Array) writeBytesField(nested, 1, sig);
+    const sig = normalizeBytesValue(source.signature);
+    if (sig) writeBytesField(nested, 1, sig);
     writeMessage(chunks, 8, nested);
   } else if (action === 'set_attestation') {
     const nested: number[] = [];
