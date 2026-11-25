@@ -222,6 +222,15 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
         }
     }
 
+    public func cancelConnect(deviceId: String) {
+        queue.async {
+            guard let uuid = UUID(uuidString: deviceId) else { return }
+            self.central.retrievePeripherals(withIdentifiers: [uuid]).forEach { peripheral in
+                self.central.cancelPeripheralConnection(peripheral)
+            }
+        }
+    }
+
     @discardableResult
     public func onError(_ handler: @escaping (SdkError) -> Void) -> CallbackToken {
         let token = UUID()
