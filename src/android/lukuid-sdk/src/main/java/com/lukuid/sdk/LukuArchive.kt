@@ -648,6 +648,7 @@ class LukuArchive private constructor(
         fun open(data: ByteArray): LukuArchive {
             var archiveData = data
             if (data.size > 5 && data.copyOfRange(0, 5).contentEquals("%PDF-".toByteArray(StandardCharsets.US_ASCII))) {
+                var extracted: ByteArray? = null
                 try {
                     PDDocument.load(data).use { doc ->
                         val embeddedFiles = doc.documentCatalog?.names?.embeddedFiles
@@ -658,7 +659,7 @@ class LukuArchive private constructor(
                                     if (name == "evidence.luku") {
                                         val stream = fileSpec.embeddedFile
                                         if (stream != null) {
-                                            archiveData = stream.toByteArray()
+                                            extracted = stream.toByteArray()
                                             break
                                         }
                                     }
@@ -667,8 +668,10 @@ class LukuArchive private constructor(
                         }
                     }
                 } catch (e: Exception) {
-                    // Ignore and fallback to raw data
+                    throw IllegalArgumentException("Failed to inspect PDF for embedded 'evidence.luku' file: ${e.message}", e)
                 }
+                archiveData = extracted
+                    ?: throw IllegalArgumentException("PDF does not contain an embedded 'evidence.luku' file")
             }
 
             val files = linkedMapOf<String, ByteArray>()
