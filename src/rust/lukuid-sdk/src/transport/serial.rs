@@ -453,6 +453,16 @@ fn select_probe_candidates(ports: Vec<SerialPortInfo>, debug_logging: bool) -> V
         }
 
         match &port.port_type {
+            SerialPortType::UsbPort(info) if is_esp_usb_serial_jtag(info.vid, info.pid) => {
+                // ESP32-S3 USB Serial/JTAG (flashing/console port). Opening it toggles
+                // DTR/RTS, which can reset the board; LukuID commands never run on it.
+                if debug_logging {
+                    eprintln!(
+                        "[lukuid-sdk] Skipping ESP USB Serial/JTAG console {}",
+                        name
+                    );
+                }
+            }
             SerialPortType::UsbPort(info) => {
                 let is_lukuid = info.manufacturer.as_deref() == Some("LukuID")
                     || info
@@ -489,6 +499,12 @@ fn select_probe_candidates(ports: Vec<SerialPortInfo>, debug_logging: bool) -> V
     let mut candidates = preferred;
     candidates.extend(others);
     candidates
+}
+
+/// Espressif's built-in USB Serial/JTAG unit (303a:1001). The LukuID USB command
+/// interface is the firmware's TinyUSB CDC device, which enumerates differently.
+fn is_esp_usb_serial_jtag(vid: u16, pid: u16) -> bool {
+    vid == 0x303A && pid == 0x1001
 }
 
 fn is_system_or_bt_port(port_name: &str) -> bool {
@@ -557,5 +573,18 @@ impl Connection for SerialConnection {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_esp_usb_serial_jtag;
+
+    #[test]
+    fn skips_only_the_esp_usb_serial_jtag_console() {
+        assert!(is_esp_usb_serial_jtag(0x303A, 0x1001));
+        // LukuID TinyUSB CDC (application mode) stays a candidate.
+        assert!(!is_esp_usb_serial_jtag(0x303A, 0x4001));
+        assert!(!is_esp_usb_serial_jtag(0x10C4, 0xEA60));
     }
 }

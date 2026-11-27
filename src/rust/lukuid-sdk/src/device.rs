@@ -631,7 +631,13 @@ impl Device {
                 .unwrap()
                 .as_secs();
             if now - last_sync_val > 24 * 3600 || verified_device.info.sync_required {
-                let _ = verified_device.sync_heartbeat(&sdk).await;
+                // Verification stands on its own, but a failed sync is never silent.
+                if let Err(e) = verified_device.sync_heartbeat(&sdk).await {
+                    eprintln!(
+                        "[lukuid-sdk] Heartbeat sync failed for {}: {}",
+                        verified_device.info.id, e
+                    );
+                }
             }
         }
 
