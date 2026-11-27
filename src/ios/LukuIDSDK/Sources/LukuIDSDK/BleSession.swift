@@ -412,6 +412,7 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
             firmware: parsed.info.firmware,
             model: parsed.info.model,
             signature: parsed.info.signature,
+            customHeartbeatURL: parsed.info.customHeartbeatURL,
             attestationDacDer: parsed.info.attestationDacDer,
             attestationManufacturerDer: parsed.info.attestationManufacturerDer,
             attestationIntermediateDer: parsed.info.attestationIntermediateDer,
@@ -421,6 +422,7 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
             heartbeatIntermediateDer: parsed.info.heartbeatIntermediateDer,
             heartbeatRootFingerprint: parsed.info.heartbeatRootFingerprint,
             verified: isVerified,
+            networkParticipationEnabled: parsed.info.networkParticipationEnabled,
             lastSync: parsed.info.lastSync,
             counter: parsed.info.counter,
             syncRequired: parsed.info.syncRequired
@@ -523,7 +525,10 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
         let name = map["name"] as? String
         let firmware = map["firmware"] as? String
         let model = map["model"] as? String
-        let meta = map["meta"] as? [String: Any] ?? [:]
+        var meta = map["meta"] as? [String: Any] ?? [:]
+        if meta["product"] == nil, let product = map["product"] as? String, !product.isEmpty {
+            meta["product"] = product
+        }
         
         let slac = map["slac"] as? [String: Any]
         let lastSync = slac?["valid_from"] as? UInt64

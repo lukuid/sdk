@@ -443,7 +443,7 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
         for peripheral in peripherals {
             let session = await createSession(for: peripheral)
             do {
-                let validatedSession = try await session.awaitValidation(timeout: 15)
+                let validatedSession = try await session.awaitValidation(timeout: 60)
                 devices.append(validatedSession)
                 queue.async {
                     self.validated.insert(session.peripheralIdentifier)
@@ -658,7 +658,7 @@ public final class LukuIDClient: NSObject, CBCentralManagerDelegate {
         validating.insert(session.peripheralIdentifier)
         Task {
             do {
-                let validatedSession = try await session.awaitValidation(timeout: 15)
+                let validatedSession = try await session.awaitValidation(timeout: 60)
                 queue.async {
                     let inserted = self.validated.insert(session.peripheralIdentifier).inserted
                     if inserted {

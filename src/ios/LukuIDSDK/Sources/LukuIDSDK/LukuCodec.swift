@@ -316,6 +316,14 @@ final class LukuCodec {
             request.generateHeartbeat = LukuIDGenerateHeartbeatRequest()
         case "telemetry":
             request.telemetry = LukuIDTelemetryRequest()
+        case "get_certificate":
+            var cert = LukuIDGetCertificateRequest()
+            cert.name = asString("name") ?? ""
+            request.getCertificate = cert
+        case "get_chain":
+            var chain = LukuIDGetChainRequest()
+            chain.ref = asString("ref") ?? ""
+            request.getChain = chain
         default:
             break
         }
@@ -377,6 +385,7 @@ final class LukuCodec {
             dict["revision"] = info.revision
             dict["pairing"] = info.pairing
             dict["custom_heartbeat_url"] = info.customHeartbeatURL
+            dict["network_participation_enabled"] = info.networkParticipationEnabled
             dict["managed_by"] = info.managedBy
             dict["attestation_dac_der"] = info.attestationDacDer
             dict["attestation_manufacturer_der"] = info.attestationManufacturerDer
@@ -449,10 +458,10 @@ final class LukuCodec {
             dict["has_attestation"] = status.hasAttestation_p
             dict["has_heartbeat"] = status.hasHeartbeat_p
             dict["needs_sync"] = status.needsSync
-        case .certificateResponse(_):
-            break
-        case .chainResponse(_):
-            break
+        case .certificateResponse(let cert):
+            if !cert.der.isEmpty { dict["der"] = cert.der }
+        case .chainResponse(let chain):
+            if !chain.der.isEmpty { dict["der"] = chain.der }
         case .historicalExport(let export):
             dict["historical_export"] = mapHistoricalExportResponse(export)
         case .none:
