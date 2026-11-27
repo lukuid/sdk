@@ -214,7 +214,7 @@ pub struct Device {
     cmd_tx: mpsc::Sender<(String, String, Value, CommandCallback)>,
     raw_tx: mpsc::Sender<(Vec<u8>, oneshot::Sender<Result<(), String>>)>,
     event_tx: broadcast::Sender<DeviceEventPayload>,
-    close_tx: mpsc::Sender<()>,
+    close_tx: mpsc::Sender<oneshot::Sender<()>>,
     _event_rx: broadcast::Receiver<DeviceEventPayload>,
     cmd_mutex: tokio::sync::Mutex<()>,
     pending_cmds: Arc<Mutex<HashMap<String, PendingCommand>>>,
@@ -264,7 +264,7 @@ impl Device {
             mpsc::channel::<(String, String, Value, CommandCallback)>(32);
         let (raw_tx, mut raw_rx) =
             mpsc::channel::<(Vec<u8>, oneshot::Sender<Result<(), String>>)>(32);
-        let (close_tx, mut close_rx) = mpsc::channel(1);
+        let (close_tx, mut close_rx) = mpsc::channel::<oneshot::Sender<()>>(1);
         let (event_tx, event_rx) = broadcast::channel(100);
 
         let pending_cmds: Arc<Mutex<HashMap<String, PendingCommand>>> =
@@ -342,9 +342,12 @@ impl Device {
                         let _ = callback.send(result);
                     }
 
-                    _ = close_rx.recv() => {
+                    done = close_rx.recv() => {
                         let conn = conn_loop.lock().await;
                         let _ = conn.close().await;
+                        if let Some(done) = done {
+                            let _ = done.send(());
+                        }
                         break;
                     }
                 }
@@ -1051,8 +1054,13 @@ impl Device {
         self.event_tx.subscribe()
     }
 
+    /// Closes the connection and returns once the transport has closed it (or
+    /// after 10 s), so an immediate reconnect does not race the old link.
     pub async fn close(&self) {
-        let _ = self.close_tx.send(()).await;
+        let (done_tx, done_rx) = oneshot::channel();
+        if self.close_tx.send(done_tx).await.is_ok() {
+            let _ = tokio::time::timeout(Duration::from_secs(10), done_rx).await;
+        }
     }
 }
 
