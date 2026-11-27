@@ -380,6 +380,12 @@ internal class BleDeviceSession(
         }
     }
 
+    // Apps read the product ("environment" / "animalreader") from info.meta["product"].
+    private fun productMeta(meta: Map<String, Any?>, product: Any?): Map<String, Any?> {
+        val value = product?.toString()?.takeIf { it.isNotEmpty() } ?: return meta
+        return if (meta.containsKey("product")) meta else meta + ("product" to value)
+    }
+
     private fun parseStatus(data: Any?): DeviceInfo {
         val map = data as? Map<*, *> ?: throw IllegalStateException("STATUS response missing body")
         val normalized = map.entries.associate { (k, v) -> k.toString() to JsonUtils.fromJsonValue(v) }
@@ -393,6 +399,7 @@ internal class BleDeviceSession(
             key = "",
             firmware = null,
             model = normalized["model"]?.toString(),
+            meta = productMeta(emptyMap(), normalized["product"]),
             verified = false,
             syncRequired = normalized["needs_sync"] as? Boolean ?: false
         )
@@ -407,10 +414,13 @@ internal class BleDeviceSession(
         val firmware = normalized["firmware"]?.toString()
         val model = normalized["model"]?.toString()
         val name = normalized["name"]?.toString()
-        val meta = (normalized["meta"] as? Map<*, *>)
-            ?.entries
-            ?.associate { (k, v) -> k.toString() to v }
-            ?: emptyMap()
+        val meta = productMeta(
+            (normalized["meta"] as? Map<*, *>)
+                ?.entries
+                ?.associate { (k, v) -> k.toString() to v }
+                ?: emptyMap(),
+            normalized["product"]
+        )
         
         val lastSync = (normalized["slac"] as? Map<*, *>)?.get("valid_from")?.toString()?.toLongOrNull()
         val counter = normalized["counter"]?.toString()?.toLongOrNull() ?: 0L
