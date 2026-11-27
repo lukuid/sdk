@@ -289,7 +289,7 @@ internal class BleTransport(
     }
 
     companion object {
-        private const val VALIDATION_TIMEOUT_MS = 15_000L
+        private const val VALIDATION_TIMEOUT_MS = 60_000L
     }
 }
 

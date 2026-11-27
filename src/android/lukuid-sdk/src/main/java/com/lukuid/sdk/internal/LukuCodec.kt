@@ -292,6 +292,14 @@ internal class LukuCodec(
                 if (heartbeat.lastIntermediateSerial.isNotEmpty()) map["last_intermediate_serial"] = heartbeat.lastIntermediateSerial
                 if (heartbeat.lastSlacSerial.isNotEmpty()) map["last_slac_serial"] = heartbeat.lastSlacSerial
             }
+            LukuIDProto.CommandResponse.PayloadCase.CERTIFICATE_RESPONSE -> {
+                val der = response.certificateResponse.der
+                if (!der.isEmpty) map["der"] = der.toByteArray()
+            }
+            LukuIDProto.CommandResponse.PayloadCase.CHAIN_RESPONSE -> {
+                val der = response.chainResponse.der
+                if (!der.isEmpty) map["der"] = der.toByteArray()
+            }
             LukuIDProto.CommandResponse.PayloadCase.TELEMETRY -> {
                 val telemetry = response.telemetry
                 map["data"] = telemetry.rowsList.map { row ->
@@ -775,6 +783,16 @@ internal class LukuCodec(
                 }
                 "telemetry" -> {
                     builder.telemetry = LukuIDProto.TelemetryRequest.getDefaultInstance()
+                }
+                "get_certificate" -> {
+                    builder.setGetCertificate(
+                        LukuIDProto.GetCertificateRequest.newBuilder().setName(asString("name") ?: "").build()
+                    )
+                }
+                "get_chain" -> {
+                    builder.setGetChain(
+                        LukuIDProto.GetChainRequest.newBuilder().setRef(asString("ref") ?: "").build()
+                    )
                 }
             }
 

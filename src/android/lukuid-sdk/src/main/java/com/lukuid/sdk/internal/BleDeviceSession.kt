@@ -325,7 +325,8 @@ internal class BleDeviceSession(
                                     telemetryPayload.put("telemetry_chain_tail", telemetryChainTail)
                                 }
                             } catch (e: Exception) {
-                                // Log or ignore public telemetry failure
+                                // Telemetry is optional for the heartbeat, but never silent.
+                                errorSink(SdkError("ble.telemetry", e))
                             }
                         }
 
@@ -651,7 +652,9 @@ internal class BleDeviceSession(
                 writeAck.set(null)
                 throw IOException("Write failed: $status")
             }
-            withTimeout(5_000L) {
+            // The first write on an unbonded link is answered only after the user
+            // enters the passkey (firmware allows 25 s), so wait longer than that.
+            withTimeout(30_000L) {
                 ack.await()
             }
         }
@@ -735,6 +738,19 @@ internal class BleDeviceSession(
             }
         }
 
+        // Android 13+: the value is passed in, so a burst of notifications (streamed
+        // fetch replies) cannot overwrite it before it is read.
+        override fun onCharacteristicChanged(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            value: ByteArray
+        ) {
+            if (characteristic.uuid == BleConstants.TX_CHARACTERISTIC_UUID) {
+                codec.feed(value)
+            }
+        }
+
+        @Deprecated("Called only below Android 13")
         override fun onCharacteristicChanged(
             gatt: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic
