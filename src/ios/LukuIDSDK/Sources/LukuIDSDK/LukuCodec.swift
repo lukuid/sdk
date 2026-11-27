@@ -314,8 +314,8 @@ final class LukuCodec {
             request.capture = cp
         case "generate_heartbeat":
             request.generateHeartbeat = LukuIDGenerateHeartbeatRequest()
-        case "fetch_telemetry":
-            request.fetchTelemetry = LukuIDFetchTelemetryRequest()
+        case "telemetry":
+            request.telemetry = LukuIDTelemetryRequest()
         default:
             break
         }
@@ -421,7 +421,7 @@ final class LukuCodec {
             dict["current_timestamp"] = heartbeat.currentTimestamp
             if !heartbeat.lastIntermediateSerial.isEmpty { dict["last_intermediate_serial"] = heartbeat.lastIntermediateSerial }
             if !heartbeat.lastSlacSerial.isEmpty { dict["last_slac_serial"] = heartbeat.lastSlacSerial }
-        case .fetchTelemetry(let telemetry):
+        case .telemetry(let telemetry):
             dict["data"] = telemetry.rows.map { row in
                 row.values.map { mapTelemetryValue($0) }
             }

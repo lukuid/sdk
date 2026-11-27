@@ -5405,23 +5405,23 @@ export const lukuid = $root.lukuid = (() => {
         return GenerateHeartbeatRequest;
     })();
 
-    lukuid.FetchTelemetryRequest = (function() {
+    lukuid.TelemetryRequest = (function() {
 
         /**
-         * Properties of a FetchTelemetryRequest.
+         * Properties of a TelemetryRequest.
          * @memberof lukuid
-         * @interface IFetchTelemetryRequest
+         * @interface ITelemetryRequest
          */
 
         /**
-         * Constructs a new FetchTelemetryRequest.
+         * Constructs a new TelemetryRequest.
          * @memberof lukuid
-         * @classdesc Represents a FetchTelemetryRequest.
-         * @implements IFetchTelemetryRequest
+         * @classdesc Represents a TelemetryRequest.
+         * @implements ITelemetryRequest
          * @constructor
-         * @param {lukuid.IFetchTelemetryRequest=} [properties] Properties to set
+         * @param {lukuid.ITelemetryRequest=} [properties] Properties to set
          */
-        function FetchTelemetryRequest(properties) {
+        function TelemetryRequest(properties) {
             if (properties)
                 for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
                     if (properties[keys[i]] != null)
@@ -5429,60 +5429,60 @@ export const lukuid = $root.lukuid = (() => {
         }
 
         /**
-         * Creates a new FetchTelemetryRequest instance using the specified properties.
+         * Creates a new TelemetryRequest instance using the specified properties.
          * @function create
-         * @memberof lukuid.FetchTelemetryRequest
+         * @memberof lukuid.TelemetryRequest
          * @static
-         * @param {lukuid.IFetchTelemetryRequest=} [properties] Properties to set
-         * @returns {lukuid.FetchTelemetryRequest} FetchTelemetryRequest instance
+         * @param {lukuid.ITelemetryRequest=} [properties] Properties to set
+         * @returns {lukuid.TelemetryRequest} TelemetryRequest instance
          */
-        FetchTelemetryRequest.create = function create(properties) {
-            return new FetchTelemetryRequest(properties);
+        TelemetryRequest.create = function create(properties) {
+            return new TelemetryRequest(properties);
         };
 
         /**
-         * Encodes the specified FetchTelemetryRequest message. Does not implicitly {@link lukuid.FetchTelemetryRequest.verify|verify} messages.
+         * Encodes the specified TelemetryRequest message. Does not implicitly {@link lukuid.TelemetryRequest.verify|verify} messages.
          * @function encode
-         * @memberof lukuid.FetchTelemetryRequest
+         * @memberof lukuid.TelemetryRequest
          * @static
-         * @param {lukuid.IFetchTelemetryRequest} message FetchTelemetryRequest message or plain object to encode
+         * @param {lukuid.ITelemetryRequest} message TelemetryRequest message or plain object to encode
          * @param {$protobuf.Writer} [writer] Writer to encode to
          * @returns {$protobuf.Writer} Writer
          */
-        FetchTelemetryRequest.encode = function encode(message, writer) {
+        TelemetryRequest.encode = function encode(message, writer) {
             if (!writer)
                 writer = $Writer.create();
             return writer;
         };
 
         /**
-         * Encodes the specified FetchTelemetryRequest message, length delimited. Does not implicitly {@link lukuid.FetchTelemetryRequest.verify|verify} messages.
+         * Encodes the specified TelemetryRequest message, length delimited. Does not implicitly {@link lukuid.TelemetryRequest.verify|verify} messages.
          * @function encodeDelimited
-         * @memberof lukuid.FetchTelemetryRequest
+         * @memberof lukuid.TelemetryRequest
          * @static
-         * @param {lukuid.IFetchTelemetryRequest} message FetchTelemetryRequest message or plain object to encode
+         * @param {lukuid.ITelemetryRequest} message TelemetryRequest message or plain object to encode
          * @param {$protobuf.Writer} [writer] Writer to encode to
          * @returns {$protobuf.Writer} Writer
          */
-        FetchTelemetryRequest.encodeDelimited = function encodeDelimited(message, writer) {
+        TelemetryRequest.encodeDelimited = function encodeDelimited(message, writer) {
             return this.encode(message, writer).ldelim();
         };
 
         /**
-         * Decodes a FetchTelemetryRequest message from the specified reader or buffer.
+         * Decodes a TelemetryRequest message from the specified reader or buffer.
          * @function decode
-         * @memberof lukuid.FetchTelemetryRequest
+         * @memberof lukuid.TelemetryRequest
          * @static
          * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
          * @param {number} [length] Message length if known beforehand
-         * @returns {lukuid.FetchTelemetryRequest} FetchTelemetryRequest
+         * @returns {lukuid.TelemetryRequest} TelemetryRequest
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        FetchTelemetryRequest.decode = function decode(reader, length, error) {
+        TelemetryRequest.decode = function decode(reader, length, error) {
             if (!(reader instanceof $Reader))
                 reader = $Reader.create(reader);
-            let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lukuid.FetchTelemetryRequest();
+            let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lukuid.TelemetryRequest();
             while (reader.pos < end) {
                 let tag = reader.uint32();
                 if (tag === error)
@@ -5497,89 +5497,89 @@ export const lukuid = $root.lukuid = (() => {
         };
 
         /**
-         * Decodes a FetchTelemetryRequest message from the specified reader or buffer, length delimited.
+         * Decodes a TelemetryRequest message from the specified reader or buffer, length delimited.
          * @function decodeDelimited
-         * @memberof lukuid.FetchTelemetryRequest
+         * @memberof lukuid.TelemetryRequest
          * @static
          * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-         * @returns {lukuid.FetchTelemetryRequest} FetchTelemetryRequest
+         * @returns {lukuid.TelemetryRequest} TelemetryRequest
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        FetchTelemetryRequest.decodeDelimited = function decodeDelimited(reader) {
+        TelemetryRequest.decodeDelimited = function decodeDelimited(reader) {
             if (!(reader instanceof $Reader))
                 reader = new $Reader(reader);
             return this.decode(reader, reader.uint32());
         };
 
         /**
-         * Verifies a FetchTelemetryRequest message.
+         * Verifies a TelemetryRequest message.
          * @function verify
-         * @memberof lukuid.FetchTelemetryRequest
+         * @memberof lukuid.TelemetryRequest
          * @static
          * @param {Object.<string,*>} message Plain object to verify
          * @returns {string|null} `null` if valid, otherwise the reason why it is not
          */
-        FetchTelemetryRequest.verify = function verify(message) {
+        TelemetryRequest.verify = function verify(message) {
             if (typeof message !== "object" || message === null)
                 return "object expected";
             return null;
         };
 
         /**
-         * Creates a FetchTelemetryRequest message from a plain object. Also converts values to their respective internal types.
+         * Creates a TelemetryRequest message from a plain object. Also converts values to their respective internal types.
          * @function fromObject
-         * @memberof lukuid.FetchTelemetryRequest
+         * @memberof lukuid.TelemetryRequest
          * @static
          * @param {Object.<string,*>} object Plain object
-         * @returns {lukuid.FetchTelemetryRequest} FetchTelemetryRequest
+         * @returns {lukuid.TelemetryRequest} TelemetryRequest
          */
-        FetchTelemetryRequest.fromObject = function fromObject(object) {
-            if (object instanceof $root.lukuid.FetchTelemetryRequest)
+        TelemetryRequest.fromObject = function fromObject(object) {
+            if (object instanceof $root.lukuid.TelemetryRequest)
                 return object;
-            return new $root.lukuid.FetchTelemetryRequest();
+            return new $root.lukuid.TelemetryRequest();
         };
 
         /**
-         * Creates a plain object from a FetchTelemetryRequest message. Also converts values to other types if specified.
+         * Creates a plain object from a TelemetryRequest message. Also converts values to other types if specified.
          * @function toObject
-         * @memberof lukuid.FetchTelemetryRequest
+         * @memberof lukuid.TelemetryRequest
          * @static
-         * @param {lukuid.FetchTelemetryRequest} message FetchTelemetryRequest
+         * @param {lukuid.TelemetryRequest} message TelemetryRequest
          * @param {$protobuf.IConversionOptions} [options] Conversion options
          * @returns {Object.<string,*>} Plain object
          */
-        FetchTelemetryRequest.toObject = function toObject() {
+        TelemetryRequest.toObject = function toObject() {
             return {};
         };
 
         /**
-         * Converts this FetchTelemetryRequest to JSON.
+         * Converts this TelemetryRequest to JSON.
          * @function toJSON
-         * @memberof lukuid.FetchTelemetryRequest
+         * @memberof lukuid.TelemetryRequest
          * @instance
          * @returns {Object.<string,*>} JSON object
          */
-        FetchTelemetryRequest.prototype.toJSON = function toJSON() {
+        TelemetryRequest.prototype.toJSON = function toJSON() {
             return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
         };
 
         /**
-         * Gets the default type url for FetchTelemetryRequest
+         * Gets the default type url for TelemetryRequest
          * @function getTypeUrl
-         * @memberof lukuid.FetchTelemetryRequest
+         * @memberof lukuid.TelemetryRequest
          * @static
          * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
          * @returns {string} The default type url
          */
-        FetchTelemetryRequest.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+        TelemetryRequest.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
             if (typeUrlPrefix === undefined) {
                 typeUrlPrefix = "type.googleapis.com";
             }
-            return typeUrlPrefix + "/lukuid.FetchTelemetryRequest";
+            return typeUrlPrefix + "/lukuid.TelemetryRequest";
         };
 
-        return FetchTelemetryRequest;
+        return TelemetryRequest;
     })();
 
     lukuid.TelemetryValue = (function() {
@@ -6128,29 +6128,29 @@ export const lukuid = $root.lukuid = (() => {
         return TelemetryRow;
     })();
 
-    lukuid.FetchTelemetryResponse = (function() {
+    lukuid.TelemetryResponse = (function() {
 
         /**
-         * Properties of a FetchTelemetryResponse.
+         * Properties of a TelemetryResponse.
          * @memberof lukuid
-         * @interface IFetchTelemetryResponse
-         * @property {Array.<lukuid.ITelemetryRow>|null} [rows] FetchTelemetryResponse rows
-         * @property {Uint8Array|null} [signature] FetchTelemetryResponse signature
-         * @property {string|null} [canonicalString] FetchTelemetryResponse canonicalString
-         * @property {number|null} [telemetryChainVersion] FetchTelemetryResponse telemetryChainVersion
-         * @property {string|null} [telemetryChainTail] FetchTelemetryResponse telemetryChainTail
-         * @property {number|null} [rowCount] FetchTelemetryResponse rowCount
+         * @interface ITelemetryResponse
+         * @property {Array.<lukuid.ITelemetryRow>|null} [rows] TelemetryResponse rows
+         * @property {Uint8Array|null} [signature] TelemetryResponse signature
+         * @property {string|null} [canonicalString] TelemetryResponse canonicalString
+         * @property {number|null} [telemetryChainVersion] TelemetryResponse telemetryChainVersion
+         * @property {string|null} [telemetryChainTail] TelemetryResponse telemetryChainTail
+         * @property {number|null} [rowCount] TelemetryResponse rowCount
          */
 
         /**
-         * Constructs a new FetchTelemetryResponse.
+         * Constructs a new TelemetryResponse.
          * @memberof lukuid
-         * @classdesc Represents a FetchTelemetryResponse.
-         * @implements IFetchTelemetryResponse
+         * @classdesc Represents a TelemetryResponse.
+         * @implements ITelemetryResponse
          * @constructor
-         * @param {lukuid.IFetchTelemetryResponse=} [properties] Properties to set
+         * @param {lukuid.ITelemetryResponse=} [properties] Properties to set
          */
-        function FetchTelemetryResponse(properties) {
+        function TelemetryResponse(properties) {
             this.rows = [];
             if (properties)
                 for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
@@ -6159,108 +6159,108 @@ export const lukuid = $root.lukuid = (() => {
         }
 
         /**
-         * FetchTelemetryResponse rows.
+         * TelemetryResponse rows.
          * @member {Array.<lukuid.ITelemetryRow>} rows
-         * @memberof lukuid.FetchTelemetryResponse
+         * @memberof lukuid.TelemetryResponse
          * @instance
          */
-        FetchTelemetryResponse.prototype.rows = $util.emptyArray;
+        TelemetryResponse.prototype.rows = $util.emptyArray;
 
         /**
-         * FetchTelemetryResponse signature.
+         * TelemetryResponse signature.
          * @member {Uint8Array|null|undefined} signature
-         * @memberof lukuid.FetchTelemetryResponse
+         * @memberof lukuid.TelemetryResponse
          * @instance
          */
-        FetchTelemetryResponse.prototype.signature = null;
+        TelemetryResponse.prototype.signature = null;
 
         /**
-         * FetchTelemetryResponse canonicalString.
+         * TelemetryResponse canonicalString.
          * @member {string|null|undefined} canonicalString
-         * @memberof lukuid.FetchTelemetryResponse
+         * @memberof lukuid.TelemetryResponse
          * @instance
          */
-        FetchTelemetryResponse.prototype.canonicalString = null;
+        TelemetryResponse.prototype.canonicalString = null;
 
         /**
-         * FetchTelemetryResponse telemetryChainVersion.
+         * TelemetryResponse telemetryChainVersion.
          * @member {number|null|undefined} telemetryChainVersion
-         * @memberof lukuid.FetchTelemetryResponse
+         * @memberof lukuid.TelemetryResponse
          * @instance
          */
-        FetchTelemetryResponse.prototype.telemetryChainVersion = null;
+        TelemetryResponse.prototype.telemetryChainVersion = null;
 
         /**
-         * FetchTelemetryResponse telemetryChainTail.
+         * TelemetryResponse telemetryChainTail.
          * @member {string|null|undefined} telemetryChainTail
-         * @memberof lukuid.FetchTelemetryResponse
+         * @memberof lukuid.TelemetryResponse
          * @instance
          */
-        FetchTelemetryResponse.prototype.telemetryChainTail = null;
+        TelemetryResponse.prototype.telemetryChainTail = null;
 
         /**
-         * FetchTelemetryResponse rowCount.
+         * TelemetryResponse rowCount.
          * @member {number|null|undefined} rowCount
-         * @memberof lukuid.FetchTelemetryResponse
+         * @memberof lukuid.TelemetryResponse
          * @instance
          */
-        FetchTelemetryResponse.prototype.rowCount = null;
+        TelemetryResponse.prototype.rowCount = null;
 
         // OneOf field names bound to virtual getters and setters
         let $oneOfFields;
 
         // Virtual OneOf for proto3 optional field
-        Object.defineProperty(FetchTelemetryResponse.prototype, "_signature", {
+        Object.defineProperty(TelemetryResponse.prototype, "_signature", {
             get: $util.oneOfGetter($oneOfFields = ["signature"]),
             set: $util.oneOfSetter($oneOfFields)
         });
 
         // Virtual OneOf for proto3 optional field
-        Object.defineProperty(FetchTelemetryResponse.prototype, "_canonicalString", {
+        Object.defineProperty(TelemetryResponse.prototype, "_canonicalString", {
             get: $util.oneOfGetter($oneOfFields = ["canonicalString"]),
             set: $util.oneOfSetter($oneOfFields)
         });
 
         // Virtual OneOf for proto3 optional field
-        Object.defineProperty(FetchTelemetryResponse.prototype, "_telemetryChainVersion", {
+        Object.defineProperty(TelemetryResponse.prototype, "_telemetryChainVersion", {
             get: $util.oneOfGetter($oneOfFields = ["telemetryChainVersion"]),
             set: $util.oneOfSetter($oneOfFields)
         });
 
         // Virtual OneOf for proto3 optional field
-        Object.defineProperty(FetchTelemetryResponse.prototype, "_telemetryChainTail", {
+        Object.defineProperty(TelemetryResponse.prototype, "_telemetryChainTail", {
             get: $util.oneOfGetter($oneOfFields = ["telemetryChainTail"]),
             set: $util.oneOfSetter($oneOfFields)
         });
 
         // Virtual OneOf for proto3 optional field
-        Object.defineProperty(FetchTelemetryResponse.prototype, "_rowCount", {
+        Object.defineProperty(TelemetryResponse.prototype, "_rowCount", {
             get: $util.oneOfGetter($oneOfFields = ["rowCount"]),
             set: $util.oneOfSetter($oneOfFields)
         });
 
         /**
-         * Creates a new FetchTelemetryResponse instance using the specified properties.
+         * Creates a new TelemetryResponse instance using the specified properties.
          * @function create
-         * @memberof lukuid.FetchTelemetryResponse
+         * @memberof lukuid.TelemetryResponse
          * @static
-         * @param {lukuid.IFetchTelemetryResponse=} [properties] Properties to set
-         * @returns {lukuid.FetchTelemetryResponse} FetchTelemetryResponse instance
+         * @param {lukuid.ITelemetryResponse=} [properties] Properties to set
+         * @returns {lukuid.TelemetryResponse} TelemetryResponse instance
          */
-        FetchTelemetryResponse.create = function create(properties) {
-            return new FetchTelemetryResponse(properties);
+        TelemetryResponse.create = function create(properties) {
+            return new TelemetryResponse(properties);
         };
 
         /**
-         * Encodes the specified FetchTelemetryResponse message. Does not implicitly {@link lukuid.FetchTelemetryResponse.verify|verify} messages.
+         * Encodes the specified TelemetryResponse message. Does not implicitly {@link lukuid.TelemetryResponse.verify|verify} messages.
          * @function encode
-         * @memberof lukuid.FetchTelemetryResponse
+         * @memberof lukuid.TelemetryResponse
          * @static
-         * @param {lukuid.IFetchTelemetryResponse} message FetchTelemetryResponse message or plain object to encode
+         * @param {lukuid.ITelemetryResponse} message TelemetryResponse message or plain object to encode
          * @param {$protobuf.Writer} [writer] Writer to encode to
          * @returns {$protobuf.Writer} Writer
          */
-        FetchTelemetryResponse.encode = function encode(message, writer) {
+        TelemetryResponse.encode = function encode(message, writer) {
             if (!writer)
                 writer = $Writer.create();
             if (message.rows != null && message.rows.length)
@@ -6280,33 +6280,33 @@ export const lukuid = $root.lukuid = (() => {
         };
 
         /**
-         * Encodes the specified FetchTelemetryResponse message, length delimited. Does not implicitly {@link lukuid.FetchTelemetryResponse.verify|verify} messages.
+         * Encodes the specified TelemetryResponse message, length delimited. Does not implicitly {@link lukuid.TelemetryResponse.verify|verify} messages.
          * @function encodeDelimited
-         * @memberof lukuid.FetchTelemetryResponse
+         * @memberof lukuid.TelemetryResponse
          * @static
-         * @param {lukuid.IFetchTelemetryResponse} message FetchTelemetryResponse message or plain object to encode
+         * @param {lukuid.ITelemetryResponse} message TelemetryResponse message or plain object to encode
          * @param {$protobuf.Writer} [writer] Writer to encode to
          * @returns {$protobuf.Writer} Writer
          */
-        FetchTelemetryResponse.encodeDelimited = function encodeDelimited(message, writer) {
+        TelemetryResponse.encodeDelimited = function encodeDelimited(message, writer) {
             return this.encode(message, writer).ldelim();
         };
 
         /**
-         * Decodes a FetchTelemetryResponse message from the specified reader or buffer.
+         * Decodes a TelemetryResponse message from the specified reader or buffer.
          * @function decode
-         * @memberof lukuid.FetchTelemetryResponse
+         * @memberof lukuid.TelemetryResponse
          * @static
          * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
          * @param {number} [length] Message length if known beforehand
-         * @returns {lukuid.FetchTelemetryResponse} FetchTelemetryResponse
+         * @returns {lukuid.TelemetryResponse} TelemetryResponse
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        FetchTelemetryResponse.decode = function decode(reader, length, error) {
+        TelemetryResponse.decode = function decode(reader, length, error) {
             if (!(reader instanceof $Reader))
                 reader = $Reader.create(reader);
-            let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lukuid.FetchTelemetryResponse();
+            let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lukuid.TelemetryResponse();
             while (reader.pos < end) {
                 let tag = reader.uint32();
                 if (tag === error)
@@ -6347,30 +6347,30 @@ export const lukuid = $root.lukuid = (() => {
         };
 
         /**
-         * Decodes a FetchTelemetryResponse message from the specified reader or buffer, length delimited.
+         * Decodes a TelemetryResponse message from the specified reader or buffer, length delimited.
          * @function decodeDelimited
-         * @memberof lukuid.FetchTelemetryResponse
+         * @memberof lukuid.TelemetryResponse
          * @static
          * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-         * @returns {lukuid.FetchTelemetryResponse} FetchTelemetryResponse
+         * @returns {lukuid.TelemetryResponse} TelemetryResponse
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        FetchTelemetryResponse.decodeDelimited = function decodeDelimited(reader) {
+        TelemetryResponse.decodeDelimited = function decodeDelimited(reader) {
             if (!(reader instanceof $Reader))
                 reader = new $Reader(reader);
             return this.decode(reader, reader.uint32());
         };
 
         /**
-         * Verifies a FetchTelemetryResponse message.
+         * Verifies a TelemetryResponse message.
          * @function verify
-         * @memberof lukuid.FetchTelemetryResponse
+         * @memberof lukuid.TelemetryResponse
          * @static
          * @param {Object.<string,*>} message Plain object to verify
          * @returns {string|null} `null` if valid, otherwise the reason why it is not
          */
-        FetchTelemetryResponse.verify = function verify(message) {
+        TelemetryResponse.verify = function verify(message) {
             if (typeof message !== "object" || message === null)
                 return "object expected";
             let properties = {};
@@ -6412,24 +6412,24 @@ export const lukuid = $root.lukuid = (() => {
         };
 
         /**
-         * Creates a FetchTelemetryResponse message from a plain object. Also converts values to their respective internal types.
+         * Creates a TelemetryResponse message from a plain object. Also converts values to their respective internal types.
          * @function fromObject
-         * @memberof lukuid.FetchTelemetryResponse
+         * @memberof lukuid.TelemetryResponse
          * @static
          * @param {Object.<string,*>} object Plain object
-         * @returns {lukuid.FetchTelemetryResponse} FetchTelemetryResponse
+         * @returns {lukuid.TelemetryResponse} TelemetryResponse
          */
-        FetchTelemetryResponse.fromObject = function fromObject(object) {
-            if (object instanceof $root.lukuid.FetchTelemetryResponse)
+        TelemetryResponse.fromObject = function fromObject(object) {
+            if (object instanceof $root.lukuid.TelemetryResponse)
                 return object;
-            let message = new $root.lukuid.FetchTelemetryResponse();
+            let message = new $root.lukuid.TelemetryResponse();
             if (object.rows) {
                 if (!Array.isArray(object.rows))
-                    throw TypeError(".lukuid.FetchTelemetryResponse.rows: array expected");
+                    throw TypeError(".lukuid.TelemetryResponse.rows: array expected");
                 message.rows = [];
                 for (let i = 0; i < object.rows.length; ++i) {
                     if (typeof object.rows[i] !== "object")
-                        throw TypeError(".lukuid.FetchTelemetryResponse.rows: object expected");
+                        throw TypeError(".lukuid.TelemetryResponse.rows: object expected");
                     message.rows[i] = $root.lukuid.TelemetryRow.fromObject(object.rows[i]);
                 }
             }
@@ -6450,15 +6450,15 @@ export const lukuid = $root.lukuid = (() => {
         };
 
         /**
-         * Creates a plain object from a FetchTelemetryResponse message. Also converts values to other types if specified.
+         * Creates a plain object from a TelemetryResponse message. Also converts values to other types if specified.
          * @function toObject
-         * @memberof lukuid.FetchTelemetryResponse
+         * @memberof lukuid.TelemetryResponse
          * @static
-         * @param {lukuid.FetchTelemetryResponse} message FetchTelemetryResponse
+         * @param {lukuid.TelemetryResponse} message TelemetryResponse
          * @param {$protobuf.IConversionOptions} [options] Conversion options
          * @returns {Object.<string,*>} Plain object
          */
-        FetchTelemetryResponse.toObject = function toObject(message, options) {
+        TelemetryResponse.toObject = function toObject(message, options) {
             if (!options)
                 options = {};
             let object = {};
@@ -6498,32 +6498,32 @@ export const lukuid = $root.lukuid = (() => {
         };
 
         /**
-         * Converts this FetchTelemetryResponse to JSON.
+         * Converts this TelemetryResponse to JSON.
          * @function toJSON
-         * @memberof lukuid.FetchTelemetryResponse
+         * @memberof lukuid.TelemetryResponse
          * @instance
          * @returns {Object.<string,*>} JSON object
          */
-        FetchTelemetryResponse.prototype.toJSON = function toJSON() {
+        TelemetryResponse.prototype.toJSON = function toJSON() {
             return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
         };
 
         /**
-         * Gets the default type url for FetchTelemetryResponse
+         * Gets the default type url for TelemetryResponse
          * @function getTypeUrl
-         * @memberof lukuid.FetchTelemetryResponse
+         * @memberof lukuid.TelemetryResponse
          * @static
          * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
          * @returns {string} The default type url
          */
-        FetchTelemetryResponse.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+        TelemetryResponse.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
             if (typeUrlPrefix === undefined) {
                 typeUrlPrefix = "type.googleapis.com";
             }
-            return typeUrlPrefix + "/lukuid.FetchTelemetryResponse";
+            return typeUrlPrefix + "/lukuid.TelemetryResponse";
         };
 
-        return FetchTelemetryResponse;
+        return TelemetryResponse;
     })();
 
     lukuid.GetCertificateRequest = (function() {
@@ -8139,7 +8139,7 @@ export const lukuid = $root.lukuid = (() => {
          * @property {lukuid.ISetConfigureRequest|null} [configure] CommandRequest configure
          * @property {lukuid.IScanEnableRequest|null} [scanEnable] CommandRequest scanEnable
          * @property {lukuid.IGenerateHeartbeatRequest|null} [generateHeartbeat] CommandRequest generateHeartbeat
-         * @property {lukuid.IFetchTelemetryRequest|null} [fetchTelemetry] CommandRequest fetchTelemetry
+         * @property {lukuid.ITelemetryRequest|null} [telemetry] CommandRequest telemetry
          * @property {lukuid.IGetCertificateRequest|null} [getCertificate] CommandRequest getCertificate
          * @property {lukuid.IGetChainRequest|null} [getChain] CommandRequest getChain
          * @property {lukuid.IChallengeRequest|null} [challenge] CommandRequest challenge
@@ -8274,12 +8274,12 @@ export const lukuid = $root.lukuid = (() => {
         CommandRequest.prototype.generateHeartbeat = null;
 
         /**
-         * CommandRequest fetchTelemetry.
-         * @member {lukuid.IFetchTelemetryRequest|null|undefined} fetchTelemetry
+         * CommandRequest telemetry.
+         * @member {lukuid.ITelemetryRequest|null|undefined} telemetry
          * @memberof lukuid.CommandRequest
          * @instance
          */
-        CommandRequest.prototype.fetchTelemetry = null;
+        CommandRequest.prototype.telemetry = null;
 
         /**
          * CommandRequest getCertificate.
@@ -8318,12 +8318,12 @@ export const lukuid = $root.lukuid = (() => {
 
         /**
          * CommandRequest payload.
-         * @member {"fetch"|"get"|"attest"|"config"|"otaBegin"|"otaData"|"otaDataV2"|"setAttestation"|"setHeartbeat"|"configure"|"scanEnable"|"generateHeartbeat"|"fetchTelemetry"|"getCertificate"|"getChain"|"challenge"|"capture"|undefined} payload
+         * @member {"fetch"|"get"|"attest"|"config"|"otaBegin"|"otaData"|"otaDataV2"|"setAttestation"|"setHeartbeat"|"configure"|"scanEnable"|"generateHeartbeat"|"telemetry"|"getCertificate"|"getChain"|"challenge"|"capture"|undefined} payload
          * @memberof lukuid.CommandRequest
          * @instance
          */
         Object.defineProperty(CommandRequest.prototype, "payload", {
-            get: $util.oneOfGetter($oneOfFields = ["fetch", "get", "attest", "config", "otaBegin", "otaData", "otaDataV2", "setAttestation", "setHeartbeat", "configure", "scanEnable", "generateHeartbeat", "fetchTelemetry", "getCertificate", "getChain", "challenge", "capture"]),
+            get: $util.oneOfGetter($oneOfFields = ["fetch", "get", "attest", "config", "otaBegin", "otaData", "otaDataV2", "setAttestation", "setHeartbeat", "configure", "scanEnable", "generateHeartbeat", "telemetry", "getCertificate", "getChain", "challenge", "capture"]),
             set: $util.oneOfSetter($oneOfFields)
         });
 
@@ -8375,8 +8375,8 @@ export const lukuid = $root.lukuid = (() => {
                 $root.lukuid.ScanEnableRequest.encode(message.scanEnable, writer.uint32(/* id 12, wireType 2 =*/98).fork()).ldelim();
             if (message.generateHeartbeat != null && Object.hasOwnProperty.call(message, "generateHeartbeat"))
                 $root.lukuid.GenerateHeartbeatRequest.encode(message.generateHeartbeat, writer.uint32(/* id 13, wireType 2 =*/106).fork()).ldelim();
-            if (message.fetchTelemetry != null && Object.hasOwnProperty.call(message, "fetchTelemetry"))
-                $root.lukuid.FetchTelemetryRequest.encode(message.fetchTelemetry, writer.uint32(/* id 14, wireType 2 =*/114).fork()).ldelim();
+            if (message.telemetry != null && Object.hasOwnProperty.call(message, "telemetry"))
+                $root.lukuid.TelemetryRequest.encode(message.telemetry, writer.uint32(/* id 14, wireType 2 =*/114).fork()).ldelim();
             if (message.getCertificate != null && Object.hasOwnProperty.call(message, "getCertificate"))
                 $root.lukuid.GetCertificateRequest.encode(message.getCertificate, writer.uint32(/* id 15, wireType 2 =*/122).fork()).ldelim();
             if (message.getChain != null && Object.hasOwnProperty.call(message, "getChain"))
@@ -8482,7 +8482,7 @@ export const lukuid = $root.lukuid = (() => {
                         break;
                     }
                 case 14: {
-                        message.fetchTelemetry = $root.lukuid.FetchTelemetryRequest.decode(reader, reader.uint32());
+                        message.telemetry = $root.lukuid.TelemetryRequest.decode(reader, reader.uint32());
                         break;
                     }
                 case 15: {
@@ -8661,14 +8661,14 @@ export const lukuid = $root.lukuid = (() => {
                         return "generateHeartbeat." + error;
                 }
             }
-            if (message.fetchTelemetry != null && message.hasOwnProperty("fetchTelemetry")) {
+            if (message.telemetry != null && message.hasOwnProperty("telemetry")) {
                 if (properties.payload === 1)
                     return "payload: multiple values";
                 properties.payload = 1;
                 {
-                    let error = $root.lukuid.FetchTelemetryRequest.verify(message.fetchTelemetry);
+                    let error = $root.lukuid.TelemetryRequest.verify(message.telemetry);
                     if (error)
-                        return "fetchTelemetry." + error;
+                        return "telemetry." + error;
                 }
             }
             if (message.getCertificate != null && message.hasOwnProperty("getCertificate")) {
@@ -8790,10 +8790,10 @@ export const lukuid = $root.lukuid = (() => {
                     throw TypeError(".lukuid.CommandRequest.generateHeartbeat: object expected");
                 message.generateHeartbeat = $root.lukuid.GenerateHeartbeatRequest.fromObject(object.generateHeartbeat);
             }
-            if (object.fetchTelemetry != null) {
-                if (typeof object.fetchTelemetry !== "object")
-                    throw TypeError(".lukuid.CommandRequest.fetchTelemetry: object expected");
-                message.fetchTelemetry = $root.lukuid.FetchTelemetryRequest.fromObject(object.fetchTelemetry);
+            if (object.telemetry != null) {
+                if (typeof object.telemetry !== "object")
+                    throw TypeError(".lukuid.CommandRequest.telemetry: object expected");
+                message.telemetry = $root.lukuid.TelemetryRequest.fromObject(object.telemetry);
             }
             if (object.getCertificate != null) {
                 if (typeof object.getCertificate !== "object")
@@ -8892,10 +8892,10 @@ export const lukuid = $root.lukuid = (() => {
                 if (options.oneofs)
                     object.payload = "generateHeartbeat";
             }
-            if (message.fetchTelemetry != null && message.hasOwnProperty("fetchTelemetry")) {
-                object.fetchTelemetry = $root.lukuid.FetchTelemetryRequest.toObject(message.fetchTelemetry, options);
+            if (message.telemetry != null && message.hasOwnProperty("telemetry")) {
+                object.telemetry = $root.lukuid.TelemetryRequest.toObject(message.telemetry, options);
                 if (options.oneofs)
-                    object.payload = "fetchTelemetry";
+                    object.payload = "telemetry";
             }
             if (message.getCertificate != null && message.hasOwnProperty("getCertificate")) {
                 object.getCertificate = $root.lukuid.GetCertificateRequest.toObject(message.getCertificate, options);
@@ -20448,7 +20448,7 @@ export const lukuid = $root.lukuid = (() => {
          * @property {lukuid.IRecordBatches|null} [recordBatches] CommandResponse recordBatches
          * @property {lukuid.IHeartbeatInitResponse|null} [heartbeatInit] CommandResponse heartbeatInit
          * @property {lukuid.IStatusResponse|null} [statusResponse] CommandResponse statusResponse
-         * @property {lukuid.IFetchTelemetryResponse|null} [fetchTelemetry] CommandResponse fetchTelemetry
+         * @property {lukuid.ITelemetryResponse|null} [telemetry] CommandResponse telemetry
          * @property {lukuid.IGetCertificateResponse|null} [certificateResponse] CommandResponse certificateResponse
          * @property {lukuid.IGetChainResponse|null} [chainResponse] CommandResponse chainResponse
          * @property {lukuid.IHistoricalExportResponse|null} [historicalExport] CommandResponse historicalExport
@@ -20594,12 +20594,12 @@ export const lukuid = $root.lukuid = (() => {
         CommandResponse.prototype.statusResponse = null;
 
         /**
-         * CommandResponse fetchTelemetry.
-         * @member {lukuid.IFetchTelemetryResponse|null|undefined} fetchTelemetry
+         * CommandResponse telemetry.
+         * @member {lukuid.ITelemetryResponse|null|undefined} telemetry
          * @memberof lukuid.CommandResponse
          * @instance
          */
-        CommandResponse.prototype.fetchTelemetry = null;
+        CommandResponse.prototype.telemetry = null;
 
         /**
          * CommandResponse certificateResponse.
@@ -20662,12 +20662,12 @@ export const lukuid = $root.lukuid = (() => {
 
         /**
          * CommandResponse payload.
-         * @member {"deviceInfo"|"networkConfig"|"scanRecord"|"envRecord"|"fetchResponse"|"fullRecordResponse"|"recordBatches"|"heartbeatInit"|"statusResponse"|"fetchTelemetry"|"certificateResponse"|"chainResponse"|"historicalExport"|undefined} payload
+         * @member {"deviceInfo"|"networkConfig"|"scanRecord"|"envRecord"|"fetchResponse"|"fullRecordResponse"|"recordBatches"|"heartbeatInit"|"statusResponse"|"telemetry"|"certificateResponse"|"chainResponse"|"historicalExport"|undefined} payload
          * @memberof lukuid.CommandResponse
          * @instance
          */
         Object.defineProperty(CommandResponse.prototype, "payload", {
-            get: $util.oneOfGetter($oneOfFields = ["deviceInfo", "networkConfig", "scanRecord", "envRecord", "fetchResponse", "fullRecordResponse", "recordBatches", "heartbeatInit", "statusResponse", "fetchTelemetry", "certificateResponse", "chainResponse", "historicalExport"]),
+            get: $util.oneOfGetter($oneOfFields = ["deviceInfo", "networkConfig", "scanRecord", "envRecord", "fetchResponse", "fullRecordResponse", "recordBatches", "heartbeatInit", "statusResponse", "telemetry", "certificateResponse", "chainResponse", "historicalExport"]),
             set: $util.oneOfSetter($oneOfFields)
         });
 
@@ -20751,8 +20751,8 @@ export const lukuid = $root.lukuid = (() => {
                 $root.lukuid.RecordBatches.encode(message.recordBatches, writer.uint32(/* id 15, wireType 2 =*/122).fork()).ldelim();
             if (message.statusResponse != null && Object.hasOwnProperty.call(message, "statusResponse"))
                 $root.lukuid.StatusResponse.encode(message.statusResponse, writer.uint32(/* id 16, wireType 2 =*/130).fork()).ldelim();
-            if (message.fetchTelemetry != null && Object.hasOwnProperty.call(message, "fetchTelemetry"))
-                $root.lukuid.FetchTelemetryResponse.encode(message.fetchTelemetry, writer.uint32(/* id 17, wireType 2 =*/138).fork()).ldelim();
+            if (message.telemetry != null && Object.hasOwnProperty.call(message, "telemetry"))
+                $root.lukuid.TelemetryResponse.encode(message.telemetry, writer.uint32(/* id 17, wireType 2 =*/138).fork()).ldelim();
             if (message.hasMore != null && Object.hasOwnProperty.call(message, "hasMore"))
                 writer.uint32(/* id 18, wireType 0 =*/144).bool(message.hasMore);
             if (message.certificateResponse != null && Object.hasOwnProperty.call(message, "certificateResponse"))
@@ -20862,7 +20862,7 @@ export const lukuid = $root.lukuid = (() => {
                         break;
                     }
                 case 17: {
-                        message.fetchTelemetry = $root.lukuid.FetchTelemetryResponse.decode(reader, reader.uint32());
+                        message.telemetry = $root.lukuid.TelemetryResponse.decode(reader, reader.uint32());
                         break;
                     }
                 case 19: {
@@ -21042,14 +21042,14 @@ export const lukuid = $root.lukuid = (() => {
                         return "statusResponse." + error;
                 }
             }
-            if (message.fetchTelemetry != null && message.hasOwnProperty("fetchTelemetry")) {
+            if (message.telemetry != null && message.hasOwnProperty("telemetry")) {
                 if (properties.payload === 1)
                     return "payload: multiple values";
                 properties.payload = 1;
                 {
-                    let error = $root.lukuid.FetchTelemetryResponse.verify(message.fetchTelemetry);
+                    let error = $root.lukuid.TelemetryResponse.verify(message.telemetry);
                     if (error)
-                        return "fetchTelemetry." + error;
+                        return "telemetry." + error;
                 }
             }
             if (message.certificateResponse != null && message.hasOwnProperty("certificateResponse")) {
@@ -21196,10 +21196,10 @@ export const lukuid = $root.lukuid = (() => {
                     throw TypeError(".lukuid.CommandResponse.statusResponse: object expected");
                 message.statusResponse = $root.lukuid.StatusResponse.fromObject(object.statusResponse);
             }
-            if (object.fetchTelemetry != null) {
-                if (typeof object.fetchTelemetry !== "object")
-                    throw TypeError(".lukuid.CommandResponse.fetchTelemetry: object expected");
-                message.fetchTelemetry = $root.lukuid.FetchTelemetryResponse.fromObject(object.fetchTelemetry);
+            if (object.telemetry != null) {
+                if (typeof object.telemetry !== "object")
+                    throw TypeError(".lukuid.CommandResponse.telemetry: object expected");
+                message.telemetry = $root.lukuid.TelemetryResponse.fromObject(object.telemetry);
             }
             if (object.certificateResponse != null) {
                 if (typeof object.certificateResponse !== "object")
@@ -21319,10 +21319,10 @@ export const lukuid = $root.lukuid = (() => {
                 if (options.oneofs)
                     object.payload = "statusResponse";
             }
-            if (message.fetchTelemetry != null && message.hasOwnProperty("fetchTelemetry")) {
-                object.fetchTelemetry = $root.lukuid.FetchTelemetryResponse.toObject(message.fetchTelemetry, options);
+            if (message.telemetry != null && message.hasOwnProperty("telemetry")) {
+                object.telemetry = $root.lukuid.TelemetryResponse.toObject(message.telemetry, options);
                 if (options.oneofs)
-                    object.payload = "fetchTelemetry";
+                    object.payload = "telemetry";
             }
             if (message.hasMore != null && message.hasOwnProperty("hasMore")) {
                 object.hasMore = message.hasMore;

@@ -707,7 +707,7 @@ nonisolated struct LukuIDGenerateHeartbeatRequest: Sendable {
   init() {}
 }
 
-nonisolated struct LukuIDFetchTelemetryRequest: Sendable {
+nonisolated struct LukuIDTelemetryRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -781,7 +781,7 @@ nonisolated struct LukuIDTelemetryRow: Sendable {
   init() {}
 }
 
-nonisolated struct LukuIDFetchTelemetryResponse: Sendable {
+nonisolated struct LukuIDTelemetryResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -1079,12 +1079,12 @@ nonisolated struct LukuIDCommandRequest: @unchecked Sendable {
     set {_uniqueStorage()._payload = .generateHeartbeat(newValue)}
   }
 
-  var fetchTelemetry: LukuIDFetchTelemetryRequest {
+  var telemetry: LukuIDTelemetryRequest {
     get {
-      if case .fetchTelemetry(let v)? = _storage._payload {return v}
-      return LukuIDFetchTelemetryRequest()
+      if case .telemetry(let v)? = _storage._payload {return v}
+      return LukuIDTelemetryRequest()
     }
-    set {_uniqueStorage()._payload = .fetchTelemetry(newValue)}
+    set {_uniqueStorage()._payload = .telemetry(newValue)}
   }
 
   var getCertificate: LukuIDGetCertificateRequest {
@@ -1135,7 +1135,7 @@ nonisolated struct LukuIDCommandRequest: @unchecked Sendable {
     case configure(LukuIDSetConfigureRequest)
     case scanEnable(LukuIDScanEnableRequest)
     case generateHeartbeat(LukuIDGenerateHeartbeatRequest)
-    case fetchTelemetry(LukuIDFetchTelemetryRequest)
+    case telemetry(LukuIDTelemetryRequest)
     case getCertificate(LukuIDGetCertificateRequest)
     case getChain(LukuIDGetChainRequest)
     case challenge(LukuIDChallengeRequest)
@@ -2721,12 +2721,12 @@ nonisolated struct LukuIDCommandResponse: @unchecked Sendable {
     set {_uniqueStorage()._payload = .statusResponse(newValue)}
   }
 
-  var fetchTelemetry: LukuIDFetchTelemetryResponse {
+  var telemetry: LukuIDTelemetryResponse {
     get {
-      if case .fetchTelemetry(let v)? = _storage._payload {return v}
-      return LukuIDFetchTelemetryResponse()
+      if case .telemetry(let v)? = _storage._payload {return v}
+      return LukuIDTelemetryResponse()
     }
-    set {_uniqueStorage()._payload = .fetchTelemetry(newValue)}
+    set {_uniqueStorage()._payload = .telemetry(newValue)}
   }
 
   var certificateResponse: LukuIDGetCertificateResponse {
@@ -2803,7 +2803,7 @@ nonisolated struct LukuIDCommandResponse: @unchecked Sendable {
     case recordBatches(LukuIDRecordBatches)
     case heartbeatInit(LukuIDHeartbeatInitResponse)
     case statusResponse(LukuIDStatusResponse)
-    case fetchTelemetry(LukuIDFetchTelemetryResponse)
+    case telemetry(LukuIDTelemetryResponse)
     case certificateResponse(LukuIDGetCertificateResponse)
     case chainResponse(LukuIDGetChainResponse)
     case historicalExport(LukuIDHistoricalExportResponse)
@@ -3659,8 +3659,8 @@ nonisolated extension LukuIDGenerateHeartbeatRequest: SwiftProtobuf.Message, Swi
   }
 }
 
-nonisolated extension LukuIDFetchTelemetryRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".FetchTelemetryRequest"
+nonisolated extension LukuIDTelemetryRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".TelemetryRequest"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
@@ -3672,7 +3672,7 @@ nonisolated extension LukuIDFetchTelemetryRequest: SwiftProtobuf.Message, SwiftP
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: LukuIDFetchTelemetryRequest, rhs: LukuIDFetchTelemetryRequest) -> Bool {
+  static func ==(lhs: LukuIDTelemetryRequest, rhs: LukuIDTelemetryRequest) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3789,8 +3789,8 @@ nonisolated extension LukuIDTelemetryRow: SwiftProtobuf.Message, SwiftProtobuf._
   }
 }
 
-nonisolated extension LukuIDFetchTelemetryResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".FetchTelemetryResponse"
+nonisolated extension LukuIDTelemetryResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".TelemetryResponse"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}rows\0\u{1}signature\0\u{3}canonical_string\0\u{3}telemetry_chain_version\0\u{3}telemetry_chain_tail\0\u{3}row_count\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
@@ -3836,7 +3836,7 @@ nonisolated extension LukuIDFetchTelemetryResponse: SwiftProtobuf.Message, Swift
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: LukuIDFetchTelemetryResponse, rhs: LukuIDFetchTelemetryResponse) -> Bool {
+  static func ==(lhs: LukuIDTelemetryResponse, rhs: LukuIDTelemetryResponse) -> Bool {
     if lhs.rows != rhs.rows {return false}
     if lhs._signature != rhs._signature {return false}
     if lhs._canonicalString != rhs._canonicalString {return false}
@@ -4122,7 +4122,7 @@ nonisolated extension LukuIDHistoricalExportResponse: SwiftProtobuf.Message, Swi
 
 nonisolated extension LukuIDCommandRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".CommandRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}action\0\u{1}fetch\0\u{1}get\0\u{1}attest\0\u{1}config\0\u{3}ota_begin\0\u{3}ota_data\0\u{3}ota_data_v2\0\u{3}set_attestation\0\u{3}set_heartbeat\0\u{4}\u{2}scan_enable\0\u{3}generate_heartbeat\0\u{3}fetch_telemetry\0\u{3}get_certificate\0\u{3}get_chain\0\u{1}configure\0\u{3}request_id\0\u{1}challenge\0\u{1}capture\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}action\0\u{1}fetch\0\u{1}get\0\u{1}attest\0\u{1}config\0\u{3}ota_begin\0\u{3}ota_data\0\u{3}ota_data_v2\0\u{3}set_attestation\0\u{3}set_heartbeat\0\u{4}\u{2}scan_enable\0\u{3}generate_heartbeat\0\u{1}telemetry\0\u{3}get_certificate\0\u{3}get_chain\0\u{1}configure\0\u{3}request_id\0\u{1}challenge\0\u{1}capture\0")
 
   fileprivate class _StorageClass {
     var _action: String = String()
@@ -4304,16 +4304,16 @@ nonisolated extension LukuIDCommandRequest: SwiftProtobuf.Message, SwiftProtobuf
           }
         }()
         case 14: try {
-          var v: LukuIDFetchTelemetryRequest?
+          var v: LukuIDTelemetryRequest?
           var hadOneofValue = false
           if let current = _storage._payload {
             hadOneofValue = true
-            if case .fetchTelemetry(let m) = current {v = m}
+            if case .telemetry(let m) = current {v = m}
           }
           try decoder.decodeSingularMessageField(value: &v)
           if let v = v {
             if hadOneofValue {try decoder.handleConflictingOneOf()}
-            _storage._payload = .fetchTelemetry(v)
+            _storage._payload = .telemetry(v)
           }
         }()
         case 15: try {
@@ -4442,8 +4442,8 @@ nonisolated extension LukuIDCommandRequest: SwiftProtobuf.Message, SwiftProtobuf
         guard case .generateHeartbeat(let v)? = _storage._payload else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
       }()
-      case .fetchTelemetry?: try {
-        guard case .fetchTelemetry(let v)? = _storage._payload else { preconditionFailure() }
+      case .telemetry?: try {
+        guard case .telemetry(let v)? = _storage._payload else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
       }()
       case .getCertificate?: try {
@@ -7031,7 +7031,7 @@ nonisolated extension LukuIDHeartbeatInitResponse: SwiftProtobuf.Message, SwiftP
 
 nonisolated extension LukuIDCommandResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".CommandResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}action\0\u{1}status\0\u{1}success\0\u{3}error_code\0\u{1}message\0\u{3}device_info\0\u{3}network_config\0\u{3}scan_record\0\u{3}env_record\0\u{3}fetch_response\0\u{3}full_record_response\0\u{1}signature\0\u{1}key\0\u{3}heartbeat_init\0\u{3}record_batches\0\u{3}status_response\0\u{3}fetch_telemetry\0\u{3}has_more\0\u{3}certificate_response\0\u{3}historical_export\0\u{3}chain_response\0\u{3}request_id\0\u{3}frame_seq\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}action\0\u{1}status\0\u{1}success\0\u{3}error_code\0\u{1}message\0\u{3}device_info\0\u{3}network_config\0\u{3}scan_record\0\u{3}env_record\0\u{3}fetch_response\0\u{3}full_record_response\0\u{1}signature\0\u{1}key\0\u{3}heartbeat_init\0\u{3}record_batches\0\u{3}status_response\0\u{1}telemetry\0\u{3}has_more\0\u{3}certificate_response\0\u{3}historical_export\0\u{3}chain_response\0\u{3}request_id\0\u{3}frame_seq\0")
 
   fileprivate class _StorageClass {
     var _action: String = String()
@@ -7209,16 +7209,16 @@ nonisolated extension LukuIDCommandResponse: SwiftProtobuf.Message, SwiftProtobu
           }
         }()
         case 17: try {
-          var v: LukuIDFetchTelemetryResponse?
+          var v: LukuIDTelemetryResponse?
           var hadOneofValue = false
           if let current = _storage._payload {
             hadOneofValue = true
-            if case .fetchTelemetry(let m) = current {v = m}
+            if case .telemetry(let m) = current {v = m}
           }
           try decoder.decodeSingularMessageField(value: &v)
           if let v = v {
             if hadOneofValue {try decoder.handleConflictingOneOf()}
-            _storage._payload = .fetchTelemetry(v)
+            _storage._payload = .telemetry(v)
           }
         }()
         case 18: try { try decoder.decodeSingularBoolField(value: &_storage._hasMore_p) }()
@@ -7336,8 +7336,8 @@ nonisolated extension LukuIDCommandResponse: SwiftProtobuf.Message, SwiftProtobu
         guard case .statusResponse(let v)? = _storage._payload else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 16)
       }()
-      case .fetchTelemetry?: try {
-        guard case .fetchTelemetry(let v)? = _storage._payload else { preconditionFailure() }
+      case .telemetry?: try {
+        guard case .telemetry(let v)? = _storage._payload else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
       }()
       default: break

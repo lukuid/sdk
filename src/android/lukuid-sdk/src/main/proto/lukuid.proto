@@ -175,7 +175,7 @@ message CaptureRequest {
 
 message GenerateHeartbeatRequest {}
 
-message FetchTelemetryRequest {}
+message TelemetryRequest {}
 
 message TelemetryValue {
   oneof kind {
@@ -190,7 +190,7 @@ message TelemetryRow {
   repeated TelemetryValue values = 1;
 }
 
-message FetchTelemetryResponse {
+message TelemetryResponse {
   repeated TelemetryRow rows = 1;
   optional bytes signature = 2;
   optional string canonical_string = 3;
@@ -255,7 +255,7 @@ message CommandRequest {
     SetConfigureRequest configure = 17;
     ScanEnableRequest scan_enable = 12;
     GenerateHeartbeatRequest generate_heartbeat = 13;
-    FetchTelemetryRequest fetch_telemetry = 14;
+    TelemetryRequest telemetry = 14;
     GetCertificateRequest get_certificate = 15;
     GetChainRequest get_chain = 16;
     ChallengeRequest challenge = 19;
@@ -644,7 +644,7 @@ message CommandResponse {
     RecordBatches record_batches = 15;
     HeartbeatInitResponse heartbeat_init = 14;
     StatusResponse status_response = 16;
-    FetchTelemetryResponse fetch_telemetry = 17;
+    TelemetryResponse telemetry = 17;
     GetCertificateResponse certificate_response = 19;
     GetChainResponse chain_response = 21;
     HistoricalExportResponse historical_export = 20;

@@ -403,7 +403,7 @@ fn encode_command_request(input: &Value) -> Option<Vec<u8>> {
         "generate_heartbeat" => {
             write_message(&mut out, 13, &nested);
         }
-        "fetch_telemetry" => {
+        "telemetry" => {
             write_message(&mut out, 14, &nested);
         }
         _ => {}

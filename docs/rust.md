@@ -130,7 +130,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-`sync_heartbeat(...)` performs `fetch_telemetry`, `generate_heartbeat`, `POST /heartbeat`, and `set_heartbeat` in order. If the device reports `custom_heartbeat_url`, the Rust SDK uses that URL instead of the default `LukuidSdkOptions.api_url`. The outbound heartbeat request now includes the full attestation PEM chain through the intermediate plus `attestation_root_fingerprint` when the device `info` payload exposes them.
+`sync_heartbeat(...)` performs `telemetry`, `generate_heartbeat`, `POST /heartbeat`, and `set_heartbeat` in order. If the device reports `custom_heartbeat_url`, the Rust SDK uses that URL instead of the default `LukuidSdkOptions.api_url`. The outbound heartbeat request now includes the full attestation PEM chain through the intermediate plus `attestation_root_fingerprint` when the device `info` payload exposes them.
 
 ### Send Raw Binary
 

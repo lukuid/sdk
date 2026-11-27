@@ -297,7 +297,7 @@ internal class BleDeviceSession(
                         // 1. Push Telemetry to public API if enabled
                         if (info.networkParticipationEnabled) {
                             try {
-                                val telemetryResult = (try { call("fetch_telemetry", emptyMap()) } catch (e: Exception) { null }) as? Map<*, *>
+                                val telemetryResult = (try { call("telemetry", emptyMap()) } catch (e: Exception) { null }) as? Map<*, *>
                                 
                                 val rows = telemetryResult?.get("data") as? List<*>
                                 if (rows != null && rows.isNotEmpty()) {

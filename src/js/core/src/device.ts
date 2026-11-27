@@ -435,7 +435,7 @@ class LukuidDevice implements Device {
                 // 1. Push Telemetry to public API if enabled
                 if (info.network_participation_enabled) {
                     try {
-                        const telemetryResult = await this.call('fetch_telemetry', {}) as any;
+                        const telemetryResult = await this.call('telemetry', {}) as any;
                         const telemetry = telemetryResult?.data || [];
                         const normalizedTelemetry = normalizeTelemetryRows(Array.isArray(telemetry) ? telemetry : []);
                         const telemetrySignature = telemetryResult?.signature;

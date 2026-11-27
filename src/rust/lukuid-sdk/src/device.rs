@@ -656,14 +656,14 @@ impl Device {
             eprintln!("[lukuid-sdk] Heartbeat sync starting for {}", self.info.id);
         }
 
-        // 1. Push telemetry first. fetch_telemetry reserves a device counter, and the API
+        // 1. Push telemetry first. the telemetry command reserves a device counter, and the API
         // claims it when it accepts the batch; the heartbeat counter reserved next is then
         // higher and still accepted. (The reverse order made every accepted batch reject
         // the heartbeat as a replay.) The batch goes to /participate only: the device signs
         // it for that route, so a copy inside the heartbeat request is always rejected.
         if self.info.network_participation_enabled {
             let telemetry_resp = self
-                .call("fetch_telemetry", json!({}))
+                .call("telemetry", json!({}))
                 .await
                 .unwrap_or(json!({ "data": [] }));
 
@@ -676,7 +676,7 @@ impl Device {
                 .get("canonical_string")
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
-            // fetch_telemetry reserves its own counter and signs it in the canonical string
+            // the telemetry command reserves its own counter and signs it in the canonical string
             // (telemetry:{source}:{device_id}:{counter}:...); report that one.
             let telemetry_counter = telemetry_canonical_string
                 .as_deref()

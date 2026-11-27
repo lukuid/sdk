@@ -1975,91 +1975,91 @@ export namespace lukuid {
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
-    /** Properties of a FetchTelemetryRequest. */
-    interface IFetchTelemetryRequest {
+    /** Properties of a TelemetryRequest. */
+    interface ITelemetryRequest {
     }
 
-    /** Represents a FetchTelemetryRequest. */
-    class FetchTelemetryRequest implements IFetchTelemetryRequest {
+    /** Represents a TelemetryRequest. */
+    class TelemetryRequest implements ITelemetryRequest {
 
         /**
-         * Constructs a new FetchTelemetryRequest.
+         * Constructs a new TelemetryRequest.
          * @param [properties] Properties to set
          */
-        constructor(properties?: lukuid.IFetchTelemetryRequest);
+        constructor(properties?: lukuid.ITelemetryRequest);
 
         /**
-         * Creates a new FetchTelemetryRequest instance using the specified properties.
+         * Creates a new TelemetryRequest instance using the specified properties.
          * @param [properties] Properties to set
-         * @returns FetchTelemetryRequest instance
+         * @returns TelemetryRequest instance
          */
-        public static create(properties?: lukuid.IFetchTelemetryRequest): lukuid.FetchTelemetryRequest;
+        public static create(properties?: lukuid.ITelemetryRequest): lukuid.TelemetryRequest;
 
         /**
-         * Encodes the specified FetchTelemetryRequest message. Does not implicitly {@link lukuid.FetchTelemetryRequest.verify|verify} messages.
-         * @param message FetchTelemetryRequest message or plain object to encode
+         * Encodes the specified TelemetryRequest message. Does not implicitly {@link lukuid.TelemetryRequest.verify|verify} messages.
+         * @param message TelemetryRequest message or plain object to encode
          * @param [writer] Writer to encode to
          * @returns Writer
          */
-        public static encode(message: lukuid.IFetchTelemetryRequest, writer?: $protobuf.Writer): $protobuf.Writer;
+        public static encode(message: lukuid.ITelemetryRequest, writer?: $protobuf.Writer): $protobuf.Writer;
 
         /**
-         * Encodes the specified FetchTelemetryRequest message, length delimited. Does not implicitly {@link lukuid.FetchTelemetryRequest.verify|verify} messages.
-         * @param message FetchTelemetryRequest message or plain object to encode
+         * Encodes the specified TelemetryRequest message, length delimited. Does not implicitly {@link lukuid.TelemetryRequest.verify|verify} messages.
+         * @param message TelemetryRequest message or plain object to encode
          * @param [writer] Writer to encode to
          * @returns Writer
          */
-        public static encodeDelimited(message: lukuid.IFetchTelemetryRequest, writer?: $protobuf.Writer): $protobuf.Writer;
+        public static encodeDelimited(message: lukuid.ITelemetryRequest, writer?: $protobuf.Writer): $protobuf.Writer;
 
         /**
-         * Decodes a FetchTelemetryRequest message from the specified reader or buffer.
+         * Decodes a TelemetryRequest message from the specified reader or buffer.
          * @param reader Reader or buffer to decode from
          * @param [length] Message length if known beforehand
-         * @returns FetchTelemetryRequest
+         * @returns TelemetryRequest
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): lukuid.FetchTelemetryRequest;
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): lukuid.TelemetryRequest;
 
         /**
-         * Decodes a FetchTelemetryRequest message from the specified reader or buffer, length delimited.
+         * Decodes a TelemetryRequest message from the specified reader or buffer, length delimited.
          * @param reader Reader or buffer to decode from
-         * @returns FetchTelemetryRequest
+         * @returns TelemetryRequest
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): lukuid.FetchTelemetryRequest;
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): lukuid.TelemetryRequest;
 
         /**
-         * Verifies a FetchTelemetryRequest message.
+         * Verifies a TelemetryRequest message.
          * @param message Plain object to verify
          * @returns `null` if valid, otherwise the reason why it is not
          */
         public static verify(message: { [k: string]: any }): (string|null);
 
         /**
-         * Creates a FetchTelemetryRequest message from a plain object. Also converts values to their respective internal types.
+         * Creates a TelemetryRequest message from a plain object. Also converts values to their respective internal types.
          * @param object Plain object
-         * @returns FetchTelemetryRequest
+         * @returns TelemetryRequest
          */
-        public static fromObject(object: { [k: string]: any }): lukuid.FetchTelemetryRequest;
+        public static fromObject(object: { [k: string]: any }): lukuid.TelemetryRequest;
 
         /**
-         * Creates a plain object from a FetchTelemetryRequest message. Also converts values to other types if specified.
-         * @param message FetchTelemetryRequest
+         * Creates a plain object from a TelemetryRequest message. Also converts values to other types if specified.
+         * @param message TelemetryRequest
          * @param [options] Conversion options
          * @returns Plain object
          */
-        public static toObject(message: lukuid.FetchTelemetryRequest, options?: $protobuf.IConversionOptions): { [k: string]: any };
+        public static toObject(message: lukuid.TelemetryRequest, options?: $protobuf.IConversionOptions): { [k: string]: any };
 
         /**
-         * Converts this FetchTelemetryRequest to JSON.
+         * Converts this TelemetryRequest to JSON.
          * @returns JSON object
          */
         public toJSON(): { [k: string]: any };
 
         /**
-         * Gets the default type url for FetchTelemetryRequest
+         * Gets the default type url for TelemetryRequest
          * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
          * @returns The default type url
          */
@@ -2281,127 +2281,127 @@ export namespace lukuid {
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
-    /** Properties of a FetchTelemetryResponse. */
-    interface IFetchTelemetryResponse {
+    /** Properties of a TelemetryResponse. */
+    interface ITelemetryResponse {
 
-        /** FetchTelemetryResponse rows */
+        /** TelemetryResponse rows */
         rows?: (lukuid.ITelemetryRow[]|null);
 
-        /** FetchTelemetryResponse signature */
+        /** TelemetryResponse signature */
         signature?: (Uint8Array|null);
 
-        /** FetchTelemetryResponse canonicalString */
+        /** TelemetryResponse canonicalString */
         canonicalString?: (string|null);
 
-        /** FetchTelemetryResponse telemetryChainVersion */
+        /** TelemetryResponse telemetryChainVersion */
         telemetryChainVersion?: (number|null);
 
-        /** FetchTelemetryResponse telemetryChainTail */
+        /** TelemetryResponse telemetryChainTail */
         telemetryChainTail?: (string|null);
 
-        /** FetchTelemetryResponse rowCount */
+        /** TelemetryResponse rowCount */
         rowCount?: (number|null);
     }
 
-    /** Represents a FetchTelemetryResponse. */
-    class FetchTelemetryResponse implements IFetchTelemetryResponse {
+    /** Represents a TelemetryResponse. */
+    class TelemetryResponse implements ITelemetryResponse {
 
         /**
-         * Constructs a new FetchTelemetryResponse.
+         * Constructs a new TelemetryResponse.
          * @param [properties] Properties to set
          */
-        constructor(properties?: lukuid.IFetchTelemetryResponse);
+        constructor(properties?: lukuid.ITelemetryResponse);
 
-        /** FetchTelemetryResponse rows. */
+        /** TelemetryResponse rows. */
         public rows: lukuid.ITelemetryRow[];
 
-        /** FetchTelemetryResponse signature. */
+        /** TelemetryResponse signature. */
         public signature?: (Uint8Array|null);
 
-        /** FetchTelemetryResponse canonicalString. */
+        /** TelemetryResponse canonicalString. */
         public canonicalString?: (string|null);
 
-        /** FetchTelemetryResponse telemetryChainVersion. */
+        /** TelemetryResponse telemetryChainVersion. */
         public telemetryChainVersion?: (number|null);
 
-        /** FetchTelemetryResponse telemetryChainTail. */
+        /** TelemetryResponse telemetryChainTail. */
         public telemetryChainTail?: (string|null);
 
-        /** FetchTelemetryResponse rowCount. */
+        /** TelemetryResponse rowCount. */
         public rowCount?: (number|null);
 
         /**
-         * Creates a new FetchTelemetryResponse instance using the specified properties.
+         * Creates a new TelemetryResponse instance using the specified properties.
          * @param [properties] Properties to set
-         * @returns FetchTelemetryResponse instance
+         * @returns TelemetryResponse instance
          */
-        public static create(properties?: lukuid.IFetchTelemetryResponse): lukuid.FetchTelemetryResponse;
+        public static create(properties?: lukuid.ITelemetryResponse): lukuid.TelemetryResponse;
 
         /**
-         * Encodes the specified FetchTelemetryResponse message. Does not implicitly {@link lukuid.FetchTelemetryResponse.verify|verify} messages.
-         * @param message FetchTelemetryResponse message or plain object to encode
+         * Encodes the specified TelemetryResponse message. Does not implicitly {@link lukuid.TelemetryResponse.verify|verify} messages.
+         * @param message TelemetryResponse message or plain object to encode
          * @param [writer] Writer to encode to
          * @returns Writer
          */
-        public static encode(message: lukuid.IFetchTelemetryResponse, writer?: $protobuf.Writer): $protobuf.Writer;
+        public static encode(message: lukuid.ITelemetryResponse, writer?: $protobuf.Writer): $protobuf.Writer;
 
         /**
-         * Encodes the specified FetchTelemetryResponse message, length delimited. Does not implicitly {@link lukuid.FetchTelemetryResponse.verify|verify} messages.
-         * @param message FetchTelemetryResponse message or plain object to encode
+         * Encodes the specified TelemetryResponse message, length delimited. Does not implicitly {@link lukuid.TelemetryResponse.verify|verify} messages.
+         * @param message TelemetryResponse message or plain object to encode
          * @param [writer] Writer to encode to
          * @returns Writer
          */
-        public static encodeDelimited(message: lukuid.IFetchTelemetryResponse, writer?: $protobuf.Writer): $protobuf.Writer;
+        public static encodeDelimited(message: lukuid.ITelemetryResponse, writer?: $protobuf.Writer): $protobuf.Writer;
 
         /**
-         * Decodes a FetchTelemetryResponse message from the specified reader or buffer.
+         * Decodes a TelemetryResponse message from the specified reader or buffer.
          * @param reader Reader or buffer to decode from
          * @param [length] Message length if known beforehand
-         * @returns FetchTelemetryResponse
+         * @returns TelemetryResponse
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): lukuid.FetchTelemetryResponse;
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): lukuid.TelemetryResponse;
 
         /**
-         * Decodes a FetchTelemetryResponse message from the specified reader or buffer, length delimited.
+         * Decodes a TelemetryResponse message from the specified reader or buffer, length delimited.
          * @param reader Reader or buffer to decode from
-         * @returns FetchTelemetryResponse
+         * @returns TelemetryResponse
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): lukuid.FetchTelemetryResponse;
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): lukuid.TelemetryResponse;
 
         /**
-         * Verifies a FetchTelemetryResponse message.
+         * Verifies a TelemetryResponse message.
          * @param message Plain object to verify
          * @returns `null` if valid, otherwise the reason why it is not
          */
         public static verify(message: { [k: string]: any }): (string|null);
 
         /**
-         * Creates a FetchTelemetryResponse message from a plain object. Also converts values to their respective internal types.
+         * Creates a TelemetryResponse message from a plain object. Also converts values to their respective internal types.
          * @param object Plain object
-         * @returns FetchTelemetryResponse
+         * @returns TelemetryResponse
          */
-        public static fromObject(object: { [k: string]: any }): lukuid.FetchTelemetryResponse;
+        public static fromObject(object: { [k: string]: any }): lukuid.TelemetryResponse;
 
         /**
-         * Creates a plain object from a FetchTelemetryResponse message. Also converts values to other types if specified.
-         * @param message FetchTelemetryResponse
+         * Creates a plain object from a TelemetryResponse message. Also converts values to other types if specified.
+         * @param message TelemetryResponse
          * @param [options] Conversion options
          * @returns Plain object
          */
-        public static toObject(message: lukuid.FetchTelemetryResponse, options?: $protobuf.IConversionOptions): { [k: string]: any };
+        public static toObject(message: lukuid.TelemetryResponse, options?: $protobuf.IConversionOptions): { [k: string]: any };
 
         /**
-         * Converts this FetchTelemetryResponse to JSON.
+         * Converts this TelemetryResponse to JSON.
          * @returns JSON object
          */
         public toJSON(): { [k: string]: any };
 
         /**
-         * Gets the default type url for FetchTelemetryResponse
+         * Gets the default type url for TelemetryResponse
          * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
          * @returns The default type url
          */
@@ -3110,8 +3110,8 @@ export namespace lukuid {
         /** CommandRequest generateHeartbeat */
         generateHeartbeat?: (lukuid.IGenerateHeartbeatRequest|null);
 
-        /** CommandRequest fetchTelemetry */
-        fetchTelemetry?: (lukuid.IFetchTelemetryRequest|null);
+        /** CommandRequest telemetry */
+        telemetry?: (lukuid.ITelemetryRequest|null);
 
         /** CommandRequest getCertificate */
         getCertificate?: (lukuid.IGetCertificateRequest|null);
@@ -3177,8 +3177,8 @@ export namespace lukuid {
         /** CommandRequest generateHeartbeat. */
         public generateHeartbeat?: (lukuid.IGenerateHeartbeatRequest|null);
 
-        /** CommandRequest fetchTelemetry. */
-        public fetchTelemetry?: (lukuid.IFetchTelemetryRequest|null);
+        /** CommandRequest telemetry. */
+        public telemetry?: (lukuid.ITelemetryRequest|null);
 
         /** CommandRequest getCertificate. */
         public getCertificate?: (lukuid.IGetCertificateRequest|null);
@@ -3193,7 +3193,7 @@ export namespace lukuid {
         public capture?: (lukuid.ICaptureRequest|null);
 
         /** CommandRequest payload. */
-        public payload?: ("fetch"|"get"|"attest"|"config"|"otaBegin"|"otaData"|"otaDataV2"|"setAttestation"|"setHeartbeat"|"configure"|"scanEnable"|"generateHeartbeat"|"fetchTelemetry"|"getCertificate"|"getChain"|"challenge"|"capture");
+        public payload?: ("fetch"|"get"|"attest"|"config"|"otaBegin"|"otaData"|"otaDataV2"|"setAttestation"|"setHeartbeat"|"configure"|"scanEnable"|"generateHeartbeat"|"telemetry"|"getCertificate"|"getChain"|"challenge"|"capture");
 
         /**
          * Creates a new CommandRequest instance using the specified properties.
@@ -6989,8 +6989,8 @@ export namespace lukuid {
         /** CommandResponse statusResponse */
         statusResponse?: (lukuid.IStatusResponse|null);
 
-        /** CommandResponse fetchTelemetry */
-        fetchTelemetry?: (lukuid.IFetchTelemetryResponse|null);
+        /** CommandResponse telemetry */
+        telemetry?: (lukuid.ITelemetryResponse|null);
 
         /** CommandResponse certificateResponse */
         certificateResponse?: (lukuid.IGetCertificateResponse|null);
@@ -7068,8 +7068,8 @@ export namespace lukuid {
         /** CommandResponse statusResponse. */
         public statusResponse?: (lukuid.IStatusResponse|null);
 
-        /** CommandResponse fetchTelemetry. */
-        public fetchTelemetry?: (lukuid.IFetchTelemetryResponse|null);
+        /** CommandResponse telemetry. */
+        public telemetry?: (lukuid.ITelemetryResponse|null);
 
         /** CommandResponse certificateResponse. */
         public certificateResponse?: (lukuid.IGetCertificateResponse|null);
@@ -7093,7 +7093,7 @@ export namespace lukuid {
         public frameSeq?: (number|null);
 
         /** CommandResponse payload. */
-        public payload?: ("deviceInfo"|"networkConfig"|"scanRecord"|"envRecord"|"fetchResponse"|"fullRecordResponse"|"recordBatches"|"heartbeatInit"|"statusResponse"|"fetchTelemetry"|"certificateResponse"|"chainResponse"|"historicalExport");
+        public payload?: ("deviceInfo"|"networkConfig"|"scanRecord"|"envRecord"|"fetchResponse"|"fullRecordResponse"|"recordBatches"|"heartbeatInit"|"statusResponse"|"telemetry"|"certificateResponse"|"chainResponse"|"historicalExport");
 
         /**
          * Creates a new CommandResponse instance using the specified properties.

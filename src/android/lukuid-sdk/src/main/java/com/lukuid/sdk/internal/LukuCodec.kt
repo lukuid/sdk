@@ -292,8 +292,8 @@ internal class LukuCodec(
                 if (heartbeat.lastIntermediateSerial.isNotEmpty()) map["last_intermediate_serial"] = heartbeat.lastIntermediateSerial
                 if (heartbeat.lastSlacSerial.isNotEmpty()) map["last_slac_serial"] = heartbeat.lastSlacSerial
             }
-            LukuIDProto.CommandResponse.PayloadCase.FETCH_TELEMETRY -> {
-                val telemetry = response.fetchTelemetry
+            LukuIDProto.CommandResponse.PayloadCase.TELEMETRY -> {
+                val telemetry = response.telemetry
                 map["data"] = telemetry.rowsList.map { row ->
                     row.valuesList.map { telemetryValueToValue(it) }
                 }
@@ -773,8 +773,8 @@ internal class LukuCodec(
                 "generate_heartbeat" -> {
                     builder.generateHeartbeat = LukuIDProto.GenerateHeartbeatRequest.getDefaultInstance()
                 }
-                "fetch_telemetry" -> {
-                    builder.fetchTelemetry = LukuIDProto.FetchTelemetryRequest.getDefaultInstance()
+                "telemetry" -> {
+                    builder.telemetry = LukuIDProto.TelemetryRequest.getDefaultInstance()
                 }
             }
 

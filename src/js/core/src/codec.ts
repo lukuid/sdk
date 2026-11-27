@@ -334,7 +334,7 @@ export function encodeCommandRequest(frame: DeviceFrame): Uint8Array {
     writeMessage(chunks, action === 'challenge' ? 19 : 20, nested);
   } else if (action === 'generate_heartbeat') {
     writeMessage(chunks, 13, []);
-  } else if (action === 'fetch_telemetry') {
+  } else if (action === 'telemetry') {
     writeMessage(chunks, 14, []);
   }
 
@@ -443,7 +443,7 @@ function decodeCommandResponse(payload: Uint8Array): JsonRecord | null {
       case 17: {
         const message = readLengthDelimited(payload, cursor, wireType);
         if (message === null) return null;
-        const telemetry = decodeFetchTelemetryResponse(message);
+        const telemetry = decodeTelemetryResponse(message);
         Object.assign(out, telemetry);
         break;
       }
@@ -1715,7 +1715,7 @@ function decodeGetCertificateResponse(payload: Uint8Array): JsonRecord {
   return out;
 }
 
-function decodeFetchTelemetryResponse(payload: Uint8Array): JsonRecord {
+function decodeTelemetryResponse(payload: Uint8Array): JsonRecord {
   const cursor = { value: 0 };
   const out: JsonRecord = { data: [] };
   while (cursor.value < payload.length) {

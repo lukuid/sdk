@@ -441,7 +441,7 @@ final class BleSession: NSObject, CBPeripheralDelegate, LukuDevice {
                            let counter = hbInit["counter"] as? UInt64 {
                             
                         if finalInfo.networkParticipationEnabled {
-                            if let telemetryResult = (try? await call(key: "fetch_telemetry", opts: [:], timeout: 10) as? [String: Any]),
+                            if let telemetryResult = (try? await call(key: "telemetry", opts: [:], timeout: 10) as? [String: Any]),
                                let telemetry = telemetryResult["data"] as? [Any], !telemetry.isEmpty {
                                 
                                 let telemetrySignature = telemetryResult["signature"] as? String
