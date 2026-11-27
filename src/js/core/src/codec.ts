@@ -492,7 +492,10 @@ function decodeCommandResponse(payload: Uint8Array): JsonRecord | null {
     }
   }
 
-  const success = typeof out.success === 'boolean' ? out.success : true;
+  // nanopb omits a false proto3 bool, so firmware error replies carry no
+  // `success` field: derive it from status/error_code instead of assuming OK.
+  const hasError = (typeof out.error_code === 'string' && out.error_code.length > 0) || out.status === 'STATUS_ERROR';
+  const success = typeof out.success === 'boolean' ? out.success : !hasError;
   out.ok = success;
   if (!success) {
     const code = typeof out.error_code === 'string' ? out.error_code : 'DEVICE_ERROR';
